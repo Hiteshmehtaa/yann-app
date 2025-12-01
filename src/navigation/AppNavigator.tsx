@@ -1,7 +1,9 @@
 import React from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
 // Auth Screens
@@ -25,32 +27,63 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Custom Tab Bar Icon Component
+const TabIcon = ({ name, focused }: { name: keyof typeof Ionicons.glyphMap; focused: boolean }) => {
+  return (
+    <View style={[styles.tabIconContainer, focused && styles.tabIconContainerActive]}>
+      <Ionicons 
+        name={name} 
+        size={22} 
+        color={focused ? '#FFFFFF' : '#6B7280'} 
+      />
+    </View>
+  );
+};
+
 function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#3B82F6',
+        tabBarActiveTintColor: '#0A0A0A',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 60,
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 24 : 16,
+          left: 20,
+          right: 20,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 24,
+          height: 68,
+          paddingBottom: 0,
+          paddingTop: 0,
+          borderTopWidth: 0,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.12,
+          shadowRadius: 24,
+          elevation: 16,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 10,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
+          marginTop: 4,
         },
+        tabBarShowLabel: true,
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#FFFFFF',
-          borderBottomWidth: 1,
-          borderBottomColor: '#E5E7EB',
+          backgroundColor: '#FAFAFA',
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 0,
         },
         headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
+          fontWeight: '700',
+          fontSize: 20,
+          color: '#0A0A0A',
+          letterSpacing: -0.5,
         },
       }}
     >
@@ -58,8 +91,17 @@ function TabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🏠</Text>,
-          headerTitle: 'Yann Care',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "grid" : "grid-outline"} focused={focused} />
+          ),
+          tabBarLabel: 'Services',
+          headerTitle: 'YANN',
+          headerTitleStyle: {
+            fontWeight: '800',
+            fontSize: 22,
+            color: '#0A0A0A',
+            letterSpacing: 2,
+          },
         }}
       />
       <Tab.Screen
@@ -67,7 +109,9 @@ function TabNavigator() {
         component={BookingsListScreen}
         options={{
           tabBarLabel: 'Bookings',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📋</Text>,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "calendar" : "calendar-outline"} focused={focused} />
+          ),
           headerTitle: 'My Bookings',
         }}
       />
@@ -75,13 +119,30 @@ function TabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
-          headerTitle: 'Profile',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "person" : "person-outline"} focused={focused} />
+          ),
+          tabBarLabel: 'Account',
+          headerTitle: 'Account',
         }}
       />
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  tabIconContainerActive: {
+    backgroundColor: '#0A0A0A',
+  },
+});
 
 export function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -96,12 +157,15 @@ export function AppNavigator() {
         screenOptions={{
           headerShown: true,
           headerStyle: {
-            backgroundColor: '#FFFFFF',
+            backgroundColor: '#FAFAFA',
           },
           headerTitleStyle: {
-            fontWeight: 'bold',
+            fontWeight: '700',
+            fontSize: 18,
+            color: '#0A0A0A',
           },
-          headerTintColor: '#111827',
+          headerTintColor: '#0A0A0A',
+          headerShadowVisible: false,
         }}
       >
         {!isAuthenticated ? (
@@ -130,10 +194,7 @@ export function AppNavigator() {
             <Stack.Screen
               name="VerifyOTP"
               component={VerifyOTPScreen}
-              options={{
-                headerTitle: 'Verify OTP',
-                headerBackTitle: 'Back',
-              }}
+              options={{ headerShown: false }}
             />
           </>
         ) : (
@@ -147,18 +208,12 @@ export function AppNavigator() {
             <Stack.Screen
               name="ServiceDetail"
               component={ServiceDetailScreen}
-              options={{
-                headerTitle: 'Service Details',
-                headerBackTitle: 'Back',
-              }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="BookingForm"
               component={BookingFormScreen}
-              options={{
-                headerTitle: 'Book Service',
-                headerBackTitle: 'Back',
-              }}
+              options={{ headerShown: false }}
             />
           </>
         )}
@@ -166,6 +221,3 @@ export function AppNavigator() {
     </NavigationContainer>
   );
 }
-
-// Add Text import for tab icons
-import { Text } from 'react-native';
