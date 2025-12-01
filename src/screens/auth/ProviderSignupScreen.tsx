@@ -286,7 +286,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         <View key={category.id} style={styles.categoryCard}>
           <View style={styles.categoryHeader}>
             <View style={styles.categoryIconContainer}>
-              <Ionicons name={category.icon} size={20} color="#0A0A0A" />
+              <Ionicons name={category.icon} size={20} color="#2563EB" />
             </View>
             <Text style={styles.categoryName}>{category.name}</Text>
           </View>
@@ -411,7 +411,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color="#0A0A0A" />
+              <Ionicons name="arrow-back" size={24} color="#111827" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Provider registration</Text>
             <View style={{ width: 44 }} />
@@ -455,10 +455,21 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
+// Blue theme colors
+const COLORS = {
+  primary: '#2563EB',
+  primaryLight: '#EFF6FF',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  background: '#F8FAFC',
+  white: '#FFFFFF',
+  border: '#E5E7EB',
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
   },
   keyboardView: {
     flex: 1,
@@ -474,7 +485,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: COLORS.border,
   },
   backButton: {
     width: 44,
@@ -484,7 +495,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.text,
   },
   stepIndicator: {
     flexDirection: 'row',
@@ -500,43 +511,43 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepDotActive: {
-    backgroundColor: '#0A0A0A',
+    backgroundColor: COLORS.primary,
   },
   stepNumber: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: COLORS.textSecondary,
   },
   stepNumberActive: {
-    color: '#FFFFFF',
+    color: COLORS.white,
   },
   stepLine: {
     width: 32,
     height: 2,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.border,
     marginHorizontal: 4,
   },
   stepLineActive: {
-    backgroundColor: '#0A0A0A',
+    backgroundColor: COLORS.primary,
   },
   stepContent: {
     paddingHorizontal: 20,
   },
   stepTitle: {
     fontSize: 24,
-    fontWeight: '600',
-    color: '#0A0A0A',
+    fontWeight: '700',
+    color: COLORS.text,
     marginBottom: 4,
     letterSpacing: -0.5,
   },
   stepSubtitle: {
     fontSize: 15,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     marginBottom: 24,
   },
   inputGroup: {
@@ -552,15 +563,15 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: COLORS.text,
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 14,
   },
@@ -571,15 +582,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#0A0A0A',
+    color: COLORS.text,
   },
   categoryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -590,7 +601,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -598,7 +609,7 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.text,
   },
   servicesGrid: {
     flexDirection: 'row',
@@ -611,37 +622,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.background,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
     gap: 6,
   },
   serviceChipActive: {
-    backgroundColor: '#0A0A0A',
-    borderColor: '#0A0A0A',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   serviceChipText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     textTransform: 'capitalize',
   },
   serviceChipTextActive: {
-    color: '#FFFFFF',
+    color: COLORS.white,
   },
   selectedCount: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.primaryLight,
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.primary + '30',
   },
   selectedCountText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.primary,
   },
   priceInputGroup: {
     marginBottom: 16,
@@ -649,23 +660,23 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: COLORS.text,
     marginBottom: 8,
     textTransform: 'capitalize',
   },
   priceInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 14,
   },
   currencySymbol: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.primary,
     marginRight: 4,
   },
   priceInput: {
@@ -673,24 +684,24 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.text,
   },
   priceUnit: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: COLORS.textSecondary,
   },
   summaryCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.primaryLight,
     padding: 20,
     borderRadius: 12,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.primary + '30',
   },
   summaryTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.text,
     marginBottom: 16,
   },
   summaryRow: {
@@ -700,12 +711,12 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.primary,
   },
   bottomBar: {
     position: 'absolute',
@@ -713,21 +724,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: COLORS.border,
   },
   nextButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A0A0A',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     gap: 8,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },

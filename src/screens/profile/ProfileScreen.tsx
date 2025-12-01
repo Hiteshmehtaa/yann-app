@@ -23,7 +23,6 @@ type MenuItemType = {
   title: string;
   subtitle: string;
   onPress: () => void;
-  color?: string;
 };
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
@@ -56,35 +55,30 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
-      color: COLORS.primary,
     },
     {
       icon: 'location-outline',
       title: 'Saved Addresses',
       subtitle: 'Manage your service addresses',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
-      color: COLORS.accent,
     },
     {
       icon: 'card-outline',
       title: 'Payment Methods',
       subtitle: 'Manage payment options',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
-      color: '#7C3AED',
     },
     {
       icon: 'notifications-outline',
       title: 'Notifications',
       subtitle: 'Manage notification preferences',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
-      color: '#EC4899',
     },
     {
       icon: 'help-circle-outline',
       title: 'Help & Support',
       subtitle: 'Get help with your bookings',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
-      color: COLORS.success,
     },
     {
       icon: 'information-circle-outline',
@@ -93,15 +87,14 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       onPress: () =>
         Alert.alert(
           'Yann',
-          'Your Home, Our Priority\n\nVersion 1.0.0\n\n© 2025 Yann. All rights reserved.'
+          'Home Services Made Simple\n\nVersion 1.0.0\n\n© 2025 Yann. All rights reserved.'
         ),
-      color: '#3B82F6',
     },
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+    <SafeAreaView style={styles.container} edges={[]}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
       <ScrollView 
         contentContainerStyle={styles.content}
@@ -145,7 +138,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
-              key={`menu-${item.title}`}
+              key={item.title}
               style={[
                 styles.menuItem,
                 index === menuItems.length - 1 && styles.menuItemLast
@@ -154,15 +147,15 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               activeOpacity={0.7}
             >
               <View style={styles.menuItemLeft}>
-                <View style={[styles.menuIconContainer, { backgroundColor: `${item.color}15` }]}>
-                  <Ionicons name={item.icon} size={20} color={item.color} />
+                <View style={styles.menuIconContainer}>
+                  <Ionicons name={item.icon} size={20} color={COLORS.primary} />
                 </View>
                 <View style={styles.menuTextContainer}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
@@ -190,38 +183,36 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 120,
+    paddingBottom: 100,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.md,
+    marginBottom: 16,
+    ...SHADOWS.sm,
   },
   avatarContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.white,
   },
   profileInfo: {
     flex: 1,
     marginLeft: 16,
   },
   name: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 4,
@@ -231,21 +222,19 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   editButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.backgroundAlt,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     ...SHADOWS.sm,
   },
   statItem: {
@@ -253,7 +242,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: COLORS.primary,
   },
@@ -268,10 +257,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
   },
   menuContainer: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
     marginBottom: 24,
     ...SHADOWS.sm,
   },
@@ -292,9 +279,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -316,12 +304,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${COLORS.error}10`,
-    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
     paddingVertical: 16,
     gap: 8,
     borderWidth: 1,
-    borderColor: `${COLORS.error}20`,
+    borderColor: COLORS.error,
   },
   logoutButtonText: {
     fontSize: 15,
@@ -339,6 +327,6 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
   },
 });

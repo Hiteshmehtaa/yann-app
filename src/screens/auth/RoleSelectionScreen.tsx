@@ -5,11 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../utils/theme';
-import { Logo } from '../../components/Logo';
+import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = {
@@ -19,20 +19,25 @@ type Props = {
 export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       
       <View style={styles.content}>
-        {/* Logo & Branding */}
-        <View style={styles.header}>
-          <Logo size="large" showText={true} variant="default" />
-          <Text style={styles.tagline}>Your Home, Our Priority</Text>
+        {/* Logo */}
+        <View style={styles.logoSection}>
+          <Image 
+            source={require('../../../public/download.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.brandName}>YANN</Text>
+          <Text style={styles.tagline}>Home Services Made Simple</Text>
         </View>
 
         {/* Welcome Text */}
         <View style={styles.welcomeSection}>
-          <Text style={styles.title}>Welcome!</Text>
+          <Text style={styles.title}>Get Started</Text>
           <Text style={styles.subtitle}>
-            How would you like to use YANN?
+            Choose how you'd like to use YANN
           </Text>
         </View>
 
@@ -42,65 +47,54 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             style={styles.optionCard}
             onPress={() => navigation.navigate('Signup', { role: 'customer' })}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <View style={styles.optionIconContainer}>
-              <View style={[styles.optionIcon, { backgroundColor: '#E8F5F3' }]}>
-                <Ionicons name="home-outline" size={28} color={COLORS.primary} />
-              </View>
+            <View style={styles.optionIcon}>
+              <Ionicons name="home" size={28} color={COLORS.primary} />
             </View>
             <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Book Services</Text>
+              <Text style={styles.optionTitle}>I need services</Text>
               <Text style={styles.optionDescription}>
-                Find trusted professionals for your home needs
+                Book trusted professionals for your home
               </Text>
             </View>
-            <View style={styles.arrowContainer}>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-            </View>
+            <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />
           </TouchableOpacity>
 
           {/* Provider Option */}
           <TouchableOpacity
-            style={styles.optionCard}
+            style={[styles.optionCard, styles.optionCardOutline]}
             onPress={() => navigation.navigate('ProviderSignup')}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <View style={styles.optionIconContainer}>
-              <View style={[styles.optionIcon, { backgroundColor: '#FFF3E8' }]}>
-                <Ionicons name="briefcase-outline" size={28} color={COLORS.accent} />
-              </View>
+            <View style={[styles.optionIcon, styles.optionIconOutline]}>
+              <Ionicons name="briefcase" size={28} color={COLORS.primary} />
             </View>
             <View style={styles.optionContent}>
-              <Text style={styles.optionTitle}>Become a Partner</Text>
+              <Text style={styles.optionTitle}>I provide services</Text>
               <Text style={styles.optionDescription}>
-                Join our network and grow your business
+                Join our network of professionals
               </Text>
             </View>
-            <View style={styles.arrowContainer}>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.accent} />
-            </View>
+            <Ionicons name="chevron-forward" size={22} color={COLORS.textMuted} />
           </TouchableOpacity>
         </View>
 
-        {/* Trust Badges */}
-        <View style={styles.trustSection}>
-          <View style={styles.trustItem}>
-            <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
-            <Text style={styles.trustNumber}>5K+</Text>
-            <Text style={styles.trustLabel}>Verified Pros</Text>
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>10K+</Text>
+            <Text style={styles.statLabel}>Professionals</Text>
           </View>
-          <View style={styles.trustDivider} />
-          <View style={styles.trustItem}>
-            <Ionicons name="heart" size={20} color={COLORS.secondary} />
-            <Text style={styles.trustNumber}>100K+</Text>
-            <Text style={styles.trustLabel}>Happy Homes</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>50K+</Text>
+            <Text style={styles.statLabel}>Happy Customers</Text>
           </View>
-          <View style={styles.trustDivider} />
-          <View style={styles.trustItem}>
-            <Ionicons name="star" size={20} color={COLORS.accent} />
-            <Text style={styles.trustNumber}>4.9</Text>
-            <Text style={styles.trustLabel}>Rating</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>4.9</Text>
+            <Text style={styles.statLabel}>Rating</Text>
           </View>
         </View>
 
@@ -119,29 +113,38 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
   },
-  header: {
+  logoSection: {
     alignItems: 'center',
-    marginTop: 48,
+    marginTop: 40,
     marginBottom: 40,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 12,
+  },
+  brandName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: COLORS.primary,
+    letterSpacing: 2,
   },
   tagline: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    fontWeight: '500',
-    letterSpacing: 0.5,
-    marginTop: 12,
+    marginTop: 4,
   },
   welcomeSection: {
     marginBottom: 32,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 8,
@@ -157,28 +160,33 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.md,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
-  optionIconContainer: {
-    marginRight: 16,
+  optionCardOutline: {
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
   },
   optionIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 16,
+  },
+  optionIconOutline: {
+    backgroundColor: COLORS.background,
   },
   optionContent: {
     flex: 1,
   },
   optionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: 4,
@@ -188,46 +196,31 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
-  arrowContainer: {
-    marginLeft: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: COLORS.backgroundAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  trustSection: {
+  statsSection: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    marginTop: 48,
+    marginTop: 40,
     paddingVertical: 24,
-    paddingHorizontal: 16,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.background,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  trustItem: {
+  statItem: {
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
-  trustNumber: {
-    fontSize: 22,
+  statNumber: {
+    fontSize: 24,
     fontWeight: '700',
-    color: COLORS.text,
-    marginTop: 6,
+    color: COLORS.primary,
   },
-  trustLabel: {
-    fontSize: 11,
+  statLabel: {
+    fontSize: 12,
     color: COLORS.textSecondary,
-    marginTop: 2,
-    fontWeight: '500',
+    marginTop: 4,
   },
-  trustDivider: {
+  statDivider: {
     width: 1,
-    height: 50,
+    height: 40,
     backgroundColor: COLORS.border,
   },
   footer: {

@@ -10,11 +10,13 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
+import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -92,7 +94,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -107,27 +109,32 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#0A0A0A" />
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Create account</Text>
+            <Image 
+              source={require('../../../public/download.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Sign up to get started with Yann
+              Sign up to get started with YANN
             </Text>
           </View>
 
           {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full name</Text>
+              <Text style={styles.label}>Full Name</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your full name"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={COLORS.textMuted}
                   value={formData.name}
                   onChangeText={(value) => updateField('name', value)}
                   autoCapitalize="words"
@@ -137,13 +144,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email address</Text>
+              <Text style={styles.label}>Email Address</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={COLORS.textMuted}
                   value={formData.email}
                   onChangeText={(value) => updateField('email', value)}
                   keyboardType="email-address"
@@ -155,13 +162,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone number (optional)</Text>
+              <Text style={styles.label}>Phone Number (Optional)</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="call-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <Ionicons name="call-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your phone number"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={COLORS.textMuted}
                   value={formData.phone}
                   onChangeText={(value) => updateField('phone', value)}
                   keyboardType="phone-pad"
@@ -178,14 +185,14 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
               activeOpacity={0.8}
             >
               <Text style={styles.buttonText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+              <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
             </TouchableOpacity>
 
             {/* Sign In Link */}
             <View style={styles.signinContainer}>
               <Text style={styles.signinText}>Already have an account? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.signinLink}>Sign in</Text>
+                <Text style={styles.signinLink}>Sign In</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -208,7 +215,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
   },
   keyboardView: {
     flex: 1,
@@ -221,25 +228,31 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 8,
-    marginLeft: -8,
   },
   header: {
+    alignItems: 'center',
     marginTop: 24,
     marginBottom: 40,
   },
+  logo: {
+    width: 56,
+    height: 56,
+    marginBottom: 20,
+  },
   title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#0A0A0A',
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.text,
     marginBottom: 8,
-    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    lineHeight: 24,
+    fontSize: 15,
+    color: COLORS.textSecondary,
   },
   form: {
     flex: 1,
@@ -249,16 +262,16 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: '600',
+    color: COLORS.text,
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
     borderRadius: 12,
     paddingHorizontal: 16,
   },
@@ -269,11 +282,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#0A0A0A',
+    color: COLORS.text,
   },
   button: {
     flexDirection: 'row',
-    backgroundColor: '#0A0A0A',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -285,7 +298,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -297,11 +310,11 @@ const styles = StyleSheet.create({
   },
   signinText: {
     fontSize: 15,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   signinLink: {
     fontSize: 15,
-    color: '#0A0A0A',
+    color: COLORS.primary,
     fontWeight: '600',
   },
   footer: {
@@ -310,12 +323,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 20,
   },
   footerLink: {
-    color: '#6B7280',
+    color: COLORS.primary,
     fontWeight: '500',
   },
 });

@@ -19,93 +19,98 @@ type Props = {
 };
 
 const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  'House Cleaning': 'sparkles-outline',
-  'Repairs & Maintenance': 'hammer-outline',
-  'Delivery Services': 'bicycle-outline',
-  'Pet Care': 'paw-outline',
-  'Personal Assistant': 'briefcase-outline',
-  'Garden & Landscaping': 'leaf-outline',
-  'Full-Day Personal Driver': 'car-sport-outline',
-  'Pujari Services': 'flower-outline',
-};
-
-// Colors for each service card - warm, unique palette
-const SERVICE_COLORS: Record<string, { bg: string; icon: string }> = {
-  'House Cleaning': { bg: '#E8F5F3', icon: COLORS.primary },
-  'Repairs & Maintenance': { bg: '#FFF3E8', icon: COLORS.accent },
-  'Delivery Services': { bg: '#F0E8FF', icon: '#7C3AED' },
-  'Pet Care': { bg: '#FFE8EE', icon: '#EC4899' },
-  'Personal Assistant': { bg: '#E8F0FF', icon: '#3B82F6' },
-  'Garden & Landscaping': { bg: '#E8FFE8', icon: '#22C55E' },
-  'Full-Day Personal Driver': { bg: '#FFF8E8', icon: '#F59E0B' },
-  'Pujari Services': { bg: '#FFE8E8', icon: '#EF4444' },
+  'House Cleaning': 'sparkles',
+  'Repairs & Maintenance': 'construct',
+  'Delivery Services': 'bicycle',
+  'Pet Care': 'paw',
+  'Personal Assistant': 'briefcase',
+  'Garden & Landscaping': 'leaf',
+  'Full-Day Personal Driver': 'car-sport',
+  'Pujari Services': 'flower',
 };
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
 
   const renderServiceCard = ({ item }: { item: typeof SERVICES[0] }) => {
-    const iconName = SERVICE_ICONS[item.title] || 'ellipse-outline';
-    const colors = SERVICE_COLORS[item.title] || { bg: COLORS.backgroundAlt, icon: COLORS.primary };
+    const iconName = SERVICE_ICONS[item.title] || 'ellipse';
     
     return (
       <TouchableOpacity
         style={styles.card}
         onPress={() => navigation.navigate('ServiceDetail', { service: item })}
-        activeOpacity={0.8}
+        activeOpacity={0.7}
       >
-        <View style={[styles.cardInner, { borderLeftColor: colors.icon }]}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.iconContainer, { backgroundColor: colors.bg }]}>
-              <Ionicons name={iconName} size={24} color={colors.icon} />
+        <View style={styles.iconContainer}>
+          <Ionicons name={iconName} size={28} color={COLORS.primary} />
+        </View>
+        
+        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+        
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardPrice}>{item.price}</Text>
+          {item.popular && (
+            <View style={styles.popularBadge}>
+              <Text style={styles.popularText}>Popular</Text>
             </View>
-            {item.popular && (
-              <View style={styles.popularBadge}>
-                <Ionicons name="flame" size={10} color="#FFFFFF" />
-                <Text style={styles.popularText}>Hot</Text>
-              </View>
-            )}
-          </View>
-          
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
-          
-          <View style={styles.cardFooter}>
-            <Text style={styles.cardPrice}>{item.price}</Text>
-            <View style={styles.arrowButton}>
-              <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
-            </View>
-          </View>
+          )}
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+    <SafeAreaView style={styles.container} edges={[]}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.greetingContainer}>
             <Text style={styles.greeting}>
-              {user?.name ? `Hi, ${user.name.split(' ')[0]} 👋` : 'Welcome!'}
+              Hello, {user?.name ? user.name.split(' ')[0] : 'there'}!
             </Text>
-            <Text style={styles.subtitle}>Your home, our priority</Text>
+            <Text style={styles.subtitle}>What service do you need today?</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={22} color={COLORS.text} />
-            <View style={styles.notificationDot} />
+            <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
           </TouchableOpacity>
         </View>
 
         {/* Search Bar */}
         <TouchableOpacity style={styles.searchBar} activeOpacity={0.8}>
-          <Ionicons name="search-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.searchText}>What service do you need?</Text>
+          <Ionicons name="search" size={20} color={COLORS.textMuted} />
+          <Text style={styles.searchText}>Search services...</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Quick Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <View style={[styles.statIcon, { backgroundColor: COLORS.primaryLight }]}>
+            <Ionicons name="calendar" size={20} color={COLORS.primary} />
+          </View>
+          <View>
+            <Text style={styles.statNumber}>2</Text>
+            <Text style={styles.statLabel}>Bookings</Text>
+          </View>
+        </View>
+        <View style={styles.statCard}>
+          <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
+            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+          </View>
+          <View>
+            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Services Section */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Our Services</Text>
+        <TouchableOpacity>
+          <Text style={styles.seeAll}>See All</Text>
         </TouchableOpacity>
       </View>
 
@@ -118,14 +123,6 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Our Services</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See all</Text>
-            </TouchableOpacity>
-          </View>
-        }
       />
     </SafeAreaView>
   );
@@ -138,8 +135,9 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 20,
+    backgroundColor: COLORS.white,
   },
   headerTop: {
     flexDirection: 'row',
@@ -151,73 +149,91 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   greeting: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: COLORS.text,
-    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: 4,
   },
   notificationButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: COLORS.surface,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.secondary,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     gap: 12,
-    ...SHADOWS.sm,
   },
   searchText: {
     fontSize: 15,
+    color: COLORS.textMuted,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  statCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 14,
+    gap: 12,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  statLabel: {
+    fontSize: 12,
     color: COLORS.textSecondary,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 8,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
   },
-  seeAllText: {
+  seeAll: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.primary,
   },
   listContent: {
-    padding: 20,
-    paddingTop: 8,
-    paddingBottom: 120,
+    paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   row: {
     justifyContent: 'space-between',
@@ -225,76 +241,47 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     maxWidth: '48%',
-    marginBottom: 16,
-  },
-  cardInner: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    borderLeftWidth: 3,
+    marginBottom: 12,
     ...SHADOWS.sm,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
   iconContainer: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     borderRadius: 14,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  popularBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 3,
-  },
-  popularText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
+    marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 6,
-  },
-  cardDescription: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    lineHeight: 17,
-    marginBottom: 14,
+    marginBottom: 12,
+    minHeight: 36,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
   },
   cardPrice: {
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.primary,
   },
-  arrowButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: COLORS.backgroundAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
+  popularBadge: {
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  popularText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 });

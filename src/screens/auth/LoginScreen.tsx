@@ -9,13 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
-import { COLORS, SHADOWS } from '../../utils/theme';
-import { Logo } from '../../components/Logo';
+import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = {
@@ -81,10 +81,14 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-              <Logo size="medium" showText={true} variant="default" />
+              <Image 
+                source={require('../../../public/download.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
               <Text style={styles.title}>Welcome Back</Text>
               <Text style={styles.subtitle}>
-                Enter your email to receive a verification code
+                Sign in to continue to YANN
               </Text>
             </View>
 
@@ -92,11 +96,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.form}>
               <Text style={styles.label}>Email Address</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} />
+                <Ionicons name="mail-outline" size={20} color={COLORS.textMuted} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
-                  placeholderTextColor={COLORS.textLight}
+                  placeholderTextColor={COLORS.textMuted}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -113,7 +117,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <Text style={styles.buttonText}>Continue</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
               </TouchableOpacity>
 
               <Text style={styles.infoText}>
@@ -139,7 +143,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
   },
   keyboardView: {
     flex: 1,
@@ -148,16 +152,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   backButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: COLORS.surface,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
     margin: 20,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
   },
   content: {
     flex: 1,
@@ -165,19 +166,23 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   header: {
+    alignItems: 'center',
     marginBottom: 48,
   },
+  logo: {
+    width: 64,
+    height: 64,
+    marginBottom: 24,
+  },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 8,
-    marginTop: 32,
   },
   subtitle: {
     fontSize: 16,
     color: COLORS.textSecondary,
-    lineHeight: 24,
   },
   form: {
     marginBottom: 32,
@@ -191,14 +196,13 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.background,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 14,
+    borderRadius: 12,
     paddingHorizontal: 16,
     gap: 12,
     marginBottom: 24,
-    ...SHADOWS.sm,
   },
   input: {
     flex: 1,
@@ -208,26 +212,25 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: COLORS.primary,
-    borderRadius: 14,
+    borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    ...SHADOWS.md,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
   infoText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: COLORS.textMuted,
     textAlign: 'center',
   },
   footer: {

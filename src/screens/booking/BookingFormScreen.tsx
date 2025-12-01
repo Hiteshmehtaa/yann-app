@@ -243,7 +243,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Ionicons 
                   name={PAYMENT_ICONS[method.value] || 'wallet-outline'} 
                   size={20} 
-                  color={formData.paymentMethod === method.value ? '#0A0A0A' : '#6B7280'} 
+                  color={formData.paymentMethod === method.value ? '#2563EB' : '#6B7280'} 
                 />
                 <Text
                   style={[
@@ -296,10 +296,21 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
+// Blue theme colors
+const COLORS = {
+  primary: '#2563EB',
+  primaryLight: '#EFF6FF',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  background: '#F8FAFC',
+  white: '#FFFFFF',
+  border: '#E5E7EB',
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
   scrollView: {
     flex: 1,
@@ -313,27 +324,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.primaryLight,
     borderRadius: 12,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.primary + '30',
   },
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.text,
   },
   servicePrice: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#0A0A0A',
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   form: {},
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#0A0A0A',
+    fontWeight: '700',
+    color: COLORS.text,
     marginTop: 8,
     marginBottom: 16,
     letterSpacing: -0.3,
@@ -351,15 +362,15 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: COLORS.text,
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 14,
   },
@@ -370,7 +381,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#0A0A0A',
+    color: COLORS.text,
   },
   textAreaContainer: {
     alignItems: 'flex-start',
@@ -393,25 +404,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 14,
     gap: 8,
   },
   paymentOptionActive: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#0A0A0A',
+    backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
     borderWidth: 2,
   },
   paymentLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   paymentLabelActive: {
-    color: '#0A0A0A',
+    color: COLORS.primary,
     fontWeight: '600',
   },
   bottomBar: {
@@ -420,15 +431,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: COLORS.border,
   },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A0A0A',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     gap: 8,
@@ -437,7 +448,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },

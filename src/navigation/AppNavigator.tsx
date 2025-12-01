@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -29,72 +29,36 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Custom Tab Bar Icon Component with YANN theme
-const TabIcon = ({ name, focused }: { name: keyof typeof Ionicons.glyphMap; focused: boolean }) => {
-  return (
-    <View style={[styles.tabIconContainer, focused && styles.tabIconContainerActive]}>
-      <Ionicons 
-        name={name} 
-        size={22} 
-        color={focused ? '#FFFFFF' : COLORS.textSecondary} 
-      />
-    </View>
-  );
-};
-
-// Header Logo Component
-const HeaderLogo = () => (
-  <View style={styles.headerLogoContainer}>
-    <Logo size="small" showText={true} variant="dark" />
-  </View>
-);
-
 function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 24 : 16,
-          left: 24,
-          right: 24,
-          backgroundColor: COLORS.surface,
-          borderRadius: 28,
-          height: 70,
-          paddingBottom: 0,
-          paddingTop: 0,
-          borderTopWidth: 0,
-          borderWidth: 1,
-          borderColor: COLORS.borderLight,
-          shadowColor: COLORS.primary,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.15,
-          shadowRadius: 24,
-          elevation: 16,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 10,
+          backgroundColor: COLORS.white,
+          borderTopWidth: 1,
+          borderTopColor: COLORS.borderLight,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginTop: 4,
         },
-        tabBarShowLabel: true,
         headerShown: true,
         headerStyle: {
-          backgroundColor: COLORS.background,
+          backgroundColor: COLORS.white,
           elevation: 0,
           shadowOpacity: 0,
-          borderBottomWidth: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.borderLight,
         },
         headerTitleStyle: {
           fontWeight: '700',
-          fontSize: 20,
+          fontSize: 18,
           color: COLORS.text,
-          letterSpacing: -0.5,
         },
       }}
     >
@@ -102,11 +66,15 @@ function TabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? "home" : "home-outline"} focused={focused} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "home" : "home-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
           tabBarLabel: 'Home',
-          headerTitle: () => <HeaderLogo />,
+          headerTitle: () => <Logo size="small" showText={true} />,
         }}
       />
       <Tab.Screen
@@ -114,53 +82,34 @@ function TabNavigator() {
         component={BookingsListScreen}
         options={{
           tabBarLabel: 'Bookings',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? "calendar" : "calendar-outline"} focused={focused} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "calendar" : "calendar-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
           headerTitle: 'My Bookings',
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 20,
-            color: COLORS.text,
-          },
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? "person" : "person-outline"} focused={focused} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "person" : "person-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
-          tabBarLabel: 'Account',
-          headerTitle: 'My Account',
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 20,
-            color: COLORS.text,
-          },
+          tabBarLabel: 'Profile',
+          headerTitle: 'My Profile',
         }}
       />
     </Tab.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  tabIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  tabIconContainerActive: {
-    backgroundColor: COLORS.primary,
-  },
-  headerLogoContainer: {
-    paddingLeft: 4,
-  },
-});
 
 export function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -173,66 +122,23 @@ export function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: COLORS.background,
-          },
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 18,
-            color: COLORS.text,
-          },
-          headerTintColor: COLORS.primary,
-          headerShadowVisible: false,
+          headerShown: false,
+          contentStyle: { backgroundColor: COLORS.white },
         }}
       >
         {isAuthenticated ? (
-          // Main App Stack
           <>
-            <Stack.Screen
-              name="MainTabs"
-              component={TabNavigator}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ServiceDetail"
-              component={ServiceDetailScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="BookingForm"
-              component={BookingFormScreen}
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="MainTabs" component={TabNavigator} />
+            <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
+            <Stack.Screen name="BookingForm" component={BookingFormScreen} />
           </>
         ) : (
-          // Auth Stack
           <>
-            <Stack.Screen
-              name="RoleSelection"
-              component={RoleSelectionScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Signup"
-              component={SignupScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ProviderSignup"
-              component={ProviderSignupScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="VerifyOTP"
-              component={VerifyOTPScreen}
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen name="ProviderSignup" component={ProviderSignupScreen} />
+            <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
           </>
         )}
       </Stack.Navigator>

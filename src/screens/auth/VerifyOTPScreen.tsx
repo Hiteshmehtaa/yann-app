@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
+import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -70,7 +71,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -86,15 +87,15 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             onPress={() => navigation.goBack()}
             disabled={isLoading}
           >
-            <Ionicons name="arrow-back" size={24} color="#0A0A0A" />
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
 
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.iconContainer}>
-              <Ionicons name="shield-checkmark-outline" size={32} color="#0A0A0A" />
+              <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
             </View>
-            <Text style={styles.title}>Verify your email</Text>
+            <Text style={styles.title}>Verify Your Email</Text>
             <Text style={styles.subtitle}>
               We've sent a 6-digit code to
             </Text>
@@ -108,7 +109,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
               <TextInput
                 style={styles.input}
                 placeholder="------"
-                placeholderTextColor="#D1D5DB"
+                placeholderTextColor={COLORS.textMuted}
                 value={otp}
                 onChangeText={setOTP}
                 keyboardType="number-pad"
@@ -125,7 +126,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
               activeOpacity={0.8}
             >
               <Text style={styles.buttonText}>Verify</Text>
-              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={20} color={COLORS.white} />
             </TouchableOpacity>
 
             {/* Resend OTP */}
@@ -165,7 +166,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
   },
   keyboardView: {
     flex: 1,
@@ -178,9 +179,11 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 8,
-    marginLeft: -8,
   },
   header: {
     alignItems: 'center',
@@ -190,27 +193,26 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 72,
     height: 72,
-    borderRadius: 36,
-    backgroundColor: '#F9FAFB',
+    borderRadius: 20,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#0A0A0A',
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.text,
     marginBottom: 12,
-    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 15,
+    color: COLORS.textSecondary,
   },
   email: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#0A0A0A',
+    color: COLORS.primary,
     marginTop: 4,
   },
   form: {
@@ -221,26 +223,26 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: '600',
+    color: COLORS.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
     borderRadius: 12,
     paddingVertical: 20,
     fontSize: 28,
-    color: '#0A0A0A',
+    color: COLORS.text,
     textAlign: 'center',
     letterSpacing: 16,
     fontWeight: '600',
   },
   button: {
     flexDirection: 'row',
-    backgroundColor: '#0A0A0A',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -263,11 +265,11 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: 15,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   resendLink: {
     fontSize: 15,
-    color: '#0A0A0A',
+    color: COLORS.primary,
     fontWeight: '600',
   },
   resendLinkDisabled: {
@@ -280,7 +282,7 @@ const styles = StyleSheet.create({
   },
   changeEmailText: {
     fontSize: 15,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
 });

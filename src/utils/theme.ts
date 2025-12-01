@@ -1,51 +1,70 @@
-// YANN Brand Theme - Unique, warm, trustworthy design
-// Different from Urban Company's cold black/white corporate look
+// YANN Brand Theme - Clean White & Blue Professional Design
 
 export const COLORS = {
-  // Primary - Deep Teal (Trust, reliability, professional yet warm)
-  primary: '#0D7377',
-  primaryLight: '#14919B',
-  primaryDark: '#0A5C5F',
+  // Primary Blue Palette
+  primary: '#2563EB',        // Vibrant blue
+  primaryLight: '#3B82F6',   // Light blue
+  primaryDark: '#1D4ED8',    // Dark blue
+  primarySoft: '#EFF6FF',    // Very light blue bg
   
-  // Accent - Warm Sunset Orange (Friendly, energetic, home-like)
-  accent: '#FF8C42',
-  accentLight: '#FFB380',
-  accentDark: '#E67330',
-  
-  // Secondary - Soft Coral (Approachable, caring)
-  secondary: '#FF6B6B',
-  
-  // Backgrounds - Warm, cozy tones
-  background: '#FFFAF5',      // Warm off-white
-  backgroundAlt: '#FFF5EB',   // Slightly warmer
+  // White & Neutral
+  white: '#FFFFFF',
+  background: '#FFFFFF',
+  backgroundSecondary: '#F8FAFC',
   surface: '#FFFFFF',
   
-  // Text
-  text: '#2D3436',            // Soft black, not harsh
-  textSecondary: '#636E72',
-  textLight: '#B2BEC3',
-  
-  // Status
-  success: '#00B894',
-  warning: '#FDCB6E',
-  error: '#FF7675',
+  // Text Colors
+  text: '#0F172A',           // Slate 900
+  textSecondary: '#64748B',  // Slate 500
+  textMuted: '#94A3B8',      // Slate 400
+  textOnPrimary: '#FFFFFF',
   
   // Borders
-  border: '#E8E0D8',          // Warm gray border
-  borderLight: '#F0E9E2',
+  border: '#E2E8F0',         // Slate 200
+  borderLight: '#F1F5F9',    // Slate 100
   
-  // Tab bar specific
-  tabActive: '#0D7377',
-  tabInactive: '#B2BEC3',
+  // Status Colors
+  success: '#10B981',        // Emerald
+  successLight: '#ECFDF5',
+  warning: '#F59E0B',        // Amber
+  warningLight: '#FFFBEB',
+  error: '#EF4444',          // Red
+  errorLight: '#FEF2F2',
+  
+  // Accent colors for variety
+  accent: '#8B5CF6',         // Violet
+  accentLight: '#F5F3FF',
 };
 
-export const FONTS = {
-  // Using system fonts with specific weights
-  regular: '400',
-  medium: '500',
-  semiBold: '600',
-  bold: '700',
-  extraBold: '800',
+export const SHADOWS = {
+  sm: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  md: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  lg: {
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  blue: {
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
 };
 
 export const SPACING = {
@@ -58,33 +77,11 @@ export const SPACING = {
 };
 
 export const RADIUS = {
+  xs: 6,
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 24,
+  xl: 20,
+  xxl: 28,
   full: 999,
-};
-
-export const SHADOWS = {
-  sm: {
-    shadowColor: '#2D3436',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: '#2D3436',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  lg: {
-    shadowColor: '#2D3436',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
-  },
 };

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SHADOWS } from '../../utils/theme';
+import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Service } from '../../types';
@@ -20,35 +20,23 @@ type Props = {
 };
 
 const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  'House Cleaning': 'sparkles-outline',
-  'Repairs & Maintenance': 'hammer-outline',
-  'Delivery Services': 'bicycle-outline',
-  'Pet Care': 'paw-outline',
-  'Personal Assistant': 'briefcase-outline',
-  'Garden & Landscaping': 'leaf-outline',
-  'Full-Day Personal Driver': 'car-sport-outline',
-  'Pujari Services': 'flower-outline',
-};
-
-const SERVICE_COLORS: Record<string, { bg: string; icon: string }> = {
-  'House Cleaning': { bg: '#E8F5F3', icon: COLORS.primary },
-  'Repairs & Maintenance': { bg: '#FFF3E8', icon: COLORS.accent },
-  'Delivery Services': { bg: '#F0E8FF', icon: '#7C3AED' },
-  'Pet Care': { bg: '#FFE8EE', icon: '#EC4899' },
-  'Personal Assistant': { bg: '#E8F0FF', icon: '#3B82F6' },
-  'Garden & Landscaping': { bg: '#E8FFE8', icon: '#22C55E' },
-  'Full-Day Personal Driver': { bg: '#FFF8E8', icon: '#F59E0B' },
-  'Pujari Services': { bg: '#FFE8E8', icon: '#EF4444' },
+  'House Cleaning': 'sparkles',
+  'Repairs & Maintenance': 'construct',
+  'Delivery Services': 'bicycle',
+  'Pet Care': 'paw',
+  'Personal Assistant': 'briefcase',
+  'Garden & Landscaping': 'leaf',
+  'Full-Day Personal Driver': 'car-sport',
+  'Pujari Services': 'flower',
 };
 
 export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service } = route.params;
-  const iconName = SERVICE_ICONS[service.title] || 'ellipse-outline';
-  const colors = SERVICE_COLORS[service.title] || { bg: COLORS.backgroundAlt, icon: COLORS.primary };
+  const iconName = SERVICE_ICONS[service.title] || 'ellipse';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -59,9 +47,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Ionicons name="arrow-back" size={22} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Service Details</Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Ionicons name="share-outline" size={22} color={COLORS.text} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
       
       <ScrollView 
@@ -70,13 +56,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       >
         {/* Hero Section */}
         <View style={styles.hero}>
-          <View style={[styles.heroIconContainer, { backgroundColor: colors.bg }]}>
-            <Ionicons name={iconName} size={48} color={colors.icon} />
+          <View style={styles.heroIconContainer}>
+            <Ionicons name={iconName} size={48} color={COLORS.primary} />
           </View>
           <Text style={styles.heroTitle}>{service.title}</Text>
           {service.popular && (
-            <View style={[styles.popularBadge, { backgroundColor: colors.icon }]}>
-              <Ionicons name="flame" size={12} color="#FFFFFF" />
+            <View style={styles.popularBadge}>
               <Text style={styles.popularText}>Popular Choice</Text>
             </View>
           )}
@@ -95,8 +80,8 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.sectionTitle}>What's included</Text>
             {service.features.map((feature, index) => (
               <View key={`feature-${index}`} style={styles.featureItem}>
-                <View style={[styles.featureIconContainer, { backgroundColor: colors.bg }]}>
-                  <Ionicons name="checkmark" size={16} color={colors.icon} />
+                <View style={styles.featureIconContainer}>
+                  <Ionicons name="checkmark" size={16} color={COLORS.primary} />
                 </View>
                 <Text style={styles.featureText}>{feature}</Text>
               </View>
@@ -110,11 +95,11 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.trustBadgeText}>Verified</Text>
             </View>
             <View style={styles.trustBadge}>
-              <Ionicons name="time" size={20} color={COLORS.accent} />
+              <Ionicons name="time" size={20} color={COLORS.primary} />
               <Text style={styles.trustBadgeText}>On Time</Text>
             </View>
             <View style={styles.trustBadge}>
-              <Ionicons name="star" size={20} color={COLORS.warning} />
+              <Ionicons name="star" size={20} color="#F59E0B" />
               <Text style={styles.trustBadgeText}>4.9 Rating</Text>
             </View>
           </View>
@@ -122,9 +107,9 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Pricing */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Pricing</Text>
-            <View style={[styles.priceCard, { borderLeftColor: colors.icon }]}>
+            <View style={styles.priceCard}>
               <View style={styles.priceHeader}>
-                <Text style={[styles.price, { color: colors.icon }]}>{service.price}</Text>
+                <Text style={styles.price}>{service.price}</Text>
                 <Text style={styles.priceLabel}>onwards</Text>
               </View>
               <Text style={styles.priceNote}>
@@ -142,12 +127,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.bottomPrice}>{service.price}</Text>
         </View>
         <TouchableOpacity
-          style={[styles.bookButton, { backgroundColor: colors.icon }]}
+          style={styles.bookButton}
           onPress={() => navigation.navigate('BookingForm', { service })}
           activeOpacity={0.8}
         >
           <Text style={styles.bookButtonText}>Book Now</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+          <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -157,7 +142,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
   },
   header: {
     flexDirection: 'row',
@@ -165,68 +150,59 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
   },
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
     color: COLORS.text,
   },
-  shareButton: {
+  headerSpacer: {
     width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   scrollContent: {
     paddingBottom: 120,
   },
   hero: {
-    paddingTop: 24,
+    paddingTop: 32,
     paddingBottom: 32,
     paddingHorizontal: 20,
     alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   heroIconContainer: {
     width: 100,
     height: 100,
     borderRadius: 28,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    ...SHADOWS.md,
   },
   heroTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: 12,
-    letterSpacing: -0.5,
   },
   popularBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
-    gap: 6,
   },
   popularText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontWeight: '600',
     fontSize: 12,
   },
@@ -241,7 +217,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 16,
-    letterSpacing: -0.3,
   },
   description: {
     fontSize: 15,
@@ -254,15 +229,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
   },
   featureIconContainer: {
     width: 32,
     height: 32,
     borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -282,11 +256,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 16,
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
     marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
   },
   trustBadgeText: {
     fontSize: 12,
@@ -295,13 +267,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   priceCard: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.primaryLight,
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderLeftWidth: 4,
-    ...SHADOWS.sm,
+    borderColor: COLORS.primary,
   },
   priceHeader: {
     flexDirection: 'row',
@@ -312,6 +282,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 28,
     fontWeight: '700',
+    color: COLORS.primary,
   },
   priceLabel: {
     fontSize: 14,
@@ -331,10 +302,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 20,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.white,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    ...SHADOWS.lg,
+    borderTopColor: COLORS.borderLight,
   },
   bottomPriceContainer: {
     flex: 1,
@@ -351,14 +321,14 @@ const styles = StyleSheet.create({
   bookButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 28,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 14,
     gap: 8,
-    ...SHADOWS.md,
   },
   bookButtonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
