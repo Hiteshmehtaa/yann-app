@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { COLORS, SHADOWS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = {
@@ -22,7 +23,7 @@ type MenuItemType = {
   title: string;
   subtitle: string;
   onPress: () => void;
-  danger?: boolean;
+  color?: string;
 };
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
@@ -55,30 +56,35 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      color: COLORS.primary,
     },
     {
       icon: 'location-outline',
       title: 'Saved Addresses',
       subtitle: 'Manage your service addresses',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      color: COLORS.accent,
     },
     {
       icon: 'card-outline',
       title: 'Payment Methods',
       subtitle: 'Manage payment options',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      color: '#7C3AED',
     },
     {
       icon: 'notifications-outline',
       title: 'Notifications',
       subtitle: 'Manage notification preferences',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      color: '#EC4899',
     },
     {
       icon: 'help-circle-outline',
       title: 'Help & Support',
       subtitle: 'Get help with your bookings',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      color: COLORS.success,
     },
     {
       icon: 'information-circle-outline',
@@ -87,19 +93,15 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       onPress: () =>
         Alert.alert(
           'Yann',
-          'Professional home services\n\nVersion 1.0.0\n\n© 2025 Yann. All rights reserved.'
+          'Your Home, Our Priority\n\nVersion 1.0.0\n\n© 2025 Yann. All rights reserved.'
         ),
+      color: '#3B82F6',
     },
   ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-      </View>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <ScrollView 
         contentContainerStyle={styles.content}
@@ -117,15 +119,33 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.email}>{user?.email || 'No email'}</Text>
           </View>
           <TouchableOpacity style={styles.editButton}>
-            <Ionicons name="pencil" size={16} color="#6B7280" />
+            <Ionicons name="create-outline" size={18} color={COLORS.primary} />
           </TouchableOpacity>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statLabel}>Bookings</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>4.9</Text>
+            <Text style={styles.statLabel}>Rating</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>₹15K</Text>
+            <Text style={styles.statLabel}>Spent</Text>
+          </View>
         </View>
 
         {/* Menu Items */}
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
-              key={index}
+              key={`menu-${item.title}`}
               style={[
                 styles.menuItem,
                 index === menuItems.length - 1 && styles.menuItemLast
@@ -134,28 +154,29 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               activeOpacity={0.7}
             >
               <View style={styles.menuItemLeft}>
-                <View style={styles.menuIconContainer}>
-                  <Ionicons name={item.icon} size={20} color="#0A0A0A" />
+                <View style={[styles.menuIconContainer, { backgroundColor: `${item.color}15` }]}>
+                  <Ionicons name={item.icon} size={20} color={item.color} />
                 </View>
                 <View style={styles.menuTextContainer}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+          <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Yann v1.0.0</Text>
+          <Text style={styles.footerText}>Made with ❤️ by Yann</Text>
+          <Text style={styles.versionText}>v1.0.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -165,45 +186,34 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#0A0A0A',
-    letterSpacing: -0.5,
+    backgroundColor: COLORS.background,
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
+    ...SHADOWS.md,
   },
   avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#0A0A0A',
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 26,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   profileInfo: {
@@ -211,29 +221,59 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   name: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0A0A0A',
-    marginBottom: 2,
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
   },
   email: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F9FAFB',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.backgroundAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  menuContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: COLORS.border,
+  },
+  menuContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 24,
+    ...SHADOWS.sm,
   },
   menuItem: {
     flexDirection: 'row',
@@ -241,7 +281,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: COLORS.borderLight,
   },
   menuItemLast: {
     borderBottomWidth: 0,
@@ -252,47 +292,53 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#F9FAFB',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   menuTextContainer: {
     flex: 1,
   },
   menuTitle: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#0A0A0A',
+    fontWeight: '600',
+    color: COLORS.text,
     marginBottom: 2,
   },
   menuSubtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
+    backgroundColor: `${COLORS.error}10`,
+    borderRadius: 16,
     paddingVertical: 16,
     gap: 8,
+    borderWidth: 1,
+    borderColor: `${COLORS.error}20`,
   },
   logoutButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#DC2626',
+    color: COLORS.error,
   },
   footer: {
     alignItems: 'center',
     marginTop: 32,
+    gap: 4,
   },
   footerText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: COLORS.textSecondary,
+  },
+  versionText: {
+    fontSize: 12,
+    color: COLORS.textLight,
   },
 });

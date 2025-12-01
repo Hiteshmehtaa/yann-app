@@ -11,8 +11,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
+import { COLORS, SHADOWS } from '../../utils/theme';
+import { Logo } from '../../components/Logo';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = {
@@ -67,11 +70,19 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Back Button */}
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.logoText}>YANN</Text>
-              <Text style={styles.title}>Sign In</Text>
+              <Logo size="medium" showText={true} variant="default" />
+              <Text style={styles.title}>Welcome Back</Text>
               <Text style={styles.subtitle}>
                 Enter your email to receive a verification code
               </Text>
@@ -80,17 +91,20 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Form */}
             <View style={styles.form}>
               <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                placeholderTextColor="#999999"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor={COLORS.textLight}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+              </View>
 
               <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
@@ -99,6 +113,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <Text style={styles.buttonText}>Continue</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
               </TouchableOpacity>
 
               <Text style={styles.infoText}>
@@ -124,7 +139,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
   keyboardView: {
     flex: 1,
@@ -132,30 +147,36 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  backButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 20,
   },
   header: {
     marginBottom: 48,
   },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    letterSpacing: 3,
-    marginBottom: 32,
-  },
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: COLORS.text,
     marginBottom: 8,
+    marginTop: 32,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666666',
+    color: COLORS.textSecondary,
     lineHeight: 24,
   },
   form: {
@@ -164,26 +185,37 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: COLORS.text,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: '#F8F9FA',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#E8E8E8',
-    borderRadius: 12,
+    borderColor: COLORS.border,
+    borderRadius: 14,
     paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 24,
+    ...SHADOWS.sm,
+  },
+  input: {
+    flex: 1,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#1A1A1A',
-    marginBottom: 24,
+    color: COLORS.text,
   },
   button: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    ...SHADOWS.md,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -195,7 +227,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 13,
-    color: '#999999',
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
   footer: {
@@ -207,11 +239,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 15,
-    color: '#666666',
+    color: COLORS.textSecondary,
   },
   footerLink: {
     fontSize: 15,
-    color: '#1A1A1A',
+    color: COLORS.primary,
     fontWeight: '600',
   },
 });
