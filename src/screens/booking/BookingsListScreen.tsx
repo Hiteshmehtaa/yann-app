@@ -17,6 +17,20 @@ import type { Booking } from '../../types';
 import { format } from 'date-fns';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+// Dark editorial theme
+const THEME = {
+  bg: '#0D0D0D',
+  bgCard: '#1A1A1A',
+  bgElevated: '#242424',
+  accent: '#FF6B35',
+  accentSoft: '#FF6B3515',
+  gold: '#D4AF37',
+  text: '#FAFAFA',
+  textMuted: '#6A6A6A',
+  textSubtle: '#4A4A4A',
+  border: '#2A2A2A',
+};
+
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
@@ -154,8 +168,8 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={['#2563EB']}
-            tintColor="#2563EB"
+            colors={[THEME.accent]}
+            tintColor={THEME.accent}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -164,63 +178,54 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-// Blue theme colors
-const COLORS = {
-  primary: '#2563EB',
-  primaryLight: '#EFF6FF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  background: '#F8FAFC',
-  white: '#FFFFFF',
-  border: '#E5E7EB',
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.bg,
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: THEME.border,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontWeight: '800',
+    color: THEME.text,
+    letterSpacing: -1,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.primary,
+    fontSize: 13,
+    color: THEME.accent,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.bg,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: THEME.textMuted,
+    letterSpacing: 1,
   },
   listContent: {
     padding: 20,
     flexGrow: 1,
   },
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: THEME.bgCard,
+    borderRadius: 16,
+    padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -236,17 +241,18 @@ const styles = StyleSheet.create({
   },
   serviceName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontWeight: '700',
+    color: THEME.text,
   },
   statusBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   cardBody: {},
   infoRow: {
@@ -260,25 +266,28 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   infoValue: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: THEME.textMuted,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: THEME.border,
   },
   priceLabel: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 12,
+    color: THEME.textMuted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   priceValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontSize: 20,
+    fontWeight: '800',
+    color: THEME.accent,
+    letterSpacing: -0.5,
   },
   emptyContainer: {
     flex: 1,
@@ -288,39 +297,43 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primaryLight,
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    backgroundColor: THEME.accentSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontSize: 22,
+    fontWeight: '800',
+    color: THEME.text,
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   emptyText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: THEME.textMuted,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 28,
     lineHeight: 22,
   },
   browseButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    gap: 8,
+    backgroundColor: THEME.accent,
+    borderRadius: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    gap: 10,
   },
   browseButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '600',
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 });

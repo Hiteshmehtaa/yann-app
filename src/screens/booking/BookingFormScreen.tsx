@@ -19,6 +19,19 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Service } from '../../types';
 
+// Dark Editorial Theme
+const THEME = {
+  bg: '#0A0A0A',
+  bgCard: '#1A1A1A',
+  bgInput: '#141414',
+  text: '#F5F0EB',
+  textMuted: '#8A8A8A',
+  accent: '#FF6B35',
+  accentSoft: 'rgba(255, 107, 53, 0.12)',
+  border: '#2A2A2A',
+  borderActive: '#FF6B35',
+};
+
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ params: { service: Service } }, 'params'>;
@@ -127,7 +140,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
       
       <ScrollView 
         style={styles.scrollView} 
@@ -136,23 +149,29 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       >
         {/* Service Summary */}
         <View style={styles.serviceSummary}>
-          <Text style={styles.serviceName}>{service.title}</Text>
+          <View>
+            <Text style={styles.summaryLabel}>BOOKING</Text>
+            <Text style={styles.serviceName}>{service.title}</Text>
+          </View>
           <Text style={styles.servicePrice}>{service.price}</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           {/* Contact Information */}
-          <Text style={styles.sectionTitle}>Contact details</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.accentBar} />
+            <Text style={styles.sectionTitle}>CONTACT</Text>
+          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full name</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons name="person-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your name"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={THEME.textMuted}
                 value={formData.customerName}
                 onChangeText={(value) => updateField('customerName', value)}
                 editable={!isLoading}
@@ -163,11 +182,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone number</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons name="call-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="10-digit mobile number"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={THEME.textMuted}
                 keyboardType="phone-pad"
                 maxLength={10}
                 value={formData.customerPhone}
@@ -183,7 +202,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Enter complete address"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={THEME.textMuted}
                 multiline
                 numberOfLines={3}
                 value={formData.customerAddress}
@@ -194,7 +213,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           {/* Schedule */}
-          <Text style={styles.sectionTitle}>Schedule</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.accentBar} />
+            <Text style={styles.sectionTitle}>SCHEDULE</Text>
+          </View>
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, styles.halfWidth]}>
@@ -203,7 +225,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="2025-12-15"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={THEME.textMuted}
                   value={formData.bookingDate}
                   onChangeText={(value) => updateField('bookingDate', value)}
                   editable={!isLoading}
@@ -217,7 +239,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="10:00"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={THEME.textMuted}
                   value={formData.bookingTime}
                   onChangeText={(value) => updateField('bookingTime', value)}
                   editable={!isLoading}
@@ -227,7 +249,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           {/* Payment Method */}
-          <Text style={styles.sectionTitle}>Payment method</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.accentBar} />
+            <Text style={styles.sectionTitle}>PAYMENT</Text>
+          </View>
           <View style={styles.paymentOptions}>
             {PAYMENT_METHODS.map((method) => (
               <TouchableOpacity
@@ -242,8 +267,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               >
                 <Ionicons 
                   name={PAYMENT_ICONS[method.value] || 'wallet-outline'} 
-                  size={20} 
-                  color={formData.paymentMethod === method.value ? '#2563EB' : '#6B7280'} 
+                  size={18} 
+                  color={formData.paymentMethod === method.value ? THEME.accent : THEME.textMuted} 
                 />
                 <Text
                   style={[
@@ -264,7 +289,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Any special requirements..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={THEME.textMuted}
                 multiline
                 numberOfLines={3}
                 value={formData.notes}
@@ -285,9 +310,9 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           activeOpacity={0.8}
         >
           <Text style={styles.submitButtonText}>
-            {isLoading ? 'Processing...' : 'Confirm booking'}
+            {isLoading ? 'PROCESSING...' : 'CONFIRM BOOKING'}
           </Text>
-          {!isLoading && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
+          {!isLoading && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
         </TouchableOpacity>
       </View>
       
@@ -296,21 +321,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-// Blue theme colors
-const COLORS = {
-  primary: '#2563EB',
-  primaryLight: '#EFF6FF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  background: '#F8FAFC',
-  white: '#FFFFFF',
-  border: '#E5E7EB',
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.bg,
   },
   scrollView: {
     flex: 1,
@@ -323,31 +337,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 12,
-    marginBottom: 24,
+    padding: 18,
+    backgroundColor: THEME.bgCard,
+    borderRadius: 16,
+    marginBottom: 28,
     borderWidth: 1,
-    borderColor: COLORS.primary + '30',
+    borderColor: THEME.accent,
+  },
+  summaryLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: THEME.accent,
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
   serviceName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontSize: 17,
+    fontWeight: '700',
+    color: THEME.text,
   },
   servicePrice: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontSize: 20,
+    fontWeight: '800',
+    color: THEME.accent,
+    letterSpacing: -0.5,
   },
   form: {},
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginTop: 8,
-    marginBottom: 16,
-    letterSpacing: -0.3,
+    marginBottom: 18,
+  },
+  accentBar: {
+    width: 3,
+    height: 18,
+    backgroundColor: THEME.accent,
+    borderRadius: 2,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.text,
+    letterSpacing: 2,
   },
   inputGroup: {
     marginBottom: 16,
@@ -360,18 +393,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.textMuted,
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bgInput,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
+    borderColor: THEME.border,
+    borderRadius: 12,
     paddingHorizontal: 14,
   },
   inputIcon: {
@@ -381,7 +414,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 15,
-    color: COLORS.text,
+    color: THEME.text,
   },
   textAreaContainer: {
     alignItems: 'flex-start',
@@ -404,26 +437,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bgCard,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
+    borderColor: THEME.border,
+    borderRadius: 12,
     padding: 14,
     gap: 8,
   },
   paymentOptionActive: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: COLORS.primary,
+    backgroundColor: THEME.accentSoft,
+    borderColor: THEME.accent,
     borderWidth: 2,
   },
   paymentLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.textMuted,
   },
   paymentLabelActive: {
-    color: COLORS.primary,
-    fontWeight: '600',
+    color: THEME.accent,
+    fontWeight: '700',
   },
   bottomBar: {
     position: 'absolute',
@@ -431,25 +464,26 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bg,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: THEME.border,
   },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
+    backgroundColor: THEME.accent,
+    borderRadius: 14,
     paddingVertical: 16,
-    gap: 8,
+    gap: 10,
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 });

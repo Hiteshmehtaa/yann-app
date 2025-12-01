@@ -11,8 +11,22 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { COLORS, SHADOWS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+// Dark editorial theme
+const THEME = {
+  bg: '#0D0D0D',
+  bgCard: '#1A1A1A',
+  bgElevated: '#242424',
+  accent: '#FF6B35',
+  accentSoft: '#FF6B3515',
+  gold: '#D4AF37',
+  text: '#FAFAFA',
+  textMuted: '#6A6A6A',
+  textSubtle: '#4A4A4A',
+  border: '#2A2A2A',
+  error: '#EF4444',
+};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -94,7 +108,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
 
       <ScrollView 
         contentContainerStyle={styles.content}
@@ -110,28 +124,38 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{user?.name || 'User'}</Text>
             <Text style={styles.email}>{user?.email || 'No email'}</Text>
+            <View style={styles.memberBadge}>
+              <Ionicons name="star" size={10} color={THEME.gold} />
+              <Text style={styles.memberText}>MEMBER</Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Ionicons name="create-outline" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Bookings</Text>
+            <Text style={styles.statLabel}>BOOKINGS</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>4.9</Text>
-            <Text style={styles.statLabel}>Rating</Text>
+            <View style={styles.ratingRow}>
+              <Text style={styles.statNumber}>4.9</Text>
+              <Ionicons name="star" size={12} color={THEME.gold} />
+            </View>
+            <Text style={styles.statLabel}>RATING</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>₹15K</Text>
-            <Text style={styles.statLabel}>Spent</Text>
+            <Text style={styles.statLabel}>SPENT</Text>
           </View>
+        </View>
+
+        {/* Section Title */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.accentBar} />
+          <Text style={styles.sectionTitle}>SETTINGS</Text>
         </View>
 
         {/* Menu Items */}
@@ -148,28 +172,27 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             >
               <View style={styles.menuItemLeft}>
                 <View style={styles.menuIconContainer}>
-                  <Ionicons name={item.icon} size={20} color={COLORS.primary} />
+                  <Ionicons name={item.icon} size={20} color={THEME.accent} />
                 </View>
                 <View style={styles.menuTextContainer}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+              <Ionicons name="chevron-forward" size={18} color={THEME.textSubtle} />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Ionicons name="log-out-outline" size={20} color={THEME.error} />
+          <Text style={styles.logoutButtonText}>LOGOUT</Text>
         </TouchableOpacity>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Made with ❤️ by Yann</Text>
-          <Text style={styles.versionText}>v1.0.0</Text>
+          <Text style={styles.footerText}>YANN • v1.0.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -179,7 +202,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.bg,
   },
   content: {
     padding: 20,
@@ -188,79 +211,119 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
+    backgroundColor: THEME.bgCard,
+    borderRadius: 20,
     padding: 20,
-    marginBottom: 16,
-    ...SHADOWS.sm,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
+    width: 68,
+    height: 68,
+    borderRadius: 18,
+    backgroundColor: THEME.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.white,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFF',
   },
   profileInfo: {
     flex: 1,
     marginLeft: 16,
   },
   name: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: '800',
+    color: THEME.text,
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
   email: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: THEME.textMuted,
+    marginBottom: 10,
   },
-  editButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
+  memberBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  memberText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.gold,
+    letterSpacing: 1,
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bgCard,
     borderRadius: 16,
     padding: 20,
-    marginBottom: 24,
-    ...SHADOWS.sm,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   statNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontSize: 22,
+    fontWeight: '800',
+    color: THEME.text,
+    letterSpacing: -1,
   },
   statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.textMuted,
+    letterSpacing: 1.5,
     marginTop: 4,
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: COLORS.border,
+    backgroundColor: THEME.border,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  accentBar: {
+    width: 3,
+    height: 18,
+    backgroundColor: THEME.accent,
+    borderRadius: 2,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.text,
+    letterSpacing: 2,
   },
   menuContainer: {
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bgCard,
     borderRadius: 16,
     marginBottom: 24,
-    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
@@ -268,7 +331,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    borderBottomColor: THEME.border,
   },
   menuItemLast: {
     borderBottomWidth: 0,
@@ -282,7 +345,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: THEME.accentSoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -293,40 +356,37 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: THEME.text,
     marginBottom: 2,
   },
   menuSubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
+    fontSize: 12,
+    color: THEME.textMuted,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: 'transparent',
     borderRadius: 14,
     paddingVertical: 16,
-    gap: 8,
+    gap: 10,
     borderWidth: 1,
-    borderColor: COLORS.error,
+    borderColor: THEME.error + '50',
   },
   logoutButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.error,
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.error,
+    letterSpacing: 1,
   },
   footer: {
     alignItems: 'center',
     marginTop: 32,
-    gap: 4,
   },
   footerText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  versionText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: 11,
+    color: THEME.textSubtle,
+    letterSpacing: 2,
   },
 });

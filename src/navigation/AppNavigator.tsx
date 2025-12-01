@@ -1,12 +1,10 @@
 import React from 'react';
-import { Platform } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { Platform, View, StyleSheet } from 'react-native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { COLORS } from '../utils/theme';
-import { Logo } from '../components/Logo';
 
 // Auth Screens
 import { RoleSelectionScreen } from '../screens/auth/RoleSelectionScreen';
@@ -26,39 +24,94 @@ import { BookingsListScreen } from '../screens/booking/BookingsListScreen';
 // Profile Screens
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
+// Dark editorial theme
+const THEME = {
+  bg: '#0D0D0D',
+  bgCard: '#1A1A1A',
+  accent: '#FF6B35',
+  text: '#FAFAFA',
+  textMuted: '#5A5A5A',
+  border: '#2A2A2A',
+};
+
+const DarkTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: THEME.bg,
+    card: THEME.bg,
+    text: THEME.text,
+    border: THEME.border,
+    primary: THEME.accent,
+  },
+};
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// Custom tab bar icon with label
+const TabIcon = ({ name, focused, label }: { name: string; focused: boolean; label: string }) => (
+  <View style={tabStyles.iconContainer}>
+    <View style={[tabStyles.iconWrapper, focused && tabStyles.iconWrapperActive]}>
+      <Ionicons 
+        name={name as any} 
+        size={22} 
+        color={focused ? THEME.accent : THEME.textMuted} 
+      />
+    </View>
+  </View>
+);
+
+const tabStyles = StyleSheet.create({
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapper: {
+    width: 44,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconWrapperActive: {
+    backgroundColor: '#FF6B3520',
+  },
+});
 
 function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarActiveTintColor: THEME.accent,
+        tabBarInactiveTintColor: THEME.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.white,
+          backgroundColor: THEME.bgCard,
           borderTopWidth: 1,
-          borderTopColor: COLORS.borderLight,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-          paddingTop: 8,
+          borderTopColor: THEME.border,
+          height: Platform.OS === 'ios' ? 88 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          paddingTop: 12,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 10,
+          fontWeight: '700',
+          letterSpacing: 0.5,
+          marginTop: 4,
         },
         headerShown: true,
         headerStyle: {
-          backgroundColor: COLORS.white,
+          backgroundColor: THEME.bg,
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.borderLight,
+          borderBottomColor: THEME.border,
         },
         headerTitleStyle: {
-          fontWeight: '700',
-          fontSize: 18,
-          color: COLORS.text,
+          fontWeight: '800',
+          fontSize: 17,
+          color: THEME.text,
+          letterSpacing: 1,
         },
       }}
     >
@@ -66,45 +119,33 @@ function TabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "home" : "home-outline"} 
-              size={24} 
-              color={color} 
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "grid" : "grid-outline"} focused={focused} label="HOME" />
           ),
-          tabBarLabel: 'Home',
-          headerTitle: () => <Logo size="small" showText={true} />,
+          tabBarLabel: 'HOME',
+          headerShown: false,
         }}
       />
       <Tab.Screen
         name="BookingsList"
         component={BookingsListScreen}
         options={{
-          tabBarLabel: 'Bookings',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "calendar" : "calendar-outline"} 
-              size={24} 
-              color={color} 
-            />
+          tabBarLabel: 'BOOKINGS',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "calendar" : "calendar-outline"} focused={focused} label="BOOKINGS" />
           ),
-          headerTitle: 'My Bookings',
+          headerTitle: 'BOOKINGS',
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "person" : "person-outline"} 
-              size={24} 
-              color={color} 
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? "person" : "person-outline"} focused={focused} label="PROFILE" />
           ),
-          tabBarLabel: 'Profile',
-          headerTitle: 'My Profile',
+          tabBarLabel: 'PROFILE',
+          headerTitle: 'PROFILE',
         }}
       />
     </Tab.Navigator>
@@ -119,11 +160,12 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={DarkTheme}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: COLORS.white },
+          contentStyle: { backgroundColor: THEME.bg },
+          animation: 'slide_from_right',
         }}
       >
         {isAuthenticated ? (

@@ -16,9 +16,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
-import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+
+// Dark Editorial Theme
+const THEME = {
+  bg: '#0A0A0A',
+  bgCard: '#1A1A1A',
+  bgInput: '#141414',
+  text: '#F5F0EB',
+  textMuted: '#8A8A8A',
+  textSubtle: '#555555',
+  accent: '#FF6B35',
+  accentSoft: 'rgba(255, 107, 53, 0.12)',
+  border: '#2A2A2A',
+};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -94,7 +106,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -109,7 +121,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={22} color={THEME.text} />
           </TouchableOpacity>
 
           {/* Header */}
@@ -128,13 +140,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name</Text>
+              <Text style={styles.label}>FULL NAME</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your full name"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={THEME.textMuted}
                   value={formData.name}
                   onChangeText={(value) => updateField('name', value)}
                   autoCapitalize="words"
@@ -144,13 +156,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={THEME.textMuted}
                   value={formData.email}
                   onChangeText={(value) => updateField('email', value)}
                   keyboardType="email-address"
@@ -162,13 +174,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number (Optional)</Text>
+              <Text style={styles.label}>PHONE (OPTIONAL)</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="call-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
+                <Ionicons name="call-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your phone number"
-                  placeholderTextColor={COLORS.textMuted}
+                  placeholderTextColor={THEME.textMuted}
                   value={formData.phone}
                   onChangeText={(value) => updateField('phone', value)}
                   keyboardType="phone-pad"
@@ -184,8 +196,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
               disabled={isLoading}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
+              <Text style={styles.buttonText}>CONTINUE</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFF" />
             </TouchableOpacity>
 
             {/* Sign In Link */}
@@ -215,7 +227,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bg,
   },
   keyboardView: {
     flex: 1,
@@ -228,31 +240,34 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
+    borderRadius: 14,
+    backgroundColor: THEME.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   header: {
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 40,
+    marginTop: 28,
+    marginBottom: 44,
   },
   logo: {
     width: 56,
     height: 56,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
+    fontSize: 30,
+    fontWeight: '800',
+    color: THEME.text,
+    marginBottom: 10,
+    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: THEME.textMuted,
   },
   form: {
     flex: 1,
@@ -261,18 +276,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.textMuted,
+    marginBottom: 10,
+    letterSpacing: 1.5,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.bgInput,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
+    borderColor: THEME.border,
+    borderRadius: 14,
     paddingHorizontal: 16,
   },
   inputIcon: {
@@ -282,53 +298,54 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     fontSize: 16,
-    color: COLORS.text,
+    color: THEME.text,
   },
   button: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: THEME.accent,
+    borderRadius: 14,
+    paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    gap: 8,
+    marginTop: 16,
+    gap: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   signinContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 28,
   },
   signinText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: THEME.textMuted,
   },
   signinLink: {
-    fontSize: 15,
-    color: COLORS.primary,
-    fontWeight: '600',
+    fontSize: 14,
+    color: THEME.accent,
+    fontWeight: '700',
   },
   footer: {
     marginTop: 'auto',
-    paddingTop: 32,
+    paddingTop: 36,
   },
   footerText: {
-    fontSize: 13,
-    color: COLORS.textMuted,
+    fontSize: 12,
+    color: THEME.textSubtle,
     textAlign: 'center',
     lineHeight: 20,
   },
   footerLink: {
-    color: COLORS.primary,
-    fontWeight: '500',
+    color: THEME.accent,
+    fontWeight: '600',
   },
 });

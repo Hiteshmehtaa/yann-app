@@ -16,9 +16,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+
+// Dark Editorial Theme
+const THEME = {
+  bg: '#0A0A0A',
+  bgCard: '#1A1A1A',
+  bgInput: '#141414',
+  text: '#F5F0EB',
+  textMuted: '#8A8A8A',
+  textSubtle: '#555555',
+  accent: '#FF6B35',
+  accentSoft: 'rgba(255, 107, 53, 0.12)',
+  border: '#2A2A2A',
+};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -71,7 +83,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -87,15 +99,15 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             onPress={() => navigation.goBack()}
             disabled={isLoading}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={22} color={THEME.text} />
           </TouchableOpacity>
 
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.iconContainer}>
-              <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
+              <Ionicons name="shield-checkmark" size={28} color={THEME.accent} />
             </View>
-            <Text style={styles.title}>Verify Your Email</Text>
+            <Text style={styles.title}>Verify Email</Text>
             <Text style={styles.subtitle}>
               We've sent a 6-digit code to
             </Text>
@@ -105,11 +117,11 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* OTP Input */}
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Enter verification code</Text>
+              <Text style={styles.label}>VERIFICATION CODE</Text>
               <TextInput
                 style={styles.input}
-                placeholder="------"
-                placeholderTextColor={COLORS.textMuted}
+                placeholder="• • • • • •"
+                placeholderTextColor={THEME.textSubtle}
                 value={otp}
                 onChangeText={setOTP}
                 keyboardType="number-pad"
@@ -125,8 +137,8 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
               disabled={isLoading}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>Verify</Text>
-              <Ionicons name="checkmark" size={20} color={COLORS.white} />
+              <Text style={styles.buttonText}>VERIFY</Text>
+              <Ionicons name="checkmark" size={18} color="#FFF" />
             </TouchableOpacity>
 
             {/* Resend OTP */}
@@ -166,7 +178,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: THEME.bg,
   },
   keyboardView: {
     flex: 1,
@@ -179,98 +191,105 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
+    borderRadius: 14,
+    backgroundColor: THEME.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   header: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 48,
+    marginTop: 48,
+    marginBottom: 52,
   },
   iconContainer: {
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: THEME.accentSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 12,
+    fontSize: 30,
+    fontWeight: '800',
+    color: THEME.text,
+    marginBottom: 14,
+    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: THEME.textMuted,
   },
   email: {
     fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginTop: 4,
+    fontWeight: '700',
+    color: THEME.accent,
+    marginTop: 6,
   },
   form: {
     flex: 1,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.textMuted,
+    marginBottom: 12,
     textAlign: 'center',
+    letterSpacing: 1.5,
   },
   input: {
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.bgInput,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 20,
+    borderColor: THEME.border,
+    borderRadius: 16,
+    paddingVertical: 22,
     fontSize: 28,
-    color: COLORS.text,
+    color: THEME.text,
     textAlign: 'center',
     letterSpacing: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   button: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: THEME.accent,
+    borderRadius: 14,
+    paddingVertical: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   resendContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 28,
   },
   resendText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: THEME.textMuted,
   },
   resendLink: {
-    fontSize: 15,
-    color: COLORS.primary,
-    fontWeight: '600',
+    fontSize: 14,
+    color: THEME.accent,
+    fontWeight: '700',
   },
   resendLinkDisabled: {
     opacity: 0.5,
@@ -281,8 +300,8 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
   },
   changeEmailText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: THEME.textSubtle,
     fontWeight: '500',
   },
 });
