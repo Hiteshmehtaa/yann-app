@@ -1,37 +1,23 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   StatusBar,
   Animated,
-  Dimensions,
+  RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiService } from '../../services/api';
 import { SERVICES } from '../../utils/constants';
+import type { Service } from '../../types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-const { width } = Dimensions.get('window');
-
-// Bold editorial color palette - Noir meets warmth
-const THEME = {
-  bg: '#0D0D0D',
-  bgCard: '#1A1A1A',
-  bgElevated: '#242424',
-  accent: '#FF6B35',      // Warm orange
-  accentSoft: '#FF6B3520',
-  gold: '#D4AF37',
-  text: '#FAFAFA',
-  textMuted: '#8A8A8A',
-  textSubtle: '#5A5A5A',
-  border: '#2A2A2A',
-  success: '#34D399',
-};
+import { TopBar } from '../../components/ui/TopBar';
+import { SearchBar } from '../../components/ui/SearchBar';
+import { ServiceCard } from '../../components/ui/ServiceCard';
+import { COLORS, SPACING, LAYOUT, ANIMATIONS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -48,307 +34,299 @@ const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   'Pujari Services': 'flower',
 };
 
+// Empty State Component - Moved outside for performance
+const EmptyState = () => (
+  <View style={styles.emptyState}>
+    <Ionicons name="search-outline" size={48} color={COLORS.textTertiary} />
+    <Text style={styles.emptyText}>No services found</Text>
+    <Text style={styles.emptySubtext}>Try a different search term</Text>
+  </View>
+);
+
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [services, setServices] = useState<Service[]>(SERVICES); // Fallback to static services
+  const [filteredServices, setFilteredServices] = useState<Service[]>(SERVICES);
+  const [partnerCounts, setPartnerCounts] = useState<{ [serviceTitle: string]: number }>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch services from backend (like website)
+  const fetchServices = async () => {
+    try {
+      const response = await apiService.getAllServices() as any;
+      
+      const servicesList = response.services || response.data || [];
+      if (servicesList.length > 0) {
+        // Map backend services to our Service type
+        const mappedServices: Service[] = servicesList.map((s: any, index: number) => ({
+          id: s._id || s.id || index + 1,
+          title: s.name || s.title,
+          description: s.description || '',
+          category: s.category || 'other',
+          price: s.basePrice ? `₹${s.basePrice}` : 'Login for details',
+          icon: getServiceIcon(s.category || s.name),
+          popular: s.popular || false,
+          features: s.features || [],
+          profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+          image: s.image,
+          rating: s.rating,
+          status: s.status,
+        }));
+        setServices(mappedServices);
+        setFilteredServices(mappedServices);
+        console.log(`✅ Loaded ${mappedServices.length} services from backend`);
+      }
+    } catch (err: any) {
+      // Use static services as fallback
+      console.log('ℹ️ Using static services as fallback:', err.message || 'Backend unavailable');
+      setServices(SERVICES);
+      setFilteredServices(SERVICES);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get service icon based on category or name
+  const getServiceIcon = (categoryOrName: string): string => {
+    const name = categoryOrName.toLowerCase();
+    if (name.includes('clean')) return '🧹';
+    if (name.includes('driver')) return '🚗';
+    if (name.includes('puja') || name.includes('pujari')) return '🙏';
+    if (name.includes('maid')) return '🧹';
+    if (name.includes('baby') || name.includes('sitter')) return '👶';
+    if (name.includes('nurse')) return '👩‍⚕️';
+    if (name.includes('cook')) return '👨‍🍳';
+    if (name.includes('garden')) return '🌿';
+    if (name.includes('pet')) return '🐕';
+    if (name.includes('repair')) return '🔧';
+    if (name.includes('laundry')) return '👕';
+    return '✨';
+  };
+
+  // Fetch partner counts from backend
+  const fetchPartnerCounts = async () => {
+    try {
+      const response = await apiService.getServicePartnerCounts();
+      
+      if (response.success && response.data) {
+        setPartnerCounts(response.data);
+        console.log(`✅ Loaded partner counts for ${Object.keys(response.data).length} services`);
+      }
+    } catch (err: any) {
+      // Expected to fail if endpoint not available - use empty counts
+      console.log('ℹ️ Partner counts not available, showing 0 for all services:', err.message || 'Unknown error');
+      setPartnerCounts({});
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Fade-in animation on mount
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: ANIMATIONS.verySlow,
+      useNativeDriver: true,
+    }).start();
+    
+    // Fetch services and partner counts on mount
+    fetchServices();
+    fetchPartnerCounts();
   }, []);
 
-  const renderServiceCard = ({ item, index }: { item: typeof SERVICES[0]; index: number }) => {
-    const iconName = SERVICE_ICONS[item.title] || 'ellipse';
-    const isLarge = index === 0 || index === 3;
-    
+  // Handle pull-to-refresh
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    fetchServices();
+    fetchPartnerCounts();
+  };
+
+  // Live search with debounce (300ms)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim() === '') {
+        setFilteredServices(services);
+      } else {
+        const filtered = services.filter(
+          (service) =>
+            service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            service.description.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setFilteredServices(filtered);
+      }
+    }, ANIMATIONS.normal); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, services]);
+
+  // Render service card using new ServiceCard component
+  const renderServiceCard = ({ item }: { item: Service }) => {
+    const iconName = SERVICE_ICONS[item.title] || 'home-outline';
+    const count = partnerCounts[item.title] || 0;
+
     return (
-      <TouchableOpacity
-        style={[styles.card, isLarge && styles.cardLarge]}
-        onPress={() => navigation.navigate('ServiceDetail', { service: item })}
-        activeOpacity={0.85}
-      >
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
-          style={styles.cardGradient}
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <ServiceCard
+          title={item.title}
+          price={item.price}
+          icon={iconName}
+          popular={item.popular}
+          partnerCount={count}
+          onPress={() => navigation.navigate('ServiceDetail', { service: item })}
         />
-        
-        <View style={styles.cardContent}>
-          <View style={styles.cardTop}>
-            <View style={[styles.iconContainer, item.popular && styles.iconPopular]}>
-              <Ionicons 
-                name={iconName} 
-                size={isLarge ? 28 : 22} 
-                color={item.popular ? THEME.gold : THEME.accent} 
-              />
-            </View>
-            {item.popular && (
-              <View style={styles.popularBadge}>
-                <Ionicons name="star" size={10} color={THEME.gold} />
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.cardBottom}>
-            <Text style={[styles.cardTitle, isLarge && styles.cardTitleLarge]} numberOfLines={2}>
-              {item.title}
-            </Text>
-            <Text style={styles.cardPrice}>{item.price}</Text>
-          </View>
-        </View>
-        
-        <View style={styles.cardBorder} />
-      </TouchableOpacity>
+      </Animated.View>
     );
   };
 
-  const firstName = user?.name ? user.name.split(' ')[0] : 'there';
-
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
-      
-      <Animated.View 
-        style={[
-          styles.headerWrapper,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-        ]}
-      >
-        {/* Editorial Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>Hello,</Text>
-            <Text style={styles.userName}>{firstName}</Text>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
+      {/* Top Bar with Logo, Welcome Text, and Profile */}
+      <TopBar
+        userName={user?.name}
+        onProfilePress={() => navigation.navigate('Profile')}
+      />
+
+      {/* Animated Content */}
+      <Animated.View style={{ opacity: fadeAnim }}>
+        {/* Search Bar with Live Filtering */}
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search for services..."
+        />
+
+        {/* Status Metrics Card */}
+        <View style={styles.metricsCard}>
+          <View style={styles.metricItem}>
+            <View style={[styles.statusBadge, { backgroundColor: `${COLORS.success}15` }]}>
+              <View style={[styles.statusDot, { backgroundColor: COLORS.success }]} />
+              <Text style={[styles.statusText, { color: COLORS.success }]}>Active</Text>
+            </View>
+            <Text style={styles.metricNumber}>02</Text>
           </View>
-          
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="search" size={22} color={THEME.text} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}>
-              <View style={styles.notifDot} />
-              <Ionicons name="notifications" size={22} color={THEME.text} />
-            </TouchableOpacity>
+
+          <View style={styles.metricDivider} />
+
+          <View style={styles.metricItem}>
+            <View style={[styles.statusBadge, { backgroundColor: `${COLORS.info}15` }]}>
+              <View style={[styles.statusDot, { backgroundColor: COLORS.info }]} />
+              <Text style={[styles.statusText, { color: COLORS.info }]}>Done</Text>
+            </View>
+            <Text style={styles.metricNumber}>12</Text>
+          </View>
+
+          <View style={styles.metricDivider} />
+
+          <View style={styles.metricItem}>
+            <View style={[styles.statusBadge, { backgroundColor: `${COLORS.warning}15` }]}>
+              <Ionicons name="star" size={12} color={COLORS.warning} />
+              <Text style={[styles.statusText, { color: COLORS.warning }]}>Rating</Text>
+            </View>
+            <Text style={styles.metricNumber}>4.9</Text>
           </View>
         </View>
 
-        {/* Hero Banner */}
-        <TouchableOpacity style={styles.heroBanner} activeOpacity={0.9}>
-          <LinearGradient
-            colors={[THEME.accent, '#E85A2D']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
-          >
-            <View style={styles.heroContent}>
-              <Text style={styles.heroTitle}>PREMIUM{'\n'}SERVICES</Text>
-              <Text style={styles.heroSubtitle}>Curated for you</Text>
-            </View>
-            <View style={styles.heroIcon}>
-              <Ionicons name="arrow-forward" size={24} color="#FFF" />
-            </View>
-          </LinearGradient>
-          <View style={styles.heroPattern} />
-        </TouchableOpacity>
-
-        {/* Metrics Row */}
-        <View style={styles.metricsRow}>
-          <View style={styles.metric}>
-            <Text style={styles.metricValue}>02</Text>
-            <Text style={styles.metricLabel}>ACTIVE</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metric}>
-            <Text style={styles.metricValue}>12</Text>
-            <Text style={styles.metricLabel}>COMPLETED</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metric}>
-            <View style={styles.ratingRow}>
-              <Text style={styles.metricValue}>4.9</Text>
-              <Ionicons name="star" size={14} color={THEME.gold} />
-            </View>
-            <Text style={styles.metricLabel}>RATING</Text>
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.accentBar} />
+            <Text style={styles.sectionTitle}>SERVICES</Text>
           </View>
         </View>
       </Animated.View>
 
-      {/* Section Header */}
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleRow}>
-          <View style={styles.accentBar} />
-          <Text style={styles.sectionTitle}>SERVICES</Text>
-        </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons name="options-outline" size={18} color={THEME.textMuted} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Masonry-style Grid */}
+      {/* Services Grid - Responsive 2-Column */}
       <FlatList
-        data={SERVICES}
+        data={filteredServices}
         renderItem={renderServiceCard}
         keyExtractor={(item) => item.id.toString()}
         numColumns={2}
-        contentContainerStyle={styles.listContent}
-        columnWrapperStyle={styles.row}
+        contentContainerStyle={styles.servicesGrid}
+        columnWrapperStyle={styles.gridRow}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        ListEmptyComponent={EmptyState}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.bg,
+    backgroundColor: COLORS.background,
   },
-  headerWrapper: {
-    paddingHorizontal: 20,
-  },
-  header: {
+  // Metrics Card Styles
+  metricsCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 24,
-  },
-  headerLeft: {},
-  greeting: {
-    fontSize: 14,
-    color: THEME.textMuted,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    fontWeight: '500',
-  },
-  userName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: THEME.text,
-    letterSpacing: -1,
-    marginTop: -2,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.bgCard,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  notifDot: {
-    position: 'absolute',
-    top: 10,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: THEME.accent,
-    zIndex: 1,
-  },
-  heroBanner: {
-    height: 140,
+    backgroundColor: COLORS.cardBg,
+    marginHorizontal: LAYOUT.screenPadding,
+    marginBottom: SPACING.xl,
+    padding: SPACING.lg,
     borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  heroGradient: {
+  metricItem: {
     flex: 1,
+    alignItems: 'center',
+  },
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 24,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+    marginBottom: SPACING.xs,
   },
-  heroContent: {},
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#FFF',
-    letterSpacing: 1,
-    lineHeight: 32,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  heroSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 4,
-    letterSpacing: 1,
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  heroIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  heroPattern: {
-    position: 'absolute',
-    top: -20,
-    right: -20,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 30,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    backgroundColor: THEME.bgCard,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  metric: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  metricValue: {
-    fontSize: 28,
+  metricNumber: {
+    fontSize: 24,
     fontWeight: '800',
-    color: THEME.text,
-    letterSpacing: -1,
-  },
-  metricLabel: {
-    fontSize: 10,
-    color: THEME.textMuted,
-    letterSpacing: 1.5,
-    marginTop: 4,
+    color: COLORS.text,
+    letterSpacing: -0.5,
   },
   metricDivider: {
     width: 1,
-    height: 40,
-    backgroundColor: THEME.border,
+    height: 60,
+    backgroundColor: COLORS.border,
+    marginHorizontal: SPACING.xs,
   },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
+  // Section Header Styles
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: LAYOUT.screenPadding,
+    marginBottom: SPACING.md,
   },
   sectionTitleRow: {
     flexDirection: 'row',
@@ -356,103 +334,67 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   accentBar: {
-    width: 3,
-    height: 20,
-    backgroundColor: THEME.accent,
+    width: 4,
+    height: 24,
+    backgroundColor: COLORS.primary,
     borderRadius: 2,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.text,
-    letterSpacing: 3,
-  },
-  filterButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: THEME.bgCard,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
-  },
-  row: {
-    justifyContent: 'space-between',
-  },
-  card: {
-    width: (width - 52) / 2,
-    height: 160,
-    backgroundColor: THEME.bgCard,
-    borderRadius: 16,
-    marginBottom: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  cardLarge: {
-    height: 200,
-  },
-  cardGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  cardContent: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'space-between',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: THEME.accentSoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconPopular: {
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-  },
-  popularBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(212, 175, 55, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardBottom: {},
-  cardTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: THEME.text,
-    marginBottom: 6,
-    lineHeight: 18,
+    color: COLORS.text,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
-  cardTitleLarge: {
-    fontSize: 16,
+  // Services Grid Styles
+  servicesGrid: {
+    paddingHorizontal: LAYOUT.screenPadding,
+    paddingBottom: 120, // Extra padding for floating tab bar
   },
-  cardPrice: {
-    fontSize: 12,
+  gridRow: {
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  // Empty State Styles
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
     fontWeight: '600',
-    color: THEME.accent,
-    letterSpacing: 0.5,
+    color: COLORS.text,
+    marginTop: SPACING.md,
   },
-  cardBorder: {
-    position: 'absolute',
-    bottom: 0,
-    left: 16,
-    right: 16,
-    height: 2,
-    backgroundColor: THEME.accent,
-    opacity: 0,
+  emptySubtext: {
+    fontSize: 13,
+    color: COLORS.textTertiary,
+    marginTop: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: SPACING.xxxl,
+  },
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: `${COLORS.warning}15`,
+    marginHorizontal: LAYOUT.screenPadding,
+    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: 12,
+  },
+  errorText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
   },
 });

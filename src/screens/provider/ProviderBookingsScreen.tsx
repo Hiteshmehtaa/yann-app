@@ -1,0 +1,725 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { apiService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
+
+interface ProviderBooking {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  serviceName: string;
+  serviceCategory: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  address: string;
+  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  amount: number;
+  paymentStatus: 'pending' | 'paid';
+  notes?: string;
+  createdAt: string;
+}
+
+type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed';
+
+export const ProviderBookingsScreen = () => {
+  const { user } = useAuth();
+  const [bookings, setBookings] = useState<ProviderBooking[]>([]);
+  const [filteredBookings, setFilteredBookings] = useState<ProviderBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  useEffect(() => {
+    filterBookings();
+  }, [activeFilter, bookings]);
+
+  const fetchBookings = async () => {
+    try {
+      setError(null);
+      // Backend /provider/requests requires providerId or email
+      // Pass user's id or email to the API
+      const providerId = user?._id || user?.id;
+      const email = user?.email;
+      
+      const response: any = await apiService.getProviderRequests(providerId, email);
+      
+      if (response.success) {
+        // Combine pending and accepted bookings
+        const allBookings = [
+          ...(response.pendingRequests || []).map((b: any) => ({ ...b, status: 'pending' })),
+          ...(response.acceptedBookings || []).map((b: any) => ({ ...b, status: b.status || 'accepted' })),
+        ];
+        setBookings(allBookings);
+        console.log(`✅ Loaded ${allBookings.length} bookings for provider`);
+      }
+    } catch (err: any) {
+      console.error('❌ Error fetching provider bookings:', err);
+      setError(err.isNetworkError ? 'No internet connection' : 'Failed to load bookings');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  const filterBookings = () => {
+    if (activeFilter === 'all') {
+      setFilteredBookings(bookings);
+    } else {
+      setFilteredBookings(bookings.filter(b => b.status === activeFilter));
+    }
+  };
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    fetchBookings();
+  };
+
+  const handleAcceptBooking = async (bookingId: string) => {
+    try {
+      // Pass providerId and providerName as required by backend
+      const response = await apiService.acceptBooking(
+        bookingId,
+        user?._id || user?.id,
+        user?.name
+      );
+      if (response.success) {
+        console.log('✅ Booking accepted');
+        fetchBookings(); // Refresh list
+      }
+    } catch (err) {
+      console.error('❌ Error accepting booking:', err);
+      setError('Failed to accept booking');
+    }
+  };
+
+  const handleRejectBooking = async (bookingId: string) => {
+    try {
+      const response = await apiService.rejectBooking(bookingId);
+      if (response.success) {
+        console.log('✅ Booking rejected');
+        fetchBookings(); // Refresh list
+      }
+    } catch (err) {
+      console.error('❌ Error rejecting booking:', err);
+      setError('Failed to reject booking');
+    }
+  };
+
+  const handleStatusChange = async (bookingId: string, newStatus: string) => {
+    try {
+      if (newStatus === 'accepted') {
+        await handleAcceptBooking(bookingId);
+      } else if (newStatus === 'cancelled') {
+        await handleRejectBooking(bookingId);
+      } else {
+        // For in_progress, completed - use a generic update endpoint
+        const response = await apiService.acceptBooking(bookingId, user?._id || user?.id, user?.name);
+        if (response.success) {
+          console.log(`✅ Booking status updated to ${newStatus}`);
+          fetchBookings();
+        }
+      }
+    } catch (err) {
+      console.error(`❌ Error updating booking status to ${newStatus}:`, err);
+      setError(`Failed to update booking status`);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return '#FF8A3D';
+      case 'accepted': return '#4CAF50';
+      case 'in_progress': return COLORS.primary;
+      case 'completed': return '#2E7D32';
+      case 'cancelled': return '#F44336';
+      default: return COLORS.textSecondary;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending': return 'time-outline';
+      case 'accepted': return 'checkmark-circle-outline';
+      case 'in_progress': return 'hammer-outline';
+      case 'completed': return 'checkmark-done-circle-outline';
+      case 'cancelled': return 'close-circle-outline';
+      default: return 'help-circle-outline';
+    }
+  };
+
+  const renderFilterChip = (label: string, value: FilterStatus, count: number) => {
+    const isActive = activeFilter === value;
+    return (
+      <TouchableOpacity
+        style={[styles.filterChip, isActive && styles.filterChipActive]}
+        onPress={() => setActiveFilter(value)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+          {label} {count > 0 && `(${count})`}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderBookingCard = (booking: ProviderBooking) => {
+    const statusColor = getStatusColor(booking.status);
+    const statusIcon = getStatusIcon(booking.status);
+
+    return (
+      <View key={booking.id} style={styles.bookingCard}>
+        {/* Header */}
+        <View style={styles.bookingHeader}>
+          <View style={styles.customerInfo}>
+            <View style={styles.customerAvatar}>
+              <Text style={styles.customerInitial}>
+                {booking.customerName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.customerDetails}>
+              <Text style={styles.customerName}>{booking.customerName}</Text>
+              <Text style={styles.customerPhone}>{booking.customerPhone}</Text>
+            </View>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
+            <Ionicons name={statusIcon as any} size={14} color={statusColor} />
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {booking.status.replace('_', ' ').toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        {/* Service Info */}
+        <View style={styles.serviceInfo}>
+          <View style={styles.serviceRow}>
+            <Ionicons name="construct-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.serviceText}>{booking.serviceName}</Text>
+          </View>
+          <View style={styles.serviceRow}>
+            <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} />
+            <Text style={styles.addressText} numberOfLines={1}>{booking.address}</Text>
+          </View>
+        </View>
+
+        {/* Date & Time */}
+        <View style={styles.dateTimeRow}>
+          <View style={styles.dateTimeItem}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.dateTimeText}>{booking.scheduledDate}</Text>
+          </View>
+          <View style={styles.dateTimeItem}>
+            <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.dateTimeText}>{booking.scheduledTime}</Text>
+          </View>
+        </View>
+
+        {/* Amount */}
+        <View style={styles.amountRow}>
+          <Text style={styles.amountLabel}>Booking Amount:</Text>
+          <Text style={styles.amountValue}>₹{booking.amount.toLocaleString()}</Text>
+        </View>
+
+        {/* Action Buttons */}
+        {booking.status === 'pending' && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.rejectButton]}
+              onPress={() => handleStatusChange(booking.id, 'cancelled')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close-outline" size={20} color="#F44336" />
+              <Text style={styles.rejectButtonText}>Reject</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.acceptButton]}
+              onPress={() => handleStatusChange(booking.id, 'accepted')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="checkmark-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.acceptButtonText}>Accept</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {booking.status === 'accepted' && (
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={() => handleStatusChange(booking.id, 'in_progress')}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+              style={styles.gradientButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="play-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.startButtonText}>Start Job</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {booking.status === 'in_progress' && (
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={() => handleStatusChange(booking.id, 'completed')}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={['#4CAF50', '#2E7D32']}
+              style={styles.gradientButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="checkmark-done-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.startButtonText}>Mark Complete</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading bookings...</Text>
+      </View>
+    );
+  }
+
+  const pendingCount = bookings.filter(b => b.status === 'pending').length;
+  const acceptedCount = bookings.filter(b => b.status === 'accepted').length;
+  const inProgressCount = bookings.filter(b => b.status === 'in_progress').length;
+  const completedCount = bookings.filter(b => b.status === 'completed').length;
+
+  return (
+    <View style={styles.container}>
+      {/* Error Banner */}
+      {error && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="cloud-offline-outline" size={16} color="#F44336" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {/* Header Stats */}
+      <View style={styles.statsContainer}>
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+          style={styles.statsGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{bookings.length}</Text>
+            <Text style={styles.statLabel}>Total</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{pendingCount}</Text>
+            <Text style={styles.statLabel}>Pending</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{inProgressCount}</Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+        </LinearGradient>
+      </View>
+
+      {/* Filters */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        bounces={true}
+        style={styles.filtersContainer}
+        contentContainerStyle={styles.filtersContent}
+      >
+        {renderFilterChip('All', 'all', bookings.length)}
+        {renderFilterChip('Pending', 'pending', pendingCount)}
+        {renderFilterChip('Accepted', 'accepted', acceptedCount)}
+        {renderFilterChip('In Progress', 'in_progress', inProgressCount)}
+        {renderFilterChip('Completed', 'completed', completedCount)}
+      </ScrollView>
+
+      {/* Bookings List */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        bounces={true}
+        alwaysBounceVertical={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+          />
+        }
+      >
+        {filteredBookings.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={64} color={COLORS.textSecondary} />
+            <Text style={styles.emptyTitle}>No bookings found</Text>
+            <Text style={styles.emptySubtitle}>
+              {activeFilter === 'all' 
+                ? 'You have no bookings yet' 
+                : `No ${activeFilter.replace('_', ' ')} bookings`}
+            </Text>
+          </View>
+        ) : (
+          filteredBookings.map(renderBookingCard)
+        )}
+      </ScrollView>
+    </View>
+  );
+};
+
+// Mock data for development
+const MOCK_BOOKINGS: ProviderBooking[] = [
+  {
+    id: '1',
+    customerName: 'Rajesh Kumar',
+    customerPhone: '+91 98765 43210',
+    serviceName: 'AC Repair & Service',
+    serviceCategory: 'Home Maintenance',
+    scheduledDate: '5 Dec 2025',
+    scheduledTime: '10:00 AM',
+    address: '123 MG Road, Bangalore, Karnataka',
+    status: 'pending',
+    amount: 1500,
+    paymentStatus: 'pending',
+    createdAt: '2025-12-02T10:30:00Z',
+  },
+  {
+    id: '2',
+    customerName: 'Priya Sharma',
+    customerPhone: '+91 87654 32109',
+    serviceName: 'Plumbing Repair',
+    serviceCategory: 'Home Maintenance',
+    scheduledDate: '3 Dec 2025',
+    scheduledTime: '2:00 PM',
+    address: '456 Koramangala, Bangalore, Karnataka',
+    status: 'accepted',
+    amount: 800,
+    paymentStatus: 'pending',
+    createdAt: '2025-12-01T14:20:00Z',
+  },
+  {
+    id: '3',
+    customerName: 'Amit Patel',
+    customerPhone: '+91 76543 21098',
+    serviceName: 'Electrical Work',
+    serviceCategory: 'Home Maintenance',
+    scheduledDate: '2 Dec 2025',
+    scheduledTime: '11:00 AM',
+    address: '789 Indiranagar, Bangalore, Karnataka',
+    status: 'in_progress',
+    amount: 2000,
+    paymentStatus: 'pending',
+    createdAt: '2025-11-30T09:15:00Z',
+  },
+  {
+    id: '4',
+    customerName: 'Sneha Reddy',
+    customerPhone: '+91 65432 10987',
+    serviceName: 'House Cleaning',
+    serviceCategory: 'Cleaning',
+    scheduledDate: '1 Dec 2025',
+    scheduledTime: '9:00 AM',
+    address: '321 Whitefield, Bangalore, Karnataka',
+    status: 'completed',
+    amount: 1200,
+    paymentStatus: 'paid',
+    createdAt: '2025-11-28T16:45:00Z',
+  },
+];
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.regular,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.md,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    padding: SPACING.sm,
+    gap: SPACING.xs,
+  },
+  errorText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: '#F44336',
+    flex: 1,
+  },
+  statsContainer: {
+    padding: SPACING.md,
+  },
+  statsGradient: {
+    flexDirection: 'row',
+    padding: SPACING.lg,
+    borderRadius: RADIUS.large,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    ...SHADOWS.md,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: SPACING.xs,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  filtersContainer: {
+    maxHeight: 60,
+  },
+  filtersContent: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  filterChip: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    backgroundColor: '#FFFFFF',
+    marginRight: SPACING.sm,
+    ...SHADOWS.sm,
+  },
+  filterChipActive: {
+    backgroundColor: COLORS.primary,
+  },
+  filterChipText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: SPACING.md,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
+  },
+  bookingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.large,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    ...SHADOWS.md,
+  },
+  bookingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  customerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  customerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.full,
+    backgroundColor: '#E8EFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.sm,
+  },
+  customerInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  customerDetails: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    marginBottom: 2,
+  },
+  customerPhone: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    borderRadius: RADIUS.small,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  serviceInfo: {
+    marginBottom: SPACING.sm,
+    gap: SPACING.xs,
+  },
+  serviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  serviceText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '600',
+    flex: 1,
+  },
+  addressText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    marginBottom: SPACING.sm,
+    gap: SPACING.md,
+  },
+  dateTimeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dateTimeText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  amountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    marginBottom: SPACING.sm,
+  },
+  amountLabel: {
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.textSecondary,
+  },
+  amountValue: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.primary,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.sm,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.medium,
+    gap: 6,
+  },
+  rejectButton: {
+    backgroundColor: '#FFEBEE',
+  },
+  rejectButtonText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '600',
+    color: '#F44336',
+  },
+  acceptButton: {
+    backgroundColor: COLORS.primary,
+  },
+  acceptButtonText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  startButton: {
+    marginTop: SPACING.sm,
+    borderRadius: RADIUS.medium,
+    overflow: 'hidden',
+  },
+  gradientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    gap: 8,
+  },
+  startButtonText: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xxl * 2,
+  },
+  emptyTitle: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.xs,
+  },
+  emptySubtitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+});

@@ -16,20 +16,7 @@ import { STATUS_COLORS } from '../../utils/constants';
 import type { Booking } from '../../types';
 import { format } from 'date-fns';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-// Dark editorial theme
-const THEME = {
-  bg: '#0D0D0D',
-  bgCard: '#1A1A1A',
-  bgElevated: '#242424',
-  accent: '#FF6B35',
-  accentSoft: '#FF6B3515',
-  gold: '#D4AF37',
-  text: '#FAFAFA',
-  textMuted: '#6A6A6A',
-  textSubtle: '#4A4A4A',
-  border: '#2A2A2A',
-};
+import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -96,17 +83,17 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+          <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={COLORS.textTertiary} />
         </View>
 
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+              <Ionicons name="calendar-outline" size={ICON_SIZES.medium} color={COLORS.textSecondary} />
               <Text style={styles.infoValue}>{formattedDate}</Text>
             </View>
             <View style={styles.infoItem}>
-              <Ionicons name="time-outline" size={16} color="#6B7280" />
+              <Ionicons name="time-outline" size={ICON_SIZES.medium} color={COLORS.textSecondary} />
               <Text style={styles.infoValue}>{item.bookingTime}</Text>
             </View>
           </View>
@@ -123,7 +110,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="calendar-outline" size={40} color="#2563EB" />
+        <Ionicons name="calendar-outline" size={ICON_SIZES.xlarge} color={COLORS.primary} />
       </View>
       <Text style={styles.emptyTitle}>No bookings yet</Text>
       <Text style={styles.emptyText}>
@@ -134,7 +121,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         onPress={() => navigation.navigate('Home')}
       >
         <Text style={styles.browseButtonText}>Browse services</Text>
-        <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+        <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />
       </TouchableOpacity>
     </View>
   );
@@ -142,7 +129,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading bookings...</Text>
       </View>
     );
@@ -150,12 +137,12 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Bookings</Text>
-        <Text style={styles.headerSubtitle}>{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.headerSubtitle}>{bookings.length} booking{bookings.length === 1 ? '' : 's'}</Text>
       </View>
 
       <FlatList
@@ -163,13 +150,15 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         renderItem={renderBookingCard}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
+        bounces={true}
+        alwaysBounceVertical={true}
         ListEmptyComponent={renderEmpty}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={[THEME.accent]}
-            tintColor={THEME.accent}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -181,25 +170,25 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.bg,
+    backgroundColor: COLORS.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: THEME.bg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
+    borderBottomColor: COLORS.border,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: TYPOGRAPHY.size.xxxl,
     fontWeight: '800',
-    color: THEME.text,
+    color: COLORS.text,
     letterSpacing: -1,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: THEME.accent,
-    marginTop: 4,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.primary,
+    marginTop: SPACING.xs,
     fontWeight: '600',
     letterSpacing: 0.5,
   },
@@ -207,132 +196,133 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.bg,
+    backgroundColor: COLORS.background,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: THEME.textMuted,
+    marginTop: SPACING.sm,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
     letterSpacing: 1,
   },
   listContent: {
-    padding: 20,
+    padding: SPACING.lg,
+    paddingBottom: 120, // Extra padding for floating tab bar
     flexGrow: 1,
   },
   card: {
-    backgroundColor: THEME.bgCard,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: THEME.border,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    marginBottom: SPACING.sm,
+    ...SHADOWS.md,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   cardHeaderLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.sm,
   },
   serviceName: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.size.lg,
     fontWeight: '700',
-    color: THEME.text,
+    color: COLORS.text,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.small,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: TYPOGRAPHY.size.xs,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   cardBody: {},
   infoRow: {
     flexDirection: 'row',
-    gap: 20,
-    marginBottom: 12,
+    gap: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: SPACING.xs,
   },
   infoValue: {
-    fontSize: 13,
-    color: THEME.textMuted,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 14,
+    paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: THEME.border,
+    borderTopColor: COLORS.divider,
   },
   priceLabel: {
-    fontSize: 12,
-    color: THEME.textMuted,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   priceValue: {
-    fontSize: 20,
+    fontSize: TYPOGRAPHY.size.xxl,
     fontWeight: '800',
-    color: THEME.accent,
+    color: COLORS.primary,
     letterSpacing: -0.5,
   },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: SPACING.xxxl,
     paddingBottom: 80,
   },
   emptyIconContainer: {
     width: 88,
     height: 88,
-    borderRadius: 24,
-    backgroundColor: THEME.accentSoft,
+    borderRadius: RADIUS.xlarge,
+    backgroundColor: `${COLORS.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: COLORS.border,
   },
   emptyTitle: {
-    fontSize: 22,
+    fontSize: TYPOGRAPHY.size.xxl,
     fontWeight: '800',
-    color: THEME.text,
-    marginBottom: 8,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
     letterSpacing: -0.5,
   },
   emptyText: {
-    fontSize: 14,
-    color: THEME.textMuted,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: SPACING.xxl,
     lineHeight: 22,
   },
   browseButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.accent,
-    borderRadius: 12,
-    paddingHorizontal: 28,
-    paddingVertical: 16,
-    gap: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.medium,
+    paddingHorizontal: SPACING.xxl,
+    paddingVertical: SPACING.md,
+    gap: SPACING.sm,
+    ...SHADOWS.md,
   },
   browseButtonText: {
-    color: '#FFF',
-    fontSize: 14,
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
     fontWeight: '700',
     letterSpacing: 1,
   },

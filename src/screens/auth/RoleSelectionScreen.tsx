@@ -5,39 +5,23 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Image,
   Animated,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-const { width } = Dimensions.get('window');
-
-// Dark editorial theme
-const THEME = {
-  bg: '#0D0D0D',
-  bgCard: '#1A1A1A',
-  bgElevated: '#242424',
-  accent: '#FF6B35',
-  accentSoft: '#FF6B3515',
-  gold: '#D4AF37',
-  text: '#FAFAFA',
-  textMuted: '#6A6A6A',
-  textSubtle: '#4A4A4A',
-  border: '#2A2A2A',
-};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
+const { width } = Dimensions.get('window');
+
 export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -48,13 +32,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
-        tension: 40,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 40,
+        tension: 30,
         friction: 8,
         useNativeDriver: true,
       }),
@@ -62,33 +40,16 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FB" />
       
-      {/* Background elements */}
-      <View style={styles.bgPattern}>
-        <View style={styles.gradientCircle} />
-        <View style={styles.gridLines} />
-      </View>
-      
-      <Animated.View 
-        style={[
-          styles.content,
-          { 
-            opacity: fadeAnim, 
-            transform: [
-              { translateY: slideAnim },
-              { scale: scaleAnim }
-            ] 
-          }
-        ]}
-      >
+      <View style={styles.content}>
         {/* Logo Section */}
-        <View style={styles.logoSection}>
+        <Animated.View style={[styles.logoSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <View style={styles.logoContainer}>
             <Image 
               source={require('../../../public/download.png')} 
-              style={styles.logo}
+              style={styles.logoImage}
               resizeMode="contain"
             />
           </View>
@@ -98,69 +59,64 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.tagline}>PREMIUM HOME SERVICES</Text>
             <View style={styles.taglineLine} />
           </View>
-        </View>
+        </Animated.View>
 
         {/* Welcome Text */}
-        <View style={styles.welcomeSection}>
+        <Animated.View style={[styles.welcomeSection, { opacity: fadeAnim }]}>
           <Text style={styles.title}>Choose Your{'\n'}Experience</Text>
-        </View>
+        </Animated.View>
 
         {/* Role Options */}
-        <View style={styles.optionsContainer}>
-          {/* Customer Option */}
+        <Animated.View style={[styles.optionsContainer, { opacity: fadeAnim }]}>
+          {/* Customer/Homeowner Option */}
           <TouchableOpacity
             style={styles.optionCard}
             onPress={() => navigation.navigate('Signup', { role: 'customer' })}
-            activeOpacity={0.85}
+            activeOpacity={0.95}
           >
-            <LinearGradient
-              colors={[THEME.accent, '#E85A2D']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.optionGradient}
-            >
-              <View style={styles.optionTop}>
-                <View style={styles.optionIconActive}>
-                  <Ionicons name="home" size={26} color="#FFF" />
+            <View style={[styles.card, styles.cardBlue]}>
+              <View style={styles.cardHeader}>
+                <View style={styles.iconCircleBlue}>
+                  <Ionicons name="home" size={28} color="#2E59F3" />
                 </View>
                 <View style={styles.arrowCircle}>
-                  <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                  <Ionicons name="arrow-forward" size={20} color="#2E59F3" />
                 </View>
               </View>
-              <View style={styles.optionBottom}>
-                <Text style={styles.optionTitleActive}>BOOK SERVICES</Text>
-                <Text style={styles.optionDescActive}>
-                  Trusted professionals at your doorstep
-                </Text>
-              </View>
-            </LinearGradient>
+              
+              <Text style={styles.cardTitle}>BOOK SERVICES</Text>
+              <Text style={styles.cardDescription}>
+                Trusted professionals at your doorstep
+              </Text>
+            </View>
           </TouchableOpacity>
 
           {/* Provider Option */}
           <TouchableOpacity
-            style={styles.optionCardOutline}
+            style={styles.optionCard}
             onPress={() => navigation.navigate('ProviderSignup')}
-            activeOpacity={0.85}
+            activeOpacity={0.95}
           >
-            <View style={styles.optionTop}>
-              <View style={styles.optionIcon}>
-                <Ionicons name="briefcase" size={26} color={THEME.gold} />
+            <View style={[styles.card, styles.cardWhite]}>
+              <View style={styles.cardHeader}>
+                <View style={styles.iconCircleYellow}>
+                  <Text style={styles.iconEmoji}>💼</Text>
+                </View>
+                <View style={styles.arrowCircleGray}>
+                  <Ionicons name="arrow-forward" size={20} color="#6B7280" />
+                </View>
               </View>
-              <View style={styles.arrowCircleOutline}>
-                <Ionicons name="arrow-forward" size={18} color={THEME.textMuted} />
-              </View>
-            </View>
-            <View style={styles.optionBottom}>
-              <Text style={styles.optionTitle}>BECOME A PRO</Text>
-              <Text style={styles.optionDesc}>
+              
+              <Text style={styles.cardTitleDark}>BECOME A PRO</Text>
+              <Text style={styles.cardDescriptionDark}>
                 Join our network of experts
               </Text>
             </View>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
         {/* Stats Section */}
-        <View style={styles.statsSection}>
+        <Animated.View style={[styles.statsContainer, { opacity: fadeAnim }]}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>10K+</Text>
             <Text style={styles.statLabel}>EXPERTS</Text>
@@ -172,22 +128,19 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <View style={styles.ratingRow}>
-              <Text style={styles.statNumber}>4.9</Text>
-              <Ionicons name="star" size={14} color={THEME.gold} />
-            </View>
+            <Text style={styles.statNumber}>4.9 ⭐</Text>
             <Text style={styles.statLabel}>RATING</Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already a member? </Text>
+        <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
+          <Text style={styles.footerText}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
             <Text style={styles.footerLink}>Sign In</Text>
           </TouchableOpacity>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -195,220 +148,213 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.bg,
-  },
-  bgPattern: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  gradientCircle: {
-    position: 'absolute',
-    top: -150,
-    right: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: THEME.accent,
-    opacity: 0.04,
-  },
-  gridLines: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    borderTopWidth: 1,
-    borderTopColor: THEME.border,
-    opacity: 0.3,
+    backgroundColor: '#E8EAF0',
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
   },
   logoSection: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 48,
+    marginBottom: 32,
   },
   logoContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    backgroundColor: THEME.bgCard,
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: THEME.border,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  logo: {
-    width: 52,
-    height: 52,
+  logoImage: {
+    width: 65,
+    height: 65,
   },
   brandName: {
-    fontSize: 36,
+    fontSize: 38,
     fontWeight: '900',
-    color: THEME.text,
-    letterSpacing: 8,
+    color: '#000000',
+    letterSpacing: 1.5,
+    marginTop: 6,
   },
   taglineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    gap: 12,
+    marginTop: 10,
+    gap: 10,
   },
   taglineLine: {
-    width: 24,
-    height: 1,
-    backgroundColor: THEME.textSubtle,
+    width: 32,
+    height: 1.5,
+    backgroundColor: '#6B7280',
   },
   tagline: {
     fontSize: 10,
     fontWeight: '600',
-    color: THEME.textMuted,
-    letterSpacing: 3,
+    color: '#6B7280',
+    letterSpacing: 1.2,
   },
   welcomeSection: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: THEME.text,
-    letterSpacing: -1,
-    lineHeight: 42,
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#000000',
+    lineHeight: 38,
   },
   optionsContainer: {
-    gap: 16,
+    gap: 14,
+    marginBottom: 24,
   },
   optionCard: {
-    borderRadius: 20,
+    borderRadius: 28,
     overflow: 'hidden',
   },
-  optionGradient: {
+  card: {
     padding: 24,
+    minHeight: 150,
+    justifyContent: 'space-between',
   },
-  optionCardOutline: {
-    backgroundColor: THEME.bgCard,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: THEME.border,
+  cardBlue: {
+    backgroundColor: '#5771F9',
+    shadowColor: '#5771F9',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 8,
   },
-  optionTop: {
+  cardWhite: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  optionBottom: {},
-  optionIconActive: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  iconCircleBlue: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  optionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+  iconCircleYellow: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#FFEAA7',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  iconEmoji: {
+    fontSize: 28,
   },
   arrowCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  arrowCircleOutline: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.bgElevated,
+  arrowCircleGray: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  optionTitleActive: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFF',
-    letterSpacing: 1,
+  cardTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
     marginBottom: 6,
   },
-  optionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: THEME.text,
-    letterSpacing: 1,
+  cardTitleDark: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: 0.5,
     marginBottom: 6,
   },
-  optionDescActive: {
+  cardDescription: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 20,
+    fontWeight: '400',
   },
-  optionDesc: {
+  cardDescriptionDark: {
     fontSize: 14,
-    color: THEME.textMuted,
+    color: '#6B7280',
     lineHeight: 20,
+    fontWeight: '400',
   },
-  statsSection: {
+  statsContainer: {
     flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 20,
     justifyContent: 'space-around',
     alignItems: 'center',
-    marginTop: 32,
-    paddingVertical: 24,
-    backgroundColor: THEME.bgCard,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: THEME.border,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   statItem: {
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: THEME.text,
-    letterSpacing: -1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 3,
   },
   statLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: THEME.textMuted,
-    letterSpacing: 2,
-    marginTop: 4,
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    letterSpacing: 0.6,
   },
   statDivider: {
     width: 1,
-    height: 36,
-    backgroundColor: THEME.border,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    height: 34,
+    backgroundColor: '#E5E7EB',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 'auto',
-    paddingBottom: 24,
+    paddingTop: 12,
   },
   footerText: {
     fontSize: 14,
-    color: THEME.textMuted,
+    color: '#6B7280',
+    fontWeight: '400',
   },
   footerLink: {
     fontSize: 14,
-    color: THEME.accent,
+    color: '#5771F9',
     fontWeight: '700',
   },
 });

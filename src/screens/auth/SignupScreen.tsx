@@ -19,17 +19,19 @@ import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
-// Dark Editorial Theme
+// Premium Apple-like theme
 const THEME = {
-  bg: '#0A0A0A',
-  bgCard: '#1A1A1A',
-  bgInput: '#141414',
-  text: '#F5F0EB',
-  textMuted: '#8A8A8A',
-  textSubtle: '#555555',
-  accent: '#FF6B35',
-  accentSoft: 'rgba(255, 107, 53, 0.12)',
-  border: '#2A2A2A',
+  bg: '#F8F9FB',
+  bgCard: '#FFFFFF',
+  bgInput: '#FFFFFF',
+  text: '#1A1D29',
+  textMuted: '#6B7280',
+  textSubtle: '#9CA3AF',
+  primary: '#2E59F3',
+  primaryLight: '#5B7BF5',
+  accent: '#2E59F3',
+  border: '#E5E7EB',
+  shadow: 'rgba(46, 89, 243, 0.08)',
 };
 
 type Props = {
@@ -106,7 +108,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -115,6 +117,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bounces={true}
+          alwaysBounceVertical={true}
         >
           {/* Back Button */}
           <TouchableOpacity 
@@ -126,11 +130,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
 
           {/* Header */}
           <View style={styles.header}>
-            <Image 
-              source={require('../../../public/download.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../../../public/download.png')} 
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
               Sign up to get started with YANN
@@ -253,10 +259,23 @@ const styles = StyleSheet.create({
     marginTop: 28,
     marginBottom: 44,
   },
-  logo: {
-    width: 56,
-    height: 56,
-    marginBottom: 24,
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  logoImage: {
+    width: 52,
+    height: 52,
   },
   title: {
     fontSize: 30,

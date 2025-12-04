@@ -1,32 +1,19 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StatusBar,
+  Animated,
 } from 'react-native';
+import { ComingSoonModal } from '../../components/ComingSoonModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-// Dark editorial theme
-const THEME = {
-  bg: '#0D0D0D',
-  bgCard: '#1A1A1A',
-  bgElevated: '#242424',
-  accent: '#FF6B35',
-  accentSoft: '#FF6B3515',
-  gold: '#D4AF37',
-  text: '#FAFAFA',
-  textMuted: '#6A6A6A',
-  textSubtle: '#4A4A4A',
-  border: '#2A2A2A',
-  error: '#EF4444',
-};
+import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -41,26 +28,46 @@ type MenuItemType = {
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const [showComingSoon, setShowComingSoon] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Get correct role display based on user.role
+  const getRoleDisplay = () => {
+    const role = user?.role;
+    if (role === 'provider') return 'PARTNER';
+    if (role === 'homeowner') return 'MEMBER';
+    return 'MEMBER'; // Default
+  };
+
+  const getRoleBadgeIcon = () => {
+    return user?.role === 'provider' ? 'shield-checkmark' : 'star';
+  };
+
+  const getRoleBadgeColor = () => {
+    return user?.role === 'provider' ? COLORS.primary : COLORS.warning;
+  };
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: ANIMATIONS.slow,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: ANIMATIONS.slow,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error) {
-              console.error('Logout error:', error);
-            }
-          },
-        },
-      ]
-    );
+    // Directly logout without confirmation for better UX
+    logout().catch((error) => {
+      console.error('Logout error:', error);
+    });
   };
 
   const menuItems: MenuItemType[] = [
@@ -68,54 +75,53 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       icon: 'person-outline',
       title: 'Edit Profile',
       subtitle: 'Update your personal information',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      onPress: () => navigation.navigate('EditProfile'),
     },
     {
       icon: 'location-outline',
       title: 'Saved Addresses',
       subtitle: 'Manage your service addresses',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      onPress: () => navigation.navigate('SavedAddresses'),
     },
     {
       icon: 'card-outline',
       title: 'Payment Methods',
       subtitle: 'Manage payment options',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      onPress: () => setShowComingSoon(true), // Payment integration coming later
     },
     {
       icon: 'notifications-outline',
       title: 'Notifications',
       subtitle: 'Manage notification preferences',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      onPress: () => navigation.navigate('Notifications'),
     },
     {
       icon: 'help-circle-outline',
       title: 'Help & Support',
       subtitle: 'Get help with your bookings',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon'),
+      onPress: () => navigation.navigate('HelpSupport'),
     },
     {
       icon: 'information-circle-outline',
       title: 'About',
       subtitle: 'Version 1.0.0',
-      onPress: () =>
-        Alert.alert(
-          'Yann',
-          'Home Services Made Simple\n\nVersion 1.0.0\n\n© 2025 Yann. All rights reserved.'
-        ),
+      onPress: () => setShowComingSoon(true), // About page can be simple modal
     },
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <ScrollView 
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
       >
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          {/* Profile Card */}
+          <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <Text style={styles.avatarText}>
               {user?.name?.charAt(0).toUpperCase() || 'U'}
@@ -124,9 +130,9 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{user?.name || 'User'}</Text>
             <Text style={styles.email}>{user?.email || 'No email'}</Text>
-            <View style={styles.memberBadge}>
-              <Ionicons name="star" size={10} color={THEME.gold} />
-              <Text style={styles.memberText}>MEMBER</Text>
+            <View style={[styles.memberBadge, { backgroundColor: `${getRoleBadgeColor()}15` }]}>
+              <Ionicons name={getRoleBadgeIcon()} size={ICON_SIZES.small} color={getRoleBadgeColor()} />
+              <Text style={[styles.memberText, { color: getRoleBadgeColor() }]}>{getRoleDisplay()}</Text>
             </View>
           </View>
         </View>
@@ -141,7 +147,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.statItem}>
             <View style={styles.ratingRow}>
               <Text style={styles.statNumber}>4.9</Text>
-              <Ionicons name="star" size={12} color={THEME.gold} />
+              <Ionicons name="star" size={ICON_SIZES.small} color={COLORS.warning} />
             </View>
             <Text style={styles.statLabel}>RATING</Text>
           </View>
@@ -172,21 +178,21 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             >
               <View style={styles.menuItemLeft}>
                 <View style={styles.menuIconContainer}>
-                  <Ionicons name={item.icon} size={20} color={THEME.accent} />
+                  <Ionicons name={item.icon} size={ICON_SIZES.medium} color={COLORS.primary} />
                 </View>
                 <View style={styles.menuTextContainer}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={THEME.textSubtle} />
+              <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={COLORS.textTertiary} />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={THEME.error} />
+          <Ionicons name="log-out-outline" size={ICON_SIZES.medium} color={COLORS.error} />
           <Text style={styles.logoutButtonText}>LOGOUT</Text>
         </TouchableOpacity>
 
@@ -194,7 +200,15 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.footer}>
           <Text style={styles.footerText}>YANN • v1.0.0</Text>
         </View>
+        </Animated.View>
       </ScrollView>
+
+      <ComingSoonModal
+        visible={showComingSoon}
+        title="Coming Soon!"
+        message="This feature is under development and will be available soon. Stay tuned!"
+        onClose={() => setShowComingSoon(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -202,75 +216,72 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.bg,
+    backgroundColor: COLORS.background,
   },
   content: {
-    padding: 20,
-    paddingBottom: 100,
+    padding: SPACING.lg,
+    paddingTop: SPACING.xs, // Start content immediately after safe area
+    paddingBottom: 120, // Extra padding for floating tab bar
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.bgCard,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: THEME.border,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.md,
   },
   avatarContainer: {
     width: 68,
     height: 68,
-    borderRadius: 18,
-    backgroundColor: THEME.accent,
+    borderRadius: RADIUS.medium,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: TYPOGRAPHY.size.xxxl,
     fontWeight: '800',
-    color: '#FFF',
+    color: COLORS.white,
   },
   profileInfo: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: SPACING.md,
   },
   name: {
-    fontSize: 20,
+    fontSize: TYPOGRAPHY.size.xl,
     fontWeight: '800',
-    color: THEME.text,
+    color: COLORS.text,
     letterSpacing: -0.5,
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   email: {
-    fontSize: 13,
-    color: THEME.textMuted,
-    marginBottom: 10,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
   },
   memberBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.full,
     alignSelf: 'flex-start',
   },
   memberText: {
-    fontSize: 9,
+    fontSize: TYPOGRAPHY.size.xs,
     fontWeight: '700',
-    color: THEME.gold,
     letterSpacing: 1,
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: THEME.bgCard,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 28,
-    borderWidth: 1,
-    borderColor: THEME.border,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    marginBottom: SPACING.xxl,
+    ...SHADOWS.md,
   },
   statItem: {
     flex: 1,
@@ -279,59 +290,58 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: SPACING.xs,
   },
   statNumber: {
-    fontSize: 22,
+    fontSize: TYPOGRAPHY.size.xxl,
     fontWeight: '800',
-    color: THEME.text,
+    color: COLORS.text,
     letterSpacing: -1,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: TYPOGRAPHY.size.xs,
     fontWeight: '700',
-    color: THEME.textMuted,
+    color: COLORS.textSecondary,
     letterSpacing: 1.5,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: THEME.border,
+    backgroundColor: COLORS.divider,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   accentBar: {
     width: 3,
     height: 18,
-    backgroundColor: THEME.accent,
-    borderRadius: 2,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.small,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.size.xs,
     fontWeight: '700',
-    color: THEME.text,
+    color: COLORS.text,
     letterSpacing: 2,
   },
   menuContainer: {
-    backgroundColor: THEME.bgCard,
-    borderRadius: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: THEME.border,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.large,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.md,
     overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
+    borderBottomColor: COLORS.divider,
   },
   menuItemLast: {
     borderBottomWidth: 0,
@@ -344,49 +354,49 @@ const styles = StyleSheet.create({
   menuIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: THEME.accentSoft,
+    borderRadius: RADIUS.small,
+    backgroundColor: COLORS.elevated,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: SPACING.md,
   },
   menuTextContainer: {
     flex: 1,
   },
   menuTitle: {
-    fontSize: 15,
+    fontSize: TYPOGRAPHY.size.md,
     fontWeight: '600',
-    color: THEME.text,
-    marginBottom: 2,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
   },
   menuSubtitle: {
-    fontSize: 12,
-    color: THEME.textMuted,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
-    borderRadius: 14,
-    paddingVertical: 16,
-    gap: 10,
+    borderRadius: RADIUS.medium,
+    paddingVertical: SPACING.md,
+    gap: SPACING.sm,
     borderWidth: 1,
-    borderColor: THEME.error + '50',
+    borderColor: `${COLORS.error}50`,
   },
   logoutButtonText: {
-    fontSize: 13,
+    fontSize: TYPOGRAPHY.size.sm,
     fontWeight: '700',
-    color: THEME.error,
+    color: COLORS.error,
     letterSpacing: 1,
   },
   footer: {
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: SPACING.xxxl,
   },
   footerText: {
-    fontSize: 11,
-    color: THEME.textSubtle,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textTertiary,
     letterSpacing: 2,
   },
 });

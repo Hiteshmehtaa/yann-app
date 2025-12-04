@@ -5,35 +5,40 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
   Animated,
   StatusBar,
   Dimensions,
 } from 'react-native';
+import { LogoSVG } from '../../components/LogoSVG';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { Toast } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../contexts/AuthContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const { width, height } = Dimensions.get('window');
 
-// Dark editorial theme
+// YANN Official Website Color Palette
 const THEME = {
-  bg: '#0D0D0D',
-  bgCard: '#1A1A1A',
-  bgElevated: '#242424',
-  accent: '#FF6B35',
-  accentSoft: '#FF6B3515',
-  text: '#FAFAFA',
-  textMuted: '#6A6A6A',
-  textSubtle: '#4A4A4A',
-  border: '#2A2A2A',
+  bg: '#F6F7FB',              // Background Light
+  bgCard: '#FFFFFF',          // Card Background
+  bgElevated: '#FFFFFF',      // Elevated surfaces
+  primary: '#2E59F3',         // Primary Blue
+  primaryLight: '#4362FF',    // Gradient end
+  accent: '#2E59F3',          // Accent (same as primary)
+  accentOrange: '#FF8A3D',    // Accent Orange
+  accentYellow: '#F7C948',    // Accent Yellow
+  text: '#1A1C1E',            // Heading Text
+  textMuted: '#4A4D52',       // Body Text
+  textSubtle: '#9CA3AF',      // Muted text
+  border: '#E5E7EB',          // Borders
+  shadow: 'rgba(46, 89, 243, 0.08)',
 };
 
 type Props = {
@@ -45,6 +50,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const { sendOTP } = useAuth();
+  const { toast, showSuccess, showError, hideToast } = useToast();
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
@@ -72,26 +78,24 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleSendOTP = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
+      showError('Please enter your email address');
       return;
     }
 
     if (!validateEmail(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showError('Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
     try {
       await sendOTP(email);
-      Alert.alert('Success', 'OTP sent to your email!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('VerifyOTP', { email }),
-        },
-      ]);
+      showSuccess('OTP sent to your email!');
+      setTimeout(() => {
+        navigation.navigate('VerifyOTP', { email });
+      }, 1500);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send OTP');
+      showError(error.message || 'Failed to send OTP');
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +103,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
+      
+      {/* Toast Notification */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       
       {/* Background pattern */}
       <View style={styles.bgPattern}>
@@ -115,6 +127,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bounces={true}
+          alwaysBounceVertical={true}
         >
           {/* Back Button */}
           <TouchableOpacity 
@@ -133,11 +147,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../../public/download.png')} 
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
+                <LogoSVG size={64} />
               </View>
               <Text style={styles.brandName}>YANN</Text>
               <View style={styles.divider} />
@@ -152,7 +162,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.label}>EMAIL ADDRESS</Text>
               <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons name="mail" size={18} color={isFocused ? THEME.accent : THEME.textMuted} />
+                  <Ionicons name="mail" size={20} color={isFocused ? THEME.primary : THEME.textMuted} />
                 </View>
                 <TextInput
                   style={styles.input}
@@ -176,7 +186,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={[THEME.accent, '#E85A2D']}
+                  colors={[THEME.primary, THEME.primaryLight]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
@@ -318,14 +328,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.bgCard,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: THEME.border,
-    borderRadius: 14,
-    marginBottom: 24,
+    borderRadius: 16,
+    marginBottom: 28,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   inputFocused: {
-    borderColor: THEME.accent,
+    borderColor: THEME.primary,
+    shadowColor: THEME.primary,
+    shadowOpacity: 0.12,
   },
   inputIcon: {
     width: 52,
@@ -381,7 +398,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 'auto',
-    paddingBottom: 32,
+    paddingBottom: 20,
   },
   footerText: {
     fontSize: 14,
@@ -389,7 +406,7 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 14,
-    color: THEME.accent,
+    color: THEME.primary,
     fontWeight: '700',
   },
 });

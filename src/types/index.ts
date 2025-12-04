@@ -12,6 +12,14 @@ export interface User {
   savedProviders?: string[];
   addressBook?: Address[];
   lastLoginAt?: Date;
+  // Provider-specific fields
+  services?: string[];
+  serviceRates?: Record<string, number>;
+  status?: 'active' | 'inactive' | 'pending';
+  rating?: number;
+  totalReviews?: number;
+  experience?: number;
+  bio?: string;
 }
 
 export interface Address {

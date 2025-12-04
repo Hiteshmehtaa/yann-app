@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,22 +18,69 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-// Dark Editorial Theme
+// YANN Official Website Color Palette
 const THEME = {
-  bg: '#0A0A0A',
-  bgCard: '#1A1A1A',
-  bgInput: '#141414',
-  bgElevated: '#242424',
-  text: '#F5F0EB',
-  textMuted: '#8A8A8A',
-  textSubtle: '#555555',
-  accent: '#FF6B35',
-  accentSoft: 'rgba(255, 107, 53, 0.12)',
-  border: '#2A2A2A',
+  bg: '#F6F7FB',              // Background Light
+  bgCard: '#FFFFFF',          // Card Background  
+  bgInput: '#FFFFFF',         // Input Background
+  bgElevated: '#FFFFFF',      // Elevated surfaces
+  text: '#1A1C1E',            // Heading Text
+  textMuted: '#4A4D52',       // Body Text
+  textSubtle: '#9CA3AF',      // Muted text
+  primary: '#2E59F3',         // Primary Blue
+  accentOrange: '#FF8A3D',    // Accent Orange
+  accent: '#2E59F3',          // Accent (same as primary)
+  accentSoft: 'rgba(46, 89, 243, 0.12)',
+  border: '#E5E7EB',          // Borders
+  shadow: 'rgba(46, 89, 243, 0.08)',
 };
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
+};
+
+// Service definitions with proper display names
+const SERVICES = {
+  cleaning: [
+    'House Cleaning',
+    'Deep House Cleaning',
+    'Bathroom Cleaning',
+    'Kitchen Cleaning',
+    'Carpet Cleaning',
+    'Window Cleaning',
+    'Move-in/Move-out Cleaning',
+  ],
+  laundry: [
+    'Laundry Service',
+    'Dry Cleaning',
+    'Ironing Service',
+  ],
+  pujari: [
+    'Pujari Services',
+    'Havan Ceremony',
+    'Wedding Rituals',
+    'Griha Pravesh',
+  ],
+  driver: [
+    'Full-Day Personal Driver',
+    'Half-Day Driver',
+    'Airport Pickup/Drop',
+  ],
+  other: [
+    'Plumbing',
+    'Electrical Work',
+    'Carpentry',
+    'Painting',
+    'Pest Control',
+    'AC Repair',
+    'Appliance Repair',
+    'Garden & Landscaping',
+    'Pet Care',
+    'Baby Sitting',
+    'Elder Care',
+    'Personal Assistant',
+    'Delivery Services',
+  ],
 };
 
 const SERVICE_CATEGORIES = [
@@ -40,31 +88,31 @@ const SERVICE_CATEGORIES = [
     id: 'cleaning',
     name: 'Cleaning',
     icon: 'home-outline' as const,
-    services: ['deep-clean', 'bathroom', 'kitchen', 'laundry', 'carpet', 'window', 'move'],
+    services: SERVICES.cleaning,
   },
   {
     id: 'laundry',
     name: 'Laundry',
     icon: 'shirt-outline' as const,
-    services: ['laundry'],
+    services: SERVICES.laundry,
   },
   {
     id: 'pujari',
     name: 'Pujari',
     icon: 'flame-outline' as const,
-    services: ['pujari', 'specialty'],
+    services: SERVICES.pujari,
   },
   {
     id: 'driver',
     name: 'Driver',
     icon: 'car-outline' as const,
-    services: ['driver'],
+    services: SERVICES.driver,
   },
   {
     id: 'other',
-    name: 'Other',
+    name: 'Other Services',
     icon: 'construct-outline' as const,
-    services: ['general'],
+    services: SERVICES.other,
   },
 ];
 
@@ -149,7 +197,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       }
       setCurrentStep(3);
     } else if (currentStep === 3) {
-      const missingPrices = formData.serviceRates.filter(r => !r.price || parseFloat(r.price) <= 0);
+      const missingPrices = formData.serviceRates.filter(r => !r.price || Number.parseFloat(r.price) <= 0);
       if (missingPrices.length > 0) {
         Alert.alert('Error', 'Please enter valid prices for all selected services');
         return;
@@ -167,35 +215,92 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    setIsLoading(true);
+    // Validation
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'Please enter your full name');
+      return;
+    }
+    if (!validatePhone(formData.phone)) {
+      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+      return;
+    }
+    if (!validateEmail(formData.email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+    if (!formData.experience) {
+      Alert.alert('Error', 'Please enter your years of experience');
+      return;
+    }
+    if (formData.services.length === 0) {
+      Alert.alert('Error', 'Please select at least one service');
+      return;
+    }
+    
+    // Check if all selected services have prices
+    const servicesWithoutPrice = formData.services.filter(
+      service => !formData.serviceRates.some(r => r.serviceName === service && r.price)
+    );
+    if (servicesWithoutPrice.length > 0) {
+      Alert.alert('Error', 'Please set prices for all selected services');
+      return;
+    }
+
     try {
+      setIsLoading(true);
+
+      // Extract categories from selected services
+      const selectedCategories: string[] = [];
+      for (const category of SERVICE_CATEGORIES) {
+        const hasServiceInCategory = formData.services.some(service => 
+          category.services.includes(service)
+        );
+        if (hasServiceInCategory) {
+          selectedCategories.push(category.id);
+        }
+      }
+
+      // Match exact website format
       const payload = {
-        name: formData.name.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
-        experience: parseInt(formData.experience),
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        experience: Number(formData.experience),
         services: formData.services,
-        serviceRates: formData.serviceRates.map(r => ({
-          serviceName: r.serviceName,
-          price: parseFloat(r.price),
+        serviceRates: formData.serviceRates.map(rate => ({
+          serviceName: rate.serviceName,
+          price: Number(rate.price)
         })),
+        selectedCategories: selectedCategories,
         workingHours: formData.workingHours,
       };
 
+      console.log('🔵 Sending Provider Registration:', JSON.stringify(payload, null, 2));
+
       await apiService.registerProvider(payload);
+      
+      console.log('✅ Provider Registration Success');
+
       Alert.alert(
-        'Registration Submitted',
-        'Your provider account has been registered. Please wait for admin verification.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+        'Success! 🎉',
+        'Your provider account has been created and is pending approval.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('PartnerLogin'),
+          },
+        ]
       );
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
-      Alert.alert('Error', errorMessage);
+      console.error('❌ Provider Registration Error:', error.response?.data || error.message);
+      Alert.alert(
+        'Registration Failed',
+        error.response?.data?.message || 'Something went wrong. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
-
   const renderStepIndicator = () => (
     <View style={styles.stepIndicator}>
       {[1, 2, 3, 4].map(step => (
@@ -415,7 +520,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -423,19 +528,46 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
         >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <Ionicons name="arrow-back" size={22} color={THEME.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>PROVIDER REGISTRATION</Text>
+            <View style={styles.headerCenter}>
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../../../public/download.png')} 
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.headerTitle}>PROVIDER REGISTRATION</Text>
+            </View>
             <View style={{ width: 44 }} />
           </View>
 
           {renderStepIndicator()}
 
           {currentStep === 1 && renderStep1()}
+          
+          {/* Partner Sign-in Link - Below form */}
+          {currentStep === 1 && (
+            <View style={styles.partnerCtaContainer}>
+              <Text style={styles.partnerCtaText}>Already a Partner?</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PartnerLogin')}
+                activeOpacity={0.7}
+                style={styles.partnerLinkButton}
+              >
+                <Text style={styles.partnerLinkText}>Sign in as Service Partner</Text>
+                <Ionicons name="arrow-forward" size={16} color={THEME.primary} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </View>
+          )}
+          
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
           {currentStep === 4 && renderStep4()}
@@ -501,6 +633,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: THEME.border,
+  },
+  headerCenter: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logoImage: {
+    width: 24,
+    height: 24,
   },
   headerTitle: {
     fontSize: 13,
@@ -642,6 +795,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.border,
     gap: 6,
+    flexShrink: 1,
   },
   serviceChipActive: {
     backgroundColor: THEME.accent,
@@ -651,7 +805,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: THEME.textMuted,
-    textTransform: 'capitalize',
+    flexShrink: 1,
   },
   serviceChipTextActive: {
     color: '#FFF',
@@ -759,5 +913,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  // Partner CTA Styles (Simple Link)
+  partnerCtaContainer: {
+    marginTop: 24,
+    marginBottom: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  partnerCtaText: {
+    fontSize: 13,
+    color: THEME.textMuted,
+    marginBottom: 8,
+  },
+  partnerLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  partnerLinkText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: THEME.primary,
+    letterSpacing: 0.3,
   },
 });

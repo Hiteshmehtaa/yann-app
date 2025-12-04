@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../utils/theme';
+import { LogoSVG } from './LogoSVG';
 
 interface LogoProps {
   size?: 'small' | 'medium' | 'large';
@@ -24,11 +25,7 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../public/download.png')}
-        style={{ width: logo, height: logo }}
-        resizeMode="contain"
-      />
+      <LogoSVG size={logo} color={variant === 'white' ? '#FFFFFF' : COLORS.primary} />
       {showText && (
         <Text style={[styles.logoText, { fontSize: text, color: textColor }]}>
           YANN

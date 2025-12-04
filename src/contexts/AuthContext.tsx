@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo } from 'react';
 import { apiService } from '../services/api';
 import { storage } from '../utils/storage';
 import type { User } from '../types';
@@ -9,8 +9,10 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, otp: string, intent?: 'login' | 'signup') => Promise<void>;
+  loginAsProvider: (email: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
   sendOTP: (email: string) => Promise<void>;
+  sendProviderOTP: (email: string) => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
 
@@ -42,8 +44,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(response.user);
             await storage.saveUserData(response.user);
           }
-        } catch (error) {
-          console.log('Could not refresh user data:', error);
+        } catch (error: any) {
+          // Cookie-based auth may fail on mobile if session expired
+          // This is expected behavior - we continue with cached data
+          if (error.response?.status !== 401) {
+            console.log('Could not refresh user data:', error);
+          }
           // Keep using cached data
         }
       }
@@ -56,10 +62,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const sendOTP = async (email: string): Promise<void> => {
     try {
-      await apiService.sendOTP(email);
+      await apiService.sendOTP(email, 'homeowner', 'login');
       await storage.saveEmail(email);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to send OTP');
+    }
+  };
+
+  // Send OTP for provider/partner login
+  const sendProviderOTP = async (email: string): Promise<void> => {
+    try {
+      await apiService.sendProviderOTP(email);
+      await storage.saveEmail(email);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to send OTP. Make sure you are registered as a partner.');
     }
   };
 
@@ -67,26 +83,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await apiService.verifyOTP(email, otp, intent);
       
+      console.log('🔐 Processing login response:', response);
+      
       // The new API returns homeowner data directly in response
-      if (response.homeowner) {
-        // Map homeowner data to User type
+      if (response.user) {
+        // Map response user data to User type
         const userData: User = {
-          id: response.homeowner.id,
-          name: response.homeowner.name,
-          email: response.homeowner.email,
-          phone: response.homeowner.phone || '',
-          role: 'homeowner'
+          id: response.user.id,
+          name: response.user.name,
+          email: response.user.email,
+          phone: response.user.phone || '',
+          role: response.user.role || 'homeowner'
         };
         
-        setUser(userData);
+        console.log('👤 Setting user data:', userData);
+        
+        // Note: The new API uses httpOnly cookies for auth, no token in response
+        // We'll use a dummy token for compatibility
+        const dummyToken = 'cookie-based-auth';
+        
+        // Save to storage first
+        await storage.saveToken(dummyToken);
         await storage.saveUserData(userData);
+        
+        // Then update state (this triggers navigation)
+        setToken(dummyToken);
+        setUser(userData);
+        
+        console.log('✅ Login successful, auth state updated');
+      } else {
+        throw new Error('No user data in response');
       }
-
-      // Note: The new API uses httpOnly cookies for auth, no token in response
-      // We'll use a dummy token for compatibility
-      const dummyToken = 'cookie-based-auth';
-      await storage.saveToken(dummyToken);
-      setToken(dummyToken);
     } catch (error: any) {
       console.error('Login error:', error);
       throw new Error(error.response?.data?.message || 'Login failed');
@@ -96,12 +123,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async (): Promise<void> => {
     try {
       await apiService.logout();
-    } catch (error) {
-      console.log('Logout API call failed, but clearing local data');
+    } catch (error: any) {
+      console.log('Logout API call failed, but clearing local data:', error.message || 'Unknown error');
     } finally {
       await storage.clearAll();
       setUser(null);
       setToken(null);
+    }
+  };
+
+  // Login as provider/partner - uses different backend endpoint
+  const loginAsProvider = async (email: string, otp: string): Promise<void> => {
+    try {
+      const response = await apiService.verifyProviderOTP(email, otp);
+      
+      console.log('🔐 Processing provider login response:', response);
+      
+      if (response.user) {
+        const userData: User = {
+          id: response.user.id,
+          _id: response.user._id || response.user.id,
+          name: response.user.name,
+          email: response.user.email,
+          phone: response.user.phone || '',
+          role: 'provider',
+          services: response.user.services || [],
+          status: response.user.status,
+        };
+        
+        console.log('👤 Setting provider data:', userData);
+        
+        const providerToken = 'cookie-based-auth-provider';
+        
+        await storage.saveToken(providerToken);
+        await storage.saveUserData(userData);
+        
+        setToken(providerToken);
+        setUser(userData);
+        
+        console.log('✅ Provider login successful');
+      } else {
+        throw new Error('No provider data in response');
+      }
+    } catch (error: any) {
+      console.error('Provider login error:', error);
+      throw new Error(error.response?.data?.message || 'Login failed');
     }
   };
 
@@ -113,16 +179,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const value: AuthContextType = {
+  const value: AuthContextType = useMemo(() => ({
     user,
     token,
     isLoading,
     isAuthenticated: !!token && !!user,
     login,
+    loginAsProvider,
     logout,
     sendOTP,
+    sendProviderOTP,
     updateUser,
-  };
+  }), [user, token, isLoading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
