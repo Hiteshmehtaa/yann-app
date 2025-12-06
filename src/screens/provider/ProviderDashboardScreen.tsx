@@ -124,26 +124,26 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const statsData = [
-    { id: '1', label: 'Earnings', value: `₹${dashboardData?.stats?.totalEarnings?.toLocaleString() || 0}`, icon: 'wallet-outline' as const },
-    { id: '2', label: 'Completed', value: `${dashboardData?.stats?.completedBookings || 0}`, icon: 'checkmark-circle-outline' as const },
-    { id: '3', label: 'Pending', value: `${dashboardData?.stats?.pendingRequests || 0}`, icon: 'time-outline' as const },
-    { id: '4', label: 'Rating', value: `${dashboardData?.provider?.rating?.toFixed(1) || '0.0'}`, icon: 'star-outline' as const },
+    { id: '1', label: 'Earnings', value: `₹${(dashboardData?.stats?.totalEarnings ?? 0).toLocaleString()}`, icon: 'wallet-outline' as const },
+    { id: '2', label: 'Completed', value: `${dashboardData?.stats?.completedBookings ?? 0}`, icon: 'checkmark-circle-outline' as const },
+    { id: '3', label: 'Active', value: `${dashboardData?.stats?.acceptedBookings ?? 0}`, icon: 'time-outline' as const },
+    { id: '4', label: 'Rating', value: `${(dashboardData?.provider?.rating ?? 0).toFixed(1)}`, icon: 'star-outline' as const },
   ];
 
   const menuItems: MenuItem[] = [
     { id: 'services', title: 'My Services', subtitle: `${user?.services?.length || 0} active services`, icon: 'briefcase-outline', onPress: () => navigation.navigate('ProviderServices') },
-    { id: 'bookings', title: 'Bookings', subtitle: 'Manage your bookings', icon: 'calendar-outline', onPress: () => navigation.navigate('ProviderBookings'), badge: dashboardData?.stats?.pendingRequests || 0 },
+    { id: 'bookings', title: 'Bookings', subtitle: 'Manage your bookings', icon: 'calendar-outline', onPress: () => navigation.navigate('ProviderBookings'), badge: dashboardData?.stats?.acceptedBookings || 0 },
     { id: 'earnings', title: 'Earnings', subtitle: 'View your earnings', icon: 'wallet-outline', onPress: () => navigation.navigate('ProviderEarnings') },
     { id: 'profile', title: 'Profile', subtitle: 'Edit your details', icon: 'person-outline', onPress: () => navigation.navigate('ProviderProfile') },
   ];
 
-  const recentBookings = dashboardData?.pendingRequests?.slice(0, 3).map((req: any) => ({
+  const recentBookings = dashboardData?.acceptedBookings?.slice(0, 3).map((req: any) => ({
     id: req.id || req._id,
     service: req.serviceName,
     customer: req.customerName,
     date: req.formattedDate || new Date(req.bookingDate).toLocaleDateString(),
     amount: `₹${req.totalPrice}`,
-    status: 'pending',
+    status: 'active',
   })) || [];
 
   if (isLoading) {
@@ -192,7 +192,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.7}>
               <Ionicons name="notifications-outline" size={24} color={THEME.colors.text} />
-              {(dashboardData?.stats?.pendingRequests || 0) > 0 && (
+              {(dashboardData?.stats?.acceptedBookings || 0) > 0 && (
                 <View style={styles.notificationDot} />
               )}
             </TouchableOpacity>
@@ -295,8 +295,8 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     </View>
                     <View style={styles.bookingRight}>
                       <Text style={styles.bookingAmount}>{booking.amount}</Text>
-                      <View style={styles.pendingBadge}>
-                        <Text style={styles.pendingText}>PENDING</Text>
+                      <View style={styles.activeBadge}>
+                        <Text style={styles.activeText}>ACTIVE</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -630,6 +630,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: THEME.colors.warning,
+  },
+  activeBadge: {
+    backgroundColor: `${THEME.colors.success}15`,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  activeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: THEME.colors.success,
   },
 
   // Empty State

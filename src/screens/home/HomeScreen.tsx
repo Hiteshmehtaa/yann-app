@@ -7,6 +7,8 @@ import {
   StatusBar,
   Animated,
   RefreshControl,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,15 +25,50 @@ type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
+// Map service titles to appropriate Ionicons
 const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  'House Cleaning': 'sparkles',
+  // Transportation
+  'Drivers': 'car-sport',
+  'Full-Day Personal Driver': 'car-sport',
+  
+  // Religious/Spiritual
+  'Pujari': 'flame',
+  'Pujari Services': 'flame',
+  
+  // Household Staff
+  'Maids': 'home',
+  'Cleaners': 'sparkles',
+  'Toilet Cleaning Experts': 'water',
+  'Office Boys': 'briefcase',
+  'Chaprasi': 'people',
+  
+  // Childcare
+  'Baby Sitters': 'heart',
+  
+  // Healthcare
+  'Nurses': 'medkit',
+  'Attendants': 'accessibility',
+  
+  // Specialty Services
+  'Heena Artists': 'color-palette',
+  
+  // Technicians/Maintenance
+  'AC Service Technicians': 'snow',
+  'RO Service Technicians': 'water',
+  'Refrigerator Service Technicians': 'cube',
+  'Air Purifier Service Technicians': 'leaf',
+  'Chimney Service Technicians': 'flame',
   'Repairs & Maintenance': 'construct',
+  
+  // Security
+  'Security Guards': 'shield-checkmark',
+  
+  // Other common services
+  'House Cleaning': 'sparkles',
   'Delivery Services': 'bicycle',
   'Pet Care': 'paw',
   'Personal Assistant': 'briefcase',
   'Garden & Landscaping': 'leaf',
-  'Full-Day Personal Driver': 'car-sport',
-  'Pujari Services': 'flower',
 };
 
 // Empty State Component - Moved outside for performance
@@ -52,36 +89,41 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [partnerCounts, setPartnerCounts] = useState<{ [serviceTitle: string]: number }>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasFetchedInitial, setHasFetchedInitial] = useState(false); // Prevent duplicate initial fetches
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [categories, setCategories] = useState<string[]>(['all']);
 
-  // Fetch services from backend (like website)
+  // Fetch services from backend (like website - GET /api/services)
   const fetchServices = async () => {
     try {
-      const response = await apiService.getAllServices() as any;
+      const response = await apiService.getAllServices();
       
-      const servicesList = response.services || response.data || [];
+      const servicesList = response.data || [];
       if (servicesList.length > 0) {
-        // Map backend services to our Service type
         const mappedServices: Service[] = servicesList.map((s: any, index: number) => ({
-          id: s._id || s.id || index + 1,
-          title: s.name || s.title,
+          id: s._id || s.id || `service-${index + 1}`,
+          title: s.title || s.name,
           description: s.description || '',
           category: s.category || 'other',
-          price: s.basePrice ? `₹${s.basePrice}` : 'Login for details',
-          icon: getServiceIcon(s.category || s.name),
+          price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
+          icon: s.icon || getServiceIcon(s.category || s.title),
           popular: s.popular || false,
           features: s.features || [],
-          profileRequirements: ['Photo', 'Name', 'Aadhaar'],
-          image: s.image,
-          rating: s.rating,
-          status: s.status,
         }));
         setServices(mappedServices);
         setFilteredServices(mappedServices);
-        console.log(`✅ Loaded ${mappedServices.length} services from backend`);
+        
+        // Extract unique categories from services
+        const uniqueCategories = ['all', ...Array.from(new Set(servicesList.map((s: any) => s.category).filter(Boolean)))];
+        setCategories(uniqueCategories);
+        
+        console.log(`✅ Loaded ${mappedServices.length} services with ${uniqueCategories.length - 1} categories`);
+      } else {
+        setServices(SERVICES);
+        setFilteredServices(SERVICES);
       }
-    } catch (err: any) {
-      // Use static services as fallback
-      console.log('ℹ️ Using static services as fallback:', err.message || 'Backend unavailable');
+    } catch (err) {
+      // Use static services as fallback silently
       setServices(SERVICES);
       setFilteredServices(SERVICES);
     } finally {
@@ -91,7 +133,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   // Get service icon based on category or name
   const getServiceIcon = (categoryOrName: string): string => {
-    const name = categoryOrName.toLowerCase();
+    const name = (categoryOrName || '').toLowerCase();
     if (name.includes('clean')) return '🧹';
     if (name.includes('driver')) return '🚗';
     if (name.includes('puja') || name.includes('pujari')) return '🙏';
@@ -103,21 +145,33 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     if (name.includes('pet')) return '🐕';
     if (name.includes('repair')) return '🔧';
     if (name.includes('laundry')) return '👕';
+    if (name.includes('attendant')) return '🤝';
+    if (name.includes('office')) return '👔';
+    if (name.includes('security')) return '🛡️';
+    if (name.includes('heena') || name.includes('henna')) return '🎨';
     return '✨';
   };
 
-  // Fetch partner counts from backend
+  // Fetch partner counts from backend (like website - GET /api/provider/service-counts)
   const fetchPartnerCounts = async () => {
     try {
       const response = await apiService.getServicePartnerCounts();
       
-      if (response.success && response.data) {
-        setPartnerCounts(response.data);
-        console.log(`✅ Loaded partner counts for ${Object.keys(response.data).length} services`);
+      if (response.success && response.data && Array.isArray(response.data)) {
+        const countsObject: { [key: string]: number } = {};
+        
+        for (const item of response.data) {
+          if (item?.service && typeof item?.providerCount === 'number') {
+            countsObject[item.service] = item.providerCount;
+          }
+        }
+        
+        setPartnerCounts(countsObject);
+      } else {
+        setPartnerCounts({});
       }
-    } catch (err: any) {
-      // Expected to fail if endpoint not available - use empty counts
-      console.log('ℹ️ Partner counts not available, showing 0 for all services:', err.message || 'Unknown error');
+    } catch (err) {
+      // Silently handle - partner counts are optional
       setPartnerCounts({});
     } finally {
       setIsRefreshing(false);
@@ -126,52 +180,89 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   // Fade-in animation on mount
   useEffect(() => {
+    // Prevent duplicate fetches in React Strict Mode
+    if (hasFetchedInitial) return;
+    
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: ANIMATIONS.verySlow,
       useNativeDriver: true,
     }).start();
     
-    // Fetch services and partner counts on mount
-    fetchServices();
-    fetchPartnerCounts();
-  }, []);
+    // Fetch services and partner counts in parallel
+    Promise.all([fetchServices(), fetchPartnerCounts()]).then(() => {
+      setHasFetchedInitial(true);
+    });
+  }, [hasFetchedInitial]);
 
   // Handle pull-to-refresh
   const onRefresh = () => {
     setIsRefreshing(true);
-    fetchServices();
-    fetchPartnerCounts();
+    Promise.all([fetchServices(), fetchPartnerCounts()]);
   };
 
-  // Live search with debounce (300ms)
+  // Live search with debounce (300ms) and category filter
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (searchQuery.trim() === '') {
-        setFilteredServices(services);
-      } else {
-        const filtered = services.filter(
+      let filtered = services;
+      
+      // Apply category filter
+      if (selectedCategory !== 'all') {
+        filtered = filtered.filter(
+          (service) => service.category?.toLowerCase() === selectedCategory.toLowerCase()
+        );
+      }
+      
+      // Apply search filter
+      if (searchQuery.trim() !== '') {
+        filtered = filtered.filter(
           (service) =>
             service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             service.description.toLowerCase().includes(searchQuery.toLowerCase())
         );
-        setFilteredServices(filtered);
       }
+      
+      setFilteredServices(filtered);
     }, ANIMATIONS.normal); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, services]);
+  }, [searchQuery, services, selectedCategory]);
+
+  // Get minimum provider price for a service
+  const getMinPrice = (serviceTitle: string): string => {
+    // Check if we have partner count data for this service
+    const countData = partnerCounts[serviceTitle];
+    
+    // If countData is object with minPrice, use it
+    if (typeof countData === 'object' && countData !== null && 'minPrice' in countData) {
+      const minPrice = (countData as any).minPrice;
+      if (minPrice && minPrice > 0) {
+        return `Starting from ₹${minPrice}`;
+      }
+    }
+    
+    // Otherwise check provider count
+    const count = typeof countData === 'number' ? countData : (countData as any)?.providerCount || 0;
+    if (count === 0) {
+      return 'No providers available';
+    }
+    
+    // Fallback to item price if available
+    return 'View prices';
+  };
 
   // Render service card using new ServiceCard component
   const renderServiceCard = ({ item }: { item: Service }) => {
-    const iconName = SERVICE_ICONS[item.title] || 'home-outline';
-    const count = partnerCounts[item.title] || 0;
+    const iconName = SERVICE_ICONS[item.title] || 'grid-outline';
+    const countData = partnerCounts[item.title];
+    const count = typeof countData === 'number' ? countData : (countData as any)?.providerCount || 0;
+    const displayPrice = getMinPrice(item.title);
 
     return (
       <Animated.View style={{ opacity: fadeAnim }}>
         <ServiceCard
           title={item.title}
-          price={item.price}
+          price={displayPrice}
           icon={iconName}
           popular={item.popular}
           partnerCount={count}
@@ -199,6 +290,34 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           onChangeText={setSearchQuery}
           placeholder="Search for services..."
         />
+
+        {/* Category Filter Tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoriesContainer}
+          contentContainerStyle={styles.categoriesContent}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.categoryTag,
+                selectedCategory === category && styles.categoryTagActive
+              ]}
+              onPress={() => setSelectedCategory(category)}
+            >
+              <Text
+                style={[
+                  styles.categoryTagText,
+                  selectedCategory === category && styles.categoryTagTextActive
+                ]}
+              >
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {/* Status Metrics Card */}
         <View style={styles.metricsCard}>
@@ -396,5 +515,34 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: COLORS.textSecondary,
+  },
+  // Category Filter Styles
+  categoriesContainer: {
+    marginHorizontal: LAYOUT.screenPadding,
+    marginBottom: SPACING.md,
+  },
+  categoriesContent: {
+    paddingRight: LAYOUT.screenPadding,
+    gap: SPACING.sm,
+  },
+  categoryTag: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: 20,
+    backgroundColor: COLORS.cardBg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  categoryTagActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  categoryTagText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  categoryTagTextActive: {
+    color: '#FFFFFF',
   },
 });

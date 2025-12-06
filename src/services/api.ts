@@ -1,8 +1,27 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
-import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service } from '../types';
+import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service, ServiceProviderListItem, ServiceCount, ProviderDashboardData } from '../types';
 
+/**
+ * Yann Mobile API Service
+ * 
+ * This service mirrors the website's API calls exactly.
+ * All endpoints match the Next.js API routes in /src/app/api/
+ * 
+ * Key Endpoints (matching website):
+ * - GET /api/services - List all services
+ * - GET /api/services/[id]/providers - Get providers for a service
+ * - GET /api/providers - List all providers
+ * - GET /api/providers/[id] - Get provider details
+ * - GET /api/provider/by-service?service=X - Get providers by service name
+ * - GET /api/provider/service-counts - Get provider counts per service
+ * - GET /api/bookings - Get user's bookings
+ * - POST /api/bookings/create - Create a booking
+ * - GET /api/homeowner/me - Get current user profile
+ * - GET /api/resident/requests - Get user's service requests
+ * - GET /api/provider/requests - Get provider's incoming requests
+ */
 class ApiService {
   private readonly client: AxiosInstance;
 
@@ -14,7 +33,7 @@ class ApiService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      withCredentials: true, // Enable cookies for session-based auth
+      withCredentials: true, // Enable cookies for session-based auth (same as website)
     });
 
     // Request interceptor - cookies are handled automatically by withCredentials
@@ -22,8 +41,11 @@ class ApiService {
       async (config) => {
         // For cookie-based auth, no need to add Authorization header
         // Cookies are automatically sent with withCredentials: true
-        console.log(`📤 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-        console.log(`🍪 Cookies enabled: withCredentials = true`);
+        // This matches exactly how the website handles auth
+        if (__DEV__) {
+          // Only log in development mode
+          // console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+        }
         return config;
       },
       (error) => Promise.reject(error)
@@ -32,52 +54,37 @@ class ApiService {
     // Response interceptor for error handling and data synchronization
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`📥 API Response: ${response.config.url} - Status: ${response.status}`);
+        // Only log in development if needed for debugging
+        // console.log(`📥 ${response.config.url} - ${response.status}`);
         return response;
       },
-      async (error) => {
+      async (error: AxiosError<any>) => {
         const url = error.config?.url || '';
         const status = error.response?.status;
-        const errorData = error.response?.data;
         
         // Handle network errors
         if (!error.response) {
-          console.error(`🌐 Network Error: ${url} - ${error.message}`);
-          console.error('💡 Check: 1) Internet connection 2) Vercel deployment status 3) API_BASE_URL');
-          error.isNetworkError = true;
+          console.error(`🌐 Network Error: ${url}`);
+          (error as any).isNetworkError = true;
           throw error;
         }
         
         // Check if this is an expected 404 (endpoints not yet implemented)
         const isExpected404 = status === 404 && (
-          url.includes('/services') || 
-          url.includes('/auth/send-otp') && errorData?.message?.includes('not find')
+          url.includes('/services/') || 
+          url.includes('/reviews')
         );
         
-        // Only log unexpected errors in detail
-        if (!isExpected404) {
-          console.error(`❌ API Error: ${url}`);
-          console.error(`   Status: ${status}`);
-          console.error(`   Message: ${errorData?.message || error.message}`);
+        // Only log unexpected errors
+        if (!isExpected404 && status !== 200) {
+          console.error(`❌ API Error: ${url} - ${status}`);
         }
         
         // Handle specific status codes
         if (status === 401) {
-          // Token expired or invalid
-          console.log('🔐 Unauthorized - clearing auth data');
-          await storage.clearAll();
-          // You can emit an event here to logout user
-        } else if (status === 404) {
-          if (isExpected404) {
-            // Silently handle expected 404s - app will use local/mock data
-            console.log(`ℹ️ ${url} not available - using fallback data`);
-          } else {
-            console.log('🔍 Endpoint not found - may not be implemented yet');
-          }
+          console.log('🔐 Session expired');
         } else if (status === 500) {
-          console.error('🚨 Server error - check Vercel logs');
-        } else if (status === 403) {
-          console.error('🚫 Forbidden - check permissions');
+          console.error('🚨 Server error');
         }
         
         throw error;
@@ -87,57 +94,50 @@ class ApiService {
 
   // Authentication (Using existing backend endpoints)
   async sendOTP(email: string, audience: 'homeowner' | 'provider' = 'homeowner', intent: 'login' | 'signup' = 'login'): Promise<ApiResponse> {
-    console.log('🔵 Sending OTP to:', email);
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
-    console.log('👤 Audience:', audience, '| Intent:', intent);
     const response = await this.client.post('/auth/send-otp', { 
       email,
       audience,  // Backend expects: homeowner or provider
       intent     // Backend expects: login or signup
     });
-    console.log('✅ OTP sent successfully');
     return response.data;
   }
 
   async sendSignupOTP(email: string, metadata: { name: string; phone?: string }): Promise<ApiResponse> {
-    console.log('🔵 Sending signup OTP to:', email);
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
     const response = await this.client.post('/auth/send-otp', { 
       email,
       audience: 'homeowner',
       intent: 'signup',
       metadata               // Backend uses metadata.name for new account creation
     });
-    console.log('✅ Signup OTP sent successfully');
     return response.data;
   }
 
   // Provider Login - uses different audience and returns provider data
   async sendProviderOTP(email: string): Promise<ApiResponse> {
-    console.log('🔵 Sending Provider OTP to:', email);
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
     const response = await this.client.post('/auth/send-otp', { 
       email,
       audience: 'provider',  // Provider login
       intent: 'login'
     });
-    console.log('✅ Provider OTP sent successfully');
     return response.data;
   }
 
   async verifyProviderOTP(email: string, otp: string): Promise<AuthResponse> {
-    console.log('🔵 Verifying Provider OTP for:', email);
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
     const response = await this.client.post('/auth/verify-otp', { 
       email, 
       otp,
       audience: 'provider'
     });
-    console.log('✅ Provider OTP verified');
-    console.log('📦 Full response:', JSON.stringify(response.data, null, 2));
+    
+    console.log('🔐 Provider OTP verify raw response:', JSON.stringify(response.data, null, 2));
     
     // Extract provider data from response
     const rawUserData = response.data.provider || response.data.user || response.data.data?.provider;
+    
+    if (!rawUserData) {
+      console.error('❌ No provider data found in response:', response.data);
+      throw new Error(response.data?.message || 'No provider data in response');
+    }
     
     // Map to User type with provider role
     const userData = {
@@ -154,8 +154,7 @@ class ApiService {
       totalReviews: rawUserData.totalReviews,
     };
     
-    console.log('👤 Mapped provider data:', JSON.stringify(userData, null, 2));
-    console.log('🍪 Provider auth via cookies (yann_session)');
+    console.log('✅ Mapped provider data:', userData);
     
     // Save marker for cookie-based auth
     await storage.saveToken('cookie-based-auth-provider');
@@ -177,42 +176,22 @@ class ApiService {
       isApproved: false, // Needs admin approval
       audience: 'provider', // Specify this is a provider registration
     };
-    console.log('🔵 Provider Registration Payload:', JSON.stringify(payload, null, 2));
-    console.log('📍 Endpoint:', this.client.defaults.baseURL + '/register');
     
     // Try primary endpoint
     const response = await this.client.post('/register', payload);
-    
-    console.log('🟢 Provider Registration Response:', JSON.stringify(response.data, null, 2));
-    console.log('✅ Registration successful!');
-    console.log('📋 Provider Details:');
-    console.log('   - Name:', payload.name);
-    console.log('   - Email:', payload.email);
-    console.log('   - Phone:', payload.phone);
-    console.log('   - Role: provider');
-    console.log('   - Status:', payload.status);
-    console.log('   - Services:', payload.services.join(', '));
-    console.log('🔍 If not visible in admin panel, check:');
-    console.log('   1. Admin panel filters (show "pending" providers)');
-    console.log('   2. Database table/collection for providers');
-    console.log('   3. Backend logs for any validation errors');
     
     return response.data;
   }
 
   async verifyOTP(email: string, otp: string, intent: 'login' | 'signup' = 'login'): Promise<AuthResponse> {
-    console.log('🔵 Verifying OTP for:', email);
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
     const response = await this.client.post('/auth/verify-otp', { 
       email, 
       otp,
       audience: 'homeowner',
       intent
     });
-    console.log('✅ OTP verified, user authenticated');
-    console.log('📦 Full response:', JSON.stringify(response.data, null, 2));
     
-    // Extract user data from response (your backend returns "homeowner" not "user")
+    // Extract user data from response (backend returns "homeowner" not "user")
     const rawUserData = response.data.homeowner || response.data.user || response.data.data?.user;
     
     // Map to User type with role
@@ -228,10 +207,6 @@ class ApiService {
       addressBook: rawUserData.addressBook || []
     };
     
-    console.log('👤 Mapped user data:', JSON.stringify(userData, null, 2));
-    console.log('🍪 Authentication via cookies (session-based)');
-    console.log('💡 Backend will send session cookie automatically');
-    
     // Save a marker to indicate we're using cookie-based auth
     await storage.saveToken('cookie-based-auth');
     
@@ -245,32 +220,534 @@ class ApiService {
   }
 
   async logout(): Promise<void> {
-    await this.client.post('/auth/logout');
+    try {
+      await this.client.post('/auth/logout');
+    } catch (error: any) {
+      console.log('Logout error (non-critical):', error?.message || '');
+      // Silently handle - local cleanup will happen anyway
+    }
   }
 
-  // User Profile
+  async registerAsProvider(providerData: any): Promise<ApiResponse> {
+    const response = await this.client.post('/register', providerData);
+    return response.data;
+  }
+
+  // ====================================================================
+  // SERVICES ENDPOINTS (matching website /api/services routes)
+  // ====================================================================
+
+  /**
+   * GET /api/services
+   * Fetch all services from backend (exactly like website)
+   * Website uses this in: ServiceSelector, homepage, service pages
+   */
+  async getAllServices(): Promise<ApiResponse<Service[]>> {
+    try {
+      const response = await this.client.get('/services');
+      
+      // Website response format: { success: true, data: [...services] }
+      const services = response?.data?.data || response?.data?.services || response?.data || [];
+      
+      // Ensure we always return an array
+      if (!Array.isArray(services)) {
+        return {
+          success: true,
+          message: 'Services loaded',
+          data: [],
+        };
+      }
+      
+      return {
+        success: true,
+        message: 'Services loaded',
+        data: services,
+      };
+    } catch (error: any) {
+      console.log('Service fetch failed:', error?.message || 'Unknown error');
+      // Silently fail - component will use fallback
+      return {
+        success: false,
+        message: 'Failed to load services',
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * GET /api/services/[id]
+   * Get single service details
+   */
+  async getServiceById(serviceId: string): Promise<ApiResponse<Service>> {
+    try {
+      const response = await this.client.get(`/services/${serviceId}`);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/services/[id]/providers
+   * Get providers for a specific service by service ID
+   * Website uses this on service detail pages
+   */
+  async getProvidersForService(serviceId: string): Promise<ApiResponse<ServiceProviderListItem[]>> {
+    try {
+      const response = await this.client.get(`/services/${serviceId}/providers`);
+      
+      // Response includes: { success, data: providers[], service: {...}, meta: { total, serviceName } }
+      const providers = response.data.data || response.data.providers || [];
+      
+      return {
+        success: true,
+        message: 'Providers loaded',
+        data: providers,
+        service: response.data.service,
+        meta: response.data.meta,
+      };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/services/[id]/reviews
+   * Get reviews for a service
+   */
+  async getServiceReviews(serviceId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.client.get(`/services/${serviceId}/reviews`);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  // ====================================================================
+  // PROVIDERS ENDPOINTS (matching website /api/providers routes)
+  // ====================================================================
+
+  /**
+   * GET /api/providers
+   * Get all active providers with optional filtering
+   * Query params: service, status, limit, page
+   * Website uses this for provider listings
+   */
+  async getAllProviders(params?: {
+    service?: string;
+    status?: string;
+    limit?: number;
+    page?: number;
+  }): Promise<ApiResponse<ServiceProviderListItem[]>> {
+    try {
+      const response = await this.client.get('/providers', { params });
+      
+      const providers = response.data.data || [];
+      
+      return {
+        success: true,
+        message: 'Providers loaded',
+        data: providers,
+        meta: response.data.meta,
+      };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/providers/[id]
+   * Get specific provider by ID
+   * Website uses this for provider profile pages
+   */
+  async getProviderById(providerId: string): Promise<ApiResponse<ServiceProvider>> {
+    try {
+      const response = await this.client.get(`/providers/${providerId}`);
+      
+      return {
+        success: true,
+        message: 'Provider loaded',
+        data: response.data.data,
+      };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/provider/by-service?service=X
+   * Get providers by service NAME (not ID)
+   * Website uses this when filtering providers
+   * Returns providers sorted by price
+   */
+  async getProvidersByService(serviceName: string): Promise<ApiResponse<ServiceProviderListItem[]>> {
+    try {
+      const response = await this.client.get('/provider/by-service', {
+        params: { service: serviceName },
+      });
+      
+      // Response: { success, data: providers[], providers: providers[], meta: { total, service } }
+      const providers = response?.data?.data || response?.data?.providers || response?.data || [];
+      
+      // Ensure array type
+      if (!Array.isArray(providers)) {
+        return {
+          success: false,
+          message: 'No providers found',
+          data: [],
+          meta: { total: 0, service: serviceName },
+        };
+      }
+      
+      return {
+        success: providers.length > 0,
+        message: providers.length > 0 ? 'Providers loaded' : 'No providers available',
+        data: providers,
+        meta: response?.data?.meta || { total: providers.length, service: serviceName },
+      };
+    } catch (error: any) {
+      console.log('Provider fetch failed:', error.message);
+      return {
+        success: false,
+        message: 'Failed to load providers',
+        data: [],
+        meta: { total: 0, service: serviceName },
+      };
+    }
+  }
+
+  /**
+   * GET /api/provider/service-counts
+   * Get provider counts grouped by service with pricing data
+   * Website uses this to show "X providers available" badges and min/max prices
+   * Returns: [{ service, providerCount, avgRating, minPrice, maxPrice }]
+   */
+  async getServicePartnerCounts(): Promise<ApiResponse<ServiceCount[]>> {
+    try {
+      const response = await this.client.get('/provider/service-counts');
+      
+      // Response: { success, data: [{ service, providerCount, avgRating }] }
+      const counts = response?.data?.data || response?.data || [];
+      
+      // Ensure we return an array
+      if (!Array.isArray(counts)) {
+        return { success: true, message: 'No partner data', data: [] };
+      }
+      
+      return {
+        success: true,
+        message: 'Partner counts loaded',
+        data: counts,
+      };
+    } catch (error: any) {
+      console.log('Partner counts error:', error?.message || '');
+      // Partner counts are optional - return empty if fails
+      return { success: true, message: 'No partner data', data: [] };
+    }
+  }
+
+  // ====================================================================
+  // BOOKINGS ENDPOINTS (matching website /api/bookings routes)
+  // ====================================================================
+
+  /**
+   * GET /api/bookings
+   * Get all bookings for the authenticated homeowner
+   * Website uses this in My Bookings page
+   */
+  async getMyBookings(): Promise<ApiResponse<Booking[]>> {
+    console.log('🔵 API: Calling GET /bookings');
+    const response = await this.client.get('/bookings');
+    
+    console.log('📦 API: Raw response from /bookings:', JSON.stringify(response.data, null, 2));
+    
+    // Website response: { success, data: bookings[], meta: { total } }
+    const bookings = response.data.data || response.data.bookings || [];
+    
+    console.log(`✅ API: Parsed ${bookings.length} bookings from response`);
+    
+    return {
+      success: true,
+      message: 'Bookings loaded',
+      data: bookings,
+      meta: response.data.meta,
+    };
+  }
+
+  /**
+   * POST /api/bookings/create
+   * Create a new booking
+   * Website uses this in booking form
+   * REQUIRES: providerId, serviceName, customerPhone, customerAddress, bookingDate, bookingTime
+   */
+  async createBooking(bookingData: {
+    serviceId: number | string;
+    serviceName: string;
+    serviceCategory: string;
+    customerId?: string | null;
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+    customerAddress: string;
+    bookingDate: string;
+    bookingTime: string;
+    providerId: string; // REQUIRED - get from selected provider
+    paymentMethod?: string;
+    billingType?: string;
+    quantity?: number;
+    notes?: string;
+    extras?: any[];
+    driverDetails?: any;
+    basePrice?: number;
+    totalPrice?: number;
+  }): Promise<ApiResponse<Booking>> {
+    if (!bookingData.providerId) {
+      throw new Error('providerId is required - select a provider first');
+    }
+    
+    // Sanitize booking data - remove undefined/null non-required fields
+    const cleanedData = {
+      serviceId: bookingData.serviceId,
+      serviceName: bookingData.serviceName,
+      serviceCategory: bookingData.serviceCategory,
+      customerId: bookingData.customerId || null,
+      customerName: bookingData.customerName,
+      customerPhone: bookingData.customerPhone,
+      customerEmail: bookingData.customerEmail || '',
+      customerAddress: bookingData.customerAddress,
+      bookingDate: bookingData.bookingDate,
+      bookingTime: bookingData.bookingTime,
+      providerId: bookingData.providerId,
+      paymentMethod: bookingData.paymentMethod || 'cash',
+      billingType: bookingData.billingType || 'one-time',
+      quantity: bookingData.quantity || 1,
+      notes: bookingData.notes || '',
+      extras: bookingData.extras || [],
+      driverDetails: bookingData.driverDetails || null,
+      basePrice: bookingData.basePrice || 0,
+      totalPrice: bookingData.totalPrice || 0,
+    };
+    
+    const response = await this.client.post('/bookings/create', cleanedData);
+    
+    return response.data;
+  }
+
+  /**
+   * GET /api/bookings/[id]
+   * Get booking details by ID
+   */
+  async getBookingById(bookingId: string): Promise<ApiResponse<Booking>> {
+    const response = await this.client.get(`/bookings/${bookingId}`);
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/accept
+   * Accept a booking (provider action)
+   */
+  async acceptBooking(bookingId: string, providerId?: string, providerName?: string): Promise<ApiResponse> {
+    const payload: any = { bookingId };
+    if (providerId) payload.providerId = providerId;
+    if (providerName) payload.providerName = providerName;
+    
+    const response = await this.client.post('/bookings/accept', payload);
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/update-status
+   * Update booking status (in_progress, completed, cancelled)
+   * Used by providers to manage job progress
+   */
+  async updateBookingStatus(bookingId: string, status: 'in_progress' | 'completed' | 'cancelled', providerId?: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/update-status', { 
+      bookingId, 
+      status,
+      providerId 
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/reject
+   * Reject/cancel a booking
+   */
+  async rejectBooking(bookingId: string, providerId: string, reason?: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/reject', { bookingId, providerId, reason });
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/negotiate
+   * Negotiate booking price (provider action)
+   */
+  async negotiateBooking(bookingId: string, proposedAmount: number, note?: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/negotiate', { 
+      bookingId, 
+      proposedAmount,
+      note 
+    });
+    return response.data;
+  }
+
+  // Alias for cancel - requires providerId for provider cancellations
+  async cancelBooking(bookingId: string, providerId?: string): Promise<ApiResponse> {
+    return this.rejectBooking(bookingId, providerId || '', 'Cancelled by user');
+  }
+
+  // ====================================================================
+  // HOMEOWNER/RESIDENT ENDPOINTS (matching website routes)
+  // ====================================================================
+
+  /**
+   * GET /api/homeowner/me
+   * Get current authenticated homeowner profile
+   * Website uses this for user dashboard
+   */
   async getProfile(): Promise<{ user: User }> {
-    console.log('🔵 Fetching user profile from backend');
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
-    console.log('🍪 Using cookie-based authentication');
-    
     const response = await this.client.get('/homeowner/me');
-    console.log('📦 Profile response:', JSON.stringify(response.data, null, 2));
     
-    // Your backend returns "homeowner" not "user"
-    const userData = response.data.homeowner || response.data.user || response.data.data?.user || response.data;
-    console.log('✅ Profile fetched:', userData?.email || 'No email found');
+    // Website response: { success, homeowner: {...} }
+    const userData = response.data.homeowner || response.data.user || response.data.data;
     
     return { user: userData };
   }
 
+  /**
+   * PATCH /api/homeowner/profile
+   * Update homeowner profile
+   * Website uses this in profile edit
+   */
   async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-    console.log('🔵 Updating profile on backend');
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
     const response = await this.client.patch('/homeowner/profile', data);
-    console.log('✅ Profile updated successfully');
     return response.data;
   }
+
+  /**
+   * GET /api/resident/requests
+   * Get service requests for the homeowner
+   * Website uses this in My Requests page
+   */
+  async getMyRequests(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/resident/requests');
+    
+    // Response: { success, data: requests[], requests: requests[] }
+    const requests = response.data.data || response.data.requests || [];
+    
+    return {
+      success: true,
+      message: 'Requests loaded',
+      data: requests,
+    };
+  }
+
+  /**
+   * POST /api/resident/requests
+   * Create a new service request
+   */
+  async createRequest(data: {
+    title: string;
+    serviceType: string;
+    description?: string;
+    scheduledFor?: string;
+    priority?: 'routine' | 'urgent';
+    locationLabel?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/resident/requests', data);
+    return response.data;
+  }
+
+  // ====================================================================
+  // PROVIDER DASHBOARD ENDPOINTS (matching website provider routes)
+  // ====================================================================
+
+  /**
+   * GET /api/provider/requests
+   * Get provider's incoming requests, accepted bookings, and stats
+   * Website uses this for provider dashboard
+   * Requires: providerId or email as query param
+   * FILTERS BY PROVIDER ID - returns only that provider's bookings
+   */
+  async getProviderRequests(providerId?: string, email?: string): Promise<ProviderDashboardData> {
+    try {
+      const params: any = {};
+      if (providerId) params.providerId = providerId;
+      if (email) params.email = email;
+      
+      const response = await this.client.get('/provider/requests', { params });
+      
+      // Return the complete dashboard data structure
+      return response.data;
+    } catch (error: any) {
+      console.log('Provider requests fetch failed:', error?.message || '');
+      // Return minimal valid ProviderDashboardData structure on error
+      return {
+        success: false,
+        provider: {
+          id: '',
+          name: '',
+          email: '',
+          phone: '',
+          services: [],
+          rating: 0,
+          totalReviews: 0,
+        },
+        stats: {
+          pendingRequests: 0,
+          acceptedBookings: 0,
+          completedBookings: 0,
+          totalEarnings: 0,
+          monthlyEarnings: 0,
+        },
+        pendingRequests: [],
+        acceptedBookings: [],
+      };
+    }
+  }
+
+  /**
+   * GET /api/provider/bookings
+   * Get provider's bookings filtered by status
+   */
+  async getProviderBookings(status?: string): Promise<ApiResponse<Booking[]>> {
+    const params = status ? { status } : {};
+    const response = await this.client.get('/provider/bookings', { params });
+    return response.data;
+  }
+
+  /**
+   * GET /api/provider/stats
+   * Get provider statistics
+   */
+  async getProviderStats(): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/provider/stats');
+    return response.data;
+  }
+
+  /**
+   * GET /api/provider/earnings
+   * Get provider earnings with period filter
+   */
+  async getProviderEarnings(period?: 'week' | 'month' | 'year'): Promise<ApiResponse<any>> {
+    const params = period ? { period } : {};
+    const response = await this.client.get('/provider/earnings', { params });
+    return response.data;
+  }
+
+  /**
+   * GET /api/provider/profile
+   * Get provider's own profile
+   */
+  async getProviderOwnProfile(): Promise<ApiResponse<ServiceProvider>> {
+    const response = await this.client.get('/provider/profile');
+    return response.data;
+  }
+
+  // ====================================================================
+  // UPLOAD ENDPOINTS
+  // ====================================================================
 
   async uploadAvatar(formData: FormData): Promise<ApiResponse> {
     const response = await this.client.post('/profile/avatar', formData, {
@@ -281,177 +758,9 @@ class ApiService {
     return response.data;
   }
 
-  // Bookings
-  async createBooking(bookingData: any): Promise<ApiResponse<Booking>> {
-    console.log('🔵 Creating booking on backend');
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
-    console.log('📋 Booking data:', JSON.stringify(bookingData, null, 2));
-    
-    // Ensure providerId is set (required by backend)
-    if (!bookingData.providerId) {
-      throw new Error('providerId is required for booking creation');
-    }
-    
-    const response = await this.client.post('/bookings/create', bookingData);
-    console.log('✅ Booking created:', response.data.booking?.id);
-    return response.data;
-  }
-
-  async getMyBookings(): Promise<ApiResponse<Booking[]>> {
-    console.log('🔵 Fetching user bookings from backend');
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
-    const response = await this.client.get('/resident/requests');
-    console.log('📦 Bookings response:', JSON.stringify(response.data, null, 2));
-    
-    // Handle different response structures
-    const bookings = response.data.data || response.data.bookings || response.data;
-    const count = Array.isArray(bookings) ? bookings.length : 0;
-    console.log('✅ Fetched', count, 'bookings');
-    
-    return response.data;
-  }
-
-  async getBookingById(id: string): Promise<ApiResponse<Booking>> {
-    console.log('🔵 Fetching booking details:', id);
-    console.log('📍 Using backend:', this.client.defaults.baseURL);
-    const response = await this.client.get(`/resident/requests/${id}`);
-    console.log('✅ Booking details fetched');
-    return response.data;
-  }
-
-  async cancelBooking(bookingId: string): Promise<ApiResponse> {
-    const response = await this.client.post('/bookings/reject', { bookingId });
-    return response.data;
-  }
-
-  // Service Providers
-  async getProvidersByService(serviceName: string): Promise<ApiResponse<ServiceProvider[]>> {
-    const response = await this.client.get('/provider/by-service', {
-      params: { serviceName },
-    });
-    return response.data;
-  }
-
-  async registerAsProvider(providerData: any): Promise<ApiResponse> {
-    const response = await this.client.post('/register', providerData);
-    return response.data;
-  }
-
   // Debug endpoint for testing
-  async getAllBookings(): Promise<ApiResponse<Booking[]>> {
+  async getAllBookingsDebug(): Promise<ApiResponse<Booking[]>> {
     const response = await this.client.get('/debug/bookings');
-    return response.data;
-  }
-
-  // Services - Fetch all services from backend (like website)
-  async getAllServices(): Promise<ApiResponse<Service[]>> {
-    try {
-      console.log('🔵 Fetching all services from backend');
-      const response = await this.client.get('/services');
-      console.log(`✅ Loaded ${response.data.services?.length || 0} services from backend`);
-      return response.data;
-    } catch (error: any) {
-      console.log('ℹ️ Services endpoint not available, using static data');
-      throw error;
-    }
-  }
-
-  // Services - Get partner counts per service
-  async getServicePartnerCounts(): Promise<ApiResponse<{ [serviceTitle: string]: number }>> {
-    try {
-      // Fetch partner counts for each service category
-      const response = await this.client.get('/provider/service-counts');
-      console.log('✅ Loaded partner counts from backend');
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        console.log('ℹ️ Partner counts endpoint not available, showing 0 partners');
-      }
-      // Return empty counts on error
-      return { success: true, message: 'No partner data', data: {} };
-    }
-  }
-
-  async getServiceById(serviceId: string): Promise<ApiResponse<Service>> {
-    try {
-      const response = await this.client.get(`/services/${serviceId}`);
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        console.log('ℹ️ Service details endpoint not available, using local data');
-        throw error;
-      }
-      throw error;
-    }
-  }
-
-  async getServiceReviews(serviceId: string): Promise<ApiResponse<any[]>> {
-    try {
-      const response = await this.client.get(`/services/${serviceId}/reviews`);
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        console.log('ℹ️ Reviews endpoint not available, using local data');
-        throw error;
-      }
-      throw error;
-    }
-  }
-
-  // Provider Endpoints - Fetches data for logged-in provider
-  async getProviderRequests(providerId?: string, email?: string): Promise<ApiResponse<any>> {
-    // Backend requires either providerId or email as query param
-    const params: any = {};
-    if (providerId) params.providerId = providerId;
-    if (email) params.email = email;
-    
-    const response = await this.client.get('/provider/requests', { params });
-    console.log(`✅ Loaded provider requests and stats`);
-    return response.data;
-  }
-
-  async getProviderBookings(status?: string): Promise<ApiResponse<any[]>> {
-    const params = status ? { status } : {};
-    const response = await this.client.get('/provider/bookings', { params });
-    return response.data;
-  }
-
-  async getProviderStats(): Promise<ApiResponse<any>> {
-    const response = await this.client.get('/provider/stats');
-    return response.data;
-  }
-
-  async getProviderEarnings(period?: 'week' | 'month' | 'year'): Promise<ApiResponse<any>> {
-    const params = period ? { period } : {};
-    const response = await this.client.get('/provider/earnings', { params });
-    return response.data;
-  }
-
-  async acceptBooking(bookingId: string, providerId?: string, providerName?: string): Promise<ApiResponse> {
-    const payload: any = { bookingId };
-    if (providerId) payload.providerId = providerId;
-    if (providerName) payload.providerName = providerName;
-    
-    const response = await this.client.post('/bookings/accept', payload);
-    return response.data;
-  }
-
-  async rejectBooking(bookingId: string, reason?: string): Promise<ApiResponse> {
-    const response = await this.client.post('/bookings/reject', { bookingId, reason });
-    return response.data;
-  }
-
-  async negotiateBooking(bookingId: string, proposedAmount: number, note?: string): Promise<ApiResponse> {
-    const response = await this.client.post('/bookings/negotiate', { 
-      bookingId, 
-      proposedAmount,
-      note 
-    });
-    return response.data;
-  }
-
-  async getProviderProfile(): Promise<ApiResponse<any>> {
-    const response = await this.client.get('/provider/profile');
     return response.data;
   }
 }

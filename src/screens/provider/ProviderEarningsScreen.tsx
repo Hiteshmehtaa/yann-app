@@ -181,19 +181,19 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.earningsCard}>
             <Text style={styles.earningsLabel}>Total Earnings</Text>
             <Text style={styles.earningsValue}>
-              ₹{earningsData.totalEarnings.toLocaleString()}
+              ₹{(earningsData?.totalEarnings ?? 0).toLocaleString()}
             </Text>
             <View style={styles.earningsStats}>
               <View style={styles.earningsStat}>
                 <Ionicons name="checkmark-circle-outline" size={18} color={THEME.colors.success} />
                 <Text style={styles.earningsStatText}>
-                  {earningsData.completedBookings} completed
+                  {earningsData?.completedBookings ?? 0} completed
                 </Text>
               </View>
               <View style={styles.earningsStat}>
                 <Ionicons name="trending-up-outline" size={18} color={THEME.colors.primary} />
                 <Text style={styles.earningsStatText}>
-                  ₹{earningsData.averagePerBooking} avg
+                  ₹{earningsData?.averagePerBooking ?? 0} avg
                 </Text>
               </View>
             </View>
@@ -205,7 +205,7 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
               <View style={[styles.statIcon, { backgroundColor: `${THEME.colors.success}15` }]}>
                 <Ionicons name="wallet-outline" size={22} color={THEME.colors.success} />
               </View>
-              <Text style={styles.statValue}>₹{earningsData.totalEarnings.toLocaleString()}</Text>
+              <Text style={styles.statValue}>₹{(earningsData?.totalEarnings ?? 0).toLocaleString()}</Text>
               <Text style={styles.statLabel}>Received</Text>
             </View>
             <View style={styles.statCard}>

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiService } from '../../services/api';
 import { SERVICES } from '../../utils/constants';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -79,29 +80,96 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
     loadServices();
   }, []);
 
-  const loadServices = () => {
-    // Map user services to our service list
-    const userServices = user?.services || [];
-    const userRates: Record<string, number> = user?.serviceRates || {};
-    
-    const mappedServices = SERVICES.map((service) => ({
-      id: service.id,
-      title: service.title,
-      icon: service.icon,
-      isActive: userServices.includes(service.title),
-      rate: userRates[service.title] || 0,
-    }));
+  const loadServices = async () => {
+    try {
+      // Fetch services from backend API
+      const response = await apiService.getAllServices();
+      
+      let backendServices = response.data || [];
+      if (backendServices.length === 0) {
+        backendServices = SERVICES;
+      }
+      
+      const userServices = user?.services || [];
+      const userRates: Record<string, number> = {};
+      
+      // Build service rates map from user.serviceRates if available
+      if (user?.serviceRates && Array.isArray(user.serviceRates)) {
+        for (const rate of user.serviceRates) {
+          if (rate?.serviceName && rate?.price) {
+            userRates[rate.serviceName] = rate.price;
+          }
+        }
+      }
+      
+      // Map backend services to our ServiceItem format
+      const mappedServices = backendServices.map((service: any) => ({
+        id: service._id || service.id || Math.random(),
+        title: service.title || service.name,
+        icon: service.icon || '✨',
+        isActive: userServices.includes(service.title || service.name),
+        rate: userRates[service.title || service.name] || service.price || 0,
+      }));
 
-    setServices(mappedServices);
-    setIsLoading(false);
+      setServices(mappedServices);
+    } catch (err) {
+      console.error('Failed to load services from API, using fallback', err);
+      // Fallback to hardcoded SERVICES
+      const userServices = user?.services || [];
+      const userRates: Record<string, number> = user?.serviceRates || {};
+      
+      const mappedServices = SERVICES.map((service) => ({
+        id: service.id,
+        title: service.title,
+        icon: service.icon,
+        isActive: userServices.includes(service.title),
+        rate: userRates[service.title] || 0,
+      }));
+
+      setServices(mappedServices);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const toggleService = (serviceId: number) => {
+  const toggleService = async (serviceId: number) => {
+    // Optimistically update UI
     setServices(prev => 
       prev.map(s => 
         s.id === serviceId ? { ...s, isActive: !s.isActive } : s
       )
     );
+
+    try {
+      // Get updated services list
+      const updatedServices = services.map(s => 
+        s.id === serviceId ? { ...s, isActive: !s.isActive } : s
+      );
+      
+      const activeServiceNames = updatedServices
+        .filter(s => s.isActive)
+        .map(s => s.title);
+      
+      const activeServiceRates = updatedServices
+        .filter(s => s.isActive && s.rate > 0)
+        .map(s => ({ serviceName: s.title, price: s.rate }));
+
+      // Update backend
+      await apiService.updateProfile({
+        services: activeServiceNames,
+        serviceRates: activeServiceRates,
+      });
+
+      console.log('✅ Service toggled and saved to DB');
+    } catch (error) {
+      console.error('❌ Failed to update service:', error);
+      // Revert on error
+      setServices(prev => 
+        prev.map(s => 
+          s.id === serviceId ? { ...s, isActive: !s.isActive } : s
+        )
+      );
+    }
   };
 
   const activeServices = services.filter(s => s.isActive);
@@ -143,7 +211,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>{SERVICES.length}</Text>
+              <Text style={styles.summaryValue}>{services.length}</Text>
               <Text style={styles.summaryLabel}>Total</Text>
             </View>
           </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, forwardRef, useRef } from 'react';
 import { View, TextInput, Text, StyleSheet, TextInputProps, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ICON_SIZES } from '../../utils/theme';
@@ -12,54 +12,65 @@ type InputProps = TextInputProps & {
   isPassword?: boolean;
 };
 
-export const Input: React.FC<InputProps> = ({
+export const Input = forwardRef<TextInput, InputProps>(({
   label,
   error,
   leftIcon,
   rightIcon,
   onRightIconPress,
   isPassword = false,
+  onFocus,
+  onBlur,
   ...props
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
+}, ref) => {
   const [showPassword, setShowPassword] = useState(false);
+  const isFocusedRef = useRef(false);
 
   const hasError = !!error;
 
-  const getIconColor = () => {
-    if (hasError) return COLORS.error;
-    if (isFocused) return COLORS.primary;
-    return COLORS.textSecondary;
-  };
+  const iconColor = hasError ? COLORS.error : COLORS.textSecondary;
+
+  const handleFocus = useCallback((e: any) => {
+    if (isFocusedRef.current) return; // Prevent multiple focus calls
+    isFocusedRef.current = true;
+    onFocus?.(e);
+  }, [onFocus]);
+  
+  const handleBlur = useCallback((e: any) => {
+    isFocusedRef.current = false;
+    onBlur?.(e);
+  }, [onBlur]);
+  
+  const togglePassword = useCallback(() => setShowPassword(prev => !prev), []);
+
+  const inputContainerStyle = [
+    styles.inputContainer,
+    hasError && styles.inputContainerError,
+  ];
 
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View
-        style={[
-          styles.inputContainer,
-          isFocused && styles.inputContainerFocused,
-          hasError && styles.inputContainerError,
-        ]}
-      >
+      <View style={inputContainerStyle}>
         {leftIcon && (
           <Ionicons
             name={leftIcon}
             size={ICON_SIZES.medium}
-            color={getIconColor()}
+            color={iconColor}
             style={styles.leftIcon}
           />
         )}
         <TextInput
+          ref={ref}
           style={[styles.input, leftIcon && styles.inputWithLeftIcon]}
           placeholderTextColor={COLORS.textTertiary}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           secureTextEntry={isPassword && !showPassword}
           {...props}
         />
         {isPassword && (
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.rightIcon}>
+          <TouchableOpacity onPress={togglePassword} style={styles.rightIcon}>
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
               size={ICON_SIZES.medium}
@@ -76,7 +87,10 @@ export const Input: React.FC<InputProps> = ({
       {hasError && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
-};
+});
+
+// Add display name for debugging
+Input.displayName = 'Input';
 
 const styles = StyleSheet.create({
   container: {

@@ -88,11 +88,12 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
     setIsSaving(true);
     try {
-      await apiService.getProviderProfile(); // Verify session
+      await apiService.getProviderOwnProfile(); // Verify session
       // Update would go here once endpoint is ready
       Alert.alert('Success', 'Profile updated successfully');
       navigation.goBack();
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Profile update error:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setIsSaving(false);

@@ -58,16 +58,80 @@ export const ProviderBookingsScreen = () => {
       const providerId = user?._id || user?.id;
       const email = user?.email;
       
+      console.log('🔍 Fetching bookings for provider:', { providerId, email, name: user?.name });
+      
       const response: any = await apiService.getProviderRequests(providerId, email);
       
+      console.log('📦 API Response:', {
+        success: response.success,
+        pendingRequests: response.pendingRequests?.length || 0,
+        acceptedBookings: response.acceptedBookings?.length || 0,
+      });
+      
       if (response.success) {
-        // Combine pending and accepted bookings
-        const allBookings = [
-          ...(response.pendingRequests || []).map((b: any) => ({ ...b, status: 'pending' })),
-          ...(response.acceptedBookings || []).map((b: any) => ({ ...b, status: b.status || 'accepted' })),
-        ];
+        // Show BOTH pending requests AND accepted bookings
+        // Helper function to format date from ISO string or date string
+        const formatDate = (dateStr: string) => {
+          if (!dateStr || dateStr === 'N/A') return 'N/A';
+          try {
+            const date = new Date(dateStr);
+            // Format as DD/MM/YYYY
+            return date.toLocaleDateString('en-IN', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: 'numeric' 
+            });
+          } catch {
+            return dateStr;
+          }
+        };
+
+        const pendingRequests = (response.pendingRequests || []).map((b: any) => ({
+          id: b._id || b.id,
+          customerName: b.customerName,
+          customerPhone: b.customerPhone,
+          serviceName: b.serviceName,
+          serviceCategory: b.serviceCategory,
+          scheduledDate: formatDate(b.bookingDate || b.scheduledDate),
+          scheduledTime: b.bookingTime || b.scheduledTime || 'N/A',
+          address: b.customerAddress || b.address || 'N/A',
+          status: b.status || 'pending',
+          amount: b.totalPrice || b.basePrice || b.amount || 0,
+          paymentStatus: b.paymentStatus || 'pending',
+          notes: b.notes || '',
+          createdAt: b.createdAt || new Date().toISOString(),
+        }));
+        
+        const acceptedBookings = (response.acceptedBookings || []).map((b: any) => ({
+          id: b._id || b.id,
+          customerName: b.customerName,
+          customerPhone: b.customerPhone,
+          serviceName: b.serviceName,
+          serviceCategory: b.serviceCategory,
+          scheduledDate: formatDate(b.bookingDate || b.scheduledDate),
+          scheduledTime: b.bookingTime || b.scheduledTime || 'N/A',
+          address: b.customerAddress || b.address || 'N/A',
+          status: b.status || 'accepted',
+          amount: b.totalPrice || b.basePrice || b.amount || 0,
+          paymentStatus: b.paymentStatus || 'pending',
+          notes: b.notes || '',
+          createdAt: b.createdAt || new Date().toISOString(),
+        }));
+        
+        // Combine both lists - pending requests come first
+        const allBookings = [...pendingRequests, ...acceptedBookings];
+        
         setBookings(allBookings);
-        console.log(`✅ Loaded ${allBookings.length} bookings for provider`);
+        console.log(`✅ Loaded ${allBookings.length} total bookings (${pendingRequests.length} pending, ${acceptedBookings.length} accepted)`);
+        
+        // Debug: Log first booking details
+        if (allBookings.length > 0) {
+          console.log('📋 First booking details:', JSON.stringify(allBookings[0], null, 2));
+        } else {
+          console.log('⚠️ No bookings found for this provider');
+        }
+      } else {
+        console.log('❌ API response.success is false');
       }
     } catch (err: any) {
       console.error('❌ Error fetching provider bookings:', err);
@@ -111,7 +175,12 @@ export const ProviderBookingsScreen = () => {
 
   const handleRejectBooking = async (bookingId: string) => {
     try {
-      const response = await apiService.rejectBooking(bookingId);
+      const providerId = user?._id || user?.id;
+      if (!providerId) {
+        setError('Provider ID not found');
+        return;
+      }
+      const response = await apiService.rejectBooking(bookingId, providerId);
       if (response.success) {
         console.log('✅ Booking rejected');
         fetchBookings(); // Refresh list
@@ -129,8 +198,12 @@ export const ProviderBookingsScreen = () => {
       } else if (newStatus === 'cancelled') {
         await handleRejectBooking(bookingId);
       } else {
-        // For in_progress, completed - use a generic update endpoint
-        const response = await apiService.acceptBooking(bookingId, user?._id || user?.id, user?.name);
+        // For in_progress, completed - use the update-status endpoint
+        const response = await apiService.updateBookingStatus(
+          bookingId, 
+          newStatus as 'in_progress' | 'completed' | 'cancelled',
+          user?._id || user?.id
+        );
         if (response.success) {
           console.log(`✅ Booking status updated to ${newStatus}`);
           fetchBookings();
@@ -201,7 +274,7 @@ export const ProviderBookingsScreen = () => {
           <View style={[styles.statusBadge, { backgroundColor: statusColor + '15' }]}>
             <Ionicons name={statusIcon as any} size={14} color={statusColor} />
             <Text style={[styles.statusText, { color: statusColor }]}>
-              {booking.status.replace('_', ' ').toUpperCase()}
+              {(booking.status || 'pending').replace('_', ' ').toUpperCase()}
             </Text>
           </View>
         </View>
@@ -233,7 +306,7 @@ export const ProviderBookingsScreen = () => {
         {/* Amount */}
         <View style={styles.amountRow}>
           <Text style={styles.amountLabel}>Booking Amount:</Text>
-          <Text style={styles.amountValue}>₹{booking.amount.toLocaleString()}</Text>
+          <Text style={styles.amountValue}>₹{(booking.amount ?? 0).toLocaleString()}</Text>
         </View>
 
         {/* Action Buttons */}

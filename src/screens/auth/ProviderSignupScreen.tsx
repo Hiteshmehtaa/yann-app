@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,7 +40,7 @@ type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-// Service definitions with proper display names
+// Service definitions with proper display namessss
 const SERVICES = {
   cleaning: [
     'House Cleaning',
@@ -119,6 +120,8 @@ const SERVICE_CATEGORIES = [
 export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [dynamicServiceCategories, setDynamicServiceCategories] = useState(SERVICE_CATEGORIES);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -132,6 +135,57 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       endTime: '17:00',
     },
   });
+
+  // Load services from DB on mount
+  useEffect(() => {
+    loadServicesFromDB();
+  }, []);
+
+  const loadServicesFromDB = async () => {
+    try {
+      setIsLoadingServices(true);
+      const response = await apiService.getAllServices();
+      
+      if (response.data && response.data.length > 0) {
+        // Group services by category
+        const categoriesMap: Record<string, string[]> = {};
+        
+        for (const service of response.data) {
+          const category = service.category || 'other';
+          if (!categoriesMap[category]) {
+            categoriesMap[category] = [];
+          }
+          categoriesMap[category].push(service.title);
+        }
+        
+        // Build category structure
+        const newCategories = Object.keys(categoriesMap).map((catKey) => ({
+          id: catKey,
+          name: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+          icon: getCategoryIcon(catKey),
+          services: categoriesMap[catKey],
+        }));
+        
+        setDynamicServiceCategories(newCategories as any);
+        console.log(`✅ Loaded ${response.data.length} services from DB`);
+      }
+    } catch (error) {
+      console.log('⚠️ Using fallback services');
+    } finally {
+      setIsLoadingServices(false);
+    }
+  };
+
+  const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
+    const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+      cleaning: 'home-outline',
+      laundry: 'shirt-outline',
+      pujari: 'flame-outline',
+      driver: 'car-outline',
+      other: 'construct-outline',
+    };
+    return iconMap[category] || 'grid-outline';
+  };
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -401,40 +455,49 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.stepTitle}>Services</Text>
       <Text style={styles.stepSubtitle}>Select services you can provide</Text>
       
-      {SERVICE_CATEGORIES.map(category => (
-        <View key={category.id} style={styles.categoryCard}>
-          <View style={styles.categoryHeader}>
-            <View style={styles.categoryIconContainer}>
-              <Ionicons name={category.icon} size={18} color={THEME.accent} />
-            </View>
-            <Text style={styles.categoryName}>{category.name}</Text>
-          </View>
-          <View style={styles.servicesGrid}>
-            {category.services.map(service => (
-              <TouchableOpacity
-                key={service}
-                style={[
-                  styles.serviceChip,
-                  formData.services.includes(service) && styles.serviceChipActive,
-                ]}
-                onPress={() => toggleService(service)}
-              >
-                <Text
-                  style={[
-                    styles.serviceChipText,
-                    formData.services.includes(service) && styles.serviceChipTextActive,
-                  ]}
-                >
-                  {service}
-                </Text>
-                {formData.services.includes(service) && (
-                  <Ionicons name="checkmark" size={12} color="#FFF" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
+      {isLoadingServices ? (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={THEME.primary} />
+          <Text style={{ marginTop: 16, color: THEME.textMuted }}>Loading services...</Text>
         </View>
-      ))}
+      ) : (
+        <>
+          {dynamicServiceCategories.map(category => (
+            <View key={category.id} style={styles.categoryCard}>
+              <View style={styles.categoryHeader}>
+                <View style={styles.categoryIconContainer}>
+                  <Ionicons name={category.icon} size={18} color={THEME.accent} />
+                </View>
+                <Text style={styles.categoryName}>{category.name}</Text>
+              </View>
+              <View style={styles.servicesGrid}>
+                {category.services.map(service => (
+                  <TouchableOpacity
+                    key={service}
+                    style={[
+                      styles.serviceChip,
+                      formData.services.includes(service) && styles.serviceChipActive,
+                    ]}
+                    onPress={() => toggleService(service)}
+                  >
+                    <Text
+                      style={[
+                        styles.serviceChipText,
+                        formData.services.includes(service) && styles.serviceChipTextActive,
+                      ]}
+                    >
+                      {service}
+                    </Text>
+                    {formData.services.includes(service) && (
+                      <Ionicons name="checkmark" size={12} color="#FFF" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
+        </>
+      )}
 
       <View style={styles.selectedCount}>
         <Text style={styles.selectedCountText}>

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -66,89 +66,78 @@ const SERVICE_DETAILS = {
 export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service: initialService } = route.params;
   const [service, setService] = useState<Service>(initialService);
-  const [serviceDetails, setServiceDetails] = useState(SERVICE_DETAILS);
+  const [serviceDetails] = useState(SERVICE_DETAILS); // Static data, no API for this yet
   const [availableProviders, setAvailableProviders] = useState<ServiceProvider[]>([]);
   
-  // Note: serviceDetails is initialized with static data and can be updated with reviews from API
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false); // Prevent duplicate fetches
   
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Fetch available providers for this service
-  const fetchAvailableProviders = async () => {
+  /**
+   * Fetch available providers for this service
+   * Uses same endpoint as website: GET /api/provider/by-service?service=X
+   */
+  const fetchAvailableProviders = useCallback(async (isRefresh = false) => {
+    // Prevent duplicate fetches (React Strict Mode in dev can cause double calls)
+    if (!isRefresh && hasFetched) return;
+    
     try {
       setIsLoadingProviders(true);
+      if (!isRefresh) setIsLoading(true);
+      
+      console.log(`🔵 Fetching providers for "${service.title}"`);
+      
+      // Only call the provider endpoint - skip service details/reviews as they don't exist
       const response = await apiService.getProvidersByService(service.title);
       
       if (response.success && response.data) {
-        setAvailableProviders(response.data);
+        const mappedProviders: ServiceProvider[] = response.data.map((p: any) => ({
+          _id: p.id || p._id,
+          name: p.name,
+          email: p.email || '',
+          phone: p.phone || '',
+          experience: p.experience || 0,
+          rating: p.rating || 0,
+          totalReviews: p.totalReviews || 0,
+          services: p.services || [service.title],
+          serviceRates: p.serviceRates || [{ serviceName: service.title, price: p.price || 0 }],
+          workingHours: p.workingHours || null,
+          profileImage: p.profileImage || '',
+          status: p.status || 'active',
+          // Store the price for this specific service (from by-service endpoint)
+          priceForService: p.price,
+        }));
+        
+        setAvailableProviders(mappedProviders);
+        
         // Auto-select first provider if only one available
-        if (response.data.length === 1) {
-          setSelectedProvider(response.data[0]);
+        if (mappedProviders.length === 1) {
+          setSelectedProvider(mappedProviders[0]);
         }
-        console.log(`✅ Found ${response.data.length} providers for ${service.title}`);
+        console.log(`✅ Found ${mappedProviders.length} providers for "${service.title}"`);
+      } else {
+        setAvailableProviders([]);
       }
+      
+      setHasFetched(true);
     } catch (err: any) {
-      // Expected to fail if no providers or endpoint not available
-      console.log('ℹ️ No providers available for this service yet:', err.message || 'Unknown error');
+      // No providers available for this service
       setAvailableProviders([]);
+      setHasFetched(true);
     } finally {
       setIsLoadingProviders(false);
-    }
-  };
-
-  // Fetch service details from API
-  const fetchServiceDetails = async (showLoading = true) => {
-    try {
-      if (showLoading) setIsLoading(true);
-      setError(null);
-
-      // Fetch service details if we have a service ID
-      if (service.id) {
-        const response = await apiService.getServiceById(service.id.toString());
-        if (response.success && response.data) {
-          setService(response.data);
-        }
-
-        // Fetch reviews
-        const reviewsResponse = await apiService.getServiceReviews(service.id.toString());
-        if (reviewsResponse.success && reviewsResponse.data) {
-          setServiceDetails(prev => ({
-            ...prev,
-            reviews: reviewsResponse.data || prev.reviews,
-          }));
-        }
-      }
-
-      // Fetch available providers for this service
-      await fetchAvailableProviders();
-    } catch (err: any) {
-      const is404 = err.response?.status === 404;
-      const isNetworkError = err.isNetworkError || !err.response;
-      
-      if (isNetworkError) {
-        console.log('⚠️ No internet connection, using cached data');
-        setError('No internet connection');
-      } else if (is404) {
-        console.log('ℹ️ Service details API not available yet, using local data');
-        // Don't show error for 404 - it's expected during development
-      } else {
-        console.log('⚠️ Failed to fetch service details:', err.message);
-        setError('Failed to load details');
-      }
-      // Keep using initial data on error
-    } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [service.title, hasFetched]);
 
-  // Fade-in animation
+  // Fade-in animation and initial fetch
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -156,13 +145,13 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       useNativeDriver: true,
     }).start();
 
-    // Fetch details on mount
-    fetchServiceDetails();
-  }, []);
+    // Fetch providers on mount
+    fetchAvailableProviders(false);
+  }, [fetchAvailableProviders]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
-    fetchServiceDetails(false);
+    fetchAvailableProviders(true);
   };
 
   const handleBookNow = () => {
@@ -310,12 +299,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   <View style={styles.providerMeta}>
                     <Ionicons name="star" size={14} color={COLORS.warning} />
                     <Text style={styles.providerRating}>
-                      {availableProviders[0].rating || '4.8'} ({availableProviders[0].totalReviews || 0} reviews)
+                      {availableProviders[0].rating?.toFixed(1) || '0.0'} ({availableProviders[0].totalReviews || 0} reviews)
                     </Text>
                   </View>
                   <Text style={styles.providerExperience}>
                     {availableProviders[0].experience || 0} years experience
                   </Text>
+                  {/* Show price from API */}
+                  {(availableProviders[0] as any).priceForService && (
+                    <Text style={styles.providerPrice}>
+                      ₹{(availableProviders[0] as any).priceForService}
+                    </Text>
+                  )}
                 </View>
                 <Ionicons name="checkmark-circle" size={28} color={COLORS.success} />
               </View>
@@ -345,12 +340,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                       <View style={styles.providerMeta}>
                         <Ionicons name="star" size={14} color={COLORS.warning} />
                         <Text style={styles.providerRating}>
-                          {provider.rating || '4.8'} ({provider.totalReviews || 0} reviews)
+                          {provider.rating?.toFixed(1) || '0.0'} ({provider.totalReviews || 0} reviews)
                         </Text>
                       </View>
                       <Text style={styles.providerExperience}>
                         {provider.experience || 0} years experience
                       </Text>
+                      {/* Show price from API */}
+                      {(provider as any).priceForService && (
+                        <Text style={styles.providerPrice}>
+                          ₹{(provider as any).priceForService}
+                        </Text>
+                      )}
                     </View>
                     {selectedProvider?._id === provider._id && (
                       <Ionicons name="checkmark-circle" size={28} color={COLORS.primary} />
@@ -904,5 +905,11 @@ const styles = StyleSheet.create({
   providerExperience: {
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.textTertiary,
+  },
+  providerPrice: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '700',
+    color: COLORS.success,
+    marginTop: 4,
   },
 });

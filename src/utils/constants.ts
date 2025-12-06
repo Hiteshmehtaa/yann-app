@@ -206,12 +206,12 @@ export const SERVICE_CATEGORIES = [
   'security',
 ] as const;
 
-// Payment Methods
+// Payment Methods (using valid Ionicons names)
 export const PAYMENT_METHODS = [
-  { id: 'cash', label: 'Cash', value: 'cash', icon: '💵' },
-  { id: 'upi', label: 'UPI', value: 'upi', icon: '📱' },
-  { id: 'card', label: 'Card', value: 'card', icon: '💳' },
-  { id: 'online', label: 'Online', value: 'online', icon: '🌐' },
+  { id: 'cash', label: 'Cash', value: 'cash', icon: 'cash-outline' },
+  { id: 'upi', label: 'UPI', value: 'upi', icon: 'phone-portrait-outline' },
+  { id: 'card', label: 'Card', value: 'card', icon: 'card-outline' },
+  { id: 'online', label: 'Online', value: 'online', icon: 'globe-outline' },
 ];
 
 // Booking Status

@@ -148,4 +148,136 @@ export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
   data?: T;
+  meta?: {
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+    service?: string;
+    serviceName?: string;
+  };
+  service?: Service;
+}
+
+// Provider list item (from /api/providers and /api/provider/by-service)
+export interface ServiceProviderListItem {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  experience: number;
+  rating: number;
+  totalReviews: number;
+  price?: number; // Price for specific service (from by-service endpoint)
+  services?: string[];
+  serviceRates?: ServiceRate[];
+  workingHours?: {
+    startTime: string;
+    endTime: string;
+  } | null;
+  profileImage: string;
+  status?: string;
+}
+
+// Service count data (from /api/provider/service-counts)
+export interface ServiceCount {
+  service: string;
+  providerCount: number;
+  avgRating?: number;
+}
+
+// Provider dashboard data (from /api/provider/requests)
+export interface ProviderDashboardData {
+  success: boolean;
+  provider: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    services: string[];
+    rating: number;
+    totalReviews: number;
+  };
+  stats: {
+    pendingRequests: number;
+    acceptedBookings: number;
+    completedBookings: number;
+    totalEarnings: number;
+    monthlyEarnings: number;
+  };
+  pendingRequests: PendingRequest[];
+  acceptedBookings: AcceptedBooking[];
+}
+
+export interface PendingRequest {
+  id: string;
+  serviceName: string;
+  serviceCategory: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  bookingDate: string;
+  bookingTime: string;
+  formattedDate?: string;
+  basePrice: number;
+  extras?: Extra[];
+  totalPrice: number;
+  paymentMethod: string;
+  notes?: string;
+  createdAt: string;
+  isPujari?: boolean;
+  driverDetails?: DriverDetails | null;
+  negotiation?: Negotiation | null;
+}
+
+export interface AcceptedBooking {
+  id: string;
+  serviceName: string;
+  customerName: string;
+  customerPhone: string;
+  bookingDate: string;
+  bookingTime: string;
+  formattedDate?: string;
+  totalPrice: number;
+  status: string;
+  driverDetails?: DriverDetails | null;
+  negotiation?: Negotiation | null;
+}
+
+// Homeowner profile (from /api/homeowner/me)
+export interface HomeownerProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar: string;
+  preferences: string[];
+  savedProviders: string[];
+  addressBook: Address[];
+  createdAt?: string;
+  lastLoginAt?: string;
+}
+
+// Service request (from /api/resident/requests)
+export interface ServiceRequest {
+  id: string;
+  title: string;
+  serviceType: string;
+  description: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  scheduledFor: string | null;
+  priority: 'routine' | 'urgent';
+  locationLabel: string;
+  createdAt: string;
+  updatedAt: string;
+  bookingId: string | null;
+  negotiation?: {
+    isActive: boolean;
+    proposedAmount?: number;
+    providerId?: string;
+    providerName?: string;
+    note?: string;
+    status: string;
+    updatedAt?: string;
+  };
 }

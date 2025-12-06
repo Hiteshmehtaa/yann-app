@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,10 @@ import { ComingSoonModal } from '../../components/ComingSoonModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
+import { useFocusEffect } from '@react-navigation/native';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -29,6 +31,11 @@ type MenuItemType = {
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout } = useAuth();
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [stats, setStats] = useState({
+    bookingsCount: 0,
+    rating: 0,
+    totalSpent: 0,
+  });
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -47,6 +54,64 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const getRoleBadgeColor = () => {
     return user?.role === 'provider' ? COLORS.primary : COLORS.warning;
   };
+
+  // Fetch user stats from API
+  const fetchUserStats = useCallback(async () => {
+    try {
+      if (user?.role === 'homeowner') {
+        // Fetch homeowner bookings to calculate stats
+        const response = await apiService.getHomeownerBookings();
+        if (response.success && response.data) {
+          const bookings = response.data;
+          const totalSpent = bookings.reduce((sum: number, booking: any) => {
+            return sum + (booking.totalPrice || booking.price || 0);
+          }, 0);
+          
+          // Calculate average rating from completed bookings that have ratings
+          const ratedBookings = bookings.filter((b: any) => b.rating && b.rating > 0);
+          const avgRating = ratedBookings.length > 0 
+            ? ratedBookings.reduce((sum: number, b: any) => sum + b.rating, 0) / ratedBookings.length
+            : 0;
+
+          setStats({
+            bookingsCount: bookings.length,
+            rating: Number(avgRating.toFixed(1)),
+            totalSpent,
+          });
+        }
+      } else if (user?.role === 'provider') {
+        // Fetch provider bookings/earnings
+        const response = await apiService.getProviderBookings();
+        if (response.success && response.data) {
+          const bookings = response.data;
+          const totalEarned = bookings.reduce((sum: number, booking: any) => {
+            return sum + (booking.totalPrice || booking.price || 0);
+          }, 0);
+          
+          // Get provider's average rating
+          const ratedBookings = bookings.filter((b: any) => b.rating && b.rating > 0);
+          const avgRating = ratedBookings.length > 0 
+            ? ratedBookings.reduce((sum: number, b: any) => sum + b.rating, 0) / ratedBookings.length
+            : 0;
+
+          setStats({
+            bookingsCount: bookings.length,
+            rating: Number(avgRating.toFixed(1)),
+            totalSpent: totalEarned, // For providers, this is earnings
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  }, [user?.role]);
+
+  // Fetch stats when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserStats();
+    }, [fetchUserStats])
+  );
 
   useEffect(() => {
     Animated.parallel([
@@ -140,21 +205,25 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>{stats.bookingsCount}</Text>
             <Text style={styles.statLabel}>BOOKINGS</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <View style={styles.ratingRow}>
-              <Text style={styles.statNumber}>4.9</Text>
+              <Text style={styles.statNumber}>{stats.rating > 0 ? stats.rating : '-'}</Text>
               <Ionicons name="star" size={ICON_SIZES.small} color={COLORS.warning} />
             </View>
             <Text style={styles.statLabel}>RATING</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>₹15K</Text>
-            <Text style={styles.statLabel}>SPENT</Text>
+            <Text style={styles.statNumber}>
+              {stats.totalSpent >= 1000 
+                ? `₹${(stats.totalSpent / 1000).toFixed(1)}K` 
+                : `₹${stats.totalSpent}`}
+            </Text>
+            <Text style={styles.statLabel}>{user?.role === 'provider' ? 'EARNED' : 'SPENT'}</Text>
           </View>
         </View>
 

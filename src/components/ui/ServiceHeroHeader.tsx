@@ -176,7 +176,7 @@ export const ServiceHeroHeader: React.FC<ServiceHeroHeaderProps> = ({
             <Ionicons name="star" size={18} color={COLORS.warning} />
             <Text style={styles.ratingText}>{rating}</Text>
           </View>
-          <Text style={styles.reviewText}>({reviewCount.toLocaleString()} reviews)</Text>
+          <Text style={styles.reviewText}>({(reviewCount ?? 0).toLocaleString()} reviews)</Text>
         </View>
 
         {/* Verified Badge */}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Toast } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,19 +40,42 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
+  // Check if this is a driver service
+  const isDriverService = service.category?.toLowerCase() === 'driver';
+
   const [formData, setFormData] = useState({
     customerName: user?.name || '',
     customerPhone: user?.phone || '',
     customerAddress: '',
     bookingDate: '',
     bookingTime: '10:00',
+    endTime: '20:00', // Default 10 hours for driver services
     paymentMethod: 'cash',
     notes: '',
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  // Refs to manage focus without state updates
+  const nameInputRef = useRef<TextInput>(null);
+  const phoneInputRef = useRef<TextInput>(null);
+  const addressInputRef = useRef<TextInput>(null);
+
+  // Handle date picker change
+  const onDateChange = useCallback((event: DateTimePickerEvent, date?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios'); // Keep open on iOS, close on Android
+    if (date) {
+      setSelectedDate(date);
+      // Format as YYYY-MM-DD
+      const formatted = date.toISOString().split('T')[0];
+      setFormData(prev => ({ ...prev, bookingDate: formatted }));
+    }
+  }, []);
 
   useEffect(() => {
+    console.log('🔄 BookingFormScreen mounted - starting animation');
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -64,9 +90,46 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     ]).start();
   }, []);
 
-  const updateField = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  // Log component re-renders
+  useEffect(() => {
+    console.log('🔄 BookingFormScreen re-rendered');
+  });
+
+  // Stable update handlers to prevent re-renders stealing focus
+  const updateCustomerName = useCallback((value: string) => {
+    console.log('📝 Updating customer name:', value);
+    setFormData((prev) => ({ ...prev, customerName: value }));
+  }, []);
+
+  const updateCustomerPhone = useCallback((value: string) => {
+    console.log('📞 Updating customer phone:', value);
+    setFormData((prev) => ({ ...prev, customerPhone: value }));
+  }, []);
+
+  const updateCustomerAddress = useCallback((value: string) => {
+    console.log('📍 Updating customer address:', value);
+    setFormData((prev) => ({ ...prev, customerAddress: value }));
+  }, []);
+
+  const updateBookingTime = useCallback((value: string) => {
+    console.log('🕐 Updating booking time:', value);
+    setFormData((prev) => ({ ...prev, bookingTime: value }));
+  }, []);
+
+  const updateEndTime = useCallback((value: string) => {
+    console.log('🕐 Updating end time:', value);
+    setFormData((prev) => ({ ...prev, endTime: value }));
+  }, []);
+
+  const updatePaymentMethod = useCallback((value: string) => {
+    console.log('💳 Updating payment method:', value);
+    setFormData((prev) => ({ ...prev, paymentMethod: value }));
+  }, []);
+
+  const updateNotes = useCallback((value: string) => {
+    console.log('📝 Updating notes:', value);
+    setFormData((prev) => ({ ...prev, notes: value }));
+  }, []);
 
   const validateForm = (): boolean => {
     if (!formData.customerName.trim()) {
@@ -85,7 +148,27 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       showError('Please select a date');
       return false;
     }
+    if (!selectedProvider?._id) {
+      showError('No provider selected. Please go back and select a provider.');
+      return false;
+    }
     return true;
+  };
+
+  // Get the price for this service from the selected provider
+  const getProviderPrice = (): number => {
+    if (!selectedProvider) return 0;
+    
+    // First check if priceForService is set (from by-service endpoint)
+    if (selectedProvider.priceForService) {
+      return selectedProvider.priceForService;
+    }
+    
+    // Otherwise look in serviceRates
+    const serviceRate = selectedProvider.serviceRates?.find(
+      (rate: { serviceName?: string; price?: number }) => rate.serviceName?.toLowerCase() === service.title?.toLowerCase()
+    );
+    return serviceRate?.price || 0;
   };
 
   const handleSubmit = async () => {
@@ -93,39 +176,69 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
     setIsLoading(true);
     try {
+      // Get the provider's price for this service
+      const providerPrice = getProviderPrice();
+      
+      if (providerPrice <= 0) {
+        showError('Could not determine provider pricing. Please try again.');
+        return;
+      }
+
+      // Ensure serviceId is a number (handle both id and _id cases)
+      let serviceId = 0;
+      if (typeof service.id === 'number') {
+        serviceId = service.id;
+      } else if ((service as any)._id) {
+        serviceId = Number.parseInt((service as any)._id, 10) || 0;
+      }
+
+      // Build booking data matching website format (POST /api/bookings/create)
       const bookingData = {
-        serviceId: service.id,
+        serviceId: serviceId || 1, // Default to 1 if parsing fails
         serviceName: service.title,
         serviceCategory: service.category,
-        customerId: user?._id || null,
+        customerId: user?.id || user?._id || null,
         customerName: formData.customerName,
+        customerEmail: user?.email || '',
         customerPhone: formData.customerPhone,
         customerAddress: formData.customerAddress,
         bookingDate: formData.bookingDate,
         bookingTime: formData.bookingTime,
-        basePrice: 299,
+        // Use provider's actual price from API
+        basePrice: providerPrice,
         extras: [],
-        totalPrice: 299,
+        totalPrice: providerPrice, // Backend will recalculate with extras if any
         paymentMethod: formData.paymentMethod,
-        billingType: 'one-time',
+        billingType: 'one-time' as const,
         quantity: 1,
         notes: formData.notes,
-        providerId: selectedProvider?._id || null,
+        // Provider ID is REQUIRED by backend
+        providerId: selectedProvider?._id,
+        // Add driver details for driver services
+        driverDetails: isDriverService ? {
+          startTime: formData.bookingTime,
+          endTime: formData.endTime,
+        } : undefined,
       };
 
-      // Validate providerId is present
-      if (!bookingData.providerId) {
-        showError('Provider information is missing. Please go back and select a provider.');
-        return;
-      }
-
-      await apiService.createBooking(bookingData);
+      const bookingResponse = await apiService.createBooking(bookingData);
+      console.log('✅ Booking created successfully:', bookingResponse);
 
       showSuccess('Booking confirmed successfully!');
       setTimeout(() => {
-        navigation.navigate('BookingsList');
+        // Navigate to BookingsList tab with a reset to force refresh
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MainTabs',
+              params: { screen: 'BookingsList' },
+            },
+          ],
+        });
       }, 1500);
     } catch (error: any) {
+      console.error('❌ Booking failed:', error.response?.data || error.message);
       showError(
         error.response?.data?.message || 'Failed to create booking. Please try again.'
       );
@@ -147,12 +260,20 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-        alwaysBounceVertical={true}
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          nestedScrollEnabled={true}
+        >
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           {/* Service Summary Card */}
           <View style={styles.summaryCard}>
@@ -166,11 +287,19 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Ionicons name="sparkles" size={ICON_SIZES.xlarge} color={COLORS.white} />
               </View>
               <Text style={styles.summaryTitle}>{service.title}</Text>
+              {selectedProvider && (
+                <Text style={styles.summaryProvider}>with {selectedProvider.name}</Text>
+              )}
               <View style={styles.summaryRating}>
                 <Ionicons name="star" size={14} color={COLORS.warning} />
-                <Text style={styles.summaryRatingText}>4.8</Text>
+                <Text style={styles.summaryRatingText}>
+                  {selectedProvider?.rating?.toFixed(1) || '4.8'}
+                </Text>
               </View>
-              <Text style={styles.summaryPrice}>{service.price}</Text>
+              {/* Show provider's actual price */}
+              <Text style={styles.summaryPrice}>
+                {getProviderPrice() > 0 ? `₹${getProviderPrice()}` : service.price}
+              </Text>
             </LinearGradient>
           </View>
 
@@ -184,34 +313,51 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <Input
+              ref={nameInputRef}
               label="Full Name"
               leftIcon="person-outline"
               value={formData.customerName}
-              onChangeText={(value) => updateField('customerName', value)}
+              onChangeText={updateCustomerName}
               placeholder="Enter your name"
+              returnKeyType="next"
+              onSubmitEditing={() => phoneInputRef.current?.focus()}
+              blurOnSubmit={false}
+              onFocus={() => console.log('📝 Full Name field focused')}
             />
 
             <Input
+              ref={phoneInputRef}
               label="Phone Number"
               leftIcon="call-outline"
               value={formData.customerPhone}
-              onChangeText={(value) => updateField('customerPhone', value)}
+              onChangeText={updateCustomerPhone}
               placeholder="10-digit mobile number"
               keyboardType="phone-pad"
               maxLength={10}
+              returnKeyType="next"
+              onSubmitEditing={() => addressInputRef.current?.focus()}
+              blurOnSubmit={false}
+              autoComplete="tel"
+              autoCapitalize="none"
+              autoCorrect={false}
+              onFocus={() => console.log('📞 Phone Number field focused')}
             />
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Service Address</Text>
               <TextInput
+                ref={addressInputRef}
                 style={styles.textArea}
                 placeholder="Enter complete address with landmark"
                 placeholderTextColor={COLORS.textTertiary}
                 multiline
                 numberOfLines={4}
                 value={formData.customerAddress}
-                onChangeText={(value) => updateField('customerAddress', value)}
+                onChangeText={updateCustomerAddress}
                 textAlignVertical="top"
+                returnKeyType="done"
+                blurOnSubmit={true}
+                onFocus={() => console.log('📍 Service Address field focused')}
               />
             </View>
           </View>
@@ -228,26 +374,68 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.row}>
               <View style={styles.halfInput}>
                 <Text style={styles.inputLabel}>Date</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={COLORS.textTertiary}
-                  value={formData.bookingDate}
-                  onChangeText={(value) => updateField('bookingDate', value)}
-                />
+                <TouchableOpacity 
+                  style={styles.datePickerButton}
+                  onPress={() => {
+                    console.log('📅 Date picker opened');
+                    setShowDatePicker(true);
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                  <Text style={[
+                    styles.datePickerText,
+                    !formData.bookingDate && styles.datePickerPlaceholder
+                  ]}>
+                    {formData.bookingDate || 'Select Date'}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.halfInput}>
-                <Text style={styles.inputLabel}>Time</Text>
+                <Text style={styles.inputLabel}>{isDriverService ? 'Start Time' : 'Time'}</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="10:00"
                   placeholderTextColor={COLORS.textTertiary}
                   value={formData.bookingTime}
-                  onChangeText={(value) => updateField('bookingTime', value)}
+                  onChangeText={updateBookingTime}
+                  onFocus={() => console.log('🕐 Booking Time field focused')}
                 />
               </View>
             </View>
+
+            {/* Date Picker Modal */}
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+                minimumDate={new Date()}
+              />
+            )}
+
+            {/* End Time for Driver Services */}
+            {isDriverService && (
+              <View style={[styles.row, { marginTop: SPACING.sm }]}>
+                <View style={styles.halfInput}>
+                  <Text style={styles.inputLabel}>End Time</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="20:00"
+                    placeholderTextColor={COLORS.textTertiary}
+                    value={formData.endTime}
+                    onChangeText={updateEndTime}
+                    onFocus={() => console.log('🕐 End Time field focused')}
+                  />
+                </View>
+                <View style={styles.halfInput}>
+                  <Text style={styles.driverHint}>
+                    Base: 10 hrs, overtime extra
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Payment Method */}
@@ -267,7 +455,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                     styles.paymentOption,
                     formData.paymentMethod === method.id && styles.paymentOptionActive,
                   ]}
-                  onPress={() => updateField('paymentMethod', method.id)}
+                  onPress={() => updatePaymentMethod(method.id)}
                 >
                   <Ionicons
                     name={method.icon as keyof typeof Ionicons.glyphMap}
@@ -303,8 +491,9 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               multiline
               numberOfLines={4}
               value={formData.notes}
-              onChangeText={(value) => updateField('notes', value)}
+              onChangeText={updateNotes}
               textAlignVertical="top"
+              onFocus={() => console.log('📝 Additional Notes field focused')}
             />
           </View>
 
@@ -312,12 +501,16 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.priceCard}>
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Service Fee</Text>
-              <Text style={styles.priceValue}>{service.price}</Text>
+              <Text style={styles.priceValue}>
+                {getProviderPrice() > 0 ? `₹${getProviderPrice()}` : 'Calculating...'}
+              </Text>
             </View>
             <View style={styles.priceDivider} />
             <View style={styles.priceRow}>
               <Text style={styles.priceTotalLabel}>Total Amount</Text>
-              <Text style={styles.priceTotalValue}>{service.price}</Text>
+              <Text style={styles.priceTotalValue}>
+                {getProviderPrice() > 0 ? `₹${getProviderPrice()}` : 'Calculating...'}
+              </Text>
             </View>
           </View>
 
@@ -331,6 +524,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </Animated.View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <LoadingSpinner visible={isLoading} />
       
@@ -405,6 +599,13 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xxl,
     fontWeight: '800',
     color: COLORS.white,
+    textAlign: 'center',
+    marginBottom: SPACING.xs,
+  },
+  summaryProvider: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     marginBottom: SPACING.xs,
   },
@@ -553,5 +754,29 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginBottom: SPACING.xl,
+  },
+  driverHint: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.lg,
+    fontStyle: 'italic',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    gap: SPACING.sm,
+  },
+  datePickerText: {
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.text,
+  },
+  datePickerPlaceholder: {
+    color: COLORS.textTertiary,
   },
 });

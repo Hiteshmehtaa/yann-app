@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { apiService } from '../../services/api';
 import { STATUS_COLORS } from '../../utils/constants';
 import type { Booking } from '../../types';
@@ -27,24 +28,50 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  /**
+   * Fetch bookings from backend (like website - GET /api/bookings)
+   * This returns all bookings for the authenticated homeowner
+   */
   const fetchBookings = async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
     try {
+      console.log('🔵 BookingsList: Fetching bookings (like website)');
       const response = await apiService.getMyBookings();
+      
+      console.log('📦 BookingsList: Raw API response:', JSON.stringify(response, null, 2));
+      
       if (response.success && response.data) {
-        setBookings(response.data);
+        // Map response to ensure consistent format
+        const mappedBookings = response.data.map((booking: any) => ({
+          ...booking,
+          _id: booking._id || booking.id,
+          id: booking.id || booking._id,
+        }));
+        setBookings(mappedBookings);
+        console.log(`✅ BookingsList: Loaded ${mappedBookings.length} bookings`);
+        if (mappedBookings.length > 0) {
+          console.log('📋 Sample booking:', JSON.stringify(mappedBookings[0], null, 2));
+        }
+      } else {
+        console.warn('⚠️ BookingsList: Response not successful or no data');
+        setBookings([]);
       }
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
+    } catch (error: any) {
+      console.error('❌ BookingsList: Error fetching bookings:', error);
+      console.error('❌ Error details:', error.response?.data || error.message);
+      setBookings([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  // Refresh bookings whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchBookings();
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -68,6 +95,9 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
       ? format(new Date(item.bookingDate), 'MMM dd, yyyy')
       : 'N/A';
 
+    // Get provider name from booking data
+    const providerName = (item as any).provider?.name || (item as any).providerName || 'Service Provider';
+
     return (
       <TouchableOpacity
         style={styles.card}
@@ -87,6 +117,12 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.cardBody}>
+          {/* Provider Info */}
+          <View style={styles.providerRow}>
+            <Ionicons name="person-outline" size={ICON_SIZES.medium} color={COLORS.primary} />
+            <Text style={styles.providerName}>{providerName}</Text>
+          </View>
+
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Ionicons name="calendar-outline" size={ICON_SIZES.medium} color={COLORS.textSecondary} />
@@ -115,6 +151,9 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.emptyTitle}>No bookings yet</Text>
       <Text style={styles.emptyText}>
         Your bookings will appear here once you book a service
+      </Text>
+      <Text style={styles.debugText}>
+        Pull down to refresh or check console logs for details
       </Text>
       <TouchableOpacity
         style={styles.browseButton}
@@ -244,6 +283,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   cardBody: {},
+  providerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  providerName: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
   infoRow: {
     flexDirection: 'row',
     gap: SPACING.lg,
@@ -307,8 +360,15 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.md,
     lineHeight: 22,
+  },
+  debugText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textTertiary,
+    textAlign: 'center',
+    marginBottom: SPACING.xxl,
+    fontStyle: 'italic',
   },
   browseButton: {
     flexDirection: 'row',
