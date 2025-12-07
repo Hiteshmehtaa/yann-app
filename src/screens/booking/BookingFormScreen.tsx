@@ -19,29 +19,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
+import { FormSection } from '../../components/ui/FormSection';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { PAYMENT_METHODS } from '../../utils/constants';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import type { Service } from '../../types';
+import type { Service, Address } from '../../types';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
-  route: RouteProp<{ params: { service: Service; selectedProvider?: any } }, 'params'>;
+  route: RouteProp<{ params: { service: Service; selectedProvider?: any; selectedAddress?: Address } }, 'params'>;
 };
 
 export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { service, selectedProvider } = route.params;
+  const { service, selectedProvider } = route.params || {};
   const { user } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
   // Check if this is a driver service
-  const isDriverService = service.category?.toLowerCase() === 'driver';
+  const isDriverService = service?.category?.toLowerCase() === 'driver';
 
   const [formData, setFormData] = useState({
     customerName: user?.name || '',
@@ -57,11 +57,28 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  
-  // Refs to manage focus without state updates
-  const nameInputRef = useRef<TextInput>(null);
-  const phoneInputRef = useRef<TextInput>(null);
-  const addressInputRef = useRef<TextInput>(null);
+  const [latitude, setLatitude] = useState<number | undefined>();
+  const [longitude, setLongitude] = useState<number | undefined>();
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+
+  // Handle address selection from saved addresses
+  const handleSelectSavedAddress = useCallback((address: Address) => {
+    setSelectedAddress(address);
+    setFormData(prev => ({
+      ...prev,
+      customerName: address.name || prev.customerName,
+      customerPhone: address.phone || prev.customerPhone,
+      customerAddress: address.fullAddress || `${address.street}, ${address.city}`,
+    }));
+    if (address.latitude && address.longitude) {
+      setLatitude(address.latitude);
+      setLongitude(address.longitude);
+    }
+    setFormErrors(prev => ({ ...prev, selectedAddress: '' }));
+  }, []);
+
+
 
   // Handle date picker change
   const onDateChange = useCallback((event: DateTimePickerEvent, date?: Date) => {
@@ -71,8 +88,22 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       // Format as YYYY-MM-DD
       const formatted = date.toISOString().split('T')[0];
       setFormData(prev => ({ ...prev, bookingDate: formatted }));
+      setFormErrors(prev => ({ ...prev, bookingDate: '' }));
     }
   }, []);
+
+  // Listen for selected address from SavedAddressesScreen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const selectedAddress = route.params?.selectedAddress;
+      if (selectedAddress) {
+        handleSelectSavedAddress(selectedAddress);
+        // Clear the param to avoid re-applying on next focus
+        navigation.setParams({ selectedAddress: undefined } as any);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params]);
 
   useEffect(() => {
     console.log('🔄 BookingFormScreen mounted - starting animation');
@@ -96,21 +127,6 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   // Stable update handlers to prevent re-renders stealing focus
-  const updateCustomerName = useCallback((value: string) => {
-    console.log('📝 Updating customer name:', value);
-    setFormData((prev) => ({ ...prev, customerName: value }));
-  }, []);
-
-  const updateCustomerPhone = useCallback((value: string) => {
-    console.log('📞 Updating customer phone:', value);
-    setFormData((prev) => ({ ...prev, customerPhone: value }));
-  }, []);
-
-  const updateCustomerAddress = useCallback((value: string) => {
-    console.log('📍 Updating customer address:', value);
-    setFormData((prev) => ({ ...prev, customerAddress: value }));
-  }, []);
-
   const updateBookingTime = useCallback((value: string) => {
     console.log('🕐 Updating booking time:', value);
     setFormData((prev) => ({ ...prev, bookingTime: value }));
@@ -132,26 +148,29 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   }, []);
 
   const validateForm = (): boolean => {
-    if (!formData.customerName.trim()) {
-      showError('Please enter your name');
+    const errors: Record<string, string> = {};
+    
+    if (!selectedAddress) {
+      errors.selectedAddress = 'Please select a saved address';
+      showError('Please select a saved address before booking');
       return false;
     }
-    if (!formData.customerPhone.trim() || formData.customerPhone.length !== 10) {
-      showError('Please enter a valid 10-digit phone number');
-      return false;
-    }
-    if (!formData.customerAddress.trim()) {
-      showError('Please enter your address');
-      return false;
-    }
+    
     if (!formData.bookingDate) {
-      showError('Please select a date');
-      return false;
+      errors.bookingDate = 'Booking date is required';
     }
     if (!selectedProvider?._id) {
       showError('No provider selected. Please go back and select a provider.');
       return false;
     }
+    
+    setFormErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      showError('Please fill in all required fields');
+      return false;
+    }
+    
     return true;
   };
 
@@ -202,6 +221,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         customerEmail: user?.email || '',
         customerPhone: formData.customerPhone,
         customerAddress: formData.customerAddress,
+        latitude,
+        longitude,
         bookingDate: formData.bookingDate,
         bookingTime: formData.bookingTime,
         // Use provider's actual price from API
@@ -247,6 +268,19 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
+  // Safety check: if no service, show loading state
+  if (!service) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <View style={styles.loadingContainer}>
+          <LoadingSpinner visible={true} />
+          <Text style={styles.loadingText}>Loading service details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
@@ -286,7 +320,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.summaryIcon}>
                 <Ionicons name="sparkles" size={ICON_SIZES.xlarge} color={COLORS.white} />
               </View>
-              <Text style={styles.summaryTitle}>{service.title}</Text>
+              <Text style={styles.summaryTitle}>{service?.title || 'Service'}</Text>
               {selectedProvider && (
                 <Text style={styles.summaryProvider}>with {selectedProvider.name}</Text>
               )}
@@ -298,69 +332,57 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
               {/* Show provider's actual price */}
               <Text style={styles.summaryPrice}>
-                {getProviderPrice() > 0 ? `₹${getProviderPrice()}` : service.price}
+                {getProviderPrice() > 0 ? `₹${getProviderPrice()}` : service?.price || 'N/A'}
               </Text>
             </LinearGradient>
           </View>
 
-          {/* Contact Information */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconContainer}>
-                <Ionicons name="person" size={ICON_SIZES.medium} color={COLORS.success} />
-              </View>
-              <Text style={styles.sectionTitle}>Contact Information</Text>
+          {/* Contact Information & Address */}
+          <FormSection title="Contact & Address" subtitle="Select from your saved addresses">
+            <View style={styles.section}>
+              {selectedAddress ? (
+                <View style={styles.selectedAddressCard}>
+                  <View style={styles.selectedAddressHeader}>
+                    <View>
+                      <Text style={styles.selectedAddressLabel}>{selectedAddress.label}</Text>
+                      <Text style={styles.selectedAddressName}>{selectedAddress.name}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.changeAddressButton}
+                      onPress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
+                    >
+                      <Text style={styles.changeAddressText}>Change</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.selectedAddressDetails}>
+                    <View style={styles.addressDetailRow}>
+                      <Ionicons name="call" size={16} color={COLORS.textSecondary} />
+                      <Text style={styles.addressDetailText}>{selectedAddress.phone}</Text>
+                    </View>
+                    <View style={styles.addressDetailRow}>
+                      <Ionicons name="location" size={16} color={COLORS.textSecondary} />
+                      <Text style={styles.addressDetailText}>{selectedAddress.fullAddress}</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.selectAddressButton}
+                  onPress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
+                >
+                  <Ionicons name="bookmark-outline" size={24} color={COLORS.primary} />
+                  <View style={styles.selectAddressContent}>
+                    <Text style={styles.selectAddressTitle}>Select Saved Address</Text>
+                    <Text style={styles.selectAddressSubtitle}>Choose from your saved addresses</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={24} color={COLORS.textTertiary} />
+                </TouchableOpacity>
+              )}
+              {!!formErrors.selectedAddress && (
+                <Text style={styles.errorText}>{formErrors.selectedAddress}</Text>
+              )}
             </View>
-
-            <Input
-              ref={nameInputRef}
-              label="Full Name"
-              leftIcon="person-outline"
-              value={formData.customerName}
-              onChangeText={updateCustomerName}
-              placeholder="Enter your name"
-              returnKeyType="next"
-              onSubmitEditing={() => phoneInputRef.current?.focus()}
-              blurOnSubmit={false}
-              onFocus={() => console.log('📝 Full Name field focused')}
-            />
-
-            <Input
-              ref={phoneInputRef}
-              label="Phone Number"
-              leftIcon="call-outline"
-              value={formData.customerPhone}
-              onChangeText={updateCustomerPhone}
-              placeholder="10-digit mobile number"
-              keyboardType="phone-pad"
-              maxLength={10}
-              returnKeyType="next"
-              onSubmitEditing={() => addressInputRef.current?.focus()}
-              blurOnSubmit={false}
-              autoComplete="tel"
-              autoCapitalize="none"
-              autoCorrect={false}
-              onFocus={() => console.log('📞 Phone Number field focused')}
-            />
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Service Address</Text>
-              <TextInput
-                ref={addressInputRef}
-                style={styles.textArea}
-                placeholder="Enter complete address with landmark"
-                placeholderTextColor={COLORS.textTertiary}
-                multiline
-                numberOfLines={4}
-                value={formData.customerAddress}
-                onChangeText={updateCustomerAddress}
-                textAlignVertical="top"
-                returnKeyType="done"
-                blurOnSubmit={true}
-                onFocus={() => console.log('📍 Service Address field focused')}
-              />
-            </View>
-          </View>
+          </FormSection>
 
           {/* Schedule */}
           <View style={styles.section}>
@@ -576,6 +598,17 @@ const styles = StyleSheet.create({
   content: {
     padding: SPACING.lg,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.textSecondary,
+  },
   summaryCard: {
     borderRadius: RADIUS.large,
     overflow: 'hidden',
@@ -778,5 +811,105 @@ const styles = StyleSheet.create({
   },
   datePickerPlaceholder: {
     color: COLORS.textTertiary,
+  },
+  addSavedDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.cardBg,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.medium,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
+  },
+  addSavedDetailsText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginLeft: SPACING.sm,
+  },
+  selectAddressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.cardBg,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.large,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    gap: SPACING.md,
+    ...SHADOWS.sm,
+  },
+  selectAddressContent: {
+    flex: 1,
+  },
+  selectAddressTitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  selectAddressSubtitle: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+  },
+  selectedAddressCard: {
+    backgroundColor: COLORS.cardBg,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.large,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    ...SHADOWS.md,
+  },
+  selectedAddressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  selectedAddressLabel: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.primary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  selectedAddressName: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  changeAddressButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.medium,
+    backgroundColor: `${COLORS.primary}15`,
+  },
+  changeAddressText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  selectedAddressDetails: {
+    gap: SPACING.sm,
+  },
+  addressDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  addressDetailText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  errorText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.error,
+    marginTop: SPACING.xs,
   },
 });

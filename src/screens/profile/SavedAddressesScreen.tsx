@@ -7,34 +7,46 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
-  TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { AddressPicker } from '../../components/ui/AddressPicker';
+import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { Address } from '../../types';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<{ params: { fromBooking?: boolean } }, 'params'>;
 };
 
-interface Address {
-  id: string;
-  label: string;
-  address: string;
-  isDefault: boolean;
-}
-
-export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
-  const { user } = useAuth();
+export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { fromBooking } = route.params || {};
+  const { user, updateUser } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newAddress, setNewAddress] = useState({ label: '', address: '' });
+  const [newAddress, setNewAddress] = useState({
+    label: 'Home' as 'Home' | 'Work' | 'Other',
+    name: '',
+    phone: '',
+    apartment: '',
+    building: '',
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+  });
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -46,43 +58,158 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
     loadAddresses();
   }, []);
 
-  const loadAddresses = () => {
-    // Load from user's addressBook or use defaults
-    const userAddresses = user?.addressBook || [];
-    if (userAddresses.length > 0) {
-      setAddresses(userAddresses.map((addr: any, index: number) => ({
-        id: addr.id || `addr-${index}`,
-        label: addr.label || 'Home',
-        address: addr.address || addr,
-        isDefault: index === 0,
-      })));
-    } else {
-      // Demo addresses
-      setAddresses([
-        { id: '1', label: 'Home', address: '123 Main Street, Apartment 4B, City, State 12345', isDefault: true },
-        { id: '2', label: 'Office', address: '456 Business Park, Tower A, City, State 67890', isDefault: false },
-      ]);
+  // Reload addresses when screen focuses
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadAddresses();
+    });
+    return unsubscribe;
+  }, [navigation, user]);
+
+  const loadAddresses = async () => {
+    try {
+      // Fetch addresses from database API
+      const response = await apiService.getSavedAddresses();
+      
+      if (response.success && response.data) {
+        const fetchedAddresses = response.data.map((addr: any, index: number) => ({
+          id: addr._id || addr.id || `addr-${index}`,
+          _id: addr._id || addr.id,
+          label: addr.label || 'Home',
+          name: addr.name || '',
+          phone: addr.phone || '',
+          apartment: addr.apartment || '',
+          building: addr.building || '',
+          street: addr.street || '',
+          city: addr.city || '',
+          state: addr.state || '',
+          postalCode: addr.postalCode || '',
+          fullAddress: addr.fullAddress || `${addr.street}, ${addr.city}`,
+          latitude: addr.latitude,
+          longitude: addr.longitude,
+          isPrimary: addr.isPrimary || index === 0,
+        }));
+        setAddresses(fetchedAddresses);
+        
+        // Also update local user context for offline access
+        updateUser({ addressBook: fetchedAddresses });
+      } else {
+        // Fallback to local storage if API fails
+        const userAddresses = user?.addressBook || [];
+        setAddresses(userAddresses);
+      }
+    } catch (error) {
+      console.error('Error loading addresses:', error);
+      // Fallback to local storage on error
+      const userAddresses = user?.addressBook || [];
+      if (userAddresses.length > 0) {
+        setAddresses(userAddresses.map((addr: any, index: number) => ({
+          id: addr._id || addr.id || `addr-${index}`,
+          _id: addr._id || addr.id,
+          label: addr.label || 'Home',
+          name: addr.name || '',
+          phone: addr.phone || '',
+          apartment: addr.apartment || '',
+          building: addr.building || '',
+          street: addr.street || '',
+          city: addr.city || '',
+          state: addr.state || '',
+          postalCode: addr.postalCode || '',
+          fullAddress: addr.fullAddress || `${addr.street}, ${addr.city}`,
+          latitude: addr.latitude,
+          longitude: addr.longitude,
+          isPrimary: addr.isPrimary || index === 0,
+        })));
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
-  const handleAddAddress = () => {
-    if (!newAddress.label.trim() || !newAddress.address.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+  const handleLocationSelect = (location: { latitude: number; longitude: number; formattedAddress: string }) => {
+    setSelectedCoordinates({ latitude: location.latitude, longitude: location.longitude });
+    // Try to parse the formatted address into components
+    const parts = location.formattedAddress.split(',').map(p => p.trim());
+    setNewAddress(prev => ({
+      ...prev,
+      street: parts[0] || '',
+      city: parts.length > 1 ? parts[parts.length - 2] : '',
+      state: parts.length > 0 ? parts[parts.length - 1] : '',
+    }));
+    setShowMapPicker(false);
+  };
+
+  const handleAddAddress = async () => {
+    if (!newAddress.name.trim() || !newAddress.phone.trim() || !newAddress.street.trim()) {
+      Alert.alert('Error', 'Please fill in name, phone, and address details');
       return;
     }
 
-    const newAddr: Address = {
-      id: `addr-${Date.now()}`,
+    if (newAddress.phone.length !== 10) {
+      Alert.alert('Error', 'Phone number must be 10 digits');
+      return;
+    }
+
+    // Build full address string
+    const addressParts = [
+      newAddress.apartment,
+      newAddress.building,
+      newAddress.street,
+      newAddress.city,
+      newAddress.state,
+      newAddress.postalCode,
+    ].filter(Boolean);
+
+    const addressPayload = {
       label: newAddress.label,
-      address: newAddress.address,
-      isDefault: addresses.length === 0,
+      name: newAddress.name,
+      phone: newAddress.phone,
+      apartment: newAddress.apartment,
+      building: newAddress.building,
+      street: newAddress.street,
+      city: newAddress.city,
+      state: newAddress.state,
+      postalCode: newAddress.postalCode,
+      fullAddress: addressParts.join(', '),
+      latitude: selectedCoordinates?.latitude,
+      longitude: selectedCoordinates?.longitude,
+      isPrimary: addresses.length === 0,
     };
 
-    setAddresses(prev => [...prev, newAddr]);
-    setNewAddress({ label: '', address: '' });
-    setShowAddForm(false);
-    Alert.alert('Success', 'Address added successfully');
+    try {
+      // Save to backend database
+      const response = await apiService.addAddress(addressPayload);
+      
+      if (response.success && response.data) {
+        const savedAddress = response.data;
+        const updatedAddresses = [...addresses, savedAddress];
+        setAddresses(updatedAddresses);
+        
+        // Also update local user context
+        updateUser({ addressBook: updatedAddresses });
+        
+        setNewAddress({
+          label: 'Home' as 'Home' | 'Work' | 'Other',
+          name: '',
+          phone: '',
+          apartment: '',
+          building: '',
+          street: '',
+          city: '',
+          state: '',
+          postalCode: '',
+        });
+        setSelectedCoordinates(null);
+        setShowAddForm(false);
+        Alert.alert('Success', 'Address saved to database successfully');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to save address');
+      }
+    } catch (error: any) {
+      console.error('Error saving address:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to save address. Please try again.';
+      Alert.alert('Error', errorMessage);
+    }
   };
 
   const handleDeleteAddress = (id: string) => {
@@ -94,8 +221,27 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setAddresses(prev => prev.filter(addr => addr.id !== id));
+          onPress: async () => {
+            try {
+              // Call DELETE API
+              const response = await apiService.deleteAddress(id);
+              
+              if (response.success) {
+                const updatedAddresses = addresses.filter(addr => addr.id !== id && addr._id !== id);
+                setAddresses(updatedAddresses);
+                
+                // Update local user context
+                updateUser({ addressBook: updatedAddresses });
+                
+                Alert.alert('Success', 'Address deleted successfully');
+              } else {
+                Alert.alert('Error', response.message || 'Failed to delete address');
+              }
+            } catch (error: any) {
+              console.error('Error deleting address:', error);
+              const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete address. Please try again.';
+              Alert.alert('Error', errorMessage);
+            }
           },
         },
       ]
@@ -103,12 +249,14 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSetDefault = (id: string) => {
-    setAddresses(prev =>
-      prev.map(addr => ({
-        ...addr,
-        isDefault: addr.id === id,
-      }))
-    );
+    const updatedAddresses = addresses.map(addr => ({
+      ...addr,
+      isPrimary: addr.id === id,
+    }));
+    setAddresses(updatedAddresses);
+    
+    // Persist to user context
+    updateUser({ addressBook: updatedAddresses });
   };
 
   if (isLoading) {
@@ -130,7 +278,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Saved Addresses</Text>
+        <Text style={styles.headerTitle}>{fromBooking ? 'Select Address' : 'Saved Addresses'}</Text>
         <TouchableOpacity style={styles.addButton} onPress={() => setShowAddForm(true)}>
           <Ionicons name="add" size={24} color={COLORS.primary} />
         </TouchableOpacity>
@@ -141,31 +289,136 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
+          {/* Info message when selecting for booking */}
+          {fromBooking && addresses.length > 0 && (
+            <View style={styles.selectionHint}>
+              <Ionicons name="information-circle" size={20} color={COLORS.primary} />
+              <Text style={styles.selectionHintText}>Tap an address to select it for booking</Text>
+            </View>
+          )}
+
           {/* Add New Form */}
           {showAddForm && (
             <View style={styles.addForm}>
               <Text style={styles.formTitle}>Add New Address</Text>
+              
+              {/* Contact Details Section */}
+              <Text style={styles.sectionLabel}>Contact Details</Text>
               <TextInput
                 style={styles.input}
-                value={newAddress.label}
-                onChangeText={(value) => setNewAddress(prev => ({ ...prev, label: value }))}
-                placeholder="Label (e.g., Home, Office)"
+                value={newAddress.name}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, name: value }))}
+                placeholder="Contact Name *"
                 placeholderTextColor={COLORS.textTertiary}
               />
               <TextInput
-                style={[styles.input, styles.textArea]}
-                value={newAddress.address}
-                onChangeText={(value) => setNewAddress(prev => ({ ...prev, address: value }))}
-                placeholder="Full address with landmark"
+                style={styles.input}
+                value={newAddress.phone}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, phone: value.replace(/[^0-9]/g, '') }))}
+                placeholder="Phone Number (10 digits) *"
                 placeholderTextColor={COLORS.textTertiary}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
+                keyboardType="phone-pad"
+                maxLength={10}
               />
+              
+              {/* Address Label */}
+              <Text style={styles.sectionLabel}>Address Type</Text>
+              <View style={styles.labelSelector}>
+                {['Home', 'Work', 'Other'].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.labelOption,
+                      newAddress.label === type && styles.labelOptionActive,
+                    ]}
+                    onPress={() => setNewAddress(prev => ({ ...prev, label: type as 'Home' | 'Work' | 'Other' }))}
+                  >
+                    <Text style={[
+                      styles.labelOptionText,
+                      newAddress.label === type && styles.labelOptionTextActive,
+                    ]}>
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
+              {/* Location Section */}
+              <Text style={styles.sectionLabel}>Location</Text>
+              <TouchableOpacity 
+                style={styles.mapPickerButton}
+                onPress={() => setShowMapPicker(true)}
+              >
+                <Ionicons name="location" size={20} color={COLORS.primary} />
+                <Text style={styles.mapPickerButtonText}>Pick Location on Map (Optional)</Text>
+              </TouchableOpacity>
+
+              {/* Show coordinates if selected */}
+              {selectedCoordinates && (
+                <View style={styles.coordinatesDisplay}>
+                  <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
+                  <Text style={styles.coordinatesText}>
+                    GPS: {selectedCoordinates.latitude.toFixed(6)}, {selectedCoordinates.longitude.toFixed(6)}
+                  </Text>
+                </View>
+              )}
+              
+              {/* Address Details Section */}
+              <Text style={styles.sectionLabel}>Address Details</Text>
+              <TextInput
+                style={styles.input}
+                value={newAddress.apartment}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, apartment: value }))}
+                placeholder="Apartment / Flat / Unit Number"
+                placeholderTextColor={COLORS.textTertiary}
+              />
+              <TextInput
+                style={styles.input}
+                value={newAddress.building}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, building: value }))}
+                placeholder="Building / Society Name"
+                placeholderTextColor={COLORS.textTertiary}
+              />
+              <TextInput
+                style={styles.input}
+                value={newAddress.street}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, street: value }))}
+                placeholder="Street Address *"
+                placeholderTextColor={COLORS.textTertiary}
+              />
+              <View style={styles.rowInputs}>
+                <TextInput
+                  style={[styles.input, styles.halfInput]}
+                  value={newAddress.city}
+                  onChangeText={(value) => setNewAddress(prev => ({ ...prev, city: value }))}
+                  placeholder="City"
+                  placeholderTextColor={COLORS.textTertiary}
+                />
+                <TextInput
+                  style={[styles.input, styles.halfInput]}
+                  value={newAddress.state}
+                  onChangeText={(value) => setNewAddress(prev => ({ ...prev, state: value }))}
+                  placeholder="State"
+                  placeholderTextColor={COLORS.textTertiary}
+                />
+              </View>
+              <TextInput
+                style={styles.input}
+                value={newAddress.postalCode}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, postalCode: value.replace(/[^0-9]/g, '') }))}
+                placeholder="Postal Code"
+                placeholderTextColor={COLORS.textTertiary}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+              
               <View style={styles.formActions}>
                 <TouchableOpacity 
                   style={styles.cancelButton} 
-                  onPress={() => setShowAddForm(false)}
+                  onPress={() => {
+                    setShowAddForm(false);
+                    setSelectedCoordinates(null);
+                  }}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
@@ -173,7 +426,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
                   style={styles.saveFormButton} 
                   onPress={handleAddAddress}
                 >
-                  <Text style={styles.saveFormButtonText}>Save</Text>
+                  <Text style={styles.saveFormButtonText}>Save Address</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -183,38 +436,65 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
           {addresses.length > 0 ? (
             <View style={styles.addressList}>
               {addresses.map((addr, index) => (
-                <View 
-                  key={addr.id} 
+                <TouchableOpacity
+                  key={addr.id}
                   style={[
                     styles.addressCard,
                     index === addresses.length - 1 && styles.addressCardLast
                   ]}
+                  onPress={() => {
+                    if (fromBooking) {
+                      // Set params on the previous screen before going back
+                      const routes = navigation.getState().routes;
+                      const currentIndex = navigation.getState().index;
+                      
+                      if (currentIndex > 0) {
+                        const previousRoute = routes[currentIndex - 1];
+                        // Set params on the previous screen before going back
+                        navigation.navigate({
+                          name: previousRoute.name,
+                          params: { 
+                            ...previousRoute.params,
+                            selectedAddress: addr 
+                          },
+                          merge: true,
+                        } as any);
+                      } else {
+                        // Fallback: just go back with the address
+                        navigation.goBack();
+                      }
+                    }
+                  }}
+                  disabled={!fromBooking}
+                  activeOpacity={fromBooking ? 0.7 : 1}
                 >
                   <View style={styles.addressMain}>
                     <View style={styles.addressHeader}>
                       <View style={styles.labelContainer}>
                         <Ionicons 
-                          name={addr.label === 'Home' ? 'home-outline' : 'business-outline'} 
+                          name={addr.label === 'Home' ? 'home-outline' : addr.label === 'Work' ? 'business-outline' : 'location-outline'} 
                           size={18} 
                           color={COLORS.primary} 
                         />
                         <Text style={styles.addressLabel}>{addr.label}</Text>
-                        {addr.isDefault && (
+                        {addr.isPrimary && (
                           <View style={styles.defaultBadge}>
-                            <Text style={styles.defaultText}>DEFAULT</Text>
+                            <Text style={styles.defaultText}>PRIMARY</Text>
                           </View>
                         )}
                       </View>
                     </View>
-                    <Text style={styles.addressText}>{addr.address}</Text>
+                    <Text style={styles.addressName}>{addr.name}</Text>
+                    <Text style={styles.addressPhone}>📞 {addr.phone}</Text>
+                    <Text style={styles.addressText}>{addr.fullAddress}</Text>
                   </View>
                   <View style={styles.addressActions}>
-                    {!addr.isDefault && (
+                    {!addr.isPrimary && (
                       <TouchableOpacity 
                         style={styles.actionButton}
-                        onPress={() => handleSetDefault(addr.id)}
+                        onPress={() => handleSetDefault(addr.id || '')}
                       >
-                        <Text style={styles.setDefaultText}>Set Default</Text>
+                        <Text style={styles.setDefaultText}>Set Primary</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity 
@@ -224,7 +504,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
                       <Ionicons name="trash-outline" size={18} color={COLORS.error} />
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           ) : (
@@ -243,6 +523,25 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </Animated.View>
       </ScrollView>
+
+      {/* Map Picker Modal */}
+      <Modal
+        visible={showMapPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowMapPicker(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowMapPicker(false)}>
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Pick Location</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <AddressPicker onLocationSelect={handleLocationSelect} />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -449,5 +748,125 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  mapPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    backgroundColor: `${COLORS.primary}15`,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.medium,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}30`,
+  },
+  mapPickerButtonText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  coordinatesDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    backgroundColor: `${COLORS.success}10`,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.medium,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: `${COLORS.success}30`,
+  },
+  coordinatesText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.success,
+    fontWeight: '500',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  sectionLabel: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+    marginTop: SPACING.md,
+  },
+  labelSelector: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  labelOption: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.medium,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+  },
+  labelOptionActive: {
+    backgroundColor: `${COLORS.primary}15`,
+    borderColor: COLORS.primary,
+  },
+  labelOptionText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  labelOptionTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  halfInput: {
+    flex: 1,
+  },
+  addressName: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xxs,
+  },
+  addressPhone: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+  },
+  selectionHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: `${COLORS.primary}10`,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.medium,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}30`,
+  },
+  selectionHintText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '500',
+    color: COLORS.primary,
   },
 });

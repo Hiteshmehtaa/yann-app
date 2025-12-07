@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
-import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service, ServiceProviderListItem, ServiceCount, ProviderDashboardData } from '../types';
+import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service, ServiceProviderListItem, ServiceCount, ProviderDashboardData, Address } from '../types';
 
 /**
  * Yann Mobile API Service
@@ -762,6 +762,98 @@ class ApiService {
   async getAllBookingsDebug(): Promise<ApiResponse<Booking[]>> {
     const response = await this.client.get('/debug/bookings');
     return response.data;
+  }
+
+  // ====================================================================
+  // ADDRESS MANAGEMENT ENDPOINTS
+  // ====================================================================
+
+  /**
+   * GET /api/homeowner/addresses
+   * Get all saved addresses for the current user
+   */
+  async getSavedAddresses(): Promise<ApiResponse<Address[]>> {
+    try {
+      const response = await this.client.get('/homeowner/addresses');
+      return {
+        success: true,
+        message: 'Addresses loaded',
+        data: response.data.data || response.data.addresses || [],
+      };
+    } catch (error: any) {
+      console.error('Error fetching addresses:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to load addresses',
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * POST /api/homeowner/addresses
+   * Add a new address
+   */
+  async addAddress(address: Omit<Address, '_id' | 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Address>> {
+    try {
+      const response = await this.client.post('/homeowner/addresses', address);
+      return {
+        success: true,
+        message: 'Address added successfully',
+        data: response.data.data || response.data.address,
+      };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * PUT /api/homeowner/addresses/[id]
+   * Update an existing address
+   */
+  async updateAddress(addressId: string, address: Partial<Address>): Promise<ApiResponse<Address>> {
+    try {
+      const response = await this.client.put(`/homeowner/addresses/${addressId}`, address);
+      return {
+        success: true,
+        message: 'Address updated successfully',
+        data: response.data.data || response.data.address,
+      };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * DELETE /api/homeowner/addresses/[id]
+   * Delete an address
+   */
+  async deleteAddress(addressId: string): Promise<ApiResponse> {
+    try {
+      await this.client.delete(`/homeowner/addresses/${addressId}`);
+      return {
+        success: true,
+        message: 'Address deleted successfully',
+      };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+  /**
+   * PUT /api/homeowner/addresses/[id]/primary
+   * Set an address as primary
+   */
+  async setPrimaryAddress(addressId: string): Promise<ApiResponse> {
+    try {
+      await this.client.put(`/homeowner/addresses/${addressId}/primary`);
+      return {
+        success: true,
+        message: 'Primary address updated',
+      };
+    } catch (error: any) {
+      throw error;
+    }
   }
 }
 

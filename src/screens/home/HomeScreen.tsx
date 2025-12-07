@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,57 +20,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { ServiceCard } from '../../components/ui/ServiceCard';
+import { getServiceIcon } from '../../components/icons/ServiceIcons';
 import { COLORS, SPACING, LAYOUT, ANIMATIONS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-// Map service titles to appropriate Ionicons
-const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  // Transportation
-  'Drivers': 'car-sport',
-  'Full-Day Personal Driver': 'car-sport',
-  
-  // Religious/Spiritual
-  'Pujari': 'flame',
-  'Pujari Services': 'flame',
-  
-  // Household Staff
-  'Maids': 'home',
-  'Cleaners': 'sparkles',
-  'Toilet Cleaning Experts': 'water',
-  'Office Boys': 'briefcase',
-  'Chaprasi': 'people',
-  
-  // Childcare
-  'Baby Sitters': 'heart',
-  
-  // Healthcare
-  'Nurses': 'medkit',
-  'Attendants': 'accessibility',
-  
-  // Specialty Services
-  'Heena Artists': 'color-palette',
-  
-  // Technicians/Maintenance
-  'AC Service Technicians': 'snow',
-  'RO Service Technicians': 'water',
-  'Refrigerator Service Technicians': 'cube',
-  'Air Purifier Service Technicians': 'leaf',
-  'Chimney Service Technicians': 'flame',
-  'Repairs & Maintenance': 'construct',
-  
-  // Security
-  'Security Guards': 'shield-checkmark',
-  
-  // Other common services
-  'House Cleaning': 'sparkles',
-  'Delivery Services': 'bicycle',
-  'Pet Care': 'paw',
-  'Personal Assistant': 'briefcase',
-  'Garden & Landscaping': 'leaf',
-};
+// SVG icons are now imported from ServiceIcons.tsx
 
 // Empty State Component - Moved outside for performance
 const EmptyState = () => (
@@ -106,7 +64,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           description: s.description || '',
           category: s.category || 'other',
           price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-          icon: s.icon || getServiceIcon(s.category || s.title),
+          icon: s.icon || '✨', // Fallback icon (not used - SVG icons used instead)
           popular: s.popular || false,
           features: s.features || [],
         }));
@@ -129,27 +87,6 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Get service icon based on category or name
-  const getServiceIcon = (categoryOrName: string): string => {
-    const name = (categoryOrName || '').toLowerCase();
-    if (name.includes('clean')) return '🧹';
-    if (name.includes('driver')) return '🚗';
-    if (name.includes('puja') || name.includes('pujari')) return '🙏';
-    if (name.includes('maid')) return '🧹';
-    if (name.includes('baby') || name.includes('sitter')) return '👶';
-    if (name.includes('nurse')) return '👩‍⚕️';
-    if (name.includes('cook')) return '👨‍🍳';
-    if (name.includes('garden')) return '🌿';
-    if (name.includes('pet')) return '🐕';
-    if (name.includes('repair')) return '🔧';
-    if (name.includes('laundry')) return '👕';
-    if (name.includes('attendant')) return '🤝';
-    if (name.includes('office')) return '👔';
-    if (name.includes('security')) return '🛡️';
-    if (name.includes('heena') || name.includes('henna')) return '🎨';
-    return '✨';
   };
 
   // Fetch partner counts from backend (like website - GET /api/provider/service-counts)
@@ -253,20 +190,34 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   // Render service card using new ServiceCard component
   const renderServiceCard = ({ item }: { item: Service }) => {
-    const iconName = SERVICE_ICONS[item.title] || 'grid-outline';
+    const IconComponent = getServiceIcon(item.title); // This now returns the SVG component from ServiceIcons.tsx
     const countData = partnerCounts[item.title];
     const count = typeof countData === 'number' ? countData : (countData as any)?.providerCount || 0;
     const displayPrice = getMinPrice(item.title);
+    const isComingSoon = count === 0;
+
+    const handlePress = () => {
+      if (isComingSoon) {
+        Alert.alert(
+          'Coming Soon',
+          `${item.title} will be available soon! We're currently onboarding partners for this service.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        navigation.navigate('ServiceDetail', { service: item });
+      }
+    };
 
     return (
       <Animated.View style={{ opacity: fadeAnim }}>
         <ServiceCard
           title={item.title}
           price={displayPrice}
-          icon={iconName}
+          IconComponent={IconComponent}
           popular={item.popular}
           partnerCount={count}
-          onPress={() => navigation.navigate('ServiceDetail', { service: item })}
+          isComingSoon={isComingSoon}
+          onPress={handlePress}
         />
       </Animated.View>
     );

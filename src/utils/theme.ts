@@ -63,16 +63,16 @@ export const SPACING = {
 // 🔤 TYPOGRAPHY SYSTEM
 // ============================================
 export const TYPOGRAPHY = {
-  // Font Sizes
+  // Font Sizes (Refined for better readability)
   size: {
     xs: 11,
     sm: 13,
-    md: 15,
-    lg: 17,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
-    heading: 28,
+    md: 15,     // Body text - slightly reduced from 16
+    lg: 17,     // Subheadings - slightly reduced from 18
+    xl: 20,     // Section titles - refined
+    xxl: 24,    // Large titles
+    xxxl: 32,   // Hero text
+    heading: 28, // Main headings
   },
   
   // Font Weights
@@ -129,7 +129,7 @@ export const SHADOWS = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,    // Reduced from 0.05
     shadowRadius: 4,
     elevation: 2,
   },
@@ -137,7 +137,7 @@ export const SHADOWS = {
   md: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,    // Reduced from 0.08
     shadowRadius: 8,
     elevation: 3,
   },
@@ -145,7 +145,7 @@ export const SHADOWS = {
   lg: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,    // Reduced from 0.1
     shadowRadius: 12,
     elevation: 5,
   },

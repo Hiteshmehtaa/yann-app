@@ -8,6 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +26,8 @@ interface ProviderBooking {
   scheduledDate: string;
   scheduledTime: string;
   address: string;
+  latitude?: number;
+  longitude?: number;
   status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
   amount: number;
   paymentStatus: 'pending' | 'paid';
@@ -95,6 +99,8 @@ export const ProviderBookingsScreen = () => {
           scheduledDate: formatDate(b.bookingDate || b.scheduledDate),
           scheduledTime: b.bookingTime || b.scheduledTime || 'N/A',
           address: b.customerAddress || b.address || 'N/A',
+          latitude: b.latitude,
+          longitude: b.longitude,
           status: b.status || 'pending',
           amount: b.totalPrice || b.basePrice || b.amount || 0,
           paymentStatus: b.paymentStatus || 'pending',
@@ -111,6 +117,8 @@ export const ProviderBookingsScreen = () => {
           scheduledDate: formatDate(b.bookingDate || b.scheduledDate),
           scheduledTime: b.bookingTime || b.scheduledTime || 'N/A',
           address: b.customerAddress || b.address || 'N/A',
+          latitude: b.latitude,
+          longitude: b.longitude,
           status: b.status || 'accepted',
           amount: b.totalPrice || b.basePrice || b.amount || 0,
           paymentStatus: b.paymentStatus || 'pending',
@@ -153,6 +161,93 @@ export const ProviderBookingsScreen = () => {
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchBookings();
+  };
+
+  const openLocationNavigation = (booking: ProviderBooking) => {
+    const { latitude, longitude, address } = booking;
+    
+    // If no coordinates, try to open with address text
+    if (!latitude || !longitude) {
+      const addressQuery = encodeURIComponent(address);
+      const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${addressQuery}`;
+      
+      Alert.alert(
+        'Navigate to Location',
+        'Open location in:',
+        [
+          {
+            text: 'Google Maps',
+            onPress: () => Linking.openURL(googleMapsUrl),
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    // With coordinates, offer multiple navigation options
+    const googleMapsUrl = Platform.select({
+      ios: `maps://app?daddr=${latitude},${longitude}`,
+      android: `google.navigation:q=${latitude},${longitude}`,
+    });
+    
+    const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    const uberUrl = `uber://?action=setPickup&pickup=my_location&dropoff[latitude]=${latitude}&dropoff[longitude]=${longitude}`;
+    const olaUrl = `ola://app/launch?lat=${latitude}&lng=${longitude}`;
+    const rapidoUrl = `rapido://destination?lat=${latitude}&lng=${longitude}`;
+
+    Alert.alert(
+      'Navigate to Location',
+      `${booking.customerName}\n${address}`,
+      [
+        {
+          text: 'Google Maps',
+          onPress: async () => {
+            const supported = await Linking.canOpenURL(googleMapsUrl || '');
+            if (supported) {
+              Linking.openURL(googleMapsUrl || '');
+            } else {
+              Linking.openURL(googleMapsWebUrl);
+            }
+          },
+        },
+        {
+          text: 'Uber',
+          onPress: async () => {
+            const supported = await Linking.canOpenURL(uberUrl);
+            if (supported) {
+              Linking.openURL(uberUrl);
+            } else {
+              Alert.alert('Uber not installed', 'Please install Uber app to use this feature');
+            }
+          },
+        },
+        {
+          text: 'Ola',
+          onPress: async () => {
+            const supported = await Linking.canOpenURL(olaUrl);
+            if (supported) {
+              Linking.openURL(olaUrl);
+            } else {
+              Alert.alert('Ola not installed', 'Please install Ola app to use this feature');
+            }
+          },
+        },
+        {
+          text: 'Rapido',
+          onPress: async () => {
+            const supported = await Linking.canOpenURL(rapidoUrl);
+            if (supported) {
+              Linking.openURL(rapidoUrl);
+            } else {
+              Alert.alert('Rapido not installed', 'Please install Rapido app to use this feature');
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleAcceptBooking = async (bookingId: string) => {
@@ -285,9 +380,18 @@ export const ProviderBookingsScreen = () => {
             <Ionicons name="construct-outline" size={18} color={COLORS.primary} />
             <Text style={styles.serviceText}>{booking.serviceName}</Text>
           </View>
-          <View style={styles.serviceRow}>
-            <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} />
-            <Text style={styles.addressText} numberOfLines={1}>{booking.address}</Text>
+          <View style={styles.locationRow}>
+            <View style={styles.locationInfo}>
+              <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} />
+              <Text style={styles.addressText} numberOfLines={1}>{booking.address}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.navigateButton}
+              onPress={() => openLocationNavigation(booking)}
+            >
+              <Ionicons name="navigate" size={16} color={COLORS.white} />
+              <Text style={styles.navigateText}>Navigate</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -694,10 +798,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.xs,
+  },
+  locationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    flex: 1,
+  },
   addressText: {
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.textSecondary,
     flex: 1,
+  },
+  navigateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.medium,
+    gap: 4,
+  },
+  navigateText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '600',
+    color: COLORS.white,
   },
   dateTimeRow: {
     flexDirection: 'row',

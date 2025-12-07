@@ -7,9 +7,10 @@ import { COLORS, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, getResponsiveCard
 type ServiceCardProps = {
   title: string;
   price: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  IconComponent?: React.FC<{ size?: number; color?: string }>;
   popular?: boolean;
   partnerCount?: number;
+  isComingSoon?: boolean;
   onPress: () => void;
   style?: ViewStyle;
 };
@@ -17,9 +18,10 @@ type ServiceCardProps = {
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   title,
   price,
-  icon,
+  IconComponent,
   popular = false,
   partnerCount = 0,
+  isComingSoon = false,
   onPress,
   style,
 }) => {
@@ -46,6 +48,21 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     }).start();
   };
 
+  const getIconColor = () => {
+    if (isComingSoon) return COLORS.textTertiary;
+    if (popular) return COLORS.accentOrange;
+    return COLORS.primary;
+  };
+
+  const getIconBgColor = () => {
+    if (isComingSoon) return `${COLORS.textTertiary}10`;
+    if (popular) return `${COLORS.accentOrange}15`;
+    return `${COLORS.primary}15`;
+  };
+
+  const iconColor = getIconColor();
+  const iconBgColor = getIconBgColor();
+
   return (
     <TouchableOpacity
       onPressIn={handlePressIn}
@@ -53,21 +70,33 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       onPress={onPress}
       activeOpacity={1}
     >
-      <Animated.View style={[styles.container, { width: cardWidth, height: cardHeight, transform: [{ scale: scaleAnim }] }, style]}>
+      <Animated.View style={[styles.container, { width: cardWidth, height: cardHeight, transform: [{ scale: scaleAnim }] }, isComingSoon && styles.comingSoonContainer, style]}>
         <LinearGradient
-          colors={[COLORS.cardBg, COLORS.elevated]}
+          colors={isComingSoon ? [COLORS.elevated, COLORS.elevated] : [COLORS.cardBg, COLORS.elevated]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
+        {/* Coming Soon Badge */}
+        {isComingSoon && (
+          <View style={styles.comingSoonBadge}>
+            <Ionicons name="time-outline" size={12} color={COLORS.textTertiary} />
+            <Text style={styles.comingSoonText}>COMING SOON</Text>
+          </View>
+        )}
+
         {/* Icon with gradient background */}
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: popular ? `${COLORS.accentOrange}15` : `${COLORS.primary}15` },
+            { backgroundColor: iconBgColor },
           ]}
         >
-          <Ionicons name={icon} size={ICON_SIZES.large} color={popular ? COLORS.accentOrange : COLORS.primary} />
+          {IconComponent ? (
+            <IconComponent size={ICON_SIZES.large} color={iconColor} />
+          ) : (
+            <Ionicons name="sparkles" size={ICON_SIZES.large} color={iconColor} />
+          )}
         </View>
 
         {/* Popular badge */}
@@ -79,20 +108,20 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         )}
 
         {/* Service title */}
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={[styles.title, isComingSoon && styles.comingSoonTitle]} numberOfLines={2}>
           {title}
         </Text>
 
         {/* Partner count badge */}
         <View style={styles.partnerBadge}>
           <Ionicons name="people" size={14} color={partnerCount > 0 ? COLORS.success : COLORS.textTertiary} />
-          <Text style={[styles.partnerText, partnerCount > 0 && styles.partnerTextActive]}>
+          <Text style={[styles.partnerText, partnerCount > 0 && styles.partnerTextActive, isComingSoon && styles.comingSoonText]}>
             {partnerCount} {partnerCount === 1 ? 'Partner' : 'Partners'}
           </Text>
         </View>
 
         {/* Price */}
-        <Text style={styles.price}>{price}</Text>
+        <Text style={[styles.price, isComingSoon && styles.comingSoonPrice]}>{price}</Text>
       </LinearGradient>
       </Animated.View>
     </TouchableOpacity>
@@ -163,5 +192,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.primary,
     letterSpacing: 0.3,
+  },
+  comingSoonContainer: {
+    opacity: 0.75,
+  },
+  comingSoonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: `${COLORS.textTertiary}15`,
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 4,
+    borderRadius: RADIUS.small,
+    gap: 4,
+    marginBottom: SPACING.sm,
+  },
+  comingSoonText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+    letterSpacing: 0.5,
+  },
+  comingSoonTitle: {
+    color: COLORS.textSecondary,
+  },
+  comingSoonPrice: {
+    color: COLORS.textTertiary,
   },
 });

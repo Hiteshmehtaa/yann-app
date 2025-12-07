@@ -23,11 +23,23 @@ export interface User {
 }
 
 export interface Address {
-  label: string;
+  _id?: string;
+  id?: string;
+  label: 'Home' | 'Work' | 'Other';
+  name: string; // Contact name
+  phone: string; // Contact phone
+  apartment?: string; // Apartment/Flat/Unit number
+  building?: string; // Building/Society name
   street: string;
   city: string;
   state: string;
   postalCode: string;
+  fullAddress: string; // Complete formatted address
+  latitude?: number;
+  longitude?: number;
+  isPrimary?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface ServiceProvider {
@@ -63,6 +75,9 @@ export interface Booking {
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  // Location coordinates for map navigation
+  latitude?: number;
+  longitude?: number;
   bookingDate: Date;
   bookingTime: string;
   basePrice: number;
