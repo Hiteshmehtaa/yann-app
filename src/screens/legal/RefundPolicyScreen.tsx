@@ -85,8 +85,8 @@ export const RefundPolicyScreen: React.FC<Props> = ({ navigation }) => {
           {/* Refund Scenarios */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Refund Scenarios</Text>
-            {refundScenarios.map((item, index) => (
-              <View key={index} style={styles.scenarioCard}>
+            {refundScenarios.map((item) => (
+              <View key={item.scenario} style={styles.scenarioCard}>
                 <View style={[styles.iconContainer, { backgroundColor: `${item.color}15` }]}>
                   <Ionicons name={item.icon} size={24} color={item.color} />
                 </View>

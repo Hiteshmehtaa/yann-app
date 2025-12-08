@@ -22,6 +22,8 @@ import type { RouteProp } from '@react-navigation/native';
 import type { Address } from '../../types';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 
+type AddressLabel = 'Home' | 'Work' | 'Other';
+
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ params: { fromBooking?: boolean } }, 'params'>;
@@ -35,7 +37,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAddress, setNewAddress] = useState({
-    label: 'Home' as 'Home' | 'Work' | 'Other',
+    label: 'Home' as AddressLabel,
     name: '',
     phone: '',
     apartment: '',
@@ -133,8 +135,8 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
     setNewAddress(prev => ({
       ...prev,
       street: parts[0] || '',
-      city: parts.length > 1 ? parts[parts.length - 2] : '',
-      state: parts.length > 0 ? parts[parts.length - 1] : '',
+      city: parts.at(-2) || '',
+      state: parts.at(-1) || '',
     }));
     setShowMapPicker(false);
   };
@@ -189,7 +191,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
         updateUser({ addressBook: updatedAddresses });
         
         setNewAddress({
-          label: 'Home' as 'Home' | 'Work' | 'Other',
+          label: 'Home' as AddressLabel,
           name: '',
           phone: '',
           apartment: '',
@@ -213,6 +215,25 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
   };
 
   const handleDeleteAddress = (id: string) => {
+    const performDelete = async () => {
+      try {
+        const response = await apiService.deleteAddress(id);
+
+        if (response.success) {
+          const updatedAddresses = addresses.filter(addr => addr.id !== id && addr._id !== id);
+          setAddresses(updatedAddresses);
+          updateUser({ addressBook: updatedAddresses });
+          Alert.alert('Success', 'Address deleted successfully');
+        } else {
+          Alert.alert('Error', response.message || 'Failed to delete address');
+        }
+      } catch (error: any) {
+        console.error('Error deleting address:', error);
+        const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete address. Please try again.';
+        Alert.alert('Error', errorMessage);
+      }
+    };
+
     Alert.alert(
       'Delete Address',
       'Are you sure you want to delete this address?',
@@ -221,28 +242,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              // Call DELETE API
-              const response = await apiService.deleteAddress(id);
-              
-              if (response.success) {
-                const updatedAddresses = addresses.filter(addr => addr.id !== id && addr._id !== id);
-                setAddresses(updatedAddresses);
-                
-                // Update local user context
-                updateUser({ addressBook: updatedAddresses });
-                
-                Alert.alert('Success', 'Address deleted successfully');
-              } else {
-                Alert.alert('Error', response.message || 'Failed to delete address');
-              }
-            } catch (error: any) {
-              console.error('Error deleting address:', error);
-              const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete address. Please try again.';
-              Alert.alert('Error', errorMessage);
-            }
-          },
+          onPress: () => { void performDelete(); },
         },
       ]
     );
@@ -314,7 +314,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
               <TextInput
                 style={styles.input}
                 value={newAddress.phone}
-                onChangeText={(value) => setNewAddress(prev => ({ ...prev, phone: value.replace(/[^0-9]/g, '') }))}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, phone: value.replaceAll(/\D/g, '') }))}
                 placeholder="Phone Number (10 digits) *"
                 placeholderTextColor={COLORS.textTertiary}
                 keyboardType="phone-pad"
@@ -405,7 +405,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
               <TextInput
                 style={styles.input}
                 value={newAddress.postalCode}
-                onChangeText={(value) => setNewAddress(prev => ({ ...prev, postalCode: value.replace(/[^0-9]/g, '') }))}
+                onChangeText={(value) => setNewAddress(prev => ({ ...prev, postalCode: value.replaceAll(/\D/g, '') }))}
                 placeholder="Postal Code"
                 placeholderTextColor={COLORS.textTertiary}
                 keyboardType="number-pad"
@@ -435,7 +435,16 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
           {/* Address List */}
           {addresses.length > 0 ? (
             <View style={styles.addressList}>
-              {addresses.map((addr, index) => (
+              {addresses.map((addr, index) => {
+                let iconName: 'home-outline' | 'business-outline' | 'location-outline' = 'location-outline';
+
+                if (addr.label === 'Home') {
+                  iconName = 'home-outline';
+                } else if (addr.label === 'Work') {
+                  iconName = 'business-outline';
+                }
+
+                return (
                 <TouchableOpacity
                   key={addr.id}
                   style={[
@@ -472,7 +481,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                     <View style={styles.addressHeader}>
                       <View style={styles.labelContainer}>
                         <Ionicons 
-                          name={addr.label === 'Home' ? 'home-outline' : addr.label === 'Work' ? 'business-outline' : 'location-outline'} 
+                          name={iconName}
                           size={18} 
                           color={COLORS.primary} 
                         />
@@ -505,7 +514,8 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </View>
           ) : (
             <View style={styles.emptyState}>

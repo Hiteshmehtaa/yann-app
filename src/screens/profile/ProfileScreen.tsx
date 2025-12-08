@@ -60,7 +60,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       if (user?.role === 'homeowner') {
         // Fetch homeowner bookings to calculate stats
-        const response = await apiService.getHomeownerBookings();
+        const response = await apiService.getMyBookings();
         if (response.success && response.data) {
           const bookings = response.data;
           const totalSpent = bookings.reduce((sum: number, booking: any) => {

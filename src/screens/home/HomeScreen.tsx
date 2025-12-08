@@ -9,7 +9,6 @@ import {
   RefreshControl,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,14 +19,57 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { ServiceCard } from '../../components/ui/ServiceCard';
-import { getServiceIcon } from '../../components/icons/ServiceIcons';
-import { COLORS, SPACING, LAYOUT, ANIMATIONS } from '../../utils/theme';
+import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-// SVG icons are now imported from ServiceIcons.tsx
+// Map service titles to appropriate Ionicons
+const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  // Transportation
+  'Drivers': 'car-sport',
+  'Full-Day Personal Driver': 'car-sport',
+  
+  // Religious/Spiritual
+  'Pujari': 'flame',
+  'Pujari Services': 'flame',
+  
+  // Household Staff
+  'Maids': 'home',
+  'Cleaners': 'sparkles',
+  'Toilet Cleaning Experts': 'water',
+  'Office Boys': 'briefcase',
+  'Chaprasi': 'people',
+  
+  // Childcare
+  'Baby Sitters': 'heart',
+  
+  // Healthcare
+  'Nurses': 'medkit',
+  'Attendants': 'accessibility',
+  
+  // Specialty Services
+  'Heena Artists': 'color-palette',
+  
+  // Technicians/Maintenance
+  'AC Service Technicians': 'snow',
+  'RO Service Technicians': 'water',
+  'Refrigerator Service Technicians': 'cube',
+  'Air Purifier Service Technicians': 'leaf',
+  'Chimney Service Technicians': 'flame',
+  'Repairs & Maintenance': 'construct',
+  
+  // Security
+  'Security Guards': 'shield-checkmark',
+  
+  // Other common services
+  'House Cleaning': 'sparkles',
+  'Delivery Services': 'bicycle',
+  'Pet Care': 'paw',
+  'Personal Assistant': 'briefcase',
+  'Garden & Landscaping': 'leaf',
+};
 
 // Empty State Component - Moved outside for performance
 const EmptyState = () => (
@@ -46,10 +88,10 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [filteredServices, setFilteredServices] = useState<Service[]>(SERVICES);
   const [partnerCounts, setPartnerCounts] = useState<{ [serviceTitle: string]: number }>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [hasFetchedInitial, setHasFetchedInitial] = useState(false); // Prevent duplicate initial fetches
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [categories, setCategories] = useState<string[]>(['all']);
+  const [showAll, setShowAll] = useState(false);
 
   // Fetch services from backend (like website - GET /api/services)
   const fetchServices = async () => {
@@ -64,7 +106,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           description: s.description || '',
           category: s.category || 'other',
           price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-          icon: s.icon || '✨', // Fallback icon (not used - SVG icons used instead)
+          icon: s.icon || getServiceIcon(s.category || s.title),
           popular: s.popular || false,
           features: s.features || [],
         }));
@@ -81,12 +123,34 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         setFilteredServices(SERVICES);
       }
     } catch (err) {
+      console.error('Error fetching services:', err);
       // Use static services as fallback silently
       setServices(SERVICES);
       setFilteredServices(SERVICES);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Get service icon based on category or name
+  const getServiceIcon = (categoryOrName: string): string => {
+    const name = (categoryOrName || '').toLowerCase();
+    if (name.includes('clean')) return '🧹';
+    if (name.includes('driver')) return '🚗';
+    if (name.includes('puja') || name.includes('pujari')) return '🙏';
+    if (name.includes('maid')) return '🧹';
+    if (name.includes('baby') || name.includes('sitter')) return '👶';
+    if (name.includes('nurse')) return '👩‍⚕️';
+    if (name.includes('cook')) return '👨‍🍳';
+    if (name.includes('garden')) return '🌿';
+    if (name.includes('pet')) return '🐕';
+    if (name.includes('repair')) return '🔧';
+    if (name.includes('laundry')) return '👕';
+    if (name.includes('attendant')) return '🤝';
+    if (name.includes('office')) return '👔';
+    if (name.includes('security')) return '🛡️';
+    if (name.includes('heena') || name.includes('henna')) return '🎨';
+    return '✨';
   };
 
   // Fetch partner counts from backend (like website - GET /api/provider/service-counts)
@@ -108,6 +172,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         setPartnerCounts({});
       }
     } catch (err) {
+      console.error('Error fetching partner counts:', err);
       // Silently handle - partner counts are optional
       setPartnerCounts({});
     } finally {
@@ -188,36 +253,53 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     return 'View prices';
   };
 
-  // Render service card using new ServiceCard component
-  const renderServiceCard = ({ item }: { item: Service }) => {
-    const IconComponent = getServiceIcon(item.title); // This now returns the SVG component from ServiceIcons.tsx
+  // Get displayed services (8 initially, or all when expanded)
+  const hasMore = filteredServices.length > 8;
+  const displayedServices = showAll 
+    ? filteredServices 
+    : filteredServices.slice(0, 8);
+  
+  // Add More button as a grid item if needed
+  const gridData = (!showAll && hasMore) 
+    ? [...displayedServices, { id: 'more-button', isMoreButton: true }] 
+    : displayedServices;
+
+  // Render service card or More button
+  const renderGridItem = ({ item, index }: { item: any; index: number }) => {
+    // Render More button
+    if (item.isMoreButton) {
+      return (
+        <TouchableOpacity 
+          style={styles.cardWrapper}
+          onPress={() => setShowAll(true)}
+        >
+          <View style={styles.moreButton}>
+            <View style={styles.moreIconContainer}>
+              <Ionicons name="ellipsis-horizontal" size={24} color="#999" />
+            </View>
+            <Text style={styles.moreText}>More</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    // Render service card
+    const iconName = SERVICE_ICONS[item.title] || 'grid-outline';
     const countData = partnerCounts[item.title];
     const count = typeof countData === 'number' ? countData : (countData as any)?.providerCount || 0;
     const displayPrice = getMinPrice(item.title);
     const isComingSoon = count === 0;
 
-    const handlePress = () => {
-      if (isComingSoon) {
-        Alert.alert(
-          'Coming Soon',
-          `${item.title} will be available soon! We're currently onboarding partners for this service.`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        navigation.navigate('ServiceDetail', { service: item });
-      }
-    };
-
     return (
-      <Animated.View style={{ opacity: fadeAnim }}>
+      <Animated.View style={styles.cardWrapper}>
         <ServiceCard
           title={item.title}
           price={displayPrice}
-          IconComponent={IconComponent}
+          icon={iconName}
           popular={item.popular}
           partnerCount={count}
           isComingSoon={isComingSoon}
-          onPress={handlePress}
+          onPress={() => navigation.navigate('ServiceDetail', { service: item })}
         />
       </Animated.View>
     );
@@ -310,12 +392,12 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </Animated.View>
 
-      {/* Services Grid - Responsive 2-Column */}
+      {/* Services Grid - 3 Columns */}
       <FlatList
-        data={filteredServices}
-        renderItem={renderServiceCard}
+        data={gridData}
+        renderItem={renderGridItem}
         keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
+        numColumns={3}
         contentContainerStyle={styles.servicesGrid}
         columnWrapperStyle={styles.gridRow}
         showsVerticalScrollIndicator={false}
@@ -419,11 +501,37 @@ const styles = StyleSheet.create({
   // Services Grid Styles
   servicesGrid: {
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingBottom: 120, // Extra padding for floating tab bar
+    paddingBottom: 100,
   },
   gridRow: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     marginBottom: SPACING.md,
+    gap: SPACING.sm,
+  },
+  cardWrapper: {
+    width: '31.5%',
+  },
+  moreButton: {
+    alignItems: 'center',
+    padding: SPACING.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.large,
+    height: '100%',
+  },
+  moreIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: RADIUS.medium,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  moreText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#000',
+    textAlign: 'center',
   },
   // Empty State Styles
   emptyState: {

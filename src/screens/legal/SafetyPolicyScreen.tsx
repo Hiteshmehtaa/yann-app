@@ -126,8 +126,8 @@ export const SafetyPolicyScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Our Safety Measures</Text>
             <View style={styles.measuresGrid}>
-              {safetyMeasures.map((item, index) => (
-                <View key={index} style={styles.measureCard}>
+              {safetyMeasures.map((item) => (
+                <View key={item.title} style={styles.measureCard}>
                   <View style={styles.measureIcon}>
                     <Ionicons name={item.icon} size={24} color={COLORS.primary} />
                   </View>
@@ -147,8 +147,8 @@ export const SafetyPolicyScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.cardIntro}>
                 Every service on our platform adheres to strict quality benchmarks:
               </Text>
-              {qualityStandards.map((item, index) => (
-                <View key={index} style={styles.qualityItem}>
+              {qualityStandards.map((item) => (
+                <View key={item} style={styles.qualityItem}>
                   <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
                   <Text style={styles.qualityText}>{item}</Text>
                 </View>
@@ -160,8 +160,8 @@ export const SafetyPolicyScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Emergency Features</Text>
             <View style={styles.sosGrid}>
-              {sosFeatures.map((item, index) => (
-                <View key={index} style={styles.sosCard}>
+              {sosFeatures.map((item) => (
+                <View key={item.title} style={styles.sosCard}>
                   <View style={[styles.sosIcon, { backgroundColor: `${item.color}15` }]}>
                     <Ionicons name={item.icon} size={24} color={item.color} />
                   </View>

@@ -177,7 +177,7 @@ export const ProviderBookingsScreen = () => {
         [
           {
             text: 'Google Maps',
-            onPress: () => Linking.openURL(googleMapsUrl),
+            onPress: () => { void Linking.openURL(googleMapsUrl); },
           },
           { text: 'Cancel', style: 'cancel' },
         ]
@@ -202,46 +202,54 @@ export const ProviderBookingsScreen = () => {
       [
         {
           text: 'Google Maps',
-          onPress: async () => {
-            const supported = await Linking.canOpenURL(googleMapsUrl || '');
-            if (supported) {
-              Linking.openURL(googleMapsUrl || '');
-            } else {
-              Linking.openURL(googleMapsWebUrl);
-            }
+          onPress: () => {
+            void (async () => {
+              const supported = await Linking.canOpenURL(googleMapsUrl || '');
+              if (supported) {
+                await Linking.openURL(googleMapsUrl || '');
+              } else {
+                await Linking.openURL(googleMapsWebUrl);
+              }
+            })();
           },
         },
         {
           text: 'Uber',
-          onPress: async () => {
-            const supported = await Linking.canOpenURL(uberUrl);
-            if (supported) {
-              Linking.openURL(uberUrl);
-            } else {
-              Alert.alert('Uber not installed', 'Please install Uber app to use this feature');
-            }
+          onPress: () => {
+            void (async () => {
+              const supported = await Linking.canOpenURL(uberUrl);
+              if (supported) {
+                await Linking.openURL(uberUrl);
+              } else {
+                Alert.alert('Uber not installed', 'Please install Uber app to use this feature');
+              }
+            })();
           },
         },
         {
           text: 'Ola',
-          onPress: async () => {
-            const supported = await Linking.canOpenURL(olaUrl);
-            if (supported) {
-              Linking.openURL(olaUrl);
-            } else {
-              Alert.alert('Ola not installed', 'Please install Ola app to use this feature');
-            }
+          onPress: () => {
+            void (async () => {
+              const supported = await Linking.canOpenURL(olaUrl);
+              if (supported) {
+                await Linking.openURL(olaUrl);
+              } else {
+                Alert.alert('Ola not installed', 'Please install Ola app to use this feature');
+              }
+            })();
           },
         },
         {
           text: 'Rapido',
-          onPress: async () => {
-            const supported = await Linking.canOpenURL(rapidoUrl);
-            if (supported) {
-              Linking.openURL(rapidoUrl);
-            } else {
-              Alert.alert('Rapido not installed', 'Please install Rapido app to use this feature');
-            }
+          onPress: () => {
+            void (async () => {
+              const supported = await Linking.canOpenURL(rapidoUrl);
+              if (supported) {
+                await Linking.openURL(rapidoUrl);
+              } else {
+                Alert.alert('Rapido not installed', 'Please install Rapido app to use this feature');
+              }
+            })();
           },
         },
         { text: 'Cancel', style: 'cancel' },

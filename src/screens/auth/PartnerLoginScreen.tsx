@@ -110,7 +110,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Partner Badge */}
             <View style={styles.partnerBadge}>
               <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                colors={[COLORS.primary, COLORS.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.badgeGradient}
@@ -159,7 +159,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                  colors={[COLORS.primary, COLORS.primaryDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}

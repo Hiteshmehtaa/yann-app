@@ -121,7 +121,7 @@ export const ServiceHeroHeader: React.FC<ServiceHeroHeaderProps> = ({
     <View style={[styles.container, { height }]}>
       {/* Gradient Background with Service-Specific Colors */}
       <LinearGradient
-        colors={[theme.gradient[0], theme.gradient[1]]}
+        colors={theme.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}

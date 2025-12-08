@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { COLORS } from '../utils/theme';
 
 // Auth Screens
 import { RoleSelectionScreen } from '../screens/auth/RoleSelectionScreen';
@@ -72,79 +73,58 @@ type RootStackParamList = {
   SafetyPolicy: undefined;
 };
 
-// Premium Apple-like Theme
+// Premium Apple-like Theme - Using new design system
 const THEME = {
-  bg: '#FFFFFF',
-  bgCard: '#F8F9FB',
-  primary: '#2E59F3',
-  secondary: '#FF7A32',
-  accent: '#2E59F3',
-  text: '#1A1D29',
-  textMuted: '#6B7280',
-  border: '#E5E7EB',
-  shadow: 'rgba(46, 89, 243, 0.08)',
+  bg: COLORS.surface,
+  bgCard: COLORS.background,
+  primary: COLORS.primary,
+  secondary: COLORS.secondary,
+  accent: COLORS.primary,
+  text: COLORS.text,
+  textMuted: COLORS.textSecondary,
+  border: COLORS.border,
+  shadow: 'rgba(79, 70, 229, 0.08)',
 };
 
 const PremiumTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: '#F8F9FB',
-    card: THEME.bg,
-    text: THEME.text,
-    border: THEME.border,
-    primary: THEME.primary,
+    background: COLORS.background,
+    card: COLORS.surface,
+    text: COLORS.text,
+    border: COLORS.border,
+    primary: COLORS.primary,
   },
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
-// Custom tab bar icon with label
-const TabIcon = ({ name, focused, label }: { name: string; focused: boolean; label: string }) => (
-  <View style={tabStyles.iconContainer}>
-    <View style={[tabStyles.iconWrapper, focused && tabStyles.iconWrapperActive]}>
-      <Ionicons 
-        name={name as any} 
-        size={22} 
-        color={focused ? THEME.accent : THEME.textMuted} 
-      />
-    </View>
-  </View>
+// Custom tab bar icon
+const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => (
+  <Ionicons 
+    name={name as any} 
+    size={24} 
+    color={focused ? THEME.accent : THEME.textMuted} 
+  />
 );
-
-const tabStyles = StyleSheet.create({
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrapper: {
-    width: 48,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconWrapperActive: {
-    backgroundColor: 'rgba(46, 89, 243, 0.12)',
-  },
-});
 
 // Tab icon render functions (extracted to avoid inline component definitions)
 const renderHomeIcon = (props: { focused: boolean }) => (
-  <TabIcon name={props.focused ? "grid" : "grid-outline"} focused={props.focused} label="HOME" />
+  <TabIcon name={props.focused ? "home" : "home-outline"} focused={props.focused} />
 );
 
 const renderBookingsIcon = (props: { focused: boolean }) => (
-  <TabIcon name={props.focused ? "calendar" : "calendar-outline"} focused={props.focused} label="BOOKINGS" />
+  <TabIcon name={props.focused ? "clipboard" : "clipboard-outline"} focused={props.focused} />
 );
 
 const renderProfileIcon = (props: { focused: boolean }) => (
-  <TabIcon name={props.focused ? "person" : "person-outline"} focused={props.focused} label="PROFILE" />
+  <TabIcon name={props.focused ? "person" : "person-outline"} focused={props.focused} />
 );
 
 const renderDashboardIcon = (props: { focused: boolean }) => (
-  <TabIcon name={props.focused ? "stats-chart" : "stats-chart-outline"} focused={props.focused} label="DASHBOARD" />
+  <TabIcon name={props.focused ? "stats-chart" : "stats-chart-outline"} focused={props.focused} />
 );
 
 const renderEarningsIcon = (props: { focused: boolean }) => (
@@ -157,30 +137,19 @@ function TabNavigator() {
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: THEME.primary,
-        tabBarInactiveTintColor: THEME.textMuted,
+        tabBarInactiveTintColor: '#999999',
         tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: THEME.bg,
-          borderTopWidth: 0,
-          // Floating style with margin from edges
-          marginHorizontal: 16,
-          marginBottom: Platform.OS === 'ios' ? 20 : 12,
-          height: Platform.OS === 'ios' ? 68 : 64,
-          borderRadius: 20,
-          paddingBottom: 8,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E5E5',
+          height: Platform.OS === 'ios' ? 88 : 65,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
-          // Premium shadow
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 20,
-          elevation: 15,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          letterSpacing: 0.3,
-          marginTop: 4,
+          fontSize: 10,
+          fontWeight: '500',
+          marginTop: 2,
         },
         headerShown: true,
         headerStyle: {
@@ -235,28 +204,19 @@ function ProviderTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: THEME.primary,
-        tabBarInactiveTintColor: THEME.textMuted,
+        tabBarInactiveTintColor: '#999999',
         tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: THEME.bg,
-          borderTopWidth: 0,
-          marginHorizontal: 16,
-          marginBottom: Platform.OS === 'ios' ? 20 : 12,
-          height: Platform.OS === 'ios' ? 68 : 64,
-          borderRadius: 20,
-          paddingBottom: 8,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E5E5',
+          height: Platform.OS === 'ios' ? 88 : 65,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 20,
-          elevation: 15,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          letterSpacing: 0.3,
-          marginTop: 4,
+          fontSize: 10,
+          fontWeight: '500',
+          marginTop: 2,
         },
         headerShown: true,
         headerStyle: {

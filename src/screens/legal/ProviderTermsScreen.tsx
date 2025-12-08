@@ -87,8 +87,8 @@ export const ProviderTermsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Eligibility Requirements</Text>
             <View style={styles.requirementsGrid}>
-              {requirements.map((item, index) => (
-                <View key={index} style={styles.requirementItem}>
+              {requirements.map((item) => (
+                <View key={item.text} style={styles.requirementItem}>
                   <View style={styles.requirementIcon}>
                     <Ionicons name={item.icon} size={20} color={COLORS.primary} />
                   </View>
@@ -128,8 +128,8 @@ export const ProviderTermsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Provider Obligations</Text>
             <View style={styles.card}>
-              {obligations.map((item, index) => (
-                <View key={index} style={styles.listItem}>
+              {obligations.map((item) => (
+                <View key={item} style={styles.listItem}>
                   <View style={styles.checkIcon}>
                     <Ionicons name="checkmark" size={14} color={COLORS.white} />
                   </View>
@@ -143,8 +143,8 @@ export const ProviderTermsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Prohibited Activities</Text>
             <View style={[styles.card, styles.warningCard]}>
-              {prohibitions.map((item, index) => (
-                <View key={index} style={styles.listItem}>
+              {prohibitions.map((item) => (
+                <View key={item} style={styles.listItem}>
                   <View style={styles.crossIcon}>
                     <Ionicons name="close" size={14} color={COLORS.white} />
                   </View>

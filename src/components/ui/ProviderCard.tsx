@@ -1,0 +1,261 @@
+/**
+ * Provider Card Component
+ * Detailed provider card inspired by Design 2
+ */
+
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ImageSourcePropType,
+} from 'react-native';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../../utils/theme';
+import { StarIcon, LocationIcon, VerifiedBadgeIcon, PhoneIcon } from '../icons';
+
+interface ProviderCardProps {
+  name: string;
+  avatar?: ImageSourcePropType | string;
+  rating: number;
+  reviewCount: number;
+  distance?: string;
+  price: string;
+  isVerified?: boolean;
+  isTopRated?: boolean;
+  specialties?: string[];
+  onPress: () => void;
+  onCall?: () => void;
+}
+
+export const ProviderCard: React.FC<ProviderCardProps> = ({
+  name,
+  avatar,
+  rating,
+  reviewCount,
+  distance,
+  price,
+  isVerified = false,
+  isTopRated = false,
+  specialties,
+  onPress,
+  onCall,
+}) => {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onPress}
+      style={styles.container}
+    >
+      {/* Top Badges */}
+      <View style={styles.badges}>
+        {isVerified && (
+          <View style={[styles.badge, { backgroundColor: `${COLORS.success}15` }]}>
+            <VerifiedBadgeIcon size={12} color={COLORS.success} />
+            <Text style={[styles.badgeText, { color: COLORS.success }]}>Verified</Text>
+          </View>
+        )}
+        {isTopRated && (
+          <View style={[styles.badge, { backgroundColor: `${COLORS.warning}15` }]}>
+            <StarIcon size={12} color={COLORS.warning} filled />
+            <Text style={[styles.badgeText, { color: COLORS.warning }]}>Top Rated</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Provider Info */}
+      <View style={styles.content}>
+        {/* Avatar and Name */}
+        <View style={styles.header}>
+          <View style={styles.avatarContainer}>
+            {avatar ? (
+              <Image source={typeof avatar === 'string' ? { uri: avatar } : avatar} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.info}>
+            <Text style={styles.name} numberOfLines={1}>
+              {name}
+            </Text>
+
+            {/* Rating */}
+            <View style={styles.rating}>
+              <StarIcon size={14} color={COLORS.warning} filled />
+              <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+              <Text style={styles.reviewCount}>({reviewCount} reviews)</Text>
+            </View>
+
+            {/* Distance */}
+            {distance && (
+              <View style={styles.distance}>
+                <LocationIcon size={14} color={COLORS.textTertiary} />
+                <Text style={styles.distanceText}>{distance}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Specialties */}
+            {specialties && specialties.length > 0 && (
+              <View style={styles.specialties}>
+                {specialties.slice(0, 3).map((specialty) => (
+                  <View key={specialty} style={styles.specialtyTag}>
+                    <Text style={styles.specialtyText}>{specialty}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.priceLabel}>Starting at</Text>
+            <Text style={styles.price}>{price}</Text>
+          </View>
+
+          {onCall && (
+            <TouchableOpacity
+              onPress={onCall}
+              style={styles.callButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <PhoneIcon size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.large,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    ...SHADOWS.md,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+    marginBottom: SPACING.sm,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: RADIUS.small,
+    gap: 4,
+  },
+  badgeText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+  },
+  content: {
+    gap: SPACING.sm,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  avatarContainer: {
+    marginRight: SPACING.md,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  avatarPlaceholder: {
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.white,
+  },
+  info: {
+    flex: 1,
+    gap: 4,
+  },
+  name: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.text,
+  },
+  rating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weight.semibold,
+    color: COLORS.text,
+  },
+  reviewCount: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textTertiary,
+  },
+  distance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  distanceText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textTertiary,
+  },
+  specialties: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+  },
+  specialtyTag: {
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 4,
+    borderRadius: RADIUS.small,
+  },
+  specialtyText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    fontWeight: TYPOGRAPHY.weight.medium,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.xs,
+  },
+  priceContainer: {
+    flex: 1,
+  },
+  priceLabel: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textTertiary,
+    marginBottom: 2,
+  },
+  price: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.primary,
+  },
+  callButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

@@ -125,7 +125,7 @@ export const HelpSupportScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.faqList}>
               {FAQ_DATA.map((faq, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={faq.question}
                   style={[
                     styles.faqItem,
                     index === FAQ_DATA.length - 1 && styles.faqItemLast

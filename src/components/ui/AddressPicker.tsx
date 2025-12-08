@@ -115,7 +115,7 @@ export const AddressPicker: React.FC<AddressPickerProps> = ({
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
-        <Ionicons name="location" size={ICON_SIZES.large} color={COLORS.primary} />
+        <Ionicons name="location" size={28} color={COLORS.primary} />
         <Text style={styles.headerText}>Use Current Location</Text>
       </View>
 

@@ -17,13 +17,24 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Service, ServiceProvider } from '../../types';
 import { Button } from '../../components/ui/Button';
-import { getServiceIcon } from '../../components/icons/ServiceIcons';
+import { ServiceHeroHeader } from '../../components/ui/ServiceHeroHeader';
 import { apiService } from '../../services/api';
 import { COLORS, SPACING, RADIUS, ICON_SIZES, SHADOWS, TYPOGRAPHY, LAYOUT, ANIMATIONS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ params: { service: Service } }, 'params'>;
+};
+
+const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  'House Cleaning': 'sparkles',
+  'Repairs & Maintenance': 'construct',
+  'Delivery Services': 'bicycle',
+  'Pet Care': 'paw',
+  'Personal Assistant': 'briefcase',
+  'Garden & Landscaping': 'leaf',
+  'Full-Day Personal Driver': 'car-sport',
+  'Pujari Services': 'flower',
 };
 
 // Mock data for service details
@@ -54,7 +65,7 @@ const SERVICE_DETAILS = {
 
 export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service: initialService } = route.params;
-  const [service, setService] = useState<Service>(initialService);
+  const service = initialService;
   const [serviceDetails] = useState(SERVICE_DETAILS); // Static data, no API for this yet
   const [availableProviders, setAvailableProviders] = useState<ServiceProvider[]>([]);
   
@@ -62,7 +73,6 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false); // Prevent duplicate fetches
   
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -116,6 +126,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       
       setHasFetched(true);
     } catch (err: any) {
+      console.error('Error fetching providers:', err);
       // No providers available for this service
       setAvailableProviders([]);
       setHasFetched(true);
@@ -218,37 +229,16 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         }
       >
-        {/* Clean Hero Section with SVG Icon */}
-        <View style={styles.heroSection}>
-          <View style={styles.iconContainer}>
-            {(() => {
-              const IconComponent = getServiceIcon(service.title);
-              return <IconComponent size={80} color={COLORS.primary} />;
-            })()}
-          </View>
-          <Text style={styles.heroTitle}>{service.title}</Text>
-          <View style={styles.heroMeta}>
-            <Ionicons name="star" size={18} color={COLORS.warning} />
-            <Text style={styles.heroRating}>4.8 (256 reviews)</Text>
-          </View>
-          {service.popular && (
-            <View style={styles.popularBadge}>
-              <Ionicons name="flame" size={14} color={COLORS.warning} />
-              <Text style={styles.popularText}>POPULAR SERVICE</Text>
-            </View>
-          )}
-        </View>
+        {/* Dynamic Service Hero Header */}
+        <ServiceHeroHeader
+          serviceTitle={service.title}
+          rating={4.8}
+          reviewCount={256}
+          height={320}
+        />
 
         {/* Main Content */}
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Error Banner */}
-          {error && (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle-outline" size={18} color={COLORS.error} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
           {/* Price Card */}
           <View style={styles.priceCard}>
             <View style={styles.priceRow}>
@@ -327,44 +317,37 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   <TouchableOpacity
                     key={provider._id}
                     style={[
-                      styles.modernProviderCard,
-                      selectedProvider?._id === provider._id && styles.modernProviderCardSelected,
+                      styles.providerCard,
+                      selectedProvider?._id === provider._id && styles.providerCardSelected,
                     ]}
                     onPress={() => setSelectedProvider(provider)}
                   >
-                    <View style={styles.modernProviderLeft}>
-                      <View style={styles.modernProviderAvatar}>
-                        <Text style={styles.modernProviderAvatarText}>
-                          {provider.name?.charAt(0) || 'P'}
+                    <View style={styles.providerAvatar}>
+                      <Text style={styles.providerAvatarText}>
+                        {provider.name?.charAt(0) || 'P'}
+                      </Text>
+                    </View>
+                    <View style={styles.providerInfo}>
+                      <Text style={styles.providerName}>{provider.name}</Text>
+                      <View style={styles.providerMeta}>
+                        <Ionicons name="star" size={14} color={COLORS.warning} />
+                        <Text style={styles.providerRating}>
+                          {provider.rating?.toFixed(1) || '0.0'} ({provider.totalReviews || 0} reviews)
                         </Text>
                       </View>
-                      <View style={styles.modernProviderInfo}>
-                        <Text style={styles.modernProviderName}>{provider.name}</Text>
-                        <View style={styles.modernProviderMeta}>
-                          <Ionicons name="star" size={12} color={COLORS.warning} />
-                          <Text style={styles.modernProviderRating}>
-                            {provider.rating?.toFixed(1) || '0.0'}
-                          </Text>
-                          <Text style={styles.modernProviderDot}>•</Text>
-                          <Text style={styles.modernProviderExperience}>
-                            {provider.experience || 0}+ yrs
-                          </Text>
-                        </View>
-                        {(provider as any).priceForService && (
-                          <Text style={styles.modernProviderPrice}>
-                            ₹{(provider as any).priceForService}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                    <View style={[
-                      styles.modernProviderCheckbox,
-                      selectedProvider?._id === provider._id && styles.modernProviderCheckboxSelected
-                    ]}>
-                      {selectedProvider?._id === provider._id && (
-                        <Ionicons name="checkmark" size={16} color={COLORS.white} />
+                      <Text style={styles.providerExperience}>
+                        {provider.experience || 0} years experience
+                      </Text>
+                      {/* Show price from API */}
+                      {(provider as any).priceForService && (
+                        <Text style={styles.providerPrice}>
+                          ₹{(provider as any).priceForService}
+                        </Text>
                       )}
                     </View>
+                    {selectedProvider?._id === provider._id && (
+                      <Ionicons name="checkmark-circle" size={28} color={COLORS.primary} />
+                    )}
                   </TouchableOpacity>
                 ))}
               </>
@@ -918,125 +901,7 @@ const styles = StyleSheet.create({
   providerPrice: {
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.success,
     marginTop: 4,
-  },
-  // Modern Hero Section
-  heroSection: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xxl,
-    paddingHorizontal: LAYOUT.screenPadding,
-    backgroundColor: COLORS.background,
-  },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: RADIUS.xlarge,
-    backgroundColor: `${COLORS.primary}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  heroTitle: {
-    fontSize: TYPOGRAPHY.size.xxxl,
-    fontWeight: '800',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
-    letterSpacing: -0.5,
-  },
-  heroMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: SPACING.md,
-  },
-  heroRating: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  // Modern Provider Card
-  modernProviderCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
-  },
-  modernProviderCardSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}05`,
-    ...SHADOWS.md,
-  },
-  modernProviderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: SPACING.md,
-  },
-  modernProviderAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modernProviderAvatarText: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  modernProviderInfo: {
-    flex: 1,
-  },
-  modernProviderName: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  modernProviderMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  modernProviderRating: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  modernProviderDot: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.textTertiary,
-  },
-  modernProviderExperience: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.textSecondary,
-  },
-  modernProviderPrice: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  modernProviderCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: RADIUS.small,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modernProviderCheckboxSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
   },
 });
