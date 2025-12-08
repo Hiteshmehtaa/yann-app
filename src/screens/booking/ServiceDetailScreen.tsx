@@ -12,14 +12,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Service, ServiceProvider } from '../../types';
-import { Button } from '../../components/ui/Button';
-import { ServiceHeroHeader } from '../../components/ui/ServiceHeroHeader';
+import { ServiceHero } from '../../components/ui/ServiceHero';
+import { ServiceOverviewCard } from '../../components/ui/ServiceOverviewCard';
+import { IncludedFeatures } from '../../components/ui/IncludedFeatures';
+import { ProviderListCard } from '../../components/ui/ProviderListCard';
+import { FloatingCTA } from '../../components/ui/FloatingCTA';
+import { ProviderReviewsSection } from '../../components/ui/ProviderReviewsSection';
 import { apiService } from '../../services/api';
-import { COLORS, SPACING, RADIUS, ICON_SIZES, SHADOWS, TYPOGRAPHY, LAYOUT, ANIMATIONS } from '../../utils/theme';
+import { COLORS, RADIUS, SHADOWS, ANIMATIONS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -66,17 +69,17 @@ const SERVICE_DETAILS = {
 export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service: initialService } = route.params;
   const service = initialService;
-  const [serviceDetails] = useState(SERVICE_DETAILS); // Static data, no API for this yet
+  const [serviceDetails] = useState(SERVICE_DETAILS);
   const [availableProviders, setAvailableProviders] = useState<ServiceProvider[]>([]);
   
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false); // Prevent duplicate fetches
+  const [hasFetched, setHasFetched] = useState(false);
   
   const scrollY = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const contentFadeAnim = useRef(new Animated.Value(0)).current;
 
   /**
    * Fetch available providers for this service
@@ -139,7 +142,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Fade-in animation and initial fetch
   useEffect(() => {
-    Animated.timing(fadeAnim, {
+    Animated.timing(contentFadeAnim, {
       toValue: 1,
       duration: ANIMATIONS.slow,
       useNativeDriver: true,
@@ -166,17 +169,27 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   };
 
+  // Calculate lowest price from available providers
+  const getLowestPrice = () => {
+    if (availableProviders.length === 0) return service.price;
+    const prices = availableProviders
+      .map((p) => (p as any).priceForService)
+      .filter((price) => price > 0);
+    if (prices.length === 0) return service.price;
+    return `₹${Math.min(...prices)}`;
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Animated Header */}
+      {/* Animated Floating Header */}
       <Animated.View
         style={[
           styles.floatingHeader,
           {
             opacity: scrollY.interpolate({
-              inputRange: [0, 100],
+              inputRange: [0, 120],
               outputRange: [0, 1],
               extrapolate: 'clamp',
             }),
@@ -186,7 +199,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <SafeAreaView edges={['top']}>
           <View style={styles.headerContent}>
             <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={ICON_SIZES.large} color={COLORS.text} />
+              <Ionicons name="arrow-back" size={22} color={COLORS.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle} numberOfLines={1}>
               {service.title}
@@ -196,10 +209,10 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         </SafeAreaView>
       </Animated.View>
 
-      {/* Fixed Back Button (visible when header is hidden) */}
+      {/* Fixed Back Button */}
       <SafeAreaView edges={['top']} style={styles.fixedBackButton}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={ICON_SIZES.large} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
         </TouchableOpacity>
       </SafeAreaView>
 
@@ -207,7 +220,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       {isLoading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading details...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       )}
 
@@ -225,246 +238,132 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             onRefresh={onRefresh}
             colors={[COLORS.primary]}
             tintColor={COLORS.primary}
-            progressViewOffset={100}
+            progressViewOffset={80}
           />
         }
       >
-        {/* Dynamic Service Hero Header */}
-        <ServiceHeroHeader
-          serviceTitle={service.title}
+        {/* Hero Section */}
+        <ServiceHero
+          title={service.title}
+          category={service.category || ''}
           rating={4.8}
           reviewCount={256}
-          height={320}
         />
 
         {/* Main Content */}
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Price Card */}
-          <View style={styles.priceCard}>
-            <View style={styles.priceRow}>
-              <View>
-                <Text style={styles.priceLabel}>Starting from</Text>
-                <Text style={styles.priceValue}>{service.price}</Text>
-              </View>
-              {service.popular && (
-                <View style={styles.popularBadge}>
-                  <Ionicons name="star" size={14} color={COLORS.warning} />
-                  <Text style={styles.popularText}>POPULAR</Text>
-                </View>
-              )}
-            </View>
-          </View>
+        <Animated.View style={[styles.content, { opacity: contentFadeAnim }]}>
+          {/* Service Overview Card */}
+          <ServiceOverviewCard
+            description={serviceDetails.aboutService}
+            startingPrice={service.price}
+            providerCount={availableProviders.length}
+          />
 
-          {/* Available Providers Section */}
+          {/* What's Included Section */}
+          <IncludedFeatures features={serviceDetails.whatsIncluded} />
+
+          {/* Available Professionals Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconContainer}>
-                <Ionicons name="people" size={ICON_SIZES.large} color={COLORS.primary} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="people" size={20} color={COLORS.primary} />
               </View>
-              <Text style={styles.sectionTitle}>Available Partners</Text>
+              <Text style={styles.sectionTitle}>Available Professionals</Text>
             </View>
             
             {isLoadingProviders && (
-              <View style={styles.loadingProviders}>
+              <View style={styles.loadingState}>
                 <ActivityIndicator size="small" color={COLORS.primary} />
-                <Text style={styles.loadingProvidersText}>Loading partners...</Text>
+                <Text style={styles.loadingText}>Finding professionals...</Text>
               </View>
             )}
             
             {!isLoadingProviders && availableProviders.length === 0 && (
-              <View style={styles.noProvidersCard}>
-                <Ionicons name="alert-circle-outline" size={32} color={COLORS.textTertiary} />
-                <Text style={styles.noProvidersText}>No partners available for this service yet</Text>
-                <Text style={styles.noProvidersSubtext}>Check back soon or try another service</Text>
+              <View style={styles.emptyState}>
+                <Ionicons name="search-outline" size={40} color={COLORS.textTertiary} />
+                <Text style={styles.emptyTitle}>No professionals available</Text>
+                <Text style={styles.emptySubtitle}>Check back soon or try another service</Text>
               </View>
             )}
             
-            {!isLoadingProviders && availableProviders.length === 1 && (
-              <View style={styles.singleProviderCard}>
-                <View style={styles.providerAvatar}>
-                  <Text style={styles.providerAvatarText}>
-                    {availableProviders[0].name?.charAt(0) || 'P'}
-                  </Text>
-                </View>
-                <View style={styles.providerInfo}>
-                  <Text style={styles.providerName}>{availableProviders[0].name}</Text>
-                  <View style={styles.providerMeta}>
-                    <Ionicons name="star" size={14} color={COLORS.warning} />
-                    <Text style={styles.providerRating}>
-                      {availableProviders[0].rating?.toFixed(1) || '0.0'} ({availableProviders[0].totalReviews || 0} reviews)
-                    </Text>
-                  </View>
-                  <Text style={styles.providerExperience}>
-                    {availableProviders[0].experience || 0} years experience
-                  </Text>
-                  {/* Show price from API */}
-                  {(availableProviders[0] as any).priceForService && (
-                    <Text style={styles.providerPrice}>
-                      ₹{(availableProviders[0] as any).priceForService}
-                    </Text>
-                  )}
-                </View>
-                <Ionicons name="checkmark-circle" size={28} color={COLORS.success} />
-              </View>
-            )}
-            
-            {!isLoadingProviders && availableProviders.length > 1 && (
+            {!isLoadingProviders && availableProviders.length > 0 && (
               <>
-                <Text style={styles.selectProviderHint}>
-                  Select a partner to continue booking
-                </Text>
+                {availableProviders.length > 1 && (
+                  <Text style={styles.selectHint}>
+                    Tap to select your preferred professional
+                  </Text>
+                )}
                 {availableProviders.map((provider) => (
-                  <TouchableOpacity
+                  <ProviderListCard
                     key={provider._id}
-                    style={[
-                      styles.providerCard,
-                      selectedProvider?._id === provider._id && styles.providerCardSelected,
-                    ]}
-                    onPress={() => setSelectedProvider(provider)}
-                  >
-                    <View style={styles.providerAvatar}>
-                      <Text style={styles.providerAvatarText}>
-                        {provider.name?.charAt(0) || 'P'}
-                      </Text>
-                    </View>
-                    <View style={styles.providerInfo}>
-                      <Text style={styles.providerName}>{provider.name}</Text>
-                      <View style={styles.providerMeta}>
-                        <Ionicons name="star" size={14} color={COLORS.warning} />
-                        <Text style={styles.providerRating}>
-                          {provider.rating?.toFixed(1) || '0.0'} ({provider.totalReviews || 0} reviews)
-                        </Text>
-                      </View>
-                      <Text style={styles.providerExperience}>
-                        {provider.experience || 0} years experience
-                      </Text>
-                      {/* Show price from API */}
-                      {(provider as any).priceForService && (
-                        <Text style={styles.providerPrice}>
-                          ₹{(provider as any).priceForService}
-                        </Text>
-                      )}
-                    </View>
-                    {selectedProvider?._id === provider._id && (
-                      <Ionicons name="checkmark-circle" size={28} color={COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
+                    provider={provider}
+                    isSelected={selectedProvider?._id === provider._id}
+                    onSelect={() => setSelectedProvider(provider)}
+                  />
                 ))}
               </>
             )}
           </View>
 
-          {/* What's Included Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconContainer}>
-                <Ionicons name="checkmark-circle" size={ICON_SIZES.large} color={COLORS.success} />
-              </View>
-              <Text style={styles.sectionTitle}>What's Included</Text>
-            </View>
-            {serviceDetails.whatsIncluded.map((item) => (
-              <View key={item} style={styles.listItem}>
-                <View style={styles.bulletPoint} />
-                <Text style={styles.listItemText}>{item}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* About This Service Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconContainer}>
-                <Ionicons name="information-circle" size={ICON_SIZES.large} color={COLORS.info} />
-              </View>
-              <Text style={styles.sectionTitle}>About This Service</Text>
-            </View>
-            <Text style={styles.descriptionText}>{serviceDetails.aboutService}</Text>
-          </View>
-
           {/* Why Choose Us Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconContainer}>
-                <Ionicons name="shield-checkmark" size={ICON_SIZES.large} color={COLORS.primary} />
+              <View style={styles.iconBadge}>
+                <Ionicons name="shield-checkmark" size={20} color={COLORS.success} />
               </View>
               <Text style={styles.sectionTitle}>Why Choose Us</Text>
             </View>
-            {serviceDetails.whyChooseUs.map((item) => (
-              <View key={item} style={styles.featureItem}>
-                <View style={styles.featureIcon}>
-                  <Ionicons name="checkmark" size={16} color={COLORS.primary} />
-                </View>
-                <Text style={styles.featureText}>{item}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Service Info Grid */}
-          <View style={styles.infoGrid}>
-            <View style={styles.infoCard}>
-              <Ionicons name="time-outline" size={ICON_SIZES.large} color={COLORS.accentOrange} />
-              <Text style={styles.infoCardLabel}>Est. Time</Text>
-              <Text style={styles.infoCardValue}>{serviceDetails.estimatedTime}</Text>
-            </View>
-            <View style={styles.infoCard}>
-              <Ionicons name="clipboard-outline" size={ICON_SIZES.large} color={COLORS.warning} />
-              <Text style={styles.infoCardLabel}>Requirements</Text>
-              <Text style={styles.infoCardValue}>{serviceDetails.requirements}</Text>
-            </View>
-          </View>
-
-          {/* Reviews Preview Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconContainer}>
-                <Ionicons name="chatbubbles" size={ICON_SIZES.large} color={COLORS.warning} />
-              </View>
-              <Text style={styles.sectionTitle}>Customer Reviews</Text>
-            </View>
-            {SERVICE_DETAILS.reviews.slice(0, 2).map((review, idx) => (
-              <View key={`${review.name}-${idx}`} style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewAvatar}>
-                    <Text style={styles.reviewAvatarText}>{review.name.charAt(0)}</Text>
+            <View style={styles.whyChooseList}>
+              {serviceDetails.whyChooseUs.map((item) => (
+                <View key={item} style={styles.whyChooseItem}>
+                  <View style={styles.checkCircle}>
+                    <Ionicons name="checkmark" size={12} color={COLORS.white} />
                   </View>
-                  <View style={styles.reviewHeaderContent}>
-                    <Text style={styles.reviewName}>{review.name}</Text>
-                    <View style={styles.reviewStars}>
-                      {Array.from({ length: review.rating }).map((_, i) => (
-                        <Ionicons key={`star-${review.name}-${i}`} name="star" size={14} color={COLORS.warning} />
-                      ))}
-                    </View>
-                  </View>
+                  <Text style={styles.whyChooseText}>{item}</Text>
                 </View>
-                <Text style={styles.reviewComment}>{review.comment}</Text>
-              </View>
-            ))}
-            <TouchableOpacity style={styles.seeAllReviews}>
-              <Text style={styles.seeAllText}>See all reviews</Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-            </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
-          {/* Bottom Spacer for sticky CTA */}
-          <View style={{ height: 100 }} />
+          {/* Service Details Grid */}
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailCard}>
+              <View style={styles.detailIconBadge}>
+                <Ionicons name="time-outline" size={22} color={COLORS.primary} />
+              </View>
+              <Text style={styles.detailLabel}>Duration</Text>
+              <Text style={styles.detailValue}>{serviceDetails.estimatedTime}</Text>
+            </View>
+            <View style={styles.detailCard}>
+              <View style={styles.detailIconBadge}>
+                <Ionicons name="clipboard-outline" size={22} color={COLORS.warning} />
+              </View>
+              <Text style={styles.detailLabel}>Requirements</Text>
+              <Text style={styles.detailValue}>{serviceDetails.requirements}</Text>
+            </View>
+          </View>
+
+          {/* Provider Reviews Section - Shows when provider is selected */}
+          {selectedProvider && (selectedProvider as any).reviews && (selectedProvider as any).reviews.length > 0 && (
+            <ProviderReviewsSection
+              reviews={(selectedProvider as any).reviews}
+              providerName={selectedProvider.name}
+            />
+          )}
+
+          {/* Bottom Spacer */}
+          <View style={{ height: 140 }} />
         </Animated.View>
       </Animated.ScrollView>
 
-      {/* Sticky Bottom CTA */}
-      <SafeAreaView edges={['bottom']} style={styles.ctaContainer}>
-        <LinearGradient
-          colors={['rgba(248, 248, 248, 0)', COLORS.background]}
-          style={styles.ctaGradient}
-        >
-          <View style={styles.ctaContent}>
-            <View>
-              <Text style={styles.ctaPrice}>{service.price}</Text>
-              <Text style={styles.ctaPriceLabel}>per service</Text>
-            </View>
-            <Button title="Book Now" onPress={handleBookNow} size="large" style={styles.bookButton} />
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
+      {/* Floating Bottom CTA */}
+      <FloatingCTA
+        providerName={selectedProvider?.name}
+        price={getLowestPrice()}
+        selectedProviderPrice={(selectedProvider as any)?.priceForService}
+        onPress={handleBookNow}
+        disabled={availableProviders.length > 1 && !selectedProvider}
+      />
     </View>
   );
 };
@@ -474,40 +373,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  // Floating Header (appears on scroll)
+  // Floating Header
   floatingHeader: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 100,
-    backgroundColor: COLORS.cardBg,
-    ...SHADOWS.md,
+    backgroundColor: COLORS.white,
+    ...SHADOWS.lg,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.small,
-    backgroundColor: COLORS.elevated,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     flex: 1,
-    fontSize: TYPOGRAPHY.size.lg,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
-    marginHorizontal: SPACING.md,
+    marginHorizontal: 12,
   },
   headerSpacer: {
-    width: 44,
+    width: 40,
   },
   // Fixed Back Button
   fixedBackButton: {
@@ -515,12 +414,12 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     zIndex: 99,
-    paddingHorizontal: LAYOUT.screenPadding,
+    paddingHorizontal: 16,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.full,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -532,376 +431,147 @@ const styles = StyleSheet.create({
   },
   // Content
   content: {
-    padding: LAYOUT.screenPadding,
-  },
-  // Price Card
-  priceCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
-    padding: SPACING.lg,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.md,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  priceLabel: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  priceValue: {
-    fontSize: TYPOGRAPHY.size.xxxl,
-    fontWeight: '800',
-    color: COLORS.primary,
-    letterSpacing: -0.5,
-  },
-  popularBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.warning}15`,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.small,
-    gap: 4,
-  },
-  popularText: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
-    color: COLORS.warning,
-    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
   // Section Styles
   section: {
-    marginBottom: SPACING.xxl,
+    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
+    marginBottom: 14,
+    gap: 10,
   },
-  sectionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.small,
-    backgroundColor: COLORS.elevated,
+  iconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.size.xl,
+    fontSize: 17,
     fontWeight: '700',
     color: COLORS.text,
   },
-  // List Items
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: SPACING.sm,
-    gap: SPACING.sm,
-  },
-  bulletPoint: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.primary,
-    marginTop: 8,
-  },
-  listItemText: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.text,
-    lineHeight: 22,
-  },
-  // Description
-  descriptionText: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-    lineHeight: 24,
-  },
-  // Feature Items
-  featureItem: {
+  // Provider List States
+  loadingState: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.cardBg,
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 10,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    backgroundColor: COLORS.white,
     borderRadius: RADIUS.medium,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    gap: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: COLORS.textTertiary,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  selectHint: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  // Why Choose Us
+  whyChooseList: {
+    gap: 10,
+  },
+  whyChooseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.medium,
+    padding: 14,
+    gap: 12,
     ...SHADOWS.sm,
   },
-  featureIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: RADIUS.small,
-    backgroundColor: `${COLORS.primary}15`,
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.success,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  featureText: {
+  whyChooseText: {
     flex: 1,
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 14,
+    lineHeight: 20,
     color: COLORS.text,
-    fontWeight: '500',
   },
-  // Info Grid
-  infoGrid: {
+  // Details Grid
+  detailsGrid: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.xxl,
+    gap: 12,
+    marginBottom: 24,
   },
-  infoCard: {
+  detailCard: {
     flex: 1,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
-    padding: SPACING.lg,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.medium,
+    padding: 16,
     alignItems: 'center',
-    ...SHADOWS.md,
+    ...SHADOWS.sm,
   },
-  infoCardLabel: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
+  detailIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: COLORS.textTertiary,
     marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  infoCardValue: {
-    fontSize: TYPOGRAPHY.size.md,
+  detailValue: {
+    fontSize: 13,
     fontWeight: '600',
     color: COLORS.text,
     textAlign: 'center',
   },
-  // Reviews
-  reviewCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.xs,
-    gap: SPACING.sm,
-  },
-  reviewAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  reviewAvatarText: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  reviewHeaderContent: {
-    flex: 1,
-  },
-  reviewName: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 2,
-  },
-  reviewStars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  reviewComment: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-  },
-  seeAllReviews: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: SPACING.sm,
-    gap: 4,
-  },
-  seeAllText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  // Sticky CTA
-  ctaContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-  },
-  ctaGradient: {
-    paddingTop: SPACING.xl,
-  },
-  ctaContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.cardBg,
-    borderTopLeftRadius: RADIUS.xlarge,
-    borderTopRightRadius: RADIUS.xlarge,
-    ...SHADOWS.lg,
-  },
-  ctaPrice: {
-    fontSize: TYPOGRAPHY.size.xxl,
-    fontWeight: '800',
-    color: COLORS.primary,
-    letterSpacing: -0.5,
-  },
-  ctaPriceLabel: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-  },
-  bookButton: {
-    minWidth: 160,
-  },
-  // Loading and Error States
+  // Loading States
   loadingOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
   loadingText: {
-    marginTop: SPACING.md,
-    fontSize: TYPOGRAPHY.size.md,
+    marginTop: 12,
+    fontSize: 14,
     color: COLORS.textSecondary,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: `${COLORS.error}15`,
-    padding: SPACING.md,
-    borderRadius: RADIUS.medium,
-    marginBottom: SPACING.lg,
-  },
-  errorText: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.error,
-  },
-  // Provider Selection Styles
-  loadingProviders: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    padding: SPACING.lg,
-  },
-  loadingProvidersText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-  },
-  noProvidersCard: {
-    alignItems: 'center',
-    padding: SPACING.xl,
-    backgroundColor: `${COLORS.textTertiary}10`,
-    borderRadius: RADIUS.medium,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
-  },
-  noProvidersText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: SPACING.sm,
-    textAlign: 'center',
-  },
-  noProvidersSubtext: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textTertiary,
-    marginTop: SPACING.xs,
-    textAlign: 'center',
-  },
-  selectProviderHint: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.md,
-    fontStyle: 'italic',
-  },
-  singleProviderCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: `${COLORS.success}10`,
-    borderRadius: RADIUS.medium,
-    borderWidth: 1,
-    borderColor: COLORS.success,
-    gap: SPACING.md,
-  },
-  providerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    marginBottom: SPACING.sm,
-    gap: SPACING.md,
-    ...SHADOWS.sm,
-  },
-  providerCardSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}10`,
-    ...SHADOWS.md,
-  },
-  providerAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  providerAvatarText: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  providerInfo: {
-    flex: 1,
-  },
-  providerName: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  providerMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  providerRating: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-  },
-  providerExperience: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.textTertiary,
-  },
-  providerPrice: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '700',
-    color: COLORS.success,
-    marginTop: 4,
   },
 });

@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType } from 'react-native';
 import { SPACING, RADIUS } from '../../utils/theme';
 import { ServiceIcon } from '../icons/ServiceIcon';
 
 type ServiceCardProps = {
   title: string;
   price: string;
+  icon?: string;
+  iconImage?: ImageSourcePropType;
   IconComponent?: React.FC<{ size?: number; color?: string }>;
   popular?: boolean;
   partnerCount?: number;
@@ -17,6 +19,8 @@ type ServiceCardProps = {
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   title,
   price,
+  icon,
+  iconImage,
   IconComponent,
   popular = false,
   partnerCount = 0,
@@ -33,7 +37,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     >
       {/* Icon Container - Simple like the image */}
       <View style={[styles.iconContainer, isComingSoon && styles.comingSoonIcon]}>
-        <ServiceIcon size={40} color={isComingSoon ? '#999' : undefined} />
+        {iconImage ? (
+          <Image 
+            source={iconImage} 
+            style={[styles.iconImage, isComingSoon && { opacity: 0.5 }]} 
+            resizeMode="contain"
+          />
+        ) : (
+          <ServiceIcon size={40} color={isComingSoon ? '#999' : undefined} />
+        )}
       </View>
 
       {/* Title - Simple and centered */}
