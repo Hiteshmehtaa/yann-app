@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+// kmkmkmkmkmkmkmkm
 interface StickyBookingCTAProps {
   onPress: () => void;
   loading?: boolean;
