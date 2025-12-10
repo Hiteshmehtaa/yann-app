@@ -5,12 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// kmkmkmkmkmkmkmkm
 interface StickyBookingCTAProps {
   onPress: () => void;
   loading?: boolean;
@@ -29,6 +29,7 @@ export const StickyBookingCTA: React.FC<StickyBookingCTAProps> = ({
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(100)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.spring(slideAnim, {
@@ -37,7 +38,27 @@ export const StickyBookingCTA: React.FC<StickyBookingCTAProps> = ({
       damping: 15,
       stiffness: 100,
     }).start();
-  }, []);
+
+    // Pulse animation for the button
+    if (!disabled && !loading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [disabled, loading]);
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -79,7 +100,7 @@ export const StickyBookingCTA: React.FC<StickyBookingCTAProps> = ({
         </View>
 
         {/* CTA Button */}
-        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <Animated.View style={{ transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }] }}>
           <TouchableOpacity
             style={[
               styles.buttonWrapper,

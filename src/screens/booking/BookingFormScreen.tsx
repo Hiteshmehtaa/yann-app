@@ -19,6 +19,7 @@ import type { Service, Address } from '../../types';
 
 import { Toast } from '../../components/Toast';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { SuccessModal } from '../../components/SuccessModal';
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
 import { SavedAddressCard } from '../../components/ui/SavedAddressCard';
 import { MapLocationPicker } from '../../components/ui/MapLocationPicker';
@@ -55,10 +56,21 @@ interface FormData {
   paymentMethod: string;
 }
 
+// Helper function to convert string to numeric hash
+const hashCode = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+};
+
 export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service, selectedProvider, selectedAddress: initialAddress } = route.params;
   const { user } = useAuth();
-  const { toast, showSuccess, showError, hideToast } = useToast();
+  const { toast, showSuccess: showToastSuccess, showError, hideToast } = useToast();
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -66,6 +78,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // State
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(initialAddress || null);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [bookingDate, setBookingDate] = useState<Date | null>(null);
@@ -103,7 +116,17 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     return typeof service?.price === 'number' ? service.price : 0;
   };
 
+  // Get provider service fee (10% of base price when provider is selected)
+  const getServiceFee = (): number => {
+    if (!selectedProvider) {
+      return 0;
+    }
+    return basePrice * 0.10; // 10% service fee
+  };
+
   const basePrice = getProviderPrice();
+  const serviceFee = getServiceFee();
+  const totalPrice = basePrice + serviceFee;
 
   // Entry animation
   useEffect(() => {
@@ -163,8 +186,26 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     setIsLoading(true);
 
     try {
+      // Get the numeric service ID
+      let numericServiceId = service?.id;
+      if (!numericServiceId && (service as any)?._id) {
+        // Try to extract numeric ID from MongoDB ObjectId or use a hash
+        const mongoId = (service as any)._id;
+        // Check if _id is actually a number stored as string
+        numericServiceId = !isNaN(Number(mongoId)) ? Number(mongoId) : Math.abs(hashCode(mongoId));
+      }
+
+      console.log('📋 Service ID Debug:', {
+        originalId: service?.id,
+        mongoId: (service as any)?._id,
+        finalId: numericServiceId,
+        serviceTitle: service?.title
+      });
+
       const bookingPayload: any = {
-        serviceId: (service as any)?._id || service?.id,
+        serviceId: numericServiceId,
+        serviceName: service?.title,
+        serviceCategory: service?.category,
         customerId: user?._id,
         customerName: selectedAddress?.name || user?.name,
         customerPhone: selectedAddress?.phone || user?.phone,
@@ -174,7 +215,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         bookingDate: bookingDate?.toISOString().split('T')[0],
         bookingTime: bookingTime?.toTimeString().substring(0, 5),
         basePrice,
-        totalPrice: basePrice,
+        serviceFee,
+        totalPrice,
         paymentMethod: formData.paymentMethod,
         notes: formData.notes,
       };
@@ -192,14 +234,15 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
       await apiService.createBooking(bookingPayload);
 
-      showSuccess('Booking confirmed successfully!');
+      setShowSuccess(true);
 
       setTimeout(() => {
+        setShowSuccess(false);
         navigation.reset({
           index: 0,
           routes: [{ name: 'MainTabs', params: { screen: 'BookingsList' } }],
         });
-      }, 1500);
+      }, 3000);
     } catch (error: any) {
       console.error('❌ Booking failed:', error.response?.data || error.message);
       showError(error.response?.data?.message || 'Failed to create booking. Please try again.');
@@ -258,13 +301,22 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={styles.heroGradient}
               >
                 <View style={styles.heroIconContainer}>
-                  <Ionicons name="sparkles" size={32} color={COLORS.white} />
+                  <Ionicons name="sparkles" size={36} color={COLORS.white} />
                 </View>
                 <Text style={styles.heroTitle}>{service.title}</Text>
+                <Text style={styles.heroDescription} numberOfLines={2}>
+                  {service.description || 'Professional service at your doorstep'}
+                </Text>
                 {selectedProvider && (
                   <View style={styles.providerBadge}>
                     <Ionicons name="person" size={14} color={COLORS.primary} />
                     <Text style={styles.providerBadgeText}>{selectedProvider.name}</Text>
+                    <View style={styles.providerRating}>
+                      <Ionicons name="star" size={12} color={COLORS.warning} />
+                      <Text style={styles.providerRatingText}>
+                        {selectedProvider.rating?.toFixed(1) || '5.0'}
+                      </Text>
+                    </View>
                   </View>
                 )}
               </LinearGradient>
@@ -413,9 +465,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             <BillingSummaryCard
               priceBreakdown={{
                 basePrice,
-                totalPrice: basePrice,
+                serviceFee,
+                totalPrice,
               }}
               serviceName={service.title}
+              providerName={selectedProvider?.name}
               containerStyle={{ marginBottom: 120 }}
             />
           </Animated.View>
@@ -426,7 +480,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={handleSubmit}
           loading={isLoading}
           disabled={!selectedAddress || !bookingDate || !bookingTime}
-          totalPrice={basePrice}
+          totalPrice={totalPrice}
           serviceName={service.title}
         />
       </KeyboardAvoidingView>
@@ -451,6 +505,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       />
 
       <LoadingSpinner visible={isLoading} />
+
+      <SuccessModal
+        visible={showSuccess}
+        title="Booking Confirmed! 🎉"
+        message="Your service has been booked successfully. We'll notify you shortly!"
+        onClose={() => setShowSuccess(false)}
+      />
 
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
     </SafeAreaView>
@@ -536,23 +597,51 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     textAlign: 'center',
   },
+  heroDescription: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    marginHorizontal: SPACING.lg,
+  },
   providerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.white,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: RADIUS.full,
-    gap: 6,
+    gap: 8,
     marginTop: SPACING.md,
+    ...SHADOWS.sm,
   },
   providerBadgeText: {
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: '700',
     color: COLORS.primary,
   },
+  providerRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.warning}15`,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: RADIUS.small,
+    gap: 3,
+    marginLeft: 4,
+  },
+  providerRatingText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.warning,
+  },
   section: {
     marginBottom: SPACING.xl,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    ...SHADOWS.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -561,13 +650,13 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   sectionNumber: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.sm,
+    ...SHADOWS.md,
   },
   sectionNumberText: {
     fontSize: TYPOGRAPHY.size.lg,
@@ -590,12 +679,14 @@ const styles = StyleSheet.create({
   mapPickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.primary}10`,
+    backgroundColor: `${COLORS.primary}12`,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.medium,
     gap: SPACING.sm,
-    marginTop: SPACING.sm,
+    marginTop: SPACING.md,
+    borderWidth: 1,
+    borderColor: `${COLORS.primary}30`,
   },
   mapPickerText: {
     flex: 1,
@@ -618,28 +709,29 @@ const styles = StyleSheet.create({
   paymentMethod: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: COLORS.elevated,
     borderRadius: RADIUS.medium,
     borderWidth: 2,
     borderColor: COLORS.border,
-    padding: SPACING.md,
+    padding: SPACING.lg,
     alignItems: 'center',
     gap: SPACING.sm,
   },
   paymentMethodActive: {
     borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}08`,
+    backgroundColor: `${COLORS.primary}10`,
+    ...SHADOWS.md,
   },
   paymentIcon: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: RADIUS.medium,
-    backgroundColor: COLORS.elevated,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   paymentIconActive: {
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: `${COLORS.primary}20`,
   },
   paymentMethodText: {
     fontSize: TYPOGRAPHY.size.sm,

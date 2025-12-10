@@ -11,6 +11,7 @@ import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme'
 
 interface PriceBreakdown {
   basePrice: number;
+  serviceFee?: number;
   taxes?: number;
   discount?: number;
   totalPrice: number;
@@ -19,16 +20,18 @@ interface PriceBreakdown {
 interface BillingSummaryCardProps {
   priceBreakdown: PriceBreakdown;
   serviceName: string;
+  providerName?: string;
   containerStyle?: ViewStyle;
 }
 
 export const BillingSummaryCard: React.FC<BillingSummaryCardProps> = ({
   priceBreakdown,
   serviceName,
+  providerName,
   containerStyle,
 }) => {
-  const { basePrice, taxes = 0, discount = 0, totalPrice } = priceBreakdown;
-  const showBreakdown = taxes > 0 || discount > 0;
+  const { basePrice, serviceFee = 0, taxes = 0, discount = 0, totalPrice } = priceBreakdown;
+  const showBreakdown = serviceFee > 0 || taxes > 0 || discount > 0;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -57,6 +60,22 @@ export const BillingSummaryCard: React.FC<BillingSummaryCardProps> = ({
           <Text style={styles.priceLabel}>Base Price</Text>
           <Text style={styles.priceValue}>₹{basePrice.toFixed(2)}</Text>
         </View>
+
+        {/* Service Fee (if provider selected) */}
+        {serviceFee > 0 && (
+          <View style={styles.priceRow}>
+            <View style={styles.labelWithIcon}>
+              <Text style={styles.priceLabel}>Service Fee</Text>
+              {providerName && (
+                <View style={styles.providerTag}>
+                  <Ionicons name="person" size={10} color={COLORS.primary} />
+                  <Text style={styles.providerTagText}>{providerName}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.priceValue}>₹{serviceFee.toFixed(2)}</Text>
+          </View>
+        )}
 
         {/* Taxes (if applicable) */}
         {taxes > 0 && (
@@ -227,6 +246,21 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: '700',
     color: COLORS.success,
+  },
+  providerTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${COLORS.primary}12`,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.small,
+    gap: 2,
+  },
+  providerTagText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    fontWeight: '700',
+    color: COLORS.primary,
+    textTransform: 'uppercase',
   },
   totalRow: {
     marginTop: SPACING.sm,

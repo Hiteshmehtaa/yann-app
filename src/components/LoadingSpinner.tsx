@@ -11,7 +11,7 @@ interface LoadingSpinnerProps {
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
   visible, 
   size = 'large',
-  color = '#3B82F6' 
+  color = '#3B82F6',
 }) => {
   return (
     <Modal transparent visible={visible} animationType="fade">

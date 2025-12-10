@@ -18,6 +18,7 @@ import type { Booking } from '../../types';
 import { format } from 'date-fns';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY } from '../../utils/theme';
+import { EmptyStateAnimation } from '../../components/animations';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -145,15 +146,10 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="calendar-outline" size={ICON_SIZES.xlarge} color={COLORS.primary} />
-      </View>
+      <EmptyStateAnimation type="no-bookings" size={220} />
       <Text style={styles.emptyTitle}>No bookings yet</Text>
       <Text style={styles.emptyText}>
         Your bookings will appear here once you book a service
-      </Text>
-      <Text style={styles.debugText}>
-        Pull down to refresh or check console logs for details
       </Text>
       <TouchableOpacity
         style={styles.browseButton}
