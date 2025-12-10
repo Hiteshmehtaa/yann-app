@@ -29,6 +29,8 @@ import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { SavedAddressesScreen } from '../screens/profile/SavedAddressesScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
 import { HelpSupportScreen } from '../screens/profile/HelpSupportScreen';
+import { FavoritesScreen } from '../screens/profile/FavoritesScreen';
+import { ChatScreen } from '../screens/profile/ChatScreen';
 
 // Provider Screens
 import { ProviderDashboardScreen } from '../screens/provider/ProviderDashboardScreen';
@@ -123,6 +125,14 @@ const renderProfileIcon = (props: { focused: boolean }) => (
   <TabIcon name={props.focused ? "person" : "person-outline"} focused={props.focused} />
 );
 
+const renderFavoritesIcon = (props: { focused: boolean }) => (
+  <TabIcon name={props.focused ? "heart" : "heart-outline"} focused={props.focused} />
+);
+
+const renderChatIcon = (props: { focused: boolean }) => (
+  <TabIcon name={props.focused ? "chatbubbles" : "chatbubbles-outline"} focused={props.focused} />
+);
+
 const renderDashboardIcon = (props: { focused: boolean }) => (
   <TabIcon name={props.focused ? "stats-chart" : "stats-chart-outline"} focused={props.focused} />
 );
@@ -182,7 +192,25 @@ function TabNavigator() {
         options={{
           tabBarLabel: 'BOOKINGS',
           tabBarIcon: renderBookingsIcon,
-          headerTitle: 'BOOKINGS',
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{
+          tabBarLabel: 'FAVORITES',
+          tabBarIcon: renderFavoritesIcon,
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          tabBarLabel: 'CHAT',
+          tabBarIcon: renderChatIcon,
+          headerShown: false,
         }}
       />
       <Tab.Screen
@@ -191,7 +219,7 @@ function TabNavigator() {
         options={{
           tabBarIcon: renderProfileIcon,
           tabBarLabel: 'PROFILE',
-          headerTitle: 'PROFILE',
+          headerShown: false,
         }}
       />
     </Tab.Navigator>

@@ -19,15 +19,23 @@ import { format } from 'date-fns';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY } from '../../utils/theme';
 import { EmptyStateAnimation } from '../../components/animations';
+import { TabBar } from '../../components/ui/TabBar';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
+const TABS = [
+  { key: 'ongoing', label: 'Ongoing' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'cancelled', label: 'Cancelled' },
+];
+
 export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('ongoing');
 
   /**
    * Fetch bookings from backend (like website - GET /api/bookings)
@@ -170,34 +178,66 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     );
   }
 
+  // Filter bookings based on active tab
+  const filteredBookings = bookings.filter((booking) => {
+    const status = booking.status.toLowerCase();
+    if (activeTab === 'ongoing') {
+      return status === 'pending' || status === 'confirmed' || status === 'active';
+    } else if (activeTab === 'completed') {
+      return status === 'completed';
+    } else if (activeTab === 'cancelled') {
+      return status === 'cancelled';
+    }
+    return true;
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Bookings</Text>
-        <Text style={styles.headerSubtitle}>{bookings.length} booking{bookings.length === 1 ? '' : 's'}</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Bookings</Text>
+        <View style={styles.headerRight} />
       </View>
 
-      <FlatList
-        data={bookings}
-        renderItem={renderBookingCard}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
-        bounces={true}
-        alwaysBounceVertical={true}
-        ListEmptyComponent={renderEmpty}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
+      {/* Tab Bar */}
+      <TabBar 
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
+
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredBookings}
+          renderItem={renderBookingCard}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContent}
+          bounces={true}
+          alwaysBounceVertical={true}
+          ListEmptyComponent={renderEmpty}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -208,24 +248,31 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: COLORS.divider,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerRight: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.size.xxxl,
-    fontWeight: '800',
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
     color: COLORS.text,
-    letterSpacing: -1,
-  },
-  headerSubtitle: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.primary,
-    marginTop: SPACING.xs,
-    fontWeight: '600',
-    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,

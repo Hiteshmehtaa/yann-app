@@ -12,6 +12,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS, ICON_SIZES } from '../../utils/theme';
 import { Button } from './Button';
+import { RadioButton } from './RadioButton';
 
 interface AddressPickerProps {
   onLocationSelect: (location: {

@@ -35,67 +35,75 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       style={[styles.container, isComingSoon && styles.comingSoonContainer, style]}
       disabled={isComingSoon}
     >
-      {/* Icon Container - Simple like the image */}
-      <View style={[styles.iconContainer, isComingSoon && styles.comingSoonIcon]}>
-        {iconImage ? (
-          <Image 
-            source={iconImage} 
-            style={[styles.iconImage, isComingSoon && { opacity: 0.5 }]} 
-            resizeMode="contain"
-          />
-        ) : (
-          <ServiceIcon size={40} color={isComingSoon ? '#999' : undefined} />
+      {/* Card with white background and shadow */}
+      <View style={styles.card}>
+        {/* Image Container with rounded background */}
+        <View style={styles.imageContainer}>
+          {iconImage ? (
+            <Image 
+              source={iconImage} 
+              style={[styles.serviceImage, isComingSoon && { opacity: 0.5 }]} 
+              resizeMode="cover"
+            />
+          ) : (
+            <ServiceIcon size={60} color={isComingSoon ? '#999' : undefined} />
+          )}
+        </View>
+
+        {/* Title - Bold and clear */}
+        <Text style={[styles.title, isComingSoon && styles.comingSoonText]} numberOfLines={2}>
+          {title}
+        </Text>
+        
+        {/* Coming Soon Badge */}
+        {isComingSoon && (
+          <View style={styles.comingSoonBadge}>
+            <Text style={styles.comingSoonBadgeText}>Coming Soon</Text>
+          </View>
         )}
       </View>
-
-      {/* Title - Simple and centered */}
-      <Text style={[styles.title, isComingSoon && styles.comingSoonText]} numberOfLines={2}>
-        {title}
-      </Text>
-      
-      {/* Coming Soon Badge */}
-      {isComingSoon && (
-        <View style={styles.comingSoonBadge}>
-          <Text style={styles.comingSoonBadgeText}>Coming Soon</Text>
-        </View>
-      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.large,
+    flex: 1,
   },
   comingSoonContainer: {
-    backgroundColor: '#F5F5F5',
     opacity: 0.6,
   },
-  iconContainer: {
-    width: 56,
-    height: 56,
+  card: {
+    backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.medium,
-    backgroundColor: '#F5F5F5',
+    padding: SPACING.sm,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  imageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: RADIUS.medium,
+    overflow: 'hidden',
+    marginBottom: SPACING.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    backgroundColor: '#F8F9FA',
   },
-  comingSoonIcon: {
-    backgroundColor: '#E5E5E5',
-  },
-  iconImage: {
-    width: 40,
-    height: 40,
+  serviceImage: {
+    width: '80%',
+    height: '80%',
   },
   title: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#000',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1A1C1E',
     textAlign: 'center',
-    lineHeight: 14,
+    lineHeight: 16,
   },
   comingSoonText: {
     color: '#999',

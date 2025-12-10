@@ -10,6 +10,7 @@
 export const COLORS = {
   // PRIMARY COLORS (from YANN website)
   primary: '#2E59F3',          // Primary Blue
+  primaryLight: '#E8EEFF',     // Light blue background for icons
   primaryGradientStart: '#2E59F3',  // Gradient start
   primaryGradientEnd: '#4362FF',    // Gradient end
   
@@ -18,18 +19,18 @@ export const COLORS = {
   accentYellow: '#F7C948',     // Accent Yellow
   
   // NEUTRAL COLORS (from YANN website)
-  background: '#F6F7FB',       // Background Light
+  background: '#F8F9FA',       // Background Light (softer gray)
   cardBg: '#FFFFFF',           // Card Background (pure white)
   elevated: '#FFFFFF',         // Elevated surfaces (pure white)
   
   // TEXT COLORS (from YANN website)
   text: '#1A1C1E',             // Heading Text
-  textSecondary: '#4A4D52',    // Body Text
+  textSecondary: '#6B7280',    // Body Text (softer gray)
   textTertiary: '#9CA3AF',     // Muted text
   
   // BORDERS & LINES (from YANN website)
   border: '#E5E7EB',           // Borders / Light Lines
-  divider: '#E5E7EB',          // Dividers
+  divider: '#F0F0F0',          // Dividers (lighter)
   
   // SUPPORTING COLORS (from YANN website)
   success: '#27C07D',          // Success Green
@@ -44,6 +45,9 @@ export const COLORS = {
   // UTILITY
   white: '#FFFFFF',
   black: '#000000',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
 } as const;
 
 // ============================================

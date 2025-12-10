@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
   
   // Size Variants
   size_small: {
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
     minHeight: 36,
   },
   size_medium: {

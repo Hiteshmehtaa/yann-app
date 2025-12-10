@@ -19,6 +19,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { ServiceCard } from '../../components/ui/ServiceCard';
+import { SpecialOfferBanner } from '../../components/ui/SpecialOfferBanner';
 import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS } from '../../utils/theme';
 
 type Props = {
@@ -401,6 +402,27 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           placeholder="Search for services..."
         />
 
+        {/* Special Offer Banner */}
+        <SpecialOfferBanner
+          discount="40%"
+          title="Special Offer!"
+          description="Get discount for every order, only valid for today"
+          onPress={() => {
+            // Navigate to offers/promotions screen if you have one
+            console.log('Special offer pressed');
+          }}
+        />
+
+        {/* Section Header - Popular Services */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Popular Services</Text>
+          <TouchableOpacity onPress={() => setShowAll(!showAll)}>
+            <Text style={styles.seeAllText}>
+              {showAll ? 'Show Less' : 'See All'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Category Filter Tabs */}
         <ScrollView
           horizontal
@@ -428,45 +450,6 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        {/* Status Metrics Card */}
-        <View style={styles.metricsCard}>
-          <View style={styles.metricItem}>
-            <View style={[styles.statusBadge, { backgroundColor: `${COLORS.success}15` }]}>
-              <View style={[styles.statusDot, { backgroundColor: COLORS.success }]} />
-              <Text style={[styles.statusText, { color: COLORS.success }]}>Active</Text>
-            </View>
-            <Text style={styles.metricNumber}>02</Text>
-          </View>
-
-          <View style={styles.metricDivider} />
-
-          <View style={styles.metricItem}>
-            <View style={[styles.statusBadge, { backgroundColor: `${COLORS.info}15` }]}>
-              <View style={[styles.statusDot, { backgroundColor: COLORS.info }]} />
-              <Text style={[styles.statusText, { color: COLORS.info }]}>Done</Text>
-            </View>
-            <Text style={styles.metricNumber}>12</Text>
-          </View>
-
-          <View style={styles.metricDivider} />
-
-          <View style={styles.metricItem}>
-            <View style={[styles.statusBadge, { backgroundColor: `${COLORS.warning}15` }]}>
-              <Ionicons name="star" size={12} color={COLORS.warning} />
-              <Text style={[styles.statusText, { color: COLORS.warning }]}>Rating</Text>
-            </View>
-            <Text style={styles.metricNumber}>4.9</Text>
-          </View>
-        </View>
-
-        {/* Section Header */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.accentBar} />
-            <Text style={styles.sectionTitle}>SERVICES</Text>
-          </View>
-        </View>
       </Animated.View>
 
       {/* Services Grid - 3 Columns */}

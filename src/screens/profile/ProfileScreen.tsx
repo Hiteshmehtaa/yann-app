@@ -137,46 +137,58 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const menuItems: MenuItemType[] = [
     {
-      icon: 'person-outline',
+      icon: 'create-outline',
       title: 'Edit Profile',
-      subtitle: 'Update your personal information',
+      subtitle: '',
       onPress: () => navigation.navigate('EditProfile'),
     },
     {
       icon: 'location-outline',
-      title: 'Saved Addresses',
-      subtitle: 'Manage your service addresses',
+      title: 'Manage Address',
+      subtitle: '',
       onPress: () => navigation.navigate('SavedAddresses'),
     },
     {
       icon: 'card-outline',
       title: 'Payment Methods',
-      subtitle: 'Manage payment options',
-      onPress: () => setShowComingSoon(true), // Payment integration coming later
+      subtitle: '',
+      onPress: () => setShowComingSoon(true),
     },
     {
-      icon: 'notifications-outline',
-      title: 'Notifications',
-      subtitle: 'Manage notification preferences',
+      icon: 'calendar-outline',
+      title: 'My Booking',
+      subtitle: '',
+      onPress: () => navigation.navigate('BookingsList'),
+    },
+    {
+      icon: 'settings-outline',
+      title: 'Settings',
+      subtitle: '',
       onPress: () => navigation.navigate('Notifications'),
     },
     {
       icon: 'help-circle-outline',
-      title: 'Help & Support',
-      subtitle: 'Get help with your bookings',
+      title: 'Help Center',
+      subtitle: '',
       onPress: () => navigation.navigate('HelpSupport'),
-    },
-    {
-      icon: 'information-circle-outline',
-      title: 'About',
-      subtitle: 'Version 1.0.0',
-      onPress: () => setShowComingSoon(true), // About page can be simple modal
     },
   ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={styles.headerRight} />
+      </View>
 
       <ScrollView 
         contentContainerStyle={styles.content}
@@ -185,90 +197,48 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         alwaysBounceVertical={true}
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+
           {/* Profile Card */}
           <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>
-              {user?.name?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.name}>{user?.name || 'User'}</Text>
-            <Text style={styles.email}>{user?.email || 'No email'}</Text>
-            <View style={[styles.memberBadge, { backgroundColor: `${getRoleBadgeColor()}15` }]}>
-              <Ionicons name={getRoleBadgeIcon()} size={ICON_SIZES.small} color={getRoleBadgeColor()} />
-              <Text style={[styles.memberText, { color: getRoleBadgeColor() }]}>{getRoleDisplay()}</Text>
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0).toUpperCase() || 'U'}
+              </Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.name}>{user?.name || 'User'}</Text>
+              <Text style={styles.email}>{user?.email || 'No email'}</Text>
             </View>
           </View>
-        </View>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.bookingsCount}</Text>
-            <Text style={styles.statLabel}>BOOKINGS</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <View style={styles.ratingRow}>
-              <Text style={styles.statNumber}>{stats.rating > 0 ? stats.rating : '-'}</Text>
-              <Ionicons name="star" size={ICON_SIZES.small} color={COLORS.warning} />
-            </View>
-            <Text style={styles.statLabel}>RATING</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
-              {stats.totalSpent >= 1000 
-                ? `₹${(stats.totalSpent / 1000).toFixed(1)}K` 
-                : `₹${stats.totalSpent}`}
-            </Text>
-            <Text style={styles.statLabel}>{user?.role === 'provider' ? 'EARNED' : 'SPENT'}</Text>
-          </View>
-        </View>
-
-        {/* Section Title */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.accentBar} />
-          <Text style={styles.sectionTitle}>SETTINGS</Text>
-        </View>
-
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={item.title}
-              style={[
-                styles.menuItem,
-                index === menuItems.length - 1 && styles.menuItemLast
-              ]}
-              onPress={item.onPress}
-              activeOpacity={0.7}
-            >
-              <View style={styles.menuItemLeft}>
-                <View style={styles.menuIconContainer}>
-                  <Ionicons name={item.icon} size={ICON_SIZES.medium} color={COLORS.primary} />
-                </View>
-                <View style={styles.menuTextContainer}>
+          {/* Menu Items */}
+          <View style={styles.menuContainer}>
+            {menuItems.map((item, index) => (
+              <TouchableOpacity
+                key={item.title}
+                style={[
+                  styles.menuItem,
+                  index === menuItems.length - 1 && styles.menuItemLast,
+                ]}
+                onPress={item.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuItemLeft}>
+                  <View style={styles.iconCircle}>
+                    <Ionicons name={item.icon} size={20} color={COLORS.success} />
+                  </View>
                   <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                 </View>
-              </View>
-              <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={COLORS.textTertiary} />
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={ICON_SIZES.medium} color={COLORS.error} />
-          <Text style={styles.logoutButtonText}>LOGOUT</Text>
-        </TouchableOpacity>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>YANN • v1.0.0</Text>
-        </View>
+          {/* Logout Button */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
         </Animated.View>
       </ScrollView>
 
@@ -287,30 +257,54 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerRight: {
+    width: 40,
+  },
+  headerTitle: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.text,
+  },
   content: {
     padding: SPACING.lg,
-    paddingTop: SPACING.xs, // Start content immediately after safe area
-    paddingBottom: 120, // Extra padding for floating tab bar
+    paddingBottom: 120,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: COLORS.white,
     borderRadius: RADIUS.large,
     padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.md,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.sm,
   },
   avatarContainer: {
-    width: 68,
-    height: 68,
-    borderRadius: RADIUS.medium,
-    backgroundColor: COLORS.primary,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.text,
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.md,
   },
   avatarText: {
-    fontSize: TYPOGRAPHY.size.xxxl,
+    fontSize: 28,
     fontWeight: '800',
     color: COLORS.white,
   },
@@ -319,98 +313,29 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.md,
   },
   name: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: '800',
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
     color: COLORS.text,
-    letterSpacing: -0.5,
-    marginBottom: SPACING.xs,
+    marginBottom: 4,
   },
   email: {
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  memberBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.full,
-    alignSelf: 'flex-start',
-  },
-  memberText: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
-    padding: SPACING.lg,
-    marginBottom: SPACING.xxl,
-    ...SHADOWS.md,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  statNumber: {
-    fontSize: TYPOGRAPHY.size.xxl,
-    fontWeight: '800',
-    color: COLORS.text,
-    letterSpacing: -1,
-  },
-  statLabel: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    letterSpacing: 1.5,
-    marginTop: SPACING.xs,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: COLORS.divider,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  accentBar: {
-    width: 3,
-    height: 18,
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.small,
-  },
-  sectionTitle: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: 2,
   },
   menuContainer: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: COLORS.white,
     borderRadius: RADIUS.large,
     marginBottom: SPACING.xl,
-    ...SHADOWS.md,
+    ...SHADOWS.sm,
     overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: SPACING.md,
+    padding: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: COLORS.gray100,
   },
   menuItemLast: {
     borderBottomWidth: 0,
@@ -420,52 +345,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  menuIconContainer: {
+  iconCircle: {
     width: 40,
     height: 40,
-    borderRadius: RADIUS.small,
-    backgroundColor: COLORS.elevated,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray100,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
   },
-  menuTextContainer: {
-    flex: 1,
-  },
   menuTitle: {
     fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '600',
+    fontWeight: TYPOGRAPHY.weight.medium,
     color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  menuSubtitle: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.textSecondary,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: RADIUS.medium,
-    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    paddingVertical: SPACING.lg,
     gap: SPACING.sm,
-    borderWidth: 1,
-    borderColor: `${COLORS.error}50`,
+    ...SHADOWS.sm,
   },
   logoutButtonText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '700',
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weight.semibold,
     color: COLORS.error,
-    letterSpacing: 1,
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: SPACING.xxxl,
-  },
-  footerText: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.textTertiary,
-    letterSpacing: 2,
   },
 });

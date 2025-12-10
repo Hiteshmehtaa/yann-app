@@ -19,7 +19,7 @@ import type { Service, Address } from '../../types';
 
 import { Toast } from '../../components/Toast';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
-import { SuccessModal } from '../../components/SuccessModal';
+import { BookingAnimation } from '../../components/animations';
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
 import { SavedAddressCard } from '../../components/ui/SavedAddressCard';
 import { MapLocationPicker } from '../../components/ui/MapLocationPicker';
@@ -91,7 +91,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [formErrors, setFormErrors] = useState<any>({});
 
   // Check if this is a driver service
-  const isDriverService = service?.category === 'Driver' || false;
+  const isDriverService = service?.category?.toLowerCase() === 'driver' || false;
 
   // Get provider price
   const getProviderPrice = (): number => {
@@ -184,21 +184,35 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     setIsLoading(true);
+    setShowSuccess(false);
 
     try {
       // Get the numeric service ID
-      let numericServiceId = service?.id;
-      if (!numericServiceId && (service as any)?._id) {
-        // Try to extract numeric ID from MongoDB ObjectId or use a hash
-        const mongoId = (service as any)._id;
-        // Check if _id is actually a number stored as string
-        numericServiceId = !isNaN(Number(mongoId)) ? Number(mongoId) : Math.abs(hashCode(mongoId));
+      let numericServiceId: number;
+      const serviceId = service?.id || (service as any)?._id;
+      
+      // Check if it's already a number
+      if (typeof serviceId === 'number') {
+        numericServiceId = serviceId;
+      } else if (typeof serviceId === 'string') {
+        // Try to parse as number first
+        const parsed = Number(serviceId);
+        if (!isNaN(parsed)) {
+          numericServiceId = parsed;
+        } else {
+          // If it's a MongoDB ObjectId, convert to hash
+          numericServiceId = Math.abs(hashCode(serviceId));
+        }
+      } else {
+        // Fallback to hash of service title
+        numericServiceId = Math.abs(hashCode(service?.title || 'unknown'));
       }
 
       console.log('📋 Service ID Debug:', {
         originalId: service?.id,
         mongoId: (service as any)?._id,
         finalId: numericServiceId,
+        finalIdType: typeof numericServiceId,
         serviceTitle: service?.title
       });
 
@@ -225,15 +239,28 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         bookingPayload.providerId = selectedProvider._id;
       }
 
-      if (isDriverService && endTime) {
+      console.log('🚗 Driver Service Check:', {
+        isDriverService,
+        category: service?.category,
+        hasBookingTime: !!bookingTime,
+        hasEndTime: !!endTime,
+        bookingTime: bookingTime?.toTimeString().substring(0, 5),
+        endTime: endTime?.toTimeString().substring(0, 5)
+      });
+
+      if (isDriverService && bookingTime && endTime) {
         bookingPayload.driverDetails = {
-          startTime: bookingTime?.toTimeString().substring(0, 5),
+          startTime: bookingTime.toTimeString().substring(0, 5),
           endTime: endTime.toTimeString().substring(0, 5),
         };
+        console.log('🚗 Driver Details Added:', bookingPayload.driverDetails);
       }
+
+      console.log('📤 Booking Payload:', JSON.stringify(bookingPayload, null, 2));
 
       await apiService.createBooking(bookingPayload);
 
+      setIsLoading(false);
       setShowSuccess(true);
 
       setTimeout(() => {
@@ -245,9 +272,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       }, 3000);
     } catch (error: any) {
       console.error('❌ Booking failed:', error.response?.data || error.message);
-      showError(error.response?.data?.message || 'Failed to create booking. Please try again.');
-    } finally {
       setIsLoading(false);
+      showError(error.response?.data?.message || 'Failed to create booking. Please try again.');
     }
   };
 
@@ -504,13 +530,15 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       />
 
-      <LoadingSpinner visible={isLoading} />
-
-      <SuccessModal
-        visible={showSuccess}
-        title="Booking Confirmed! 🎉"
-        message="Your service has been booked successfully. We'll notify you shortly!"
-        onClose={() => setShowSuccess(false)}
+      <BookingAnimation
+        visible={isLoading || showSuccess}
+        type={isLoading ? 'loading' : 'success'}
+        message={showSuccess ? "Your service has been booked successfully!" : undefined}
+        onAnimationFinish={() => {
+          if (showSuccess) {
+            setShowSuccess(false);
+          }
+        }}
       />
 
       <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />

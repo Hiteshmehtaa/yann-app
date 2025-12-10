@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { RiveAnimation } from './RiveAnimation';
+import LottieView from 'lottie-react-native';
 
 interface EmptyStateAnimationProps {
   style?: ViewStyle;
@@ -13,23 +13,13 @@ export const EmptyStateAnimation: React.FC<EmptyStateAnimationProps> = ({
   size = 200,
   type = 'no-data',
 }) => {
-  const getAnimationUrl = () => {
-    switch (type) {
-      case 'no-search':
-        return 'https://public.rive.app/community/runtime-files/1446-2881-search-animation.riv';
-      case 'no-bookings':
-        return 'https://public.rive.app/community/runtime-files/2487-5002-empty-state.riv';
-      default:
-        return 'https://public.rive.app/community/runtime-files/2487-5002-empty-state.riv';
-    }
-  };
-
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
-      <RiveAnimation
-        animationUrl={getAnimationUrl()}
-        autoplay={true}
-        loop={true}
+      <LottieView
+        source={require('../../../assets/lottie/empty.json')}
+        autoPlay
+        loop
+        style={{ width: '100%', height: '100%' }}
       />
     </View>
   );

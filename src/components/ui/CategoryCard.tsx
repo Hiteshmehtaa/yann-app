@@ -41,69 +41,43 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       onPress={onPress}
       style={[styles.container, style]}
     >
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      >
-        {/* Icon Container */}
+      <View style={styles.cardContent}>
+        {/* Icon Container with Light Blue Background */}
         <View style={styles.iconContainer}>
-          <View style={[styles.iconWrapper, { backgroundColor: 'rgba(255, 255, 255, 0.25)' }]}>
-            {icon}
-          </View>
+          {icon}
         </View>
 
-        {/* Title and Count */}
-        <View style={styles.content}>
-          <Text style={styles.title} numberOfLines={2}>
-            {title}
-          </Text>
-          {count !== undefined && (
-            <Text style={styles.count}>{count} services</Text>
-          )}
-        </View>
-      </LinearGradient>
+        {/* Title */}
+        <Text style={styles.title} numberOfLines={2}>
+          {title}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: 160,
-    height: 120,
+    width: 80,
     marginRight: SPACING.md,
   },
-  gradient: {
-    flex: 1,
-    borderRadius: RADIUS.large,
-    padding: SPACING.md,
-    justifyContent: 'space-between',
-    ...SHADOWS.md,
-  },
-  iconContainer: {
-    alignItems: 'flex-start',
-  },
-  iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.medium,
-    justifyContent: 'center',
+  cardContent: {
     alignItems: 'center',
   },
-  content: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: RADIUS.medium,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
   },
   title: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.white,
-    marginBottom: 4,
-  },
-  count: {
     fontSize: TYPOGRAPHY.size.xs,
-    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: TYPOGRAPHY.weight.medium,
+    color: COLORS.text,
+    textAlign: 'center',
+    lineHeight: 14,
   },
 });
