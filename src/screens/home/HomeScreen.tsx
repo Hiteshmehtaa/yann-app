@@ -20,6 +20,7 @@ import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { ServiceCard } from '../../components/ui/ServiceCard';
 import { SpecialOfferBanner } from '../../components/ui/SpecialOfferBanner';
+import { AnimatedCard } from '../../components/AnimatedCard';
 import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS } from '../../utils/theme';
 
 type Props = {
@@ -431,13 +432,15 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.categoriesContent}
         >
           {categories.map((category) => (
-            <TouchableOpacity
+            <AnimatedCard
               key={category}
               style={[
                 styles.categoryTag,
                 selectedCategory === category && styles.categoryTagActive
               ]}
               onPress={() => setSelectedCategory(category)}
+              isSelected={selectedCategory === category}
+              glowColor={COLORS.primary}
             >
               <Text
                 style={[
@@ -447,7 +450,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               >
                 {category.charAt(0).toUpperCase() + category.slice(1)}
               </Text>
-            </TouchableOpacity>
+            </AnimatedCard>
           ))}
         </ScrollView>
       </Animated.View>

@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   Animated,
   RefreshControl,
-  ActivityIndicator,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -150,10 +150,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
     return (
       <SafeAreaView edges={['top']} style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
+        <LoadingSpinner visible={true} />
       </SafeAreaView>
     );
   }

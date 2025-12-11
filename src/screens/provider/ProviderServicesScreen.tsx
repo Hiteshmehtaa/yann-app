@@ -178,9 +178,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
   if (isLoading) {
     return (
       <SafeAreaView edges={['top']} style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={THEME.colors.primary} />
-        </View>
+        <LoadingSpinner visible={true} />
       </SafeAreaView>
     );
   }

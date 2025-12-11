@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   Platform,
   Linking,
   Alert,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
@@ -484,9 +485,15 @@ export const ProviderBookingsScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Loading bookings...</Text>
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <LottieView
+            source={require('../../../assets/lottie/loading.json')}
+            autoPlay
+            loop
+            style={{ width: 200, height: 200 }}
+          />
+        </View>
       </View>
     );
   }
@@ -501,7 +508,12 @@ export const ProviderBookingsScreen = () => {
       {/* Error Banner */}
       {error && (
         <View style={styles.errorBanner}>
-          <Ionicons name="cloud-offline-outline" size={16} color="#F44336" />
+          <LottieView
+            source={require('../../../assets/lottie/Connection-Lost-Animation.json')}
+            autoPlay
+            loop
+            style={{ width: 32, height: 32 }}
+          />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -563,7 +575,12 @@ export const ProviderBookingsScreen = () => {
       >
         {filteredBookings.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={64} color={COLORS.textSecondary} />
+            <LottieView
+              source={require('../../../assets/lottie/empty cart.json')}
+              autoPlay
+              loop
+              style={{ width: 250, height: 250 }}
+            />
             <Text style={styles.emptyTitle}>No bookings found</Text>
             <Text style={styles.emptySubtitle}>
               {activeFilter === 'all' 

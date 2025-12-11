@@ -6,9 +6,9 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   StatusBar,
 } from 'react-native';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,6 +19,8 @@ import { format } from 'date-fns';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY } from '../../utils/theme';
 import { EmptyStateAnimation } from '../../components/animations';
+import { EmptyState } from '../../components/EmptyState';
+import { AnimatedButton } from '../../components/AnimatedButton';
 import { TabBar } from '../../components/ui/TabBar';
 
 type Props = {
@@ -44,10 +46,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const fetchBookings = async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
     try {
-      console.log('🔵 BookingsList: Fetching bookings (like website)');
       const response = await apiService.getMyBookings();
-      
-      console.log('📦 BookingsList: Raw API response:', JSON.stringify(response, null, 2));
       
       if (response.success && response.data) {
         // Map response to ensure consistent format
@@ -57,17 +56,10 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           id: booking.id || booking._id,
         }));
         setBookings(mappedBookings);
-        console.log(`✅ BookingsList: Loaded ${mappedBookings.length} bookings`);
-        if (mappedBookings.length > 0) {
-          console.log('📋 Sample booking:', JSON.stringify(mappedBookings[0], null, 2));
-        }
       } else {
-        console.warn('⚠️ BookingsList: Response not successful or no data');
         setBookings([]);
       }
     } catch (error: any) {
-      console.error('❌ BookingsList: Error fetching bookings:', error);
-      console.error('❌ Error details:', error.response?.data || error.message);
       setBookings([]);
     } finally {
       setIsLoading(false);
@@ -154,27 +146,25 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <EmptyStateAnimation type="no-bookings" size={220} />
-      <Text style={styles.emptyTitle}>No bookings yet</Text>
-      <Text style={styles.emptyText}>
-        Your bookings will appear here once you book a service
-      </Text>
-      <TouchableOpacity
+      <EmptyState
+        title="No bookings yet"
+        subtitle="Your bookings will appear here once you book a service"
+      />
+      <AnimatedButton
         style={styles.browseButton}
         onPress={() => navigation.navigate('Home')}
       >
         <Text style={styles.browseButtonText}>Browse services</Text>
         <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />
-      </TouchableOpacity>
+      </AnimatedButton>
     </View>
   );
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Loading bookings...</Text>
-      </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <LoadingSpinner visible={true} />
+      </SafeAreaView>
     );
   }
 
@@ -214,11 +204,9 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         onTabChange={setActiveTab}
       />
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : (
+      <LoadingSpinner visible={isLoading} />
+      
+      {!isLoading && (
         <FlatList
           data={filteredBookings}
           renderItem={renderBookingCard}

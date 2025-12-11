@@ -27,13 +27,13 @@ export const BookingAnimation: React.FC<BookingAnimationProps> = ({
   const getAnimationSource = () => {
     switch (type) {
       case 'loading':
-        return require('../../../assets/lottie/booking-loading.json');
+        return require('../../../assets/lottie/loading.json');
       case 'success':
-        return require('../../../assets/lottie/booking-success.json');
+        return require('../../../assets/lottie/Jumping-Lottie-Animation.json');
       case 'error':
         return require('../../../assets/lottie/error.json');
       default:
-        return require('../../../assets/lottie/booking-loading.json');
+        return require('../../../assets/lottie/loading.json');
     }
   };
 

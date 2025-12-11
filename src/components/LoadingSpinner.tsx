@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, ActivityIndicator, StyleSheet, Modal } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useRef, useEffect } from 'react';
+import { View, StyleSheet, Modal } from 'react-native';
+import LottieView from 'lottie-react-native';
+import { BlurView } from 'expo-blur';
 
 interface LoadingSpinnerProps {
   visible: boolean;
@@ -11,18 +12,29 @@ interface LoadingSpinnerProps {
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
   visible, 
   size = 'large',
-  color = '#3B82F6',
 }) => {
+  const animationRef = useRef<LottieView>(null);
+
+  useEffect(() => {
+    if (visible && animationRef.current) {
+      animationRef.current.play();
+    }
+  }, [visible]);
+
+  const animationSize = size === 'large' ? 200 : 120;
+
   return (
     <Modal transparent visible={visible} animationType="fade">
       <View style={styles.overlay}>
-        <View style={styles.container}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F9FAFB']}
-            style={styles.gradient}
-          >
-            <ActivityIndicator size={size} color={color} />
-          </LinearGradient>
+        <BlurView intensity={40} style={StyleSheet.absoluteFill} />
+        <View style={[styles.animationContainer, { width: animationSize, height: animationSize }]}>
+          <LottieView
+            ref={animationRef}
+            source={require('../../assets/lottie/loading.json')}
+            autoPlay
+            loop
+            style={styles.animation}
+          />
         </View>
       </View>
     </Modal>
@@ -32,22 +44,16 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  container: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  gradient: {
-    padding: 40,
+  animationContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  animation: {
+    width: '100%',
+    height: '100%',
   },
 });

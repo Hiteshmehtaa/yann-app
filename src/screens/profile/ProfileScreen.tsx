@@ -225,7 +225,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               >
                 <View style={styles.menuItemLeft}>
                   <View style={styles.iconCircle}>
-                    <Ionicons name={item.icon} size={20} color={COLORS.success} />
+                    <Ionicons name={item.icon} size={20} color={COLORS.primary} />
                   </View>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                 </View>
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: COLORS.text,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.md,

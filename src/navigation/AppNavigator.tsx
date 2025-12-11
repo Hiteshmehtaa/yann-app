@@ -7,6 +7,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS } from '../utils/theme';
 
+// Screen transition configuration
+const screenTransitionConfig = {
+  animation: 'slide_from_right' as const,
+  animationDuration: 300,
+};
+
+const fadeTransitionConfig = {
+  animation: 'fade' as const,
+  animationDuration: 200,
+};
+
 // Auth Screens
 import { RoleSelectionScreen } from '../screens/auth/RoleSelectionScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -281,6 +292,15 @@ function ProviderTabNavigator() {
         }}
       />
       <Tab.Screen
+        name="ProviderChat"
+        component={ChatScreen}
+        options={{
+          tabBarLabel: 'CHAT',
+          tabBarIcon: renderChatIcon,
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
         name="ProviderProfile"
         component={ProfileScreen}
         options={{
@@ -309,48 +329,49 @@ export function AppNavigator() {
           headerShown: false,
           contentStyle: { backgroundColor: THEME.bg },
           animation: 'slide_from_right',
+          animationDuration: 300,
         }}
       >
         {isAuthenticated ? (
           <>
             {isProvider ? (
               <>
-                <Stack.Screen name="ProviderTabs" component={ProviderTabNavigator} />
-                <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen as any} />
-                <Stack.Screen name="ProviderServices" component={ProviderServicesScreen as any} />
-                <Stack.Screen name="ProviderEarnings" component={ProviderEarningsScreen as any} />
-                <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} />
-                <Stack.Screen name="Terms" component={TermsConditionsScreen as any} />
-                <Stack.Screen name="Privacy" component={PrivacyPolicyScreen as any} />
-                <Stack.Screen name="RefundPolicy" component={RefundPolicyScreen as any} />
-                <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} />
-                <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} />
+                <Stack.Screen name="ProviderTabs" component={ProviderTabNavigator} options={fadeTransitionConfig} />
+                <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderServices" component={ProviderServicesScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderEarnings" component={ProviderEarningsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Terms" component={TermsConditionsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Privacy" component={PrivacyPolicyScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="RefundPolicy" component={RefundPolicyScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
               </>
             ) : (
               <>
-                <Stack.Screen name="MainTabs" component={TabNavigator} />
-                <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen as any} />
-                <Stack.Screen name="BookingForm" component={BookingFormScreen as any} />
-                <Stack.Screen name="EditProfile" component={EditProfileScreen as any} />
-                <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} />
-                <Stack.Screen name="Notifications" component={NotificationsScreen as any} />
-                <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} />
-                <Stack.Screen name="Terms" component={TermsConditionsScreen as any} />
-                <Stack.Screen name="Privacy" component={PrivacyPolicyScreen as any} />
-                <Stack.Screen name="RefundPolicy" component={RefundPolicyScreen as any} />
-                <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} />
-                <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} />
+                <Stack.Screen name="MainTabs" component={TabNavigator} options={fadeTransitionConfig} />
+                <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="BookingForm" component={BookingFormScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Terms" component={TermsConditionsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Privacy" component={PrivacyPolicyScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="RefundPolicy" component={RefundPolicyScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
               </>
             )}
           </>
         ) : (
           <>
-            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="PartnerLogin" component={PartnerLoginScreen} />
-            <Stack.Screen name="Signup" component={SignupScreen as any} />
-            <Stack.Screen name="ProviderSignup" component={ProviderSignupScreen} />
-            <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen as any} />
+            <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={fadeTransitionConfig} />
+            <Stack.Screen name="Login" component={LoginScreen} options={screenTransitionConfig} />
+            <Stack.Screen name="PartnerLogin" component={PartnerLoginScreen} options={screenTransitionConfig} />
+            <Stack.Screen name="Signup" component={SignupScreen as any} options={screenTransitionConfig} />
+            <Stack.Screen name="ProviderSignup" component={ProviderSignupScreen} options={screenTransitionConfig} />
+            <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen as any} options={screenTransitionConfig} />
           </>
         )}
       </Stack.Navigator>

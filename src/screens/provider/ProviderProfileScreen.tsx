@@ -112,11 +112,12 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
           {isSaving ? (
-            <ActivityIndicator size="small" color={THEME.colors.primary} />
+            <Text style={styles.saveButtonText}>Saving...</Text>
           ) : (
             <Text style={styles.saveButtonText}>Save</Text>
           )}
         </TouchableOpacity>
+        <LoadingSpinner visible={isSaving} />
       </View>
 
       <ScrollView 

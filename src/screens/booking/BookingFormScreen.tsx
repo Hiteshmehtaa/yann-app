@@ -9,7 +9,12 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  TextInput,
+  Dimensions,
 } from 'react-native';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +24,7 @@ import type { Service, Address } from '../../types';
 
 import { Toast } from '../../components/Toast';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { BookingSuccessModal } from '../../components/BookingSuccessModal';
 import { BookingAnimation } from '../../components/animations';
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
 import { SavedAddressCard } from '../../components/ui/SavedAddressCard';
@@ -26,6 +32,7 @@ import { MapLocationPicker } from '../../components/ui/MapLocationPicker';
 import { BillingSummaryCard } from '../../components/ui/BillingSummaryCard';
 import { PremiumDateTimePicker } from '../../components/ui/PremiumDateTimePicker';
 import { StickyBookingCTA } from '../../components/ui/StickyBookingCTA';
+import { AnimatedButton } from '../../components/AnimatedButton';
 
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -93,40 +100,54 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   // Check if this is a driver service
   const isDriverService = service?.category?.toLowerCase() === 'driver' || false;
 
-  // Get provider price
+  // Get provider price - use price from provider's services array in DB
   const getProviderPrice = (): number => {
-    if (!selectedProvider) {
-      return typeof service?.price === 'number' ? service.price : 0;
-    }
-
-    if (selectedProvider.priceForService && Array.isArray(selectedProvider.priceForService)) {
-      const priceObj = selectedProvider.priceForService.find(
-        (p: any) => p.serviceId === (service as any)?._id || p.serviceId === service?.id
-      );
-      return priceObj?.price || 0;
-    }
-
-    if (selectedProvider.serviceRates && Array.isArray(selectedProvider.serviceRates)) {
+    // First check serviceRates array (primary source)
+    if (selectedProvider?.serviceRates && Array.isArray(selectedProvider.serviceRates)) {
       const rateObj = selectedProvider.serviceRates.find(
-        (r: any) => r.serviceId === (service as any)?._id || r.serviceId === service?.id
+        (rate: any) => 
+          rate._id === (service as any)?._id || 
+          rate._id === service?.id ||
+          rate.serviceId === (service as any)?._id ||
+          rate.serviceId === service?.id
       );
-      return rateObj?.rate || 0;
+      
+      if (rateObj?.price) {
+        return Number(rateObj.price);
+      }
     }
 
-    return typeof service?.price === 'number' ? service.price : 0;
+    // Then check services array
+    if (selectedProvider?.services && Array.isArray(selectedProvider.services)) {
+      const providerService = selectedProvider.services.find(
+        (s: any) => 
+          s._id === (service as any)?._id || 
+          s._id === service?.id ||
+          s.serviceName === service?.title
+      );
+      
+      if (providerService?.price) {
+        return Number(providerService.price);
+      }
+    }
+
+    // Fallback to service.price
+    const price = typeof service?.price === 'number' ? service.price : 0;
+    return price;
   };
 
-  // Get provider service fee (10% of base price when provider is selected)
-  const getServiceFee = (): number => {
-    if (!selectedProvider) {
-      return 0;
-    }
-    return basePrice * 0.10; // 10% service fee
+  // Calculate GST (18% of base price)
+  const getGST = (): number => {
+    return basePrice * 0.18; // 18% GST
   };
 
   const basePrice = getProviderPrice();
-  const serviceFee = getServiceFee();
-  const totalPrice = basePrice + serviceFee;
+  const gstAmount = getGST();
+  const totalPrice = basePrice + gstAmount;
+
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
 
   // Entry animation
   useEffect(() => {
@@ -176,6 +197,17 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     return Object.keys(errors).length === 0;
   };
 
+  // Handle animation complete - close modal and redirect
+  const handleAnimationComplete = () => {
+    console.log('🎬 SUCCESS ANIMATION ENDED at:', new Date().toISOString());
+    console.log('⏱️ Animation duration: Animation should be 1.27 seconds');
+    setShowSuccess(false);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'MainTabs', params: { screen: 'BookingsList' } }],
+    });
+  };
+
   // Handle submission
   const handleSubmit = async () => {
     if (!validateForm()) {
@@ -208,28 +240,27 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         numericServiceId = Math.abs(hashCode(service?.title || 'unknown'));
       }
 
-      console.log('📋 Service ID Debug:', {
-        originalId: service?.id,
-        mongoId: (service as any)?._id,
-        finalId: numericServiceId,
-        finalIdType: typeof numericServiceId,
-        serviceTitle: service?.title
-      });
-
       const bookingPayload: any = {
         serviceId: numericServiceId,
         serviceName: service?.title,
         serviceCategory: service?.category,
-        customerId: user?._id,
-        customerName: selectedAddress?.name || user?.name,
-        customerPhone: selectedAddress?.phone || user?.phone,
-        customerAddress: selectedAddress?.fullAddress,
+        customerId: (user as any)?._id || user?.id,
+        customerName: selectedAddress?.name || user?.name || 'Guest',
+        customerPhone: selectedAddress?.phone || user?.phone || '',
+        customerAddress: selectedAddress?.fullAddress || '',
         latitude: selectedAddress?.latitude || 0,
         longitude: selectedAddress?.longitude || 0,
+        // Provider navigation details - sending complete address to provider
+        providerNavigationAddress: {
+          fullAddress: selectedAddress?.fullAddress || '',
+          latitude: selectedAddress?.latitude || 0,
+          longitude: selectedAddress?.longitude || 0,
+          phone: selectedAddress?.phone || user?.phone || '',
+        },
         bookingDate: bookingDate?.toISOString().split('T')[0],
         bookingTime: bookingTime?.toTimeString().substring(0, 5),
         basePrice,
-        serviceFee,
+        gstAmount,
         totalPrice,
         paymentMethod: formData.paymentMethod,
         notes: formData.notes,
@@ -239,37 +270,21 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         bookingPayload.providerId = selectedProvider._id;
       }
 
-      console.log('🚗 Driver Service Check:', {
-        isDriverService,
-        category: service?.category,
-        hasBookingTime: !!bookingTime,
-        hasEndTime: !!endTime,
-        bookingTime: bookingTime?.toTimeString().substring(0, 5),
-        endTime: endTime?.toTimeString().substring(0, 5)
-      });
-
       if (isDriverService && bookingTime && endTime) {
         bookingPayload.driverDetails = {
           startTime: bookingTime.toTimeString().substring(0, 5),
           endTime: endTime.toTimeString().substring(0, 5),
         };
-        console.log('🚗 Driver Details Added:', bookingPayload.driverDetails);
       }
-
-      console.log('📤 Booking Payload:', JSON.stringify(bookingPayload, null, 2));
 
       await apiService.createBooking(bookingPayload);
 
+      // Hide loading, show success animation
+      console.log('✅ BOOKING CREATED - Showing success animation');
       setIsLoading(false);
       setShowSuccess(true);
 
-      setTimeout(() => {
-        setShowSuccess(false);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs', params: { screen: 'BookingsList' } }],
-        });
-      }, 3000);
+      // Modal will close and redirect after animation completes (1.27s)
     } catch (error: any) {
       console.error('❌ Booking failed:', error.response?.data || error.message);
       setIsLoading(false);
@@ -292,17 +307,14 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Confirm Booking</Text>
-          <Text style={styles.headerSubtitle}>Complete your service request</Text>
-        </View>
+        <Text style={styles.headerTitle}>Booking Details</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -318,46 +330,96 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           keyboardShouldPersistTaps="handled"
         >
           <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            {/* Service Hero Card */}
-            <View style={styles.heroCard}>
+            
+            {/* Enhanced Service Card with Gradient */}
+            <View style={styles.serviceCard}>
               <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                colors={['#E8EEFF', '#F8F9FF']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.heroGradient}
+                style={styles.serviceGradient}
               >
-                <View style={styles.heroIconContainer}>
-                  <Ionicons name="sparkles" size={36} color={COLORS.white} />
+                <View style={styles.serviceHeader}>
+                  <View style={styles.serviceIconContainer}>
+                    <Ionicons name="briefcase-outline" size={28} color={COLORS.primary} />
+                  </View>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName}>{service.title}</Text>
+                    <View style={styles.categoryBadge}>
+                      <Text style={styles.categoryBadgeText}>{service.category}</Text>
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.heroTitle}>{service.title}</Text>
-                <Text style={styles.heroDescription} numberOfLines={2}>
-                  {service.description || 'Professional service at your doorstep'}
-                </Text>
-                {selectedProvider && (
-                  <View style={styles.providerBadge}>
-                    <Ionicons name="person" size={14} color={COLORS.primary} />
-                    <Text style={styles.providerBadgeText}>{selectedProvider.name}</Text>
-                    <View style={styles.providerRating}>
-                      <Ionicons name="star" size={12} color={COLORS.warning} />
+              </LinearGradient>
+              
+              {selectedProvider && (
+                <View style={styles.providerInfo}>
+                  <LinearGradient
+                    colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.providerAvatar}
+                  >
+                    <Text style={styles.providerAvatarText}>
+                      {selectedProvider.name?.charAt(0).toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                  <View style={styles.providerDetails}>
+                    <Text style={styles.providerName}>{selectedProvider.name}</Text>
+                    <View style={styles.providerRatingRow}>
+                      <Ionicons name="star" size={16} color="#FFB800" />
                       <Text style={styles.providerRatingText}>
                         {selectedProvider.rating?.toFixed(1) || '5.0'}
                       </Text>
+                      <Text style={styles.providerRatingLabel}>• Professional</Text>
                     </View>
                   </View>
+                </View>
+              )}
+            </View>
+
+            {/* Enhanced Price Summary Card */}
+            <View style={styles.priceSummaryCard}>
+              <View style={styles.priceSummaryHeader}>
+                <Ionicons name="wallet-outline" size={24} color={COLORS.primary} />
+                <Text style={styles.sectionHeaderText}>Price Summary</Text>
+              </View>
+              <View style={styles.priceBreakdown}>
+                <View style={styles.priceItemRow}>
+                  <Text style={styles.priceItemLabel}>Service Charge</Text>
+                  <Text style={styles.priceItemValue}>₹{basePrice.toFixed(2)}</Text>
+                </View>
+                {gstAmount > 0 && (
+                  <View style={styles.priceItemRow}>
+                    <Text style={styles.priceItemLabel}>GST (18%)</Text>
+                    <Text style={styles.priceItemValue}>₹{gstAmount.toFixed(2)}</Text>
+                  </View>
                 )}
+              </View>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.totalAmountGradient}
+              >
+                <Text style={styles.priceTotalText}>Total Amount</Text>
+                <Text style={styles.priceTotalAmount}>₹{totalPrice.toFixed(2)}</Text>
               </LinearGradient>
+              {basePrice === 0 && (
+                <View style={styles.priceNote}>
+                  <Ionicons name="information-circle-outline" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.priceNoteText}>
+                    Final price will be confirmed by provider
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Section 1: Address Details */}
-            <View style={styles.section}>
+            <View style={styles.formSection}>
               <View style={styles.sectionHeader}>
-                <View style={styles.sectionNumber}>
-                  <Text style={styles.sectionNumberText}>1</Text>
-                </View>
-                <View style={styles.sectionTitleContainer}>
-                  <Text style={styles.sectionTitle}>Service Location</Text>
-                  <Text style={styles.sectionSubtitle}>Where should we deliver?</Text>
-                </View>
+                <Ionicons name="location-outline" size={22} color={COLORS.primary} />
+                <Text style={styles.sectionHeaderText}>Service Location</Text>
               </View>
 
               <SavedAddressCard
@@ -369,30 +431,25 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
               {/* Map Picker Button */}
               <TouchableOpacity
-                style={styles.mapPickerButton}
+                style={styles.mapButton}
                 onPress={() => setShowMapPicker(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="map" size={20} color={COLORS.primary} />
-                <Text style={styles.mapPickerText}>Pick location on map</Text>
+                <Ionicons name="map-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.mapButtonText}>Pick location on map</Text>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
               </TouchableOpacity>
             </View>
 
             {/* Section 2: Date & Time */}
-            <View style={styles.section}>
+            <View style={styles.formSection}>
               <View style={styles.sectionHeader}>
-                <View style={styles.sectionNumber}>
-                  <Text style={styles.sectionNumberText}>2</Text>
-                </View>
-                <View style={styles.sectionTitleContainer}>
-                  <Text style={styles.sectionTitle}>Schedule Service</Text>
-                  <Text style={styles.sectionSubtitle}>When do you need it?</Text>
-                </View>
+                <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
+                <Text style={styles.sectionHeaderText}>Schedule Service</Text>
               </View>
 
-              <View style={styles.dateTimeRow}>
-                <View style={styles.dateTimeColumn}>
+              <View style={styles.dateTimeContainer}>
+                <View style={styles.inputHalf}>
                   <PremiumDateTimePicker
                     label="Select Date"
                     value={bookingDate}
@@ -402,7 +459,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                     minimumDate={new Date()}
                   />
                 </View>
-                <View style={styles.dateTimeColumn}>
+                <View style={styles.inputHalf}>
                   <PremiumDateTimePicker
                     label={isDriverService ? 'Start Time' : 'Time'}
                     value={bookingTime}
@@ -425,51 +482,53 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               )}
             </View>
 
-            {/* Section 3: Payment & Notes */}
-            <View style={styles.section}>
+            {/* Section 3: Payment Method */}
+            <View style={styles.formSection}>
               <View style={styles.sectionHeader}>
-                <View style={styles.sectionNumber}>
-                  <Text style={styles.sectionNumberText}>3</Text>
-                </View>
-                <View style={styles.sectionTitleContainer}>
-                  <Text style={styles.sectionTitle}>Payment Method</Text>
-                  <Text style={styles.sectionSubtitle}>How will you pay?</Text>
-                </View>
+                <Ionicons name="card-outline" size={22} color={COLORS.primary} />
+                <Text style={styles.sectionHeaderText}>Payment Method</Text>
               </View>
 
-              <View style={styles.paymentMethods}>
+              <View style={styles.paymentOptions}>
                 {PAYMENT_METHODS.map((method) => (
                   <TouchableOpacity
                     key={method.id}
                     style={[
-                      styles.paymentMethod,
-                      formData.paymentMethod === method.id && styles.paymentMethodActive,
+                      styles.paymentOption,
+                      formData.paymentMethod === method.id && styles.paymentOptionSelected,
                     ]}
-                    onPress={() => setFormData({ ...formData, paymentMethod: method.id })}
+                    onPress={() => {
+                      setFormData({ ...formData, paymentMethod: method.id });
+                      if (method.id === 'upi' || method.id === 'card') {
+                        setSelectedPaymentMethod(method.id);
+                        setShowPaymentModal(true);
+                      }
+                    }}
                     activeOpacity={0.7}
                   >
-                    <View
-                      style={[
-                        styles.paymentIcon,
-                        formData.paymentMethod === method.id && styles.paymentIconActive,
-                      ]}
-                    >
-                      <Ionicons
-                        name={method.icon as any}
-                        size={24}
-                        color={
-                          formData.paymentMethod === method.id ? COLORS.primary : COLORS.textSecondary
-                        }
-                      />
+                    <View style={styles.paymentOptionLeft}>
+                      <View style={styles.paymentIconWrapper}>
+                        <Ionicons
+                          name={method.icon as any}
+                          size={22}
+                          color={formData.paymentMethod === method.id ? COLORS.primary : COLORS.textSecondary}
+                        />
+                      </View>
+                      <Text style={[
+                        styles.paymentOptionText,
+                        formData.paymentMethod === method.id && styles.paymentOptionTextSelected
+                      ]}>
+                        {method.label}
+                      </Text>
                     </View>
-                    <Text
-                      style={[
-                        styles.paymentMethodText,
-                        formData.paymentMethod === method.id && styles.paymentMethodTextActive,
-                      ]}
-                    >
-                      {method.label}
-                    </Text>
+                    <View style={[
+                      styles.radioButton,
+                      formData.paymentMethod === method.id && styles.radioButtonSelected
+                    ]}>
+                      {formData.paymentMethod === method.id && (
+                        <View style={styles.radioButtonInner} />
+                      )}
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -482,33 +541,30 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
-                leftIcon="document-text"
-                containerStyle={{ marginTop: SPACING.md }}
+                leftIcon="document-text-outline"
+                containerStyle={{ marginTop: SPACING.lg }}
               />
             </View>
-
-            {/* Billing Summary */}
-            <BillingSummaryCard
-              priceBreakdown={{
-                basePrice,
-                serviceFee,
-                totalPrice,
-              }}
-              serviceName={service.title}
-              providerName={selectedProvider?.name}
-              containerStyle={{ marginBottom: 120 }}
-            />
           </Animated.View>
         </ScrollView>
 
-        {/* Sticky CTA */}
-        <StickyBookingCTA
-          onPress={handleSubmit}
-          loading={isLoading}
-          disabled={!selectedAddress || !bookingDate || !bookingTime}
-          totalPrice={totalPrice}
-          serviceName={service.title}
-        />
+        {/* Bottom CTA Button */}
+        <View style={styles.bottomCTA}>
+          <AnimatedButton
+            style={[styles.confirmButton, (!selectedAddress || !bookingDate || !bookingTime) && styles.confirmButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={!selectedAddress || !bookingDate || !bookingTime || isLoading}
+          >
+            {isLoading ? (
+              <LoadingSpinner visible={true} />
+            ) : (
+              <>
+                <Text style={styles.confirmButtonText}>Confirm Booking</Text>
+                <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
+              </>
+            )}
+          </AnimatedButton>
+        </View>
       </KeyboardAvoidingView>
 
       {/* Map Location Picker Modal */}
@@ -530,18 +586,119 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       />
 
-      <BookingAnimation
-        visible={isLoading || showSuccess}
-        type={isLoading ? 'loading' : 'success'}
-        message={showSuccess ? "Your service has been booked successfully!" : undefined}
-        onAnimationFinish={() => {
-          if (showSuccess) {
-            setShowSuccess(false);
-          }
-        }}
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
+
+      <BookingSuccessModal
+        visible={showSuccess}
+        title="Booking Confirmed!"
+        serviceName={service?.title}
+        message="We'll notify you once a provider accepts your booking."
+        onClose={() => setShowSuccess(false)}
+        onAnimationComplete={handleAnimationComplete}
+        autoCloseDuration={5000}
       />
 
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
+      {/* Payment Modal */}
+      <Modal
+        visible={showPaymentModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.paymentModalContainer}>
+            <View style={styles.paymentModalHeader}>
+              <Text style={styles.paymentModalTitle}>
+                {selectedPaymentMethod === 'upi' ? 'UPI Payment' : 'Card Payment'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.paymentModalContent}>
+              <View style={styles.paymentAmountCard}>
+                <Text style={styles.paymentAmountLabel}>Amount to Pay</Text>
+                <Text style={styles.paymentAmount}>₹{totalPrice.toFixed(2)}</Text>
+              </View>
+
+              {selectedPaymentMethod === 'upi' ? (
+                <View style={styles.upiSection}>
+                  <Text style={styles.inputLabel}>Enter UPI ID</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="at" size={20} color={COLORS.textSecondary} style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={styles.paymentInput}
+                      placeholder="example@upi"
+                      placeholderTextColor={COLORS.textSecondary}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>
+                    e.g., yourname@paytm, yourname@googlepay
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.cardSection}>
+                  <Text style={styles.inputLabel}>Card Number</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="card" size={20} color={COLORS.textSecondary} style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={styles.paymentInput}
+                      placeholder="1234 5678 9012 3456"
+                      placeholderTextColor={COLORS.textSecondary}
+                      keyboardType="numeric"
+                      maxLength={19}
+                    />
+                  </View>
+                  
+                  <View style={styles.cardDetailsRow}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <Text style={styles.inputLabel}>Expiry Date</Text>
+                      <View style={styles.inputContainer}>
+                        <TextInput
+                          style={styles.paymentInput}
+                          placeholder="MM/YY"
+                          placeholderTextColor={COLORS.textSecondary}
+                          keyboardType="numeric"
+                          maxLength={5}
+                        />
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inputLabel}>CVV</Text>
+                      <View style={styles.inputContainer}>
+                        <TextInput
+                          style={styles.paymentInput}
+                          placeholder="123"
+                          placeholderTextColor={COLORS.textSecondary}
+                          keyboardType="numeric"
+                          maxLength={3}
+                          secureTextEntry
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.proceedPaymentButton}
+                onPress={() => {
+                  setShowPaymentModal(false);
+                  // In future, integrate actual payment gateway
+                }}
+              >
+                <Text style={styles.proceedPaymentButtonText}>Proceed to Pay</Text>
+                <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
+              </TouchableOpacity>
+
+              <Text style={styles.dummyNotice}>
+                * This is a dummy payment screen for demonstration purposes
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -549,46 +706,39 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F5F7FA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.cardBg,
+    paddingVertical: SPACING.lg,
+    backgroundColor: COLORS.white,
     ...SHADOWS.sm,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.elevated,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitleContainer: {
-    flex: 1,
-    marginHorizontal: SPACING.md,
-  },
   headerTitle: {
-    fontSize: TYPOGRAPHY.size.lg,
+    fontSize: 20,
     fontWeight: '700',
     color: COLORS.text,
   },
-  headerSubtitle: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
   headerSpacer: {
-    width: 44,
+    width: 40,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: SPACING.lg,
+    paddingBottom: 160,
   },
   loadingContainer: {
     flex: 1,
@@ -600,174 +750,417 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     color: COLORS.textSecondary,
   },
-  heroCard: {
-    borderRadius: RADIUS.xlarge,
+  serviceCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    marginBottom: SPACING.lg,
     overflow: 'hidden',
-    marginBottom: SPACING.xl,
     ...SHADOWS.lg,
   },
-  heroGradient: {
-    padding: SPACING.xl,
+  serviceGradient: {
+    padding: SPACING.lg,
+  },
+  serviceHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  heroIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: RADIUS.large,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  serviceIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  heroTitle: {
-    fontSize: TYPOGRAPHY.size.xxl,
-    fontWeight: '800',
-    color: COLORS.white,
-    textAlign: 'center',
-  },
-  heroDescription: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    marginTop: SPACING.xs,
-    marginHorizontal: SPACING.lg,
-  },
-  providerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: RADIUS.full,
-    gap: 8,
-    marginTop: SPACING.md,
+    marginRight: SPACING.md,
     ...SHADOWS.sm,
   },
-  providerBadgeText: {
-    fontSize: TYPOGRAPHY.size.sm,
+  serviceInfo: {
+    flex: 1,
+  },
+  serviceName: {
+    fontSize: 18,
     fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(46, 89, 243, 0.12)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 20,
+  },
+  categoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: COLORS.primary,
   },
-  providerRating: {
+  serviceCategory: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textTransform: 'capitalize',
+  },
+  providerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.warning}15`,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: RADIUS.small,
-    gap: 3,
-    marginLeft: 4,
+    paddingTop: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
+    borderTopWidth: 1,
+    borderTopColor: '#E8EEFF',
+  },
+  providerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+    ...SHADOWS.sm,
+  },
+  providerAvatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  providerDetails: {
+    flex: 1,
+  },
+  providerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  providerRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   providerRatingText: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
-    color: COLORS.warning,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
   },
-  section: {
-    marginBottom: SPACING.xl,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
+  providerRatingLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  priceSummaryCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    marginBottom: SPACING.lg,
+    overflow: 'hidden',
+    ...SHADOWS.md,
+  },
+  priceSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  priceBreakdown: {
+    paddingHorizontal: SPACING.lg,
+  },
+  sectionHeaderText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginLeft: SPACING.sm,
+  },
+  priceItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  priceItemLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  priceItemValue: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  totalAmountGradient: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.lg,
+    marginTop: SPACING.md,
+  },
+  priceTotalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  priceTotalAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  priceNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    backgroundColor: '#F0F4FF',
+  },
+  priceNoteText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    marginLeft: SPACING.xs,
+    flex: 1,
+  },
+  formSection: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
     ...SHADOWS.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: SPACING.lg,
-    gap: SPACING.md,
   },
-  sectionNumber: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.md,
-  },
-  sectionNumberText: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: '800',
-    color: COLORS.white,
-  },
-  sectionTitleContainer: {
-    flex: 1,
-  },
-  sectionTitle: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  sectionSubtitle: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  mapPickerButton: {
+  mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.primary}12`,
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F7FA',
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.medium,
-    gap: SPACING.sm,
     marginTop: SPACING.md,
     borderWidth: 1,
-    borderColor: `${COLORS.primary}30`,
+    borderColor: '#E5E8EB',
   },
-  mapPickerText: {
+  mapButtonText: {
     flex: 1,
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.primary,
+    marginLeft: SPACING.sm,
   },
-  dateTimeRow: {
+  dateTimeContainer: {
     flexDirection: 'row',
     gap: SPACING.md,
+    marginBottom: SPACING.sm,
   },
-  dateTimeColumn: {
+  inputHalf: {
     flex: 1,
+    minWidth: 0,
+    maxWidth: '48%',
   },
-  paymentMethods: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-  },
-  paymentMethod: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: COLORS.elevated,
-    borderRadius: RADIUS.medium,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    padding: SPACING.lg,
-    alignItems: 'center',
+  paymentOptions: {
     gap: SPACING.sm,
   },
-  paymentMethodActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}10`,
-    ...SHADOWS.md,
-  },
-  paymentIcon: {
-    width: 56,
-    height: 56,
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
     borderRadius: RADIUS.medium,
-    backgroundColor: COLORS.background,
+    padding: SPACING.md,
+  },
+  paymentOptionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: `${COLORS.primary}08`,
+  },
+  paymentOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  paymentIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: SPACING.sm,
   },
-  paymentIconActive: {
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  paymentMethodText: {
-    fontSize: TYPOGRAPHY.size.sm,
+  paymentOptionText: {
+    fontSize: 15,
     fontWeight: '600',
     color: COLORS.textSecondary,
   },
-  paymentMethodTextActive: {
+  paymentOptionTextSelected: {
+    color: COLORS.text,
+    fontWeight: '700',
+  },
+  radioButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: COLORS.primary,
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.primary,
+  },
+  bottomCTA: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    ...SHADOWS.lg,
+  },
+  confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.medium,
+    gap: SPACING.sm,
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  // Decorative background
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  patternCircle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+  },
+  // Payment Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  paymentModalContainer: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: SPACING.xl,
+    paddingBottom: Platform.OS === 'ios' ? 40 : SPACING.xl,
+    maxHeight: '80%',
+  },
+  paymentModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+    marginBottom: SPACING.xl,
+  },
+  paymentModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  paymentModalContent: {
+    paddingHorizontal: SPACING.xl,
+  },
+  paymentAmountCard: {
+    backgroundColor: '#E0F2FE',
+    padding: SPACING.lg,
+    borderRadius: RADIUS.medium,
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+  },
+  paymentAmountLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+  },
+  paymentAmount: {
+    fontSize: 32,
+    fontWeight: '700',
     color: COLORS.primary,
+  },
+  upiSection: {
+    marginBottom: SPACING.xl,
+  },
+  cardSection: {
+    marginBottom: SPACING.xl,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: RADIUS.medium,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  paymentInput: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.text,
+    padding: 0,
+  },
+  helperText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+  },
+  cardDetailsRow: {
+    flexDirection: 'row',
+    marginTop: SPACING.sm,
+  },
+  proceedPaymentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.lg,
+    borderRadius: RADIUS.medium,
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
+  },
+  proceedPaymentButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  dummyNotice: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.lg,
+    fontStyle: 'italic',
   },
 });
 

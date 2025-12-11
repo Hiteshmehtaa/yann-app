@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
 export const OfflineIndicator: React.FC = () => {
@@ -21,7 +21,12 @@ export const OfflineIndicator: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Ionicons name="cloud-offline" size={16} color={COLORS.white} />
+      <LottieView
+        source={require('../../assets/lottie/Connection-Lost-Animation.json')}
+        autoPlay
+        loop
+        style={styles.animation}
+      />
       <Text style={styles.text}>No Internet Connection</Text>
     </View>
   );
@@ -36,6 +41,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.error,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
+  },
+  animation: {
+    width: 24,
+    height: 24,
   },
   text: {
     fontSize: TYPOGRAPHY.size.sm,

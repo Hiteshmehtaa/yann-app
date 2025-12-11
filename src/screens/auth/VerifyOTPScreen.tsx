@@ -14,7 +14,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { AnimatedButton } from '../../components/AnimatedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -105,10 +107,11 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../../public/download.png')} 
-                style={styles.logoImage}
-                resizeMode="contain"
+              <LottieView
+                source={require('../../../assets/lottie/Email-Sent.json')}
+                autoPlay
+                loop={false}
+                style={styles.emailAnimation}
               />
             </View>
             <Text style={styles.title}>Verify Your Code</Text>
@@ -153,14 +156,14 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           {/* Verify Button */}
-          <TouchableOpacity
+          <AnimatedButton
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleVerifyOTP}
             disabled={isLoading}
           >
             <Text style={styles.buttonText}>Verify & Continue</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          </AnimatedButton>
         </ScrollView>
       </KeyboardAvoidingView>
       <LoadingSpinner visible={isLoading || resending} />
@@ -263,6 +266,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 8,
     fontWeight: '700',
+  },
+  emailAnimation: {
+    width: 150,
+    height: 150,
   },
   resendContainer: {
     flexDirection: 'row',
