@@ -411,7 +411,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <SpecialOfferBanner
               discount="40%"
               title="Special Offer!"
-              description="Get discount for every order, only valid for today"
+              description="Get discount for every fkin order , only valid for today"
               onPress={() => {
                 // Navigate to offers/promotions screen if you have one
                 console.log('Special offer pressed');
