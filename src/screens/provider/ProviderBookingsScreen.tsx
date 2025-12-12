@@ -17,6 +17,7 @@ import LottieView from 'lottie-react-native';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
+import { EmptyState } from '../../components/EmptyState';
 
 interface ProviderBooking {
   id: string;
@@ -575,18 +576,12 @@ export const ProviderBookingsScreen = () => {
       >
         {filteredBookings.length === 0 ? (
           <View style={styles.emptyState}>
-            <LottieView
-              source={require('../../../assets/lottie/empty cart.json')}
-              autoPlay
-              loop
-              style={{ width: 250, height: 250 }}
+            <EmptyState
+              title={activeFilter === 'all' ? 'No bookings yet' : `No ${activeFilter.replace('_', ' ')} bookings`}
+              subtitle={activeFilter === 'all' 
+                ? 'Bookings will appear here when customers request your services' 
+                : `You have no ${activeFilter.replace('_', ' ')} bookings at the moment`}
             />
-            <Text style={styles.emptyTitle}>No bookings found</Text>
-            <Text style={styles.emptySubtitle}>
-              {activeFilter === 'all' 
-                ? 'You have no bookings yet' 
-                : `No ${activeFilter.replace('_', ' ')} bookings`}
-            </Text>
           </View>
         ) : (
           filteredBookings.map(renderBookingCard)

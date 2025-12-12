@@ -146,21 +146,45 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <EmptyState
-        title="No bookings yet"
-        subtitle="Your bookings will appear here once you book a service"
-      />
-      <AnimatedButton
-        style={styles.browseButton}
-        onPress={() => navigation.navigate('Home')}
-      >
-        <Text style={styles.browseButtonText}>Browse services</Text>
-        <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />
-      </AnimatedButton>
-    </View>
-  );
+  const renderEmpty = () => {
+    const emptyMessages = {
+      ongoing: {
+        title: 'No ongoing bookings',
+        subtitle: 'Your active bookings will appear here',
+      },
+      completed: {
+        title: 'No completed bookings',
+        subtitle: 'Your completed services will appear here',
+      },
+      cancelled: {
+        title: 'No cancelled bookings',
+        subtitle: 'Cancelled bookings will appear here',
+      },
+    };
+
+    const message = emptyMessages[activeTab as keyof typeof emptyMessages] || {
+      title: 'No bookings yet',
+      subtitle: 'Your bookings will appear here once you book a service',
+    };
+
+    return (
+      <View style={styles.emptyContainer}>
+        <EmptyState
+          title={message.title}
+          subtitle={message.subtitle}
+        />
+        {activeTab === 'ongoing' && (
+          <AnimatedButton
+            style={styles.browseButton}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <Text style={styles.browseButtonText}>Browse services</Text>
+            <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />
+          </AnimatedButton>
+        )}
+      </View>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -170,9 +194,15 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     );
   }
 
-  // Filter bookings based on active tab
+  // Filter bookings based on active tab (exclude rejected bookings)
   const filteredBookings = bookings.filter((booking) => {
     const status = booking.status.toLowerCase();
+    
+    // Never show rejected bookings to members
+    if (status === 'rejected') {
+      return false;
+    }
+    
     if (activeTab === 'ongoing') {
       return status === 'pending' || status === 'confirmed' || status === 'active';
     } else if (activeTab === 'completed') {
