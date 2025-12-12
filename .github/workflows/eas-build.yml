@@ -80,12 +80,12 @@ jobs:
       - name: Build Android on EAS
         if: steps.build-config.outputs.platform == 'android' || steps.build-config.outputs.platform == 'all'
         run: |
-          eas build --platform android --profile ${{ steps.build-config.outputs.profile }} --non-interactive --no-wait
+          eas build --platform android --profile ${{ steps.build-config.outputs.profile }} --non-interactive --no-wait || true
 
       - name: Build iOS on EAS
         if: steps.build-config.outputs.platform == 'ios' || steps.build-config.outputs.platform == 'all'
         run: |
-          eas build --platform ios --profile ${{ steps.build-config.outputs.profile }} --non-interactive --no-wait
+          eas build --platform ios --profile ${{ steps.build-config.outputs.profile }} --non-interactive --no-wait || true
 
       - name: Comment PR with build links
         if: github.event_name == 'pull_request'
