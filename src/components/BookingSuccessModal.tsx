@@ -5,13 +5,11 @@ import {
   StyleSheet,
   Modal,
   Animated,
-  Dimensions,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { BlurView } from 'expo-blur';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS } from '../utils/theme';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { useResponsive } from '../hooks/useResponsive';
 
 interface BookingSuccessModalProps {
   visible: boolean;
@@ -32,6 +30,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
   onAnimationComplete,
   autoCloseDuration = 5000,
 }) => {
+  const { width: screenWidth } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const animationRef = useRef<LottieView>(null);
@@ -146,7 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   container: {
-    width: SCREEN_WIDTH * 0.85,
+    width: '85%',
     maxWidth: 400,
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.xlarge,

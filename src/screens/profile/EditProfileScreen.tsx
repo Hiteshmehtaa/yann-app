@@ -8,11 +8,12 @@ import {
   StatusBar,
   Animated,
   TextInput,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { AnimatedButton } from '../../components/AnimatedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -76,14 +77,11 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <ActivityIndicator size="small" color={COLORS.primary} />
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
+        <AnimatedButton style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
+          <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
+        </AnimatedButton>
       </View>
+      <LoadingSpinner visible={isSaving} />
 
       <ScrollView 
         showsVerticalScrollIndicator={false}

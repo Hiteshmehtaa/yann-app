@@ -11,10 +11,8 @@ import {
   Platform,
   Modal,
   TextInput,
-  Dimensions,
 } from 'react-native';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +26,7 @@ import { BookingSuccessModal } from '../../components/BookingSuccessModal';
 import { BookingAnimation } from '../../components/animations';
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
 import { SavedAddressCard } from '../../components/ui/SavedAddressCard';
+import { useResponsive } from '../../hooks/useResponsive';
 import { MapLocationPicker } from '../../components/ui/MapLocationPicker';
 import { BillingSummaryCard } from '../../components/ui/BillingSummaryCard';
 import { PremiumDateTimePicker } from '../../components/ui/PremiumDateTimePicker';
@@ -77,6 +76,7 @@ const hashCode = (str: string): number => {
 export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service, selectedProvider, selectedAddress: initialAddress } = route.params;
   const { user } = useAuth();
+  const { width: screenWidth, height: screenHeight, isTablet } = useResponsive();
   const { toast, showSuccess: showToastSuccess, showError, hideToast } = useToast();
 
   // Animations
@@ -326,7 +326,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: isTablet ? 200 : 160 }
+          ]}
           keyboardShouldPersistTaps="handled"
         >
           <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>

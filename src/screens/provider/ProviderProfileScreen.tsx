@@ -8,7 +8,6 @@ import {
   StatusBar,
   Animated,
   TextInput,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

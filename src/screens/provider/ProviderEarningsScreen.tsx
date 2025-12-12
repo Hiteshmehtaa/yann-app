@@ -7,16 +7,13 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
-  ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { useResponsive } from '../../hooks/useResponsive';
 
 const THEME = {
   colors: {
@@ -75,6 +72,7 @@ interface EarningsData {
 
 export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+  const { width: screenWidth, isTablet } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('month');

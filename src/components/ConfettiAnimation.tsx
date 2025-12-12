@@ -3,18 +3,17 @@ import {
   View,
   StyleSheet,
   Animated,
-  Dimensions,
 } from 'react-native';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { useResponsive } from '../hooks/useResponsive';
 
 interface ConfettiPieceProps {
   color: string;
   delay: number;
   startX: number;
+  screenHeight: number;
 }
 
-const ConfettiPiece: React.FC<ConfettiPieceProps> = ({ color, delay, startX }) => {
+const ConfettiPiece: React.FC<ConfettiPieceProps> = ({ color, delay, startX, screenHeight }) => {
   const translateY = useRef(new Animated.Value(-50)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const rotate = useRef(new Animated.Value(0)).current;
@@ -27,7 +26,7 @@ const ConfettiPiece: React.FC<ConfettiPieceProps> = ({ color, delay, startX }) =
 
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: SCREEN_HEIGHT + 100,
+        toValue: screenHeight + 100,
         duration: randomDuration,
         delay,
         useNativeDriver: true,
@@ -88,12 +87,14 @@ export const ConfettiAnimation: React.FC<ConfettiAnimationProps> = ({
   count = 50,
   colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'],
 }) => {
+  const { width: screenWidth, height: screenHeight } = useResponsive();
+  
   if (!active) return null;
 
   const confettiPieces = Array.from({ length: count }, (_, index) => {
     const color = colors[Math.floor(Math.random() * colors.length)];
     const delay = Math.random() * 500;
-    const startX = Math.random() * SCREEN_WIDTH;
+    const startX = Math.random() * screenWidth;
 
     return (
       <ConfettiPiece
@@ -101,6 +102,7 @@ export const ConfettiAnimation: React.FC<ConfettiAnimationProps> = ({
         color={color}
         delay={delay}
         startX={startX}
+        screenHeight={screenHeight}
       />
     );
   });

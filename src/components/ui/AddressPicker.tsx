@@ -5,11 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS, ICON_SIZES } from '../../utils/theme';
 import { Button } from './Button';
 import { RadioButton } from './RadioButton';
@@ -138,7 +138,12 @@ export const AddressPicker: React.FC<AddressPickerProps> = ({
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={COLORS.white} size="small" />
+            <LottieView
+              source={require('../../../assets/lottie/loading.json')}
+              autoPlay
+              loop
+              style={{ width: 30, height: 30 }}
+            />
           ) : (
             <>
               <Ionicons name="locate" size={ICON_SIZES.large} color={COLORS.white} />

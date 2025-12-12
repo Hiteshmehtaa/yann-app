@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
+import { useResponsive } from '../../hooks/useResponsive';
 
 // Service-specific image/illustration mapping
 // Using Ionicons as illustration base + gradient backgrounds
@@ -77,14 +78,13 @@ type ServiceHeroHeaderProps = {
   height?: number;
 };
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export const ServiceHeroHeader: React.FC<ServiceHeroHeaderProps> = ({
   serviceTitle,
   rating = 4.8,
   reviewCount = 256,
   height = 320,
 }) => {
+  const { width: screenWidth } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -191,7 +191,7 @@ export const ServiceHeroHeader: React.FC<ServiceHeroHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: SCREEN_WIDTH,
+    width: '100%',
     position: 'relative',
     overflow: 'hidden',
   },

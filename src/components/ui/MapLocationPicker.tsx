@@ -6,14 +6,12 @@ import {
   Modal,
   TouchableOpacity,
   Animated,
-  Dimensions,
   Alert,
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
-
-const { width, height } = Dimensions.get('window');
+import { useResponsive } from '../../hooks/useResponsive';
 
 interface MapLocationPickerProps {
   visible: boolean;
@@ -35,6 +33,7 @@ export const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
   onSelectLocation,
   initialLocation,
 }) => {
+  const { width, height } = useResponsive();
   const [latitude, setLatitude] = useState(initialLocation?.latitude?.toString() || '28.6139');
   const [longitude, setLongitude] = useState(initialLocation?.longitude?.toString() || '77.209');
 
@@ -225,7 +224,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: height * 0.85,
+    height: '85%',
     backgroundColor: COLORS.background,
     borderTopLeftRadius: RADIUS.xlarge,
     borderTopRightRadius: RADIUS.xlarge,

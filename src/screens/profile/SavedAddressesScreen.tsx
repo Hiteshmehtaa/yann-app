@@ -8,12 +8,12 @@ import {
   StatusBar,
   Animated,
   Alert,
-  ActivityIndicator,
   Modal,
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import { AddressPicker } from '../../components/ui/AddressPicker';
 import { apiService } from '../../services/api';
@@ -262,9 +262,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
+        <LoadingSpinner visible={true} />
       </SafeAreaView>
     );
   }

@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Service, ServiceProvider } from '../../types';
@@ -217,12 +218,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </SafeAreaView>
 
       {/* Loading Overlay */}
-      {isLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      )}
+      <LoadingSpinner visible={isLoading} />
 
       {/* Scrollable Content */}
       <Animated.ScrollView
@@ -273,7 +269,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             
             {isLoadingProviders && (
               <View style={styles.loadingState}>
-                <ActivityIndicator size="small" color={COLORS.primary} />
+                <LottieView
+                  source={require('../../../assets/lottie/loading.json')}
+                  autoPlay
+                  loop
+                  style={{ width: 60, height: 60 }}
+                />
                 <Text style={styles.loadingText}>Finding professionals...</Text>
               </View>
             )}

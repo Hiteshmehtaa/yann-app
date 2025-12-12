@@ -10,13 +10,14 @@ import {
   ScrollView,
   Animated,
   StatusBar,
-  ActivityIndicator,
 } from 'react-native';
 import { Toast } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
+import { AnimatedButton } from '../../components/AnimatedButton';
 // inline activity indicator used for button loading
 import { useAuth } from '../../contexts/AuthContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -121,6 +122,13 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Header */}
             <View style={styles.header}>
+              {/* Welcome Animation */}
+              <LottieView
+                source={require('../../../assets/lottie/Campers-Welcome.json')}
+                autoPlay
+                loop
+                style={styles.welcomeAnimation}
+              />
               <Text style={styles.title}>Service Partner Login</Text>
               <Text style={styles.subtitle}>
                 Enter your registered email to continue
@@ -152,11 +160,10 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
               </View>
 
               {/* Send OTP Button */}
-              <TouchableOpacity
+              <AnimatedButton
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleSendOTP}
                 disabled={isLoading}
-                activeOpacity={0.8}
               >
                 <LinearGradient
                   colors={[COLORS.primary, COLORS.primaryDark]}
@@ -164,16 +171,10 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={COLORS.white} />
-                  ) : (
-                    <>
-                      <Text style={styles.buttonText}>Send OTP</Text>
-                      <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />
-                    </>
-                  )}
+                  <Text style={styles.buttonText}>{isLoading ? 'Sending...' : 'Send OTP'}</Text>
+                  {!isLoading && <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />}
                 </LinearGradient>
-              </TouchableOpacity>
+              </AnimatedButton>
             </View>
 
             {/* Info Box */}
@@ -244,6 +245,12 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: SPACING.xxxl,
+  },
+  welcomeAnimation: {
+    width: 180,
+    height: 180,
+    alignSelf: 'center',
+    marginBottom: SPACING.md,
   },
   title: {
     fontSize: TYPOGRAPHY.size.xxxl,

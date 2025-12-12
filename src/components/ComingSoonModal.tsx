@@ -6,11 +6,11 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Dimensions,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useResponsive } from '../hooks/useResponsive';
 
 interface ComingSoonModalProps {
   visible: boolean;
@@ -19,14 +19,13 @@ interface ComingSoonModalProps {
   onClose: () => void;
 }
 
-const { width } = Dimensions.get('window');
-
 export const ComingSoonModal: React.FC<ComingSoonModalProps> = ({
   visible,
   title = 'Coming Soon',
   message = "We're working hard to bring you this feature. Stay tuned!",
   onClose,
 }) => {
+  const { width } = useResponsive();
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -120,7 +119,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    width: width - 60,
+    width: '90%',
     maxWidth: 400,
     backgroundColor: '#FFFFFF',
     borderRadius: 24,

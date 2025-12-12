@@ -6,20 +6,19 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
-  Dimensions,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useResponsive } from '../../hooks/useResponsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-const { width } = Dimensions.get('window');
-
 export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
+  const { width } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 

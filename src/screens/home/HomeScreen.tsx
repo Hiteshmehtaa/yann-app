@@ -22,6 +22,7 @@ import { ServiceCard } from '../../components/ui/ServiceCard';
 import { SpecialOfferBanner } from '../../components/ui/SpecialOfferBanner';
 import { AnimatedCard } from '../../components/AnimatedCard';
 import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS } from '../../utils/theme';
+import { useResponsive } from '../../hooks/useResponsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -159,6 +160,7 @@ const EmptyState = () => (
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+  const { width, isTablet } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>(SERVICES); // Fallback to static services
@@ -394,74 +396,76 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         onProfilePress={() => navigation.navigate('Profile')}
       />
 
-      {/* Animated Content */}
-      <Animated.View style={{ opacity: fadeAnim }}>
-        {/* Search Bar with Live Filtering */}
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search for services..."
-        />
-
-        {/* Special Offer Banner */}
-        <SpecialOfferBanner
-          discount="40%"
-          title="Special Offer!"
-          description="Get discount for every order, only valid for today"
-          onPress={() => {
-            // Navigate to offers/promotions screen if you have one
-            console.log('Special offer pressed');
-          }}
-        />
-
-        {/* Section Header - Popular Services */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular Services</Text>
-          <TouchableOpacity onPress={() => setShowAll(!showAll)}>
-            <Text style={styles.seeAllText}>
-              {showAll ? 'Show Less' : 'See All'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Category Filter Tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoriesContainer}
-          contentContainerStyle={styles.categoriesContent}
-        >
-          {categories.map((category) => (
-            <AnimatedCard
-              key={category}
-              style={[
-                styles.categoryTag,
-                selectedCategory === category && styles.categoryTagActive
-              ]}
-              onPress={() => setSelectedCategory(category)}
-              isSelected={selectedCategory === category}
-              glowColor={COLORS.primary}
-            >
-              <Text
-                style={[
-                  styles.categoryTagText,
-                  selectedCategory === category && styles.categoryTagTextActive
-                ]}
-              >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </Text>
-            </AnimatedCard>
-          ))}
-        </ScrollView>
-      </Animated.View>
-
       {/* Services Grid - 3 Columns */}
       <FlatList
-        data={gridData}
+        ListHeaderComponent={
+          <Animated.View style={{ opacity: fadeAnim }}>
+            {/* Search Bar with Live Filtering */}
+            <SearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search for services..."
+            />
+
+            {/* Special Offer Banner */}
+            <SpecialOfferBanner
+              discount="40%"
+              title="Special Offer!"
+              description="Get discount for every order, only valid for today"
+              onPress={() => {
+                // Navigate to offers/promotions screen if you have one
+                console.log('Special offer pressed');
+              }}
+            />
+
+            {/* Section Header - Popular Services */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Popular Services</Text>
+              <TouchableOpacity onPress={() => setShowAll(!showAll)}>
+                <Text style={styles.seeAllText}>
+                  {showAll ? 'Show Less' : 'See All'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Category Filter Tabs */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoriesContainer}
+              contentContainerStyle={styles.categoriesContent}
+            >
+              {categories.map((category) => (
+                <AnimatedCard
+                  key={category}
+                  style={[
+                    styles.categoryTag,
+                    selectedCategory === category && styles.categoryTagActive
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                  isSelected={selectedCategory === category}
+                  glowColor={COLORS.primary}
+                >
+                  <Text
+                    style={[
+                      styles.categoryTagText,
+                      selectedCategory === category && styles.categoryTagTextActive
+                    ]}
+                  >
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </Text>
+                </AnimatedCard>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        }        data={gridData}
         renderItem={renderGridItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={3}
-        contentContainerStyle={styles.servicesGrid}
+        contentContainerStyle={[
+          styles.servicesGrid,
+          { paddingBottom: isTablet ? 120 : 100 }
+        ]}
         columnWrapperStyle={styles.gridRow}
         showsVerticalScrollIndicator={false}
         bounces={true}

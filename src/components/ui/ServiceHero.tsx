@@ -1,10 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/theme';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../../hooks/useResponsive';
 
 interface ServiceHeroProps {
   title: string;
@@ -19,6 +18,7 @@ export const ServiceHero: React.FC<ServiceHeroProps> = ({
   rating = 4.8,
   reviewCount = 0 
 }) => {
+  const { width } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export const ServiceHero: React.FC<ServiceHeroProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: width,
+    width: '100%',
     height: 240,
   },
   gradient: {

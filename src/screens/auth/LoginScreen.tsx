@@ -10,19 +10,18 @@ import {
   ScrollView,
   Animated,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import { LogoSVG } from '../../components/LogoSVG';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { Toast } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../contexts/AuthContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-const { width, height } = Dimensions.get('window');
+import { useResponsive } from '../../hooks/useResponsive';
 
 // YANN Official Website Color Palette
 const THEME = {
@@ -46,6 +45,7 @@ type Props = {
 };
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
+  const { width, height, isTablet } = useResponsive();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -151,6 +151,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               <Text style={styles.brandName}>YANN</Text>
               <View style={styles.divider} />
+              
+              {/* Welcome Animation */}
+              <LottieView
+                source={require('../../../assets/lottie/Campers-Welcome.json')}
+                autoPlay
+                loop
+                style={styles.welcomeAnimation}
+              />
+              
               <Text style={styles.title}>Welcome{'\n'}Back</Text>
               <Text style={styles.subtitle}>
                 Continue your premium experience
@@ -300,6 +309,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.accent,
     marginBottom: 20,
     borderRadius: 2,
+  },
+  welcomeAnimation: {
+    width: 180,
+    height: 180,
+    alignSelf: 'center',
+    marginVertical: 10,
   },
   title: {
     fontSize: 42,

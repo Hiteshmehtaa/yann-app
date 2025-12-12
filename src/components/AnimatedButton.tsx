@@ -44,7 +44,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
       style={style}
       {...props}
     >
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}>
         {children}
       </Animated.View>
     </TouchableOpacity>

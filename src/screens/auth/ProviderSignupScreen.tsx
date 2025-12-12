@@ -10,7 +10,6 @@ import {
   Platform,
   ScrollView,
   StatusBar,
-  ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -456,10 +455,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.stepSubtitle}>Select services you can provide</Text>
       
       {isLoadingServices ? (
-        <View style={{ padding: 40, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={THEME.primary} />
-          <Text style={{ marginTop: 16, color: THEME.textMuted }}>Loading services...</Text>
-        </View>
+        <LoadingSpinner visible={true} />
       ) : (
         <>
           {dynamicServiceCategories.map(category => (

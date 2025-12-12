@@ -16,6 +16,7 @@ import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 import { useFocusEffect } from '@react-navigation/native';
+import { useResponsive } from '../../hooks/useResponsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -30,6 +31,7 @@ type MenuItemType = {
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const { isTablet } = useResponsive();
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [stats, setStats] = useState({
     bookingsCount: 0,
@@ -191,7 +193,10 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <ScrollView 
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: isTablet ? 140 : 120 }
+        ]}
         showsVerticalScrollIndicator={false}
         bounces={true}
         alwaysBounceVertical={true}

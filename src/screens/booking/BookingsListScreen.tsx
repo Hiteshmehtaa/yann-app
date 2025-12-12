@@ -18,6 +18,7 @@ import type { Booking } from '../../types';
 import { format } from 'date-fns';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY } from '../../utils/theme';
+import { useResponsive } from '../../hooks/useResponsive';
 import { EmptyStateAnimation } from '../../components/animations';
 import { EmptyState } from '../../components/EmptyState';
 import { AnimatedButton } from '../../components/AnimatedButton';
@@ -34,6 +35,7 @@ const TABS = [
 ];
 
 export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
+  const { isTablet } = useResponsive();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -211,7 +213,10 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           data={filteredBookings}
           renderItem={renderBookingCard}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: isTablet ? 140 : 120 }
+          ]}
           bounces={true}
           alwaysBounceVertical={true}
           ListEmptyComponent={renderEmpty}

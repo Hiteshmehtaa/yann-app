@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator, Animated } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, Animated, View } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -72,7 +73,14 @@ export const Button: React.FC<ButtonProps> = ({
     >
       <Animated.View style={[containerStyles, { transform: [{ scale: scaleAnim }] }]}>
         {loading ? (
-          <ActivityIndicator color={variant === 'outline' ? COLORS.primary : COLORS.white} />
+          <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
+            <LottieView
+              source={require('../../../assets/lottie/loading.json')}
+              autoPlay
+              loop
+              style={{ width: 30, height: 30 }}
+            />
+          </View>
         ) : (
           <Text style={textStyles}>{title}</Text>
         )}
