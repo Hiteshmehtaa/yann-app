@@ -10,8 +10,8 @@ import {
   ScrollView,
   Animated,
   StatusBar,
+  Image,
 } from 'react-native';
-import { LogoSVG } from '../../components/LogoSVG';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -147,7 +147,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <LogoSVG size={64} />
+                <Image 
+                  source={require('../../../public/Logo.jpg')} 
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={styles.brandName}>YANN</Text>
               <View style={styles.divider} />
@@ -291,6 +295,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
     borderColor: THEME.border,
+  },
+  logoImage: {
+    width: 50,
+    height: 50,
   },
   logo: {
     width: 44,

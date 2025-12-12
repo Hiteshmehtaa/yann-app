@@ -598,7 +598,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.headerCenter}>
               <View style={styles.logoContainer}>
                 <Image 
-                  source={require('../../../public/download.png')} 
+                  source={require('../../../public/Logo.jpg')} 
                   style={styles.logoImage}
                   resizeMode="contain"
                 />

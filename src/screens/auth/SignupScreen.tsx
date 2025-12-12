@@ -132,7 +132,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Image 
-                source={require('../../../public/download.png')} 
+                source={require('../../../public/Logo.jpg')} 
                 style={styles.logoImage}
                 resizeMode="contain"
               />
