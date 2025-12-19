@@ -106,13 +106,8 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <LottieView
-                source={require('../../../assets/lottie/Email-Sent.json')}
-                autoPlay
-                loop={false}
-                style={styles.emailAnimation}
-              />
+            <View style={styles.iconContainer}>
+              <Ionicons name="shield-checkmark" size={40} color="#2E59F3" />
             </View>
             <Text style={styles.title}>Verify Your Code</Text>
             <Text style={styles.subtitle}>
@@ -200,23 +195,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+  iconContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 16,
+    backgroundColor: '#E8EEFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  logoImage: {
-    width: 52,
-    height: 52,
+    borderWidth: 2,
+    borderColor: '#2E59F3',
   },
   title: {
     fontSize: 28,

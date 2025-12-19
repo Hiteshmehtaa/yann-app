@@ -88,10 +88,10 @@ type RootStackParamList = {
 
 // Premium Apple-like Theme - Using new design system
 const THEME = {
-  bg: COLORS.surface,
-  bgCard: COLORS.background,
+  bg: COLORS.background,
+  bgCard: COLORS.cardBg,
   primary: COLORS.primary,
-  secondary: COLORS.secondary,
+  secondary: COLORS.accentOrange,
   accent: COLORS.primary,
   text: COLORS.text,
   textMuted: COLORS.textSecondary,
@@ -104,7 +104,7 @@ const PremiumTheme = {
   colors: {
     ...DefaultTheme.colors,
     background: COLORS.background,
-    card: COLORS.surface,
+    card: COLORS.cardBg,
     text: COLORS.text,
     border: COLORS.border,
     primary: COLORS.primary,
@@ -149,7 +149,7 @@ const renderDashboardIcon = (props: { focused: boolean }) => (
 );
 
 const renderEarningsIcon = (props: { focused: boolean }) => (
-  <TabIcon name={props.focused ? "wallet" : "wallet-outline"} focused={props.focused} label="EARNINGS" />
+  <TabIcon name={props.focused ? "wallet" : "wallet-outline"} focused={props.focused} />
 );
 
 // Homeowner/Customer Tab Navigator
@@ -288,7 +288,7 @@ function ProviderTabNavigator() {
         options={{
           tabBarLabel: 'BOOKINGS',
           tabBarIcon: renderBookingsIcon,
-          headerTitle: 'MY BOOKINGS',
+          headerShown: false,
         }}
       />
       <Tab.Screen
@@ -306,7 +306,7 @@ function ProviderTabNavigator() {
         options={{
           tabBarIcon: renderProfileIcon,
           tabBarLabel: 'PROFILE',
-          headerTitle: 'MY PROFILE',
+          headerShown: false,
         }}
       />
     </Tab.Navigator>

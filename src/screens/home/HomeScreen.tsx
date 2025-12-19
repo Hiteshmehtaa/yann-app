@@ -167,6 +167,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [filteredServices, setFilteredServices] = useState<Service[]>(SERVICES);
   const [partnerCounts, setPartnerCounts] = useState<{ [serviceTitle: string]: number }>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [hasFetchedInitial, setHasFetchedInitial] = useState(false); // Prevent duplicate initial fetches
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [categories, setCategories] = useState<string[]>(['all']);
@@ -564,6 +565,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 2,
     textTransform: 'uppercase',
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   // Services Grid Styles
   servicesGrid: {

@@ -1,6 +1,6 @@
 {
   "name": "yann-mobile",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -34,6 +34,7 @@
     "expo-location": "^19.0.8",
     "expo-notifications": "~0.32.13",
     "expo-status-bar": "~3.0.8",
+    "expo-updates": "~29.0.15",
     "lottie-react-native": "^7.3.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",

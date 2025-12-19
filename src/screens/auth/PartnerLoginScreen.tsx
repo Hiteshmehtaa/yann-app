@@ -10,6 +10,7 @@ import {
   ScrollView,
   Animated,
   StatusBar,
+  Image,
 } from 'react-native';
 import { Toast } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
@@ -21,7 +22,21 @@ import { AnimatedButton } from '../../components/AnimatedButton';
 // inline activity indicator used for button loading
 import { useAuth } from '../../contexts/AuthContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
+
+// YANN Official Website Color Palette
+const THEME = {
+  bg: '#F6F7FB',
+  bgCard: '#FFFFFF',
+  bgElevated: '#FFFFFF',
+  primary: '#2E59F3',
+  primaryLight: '#4362FF',
+  accent: '#2E59F3',
+  text: '#1A1C1E',
+  textMuted: '#4A4D52',
+  textSubtle: '#9CA3AF',
+  border: '#E5E7EB',
+  shadow: 'rgba(46, 89, 243, 0.08)',
+};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -31,6 +46,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [showEmailSent, setShowEmailSent] = useState(false);
   const { sendProviderOTP } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
   
@@ -41,7 +57,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: ANIMATIONS.verySlow,
+        duration: 700,
         useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
@@ -73,10 +89,11 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
     try {
       // Use provider-specific OTP endpoint
       await sendProviderOTP(email);
-      showSuccess('OTP sent to your email!');
+      setShowEmailSent(true);
       setTimeout(() => {
+        setShowEmailSent(false);
         navigation.navigate('VerifyOTP', { email, isPartner: true });
-      }, 1500);
+      }, 2000);
     } catch (error: any) {
       showError(error.message || 'Failed to send OTP. Make sure you are registered as a partner.');
     } finally {
@@ -85,14 +102,14 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
       
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView
+        <ScrollView 
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -104,24 +121,27 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.backButton} 
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={ICON_SIZES.large} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={22} color={THEME.text} />
           </TouchableOpacity>
 
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-            {/* Partner Badge */}
-            <View style={styles.partnerBadge}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.badgeGradient}
-              >
-                <Ionicons name="briefcase" size={32} color={COLORS.white} />
-              </LinearGradient>
-            </View>
-
+          <Animated.View 
+            style={[
+              styles.content,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+            ]}
+          >
             {/* Header */}
             <View style={styles.header}>
+              <View style={styles.logoContainer}>
+                <Image 
+                  source={require('../../../public/Logo.jpg')} 
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.brandName}>YANN</Text>
+              <View style={styles.divider} />
+              
               {/* Welcome Animation */}
               <LottieView
                 source={require('../../../assets/lottie/Campers-Welcome.json')}
@@ -129,67 +149,65 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
                 loop
                 style={styles.welcomeAnimation}
               />
-              <Text style={styles.title}>Service Partner Login</Text>
+
+              <Text style={styles.title}>Welcome Back</Text>
               <Text style={styles.subtitle}>
-                Enter your registered email to continue
+                Continue your partner experience
               </Text>
             </View>
 
             {/* Email Input */}
             <View style={styles.form}>
-              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
               <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
-                <Ionicons 
-                  name="mail-outline" 
-                  size={ICON_SIZES.medium} 
-                  color={isFocused ? COLORS.primary : COLORS.textSecondary} 
-                />
+                <View style={styles.inputIcon}>
+                  <Ionicons name="mail" size={20} color={isFocused ? THEME.primary : THEME.textMuted} />
+                </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="partner@example.com"
-                  placeholderTextColor={COLORS.textTertiary}
+                  placeholder="you@example.com"
+                  placeholderTextColor={THEME.textSubtle}
                   value={email}
                   onChangeText={setEmail}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!isLoading}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                 />
               </View>
 
-              {/* Send OTP Button */}
-              <AnimatedButton
+              {/* Continue Button */}
+              <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleSendOTP}
                 disabled={isLoading}
+                activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  colors={[THEME.primary, THEME.primaryLight]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
                 >
-                  <Text style={styles.buttonText}>{isLoading ? 'Sending...' : 'Send OTP'}</Text>
-                  {!isLoading && <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />}
+                  <Text style={styles.buttonText}>CONTINUE</Text>
+                  <View style={styles.buttonIcon}>
+                    <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                  </View>
                 </LinearGradient>
-              </AnimatedButton>
-            </View>
+              </TouchableOpacity>
 
-            {/* Info Box */}
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={ICON_SIZES.medium} color={COLORS.primary} />
               <Text style={styles.infoText}>
-                For new partners, please register through our partner portal or contact support.
+                We'll send a verification code to your email
               </Text>
             </View>
 
-            {/* Back to Regular Login */}
+            {/* Sign Up Link */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Not a service partner?</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.footerLink}>Sign in as customer</Text>
+              <Text style={styles.footerText}>New to YANN? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('ProviderSignup')}>
+                <Text style={styles.footerLink}>Create Partner Account</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -202,6 +220,21 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
         type={toast.type}
         onHide={hideToast}
       />
+
+      {/* Email Sent Animation Overlay */}
+      {showEmailSent && (
+        <View style={styles.emailSentOverlay}>
+          <View style={styles.emailSentContainer}>
+            <LottieView
+              source={require('../../../assets/lottie/Email-Sent.json')}
+              autoPlay
+              loop={false}
+              style={styles.emailSentAnimation}
+            />
+            <Text style={styles.emailSentText}>Email Sent!</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -209,100 +242,136 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.bg,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: SPACING.xl,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.small,
-    backgroundColor: COLORS.cardBg,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: THEME.bgCard,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
+    margin: 20,
+    borderWidth: 1,
+    borderColor: THEME.border,
   },
-  partnerBadge: {
-    width: 88,
-    height: 88,
-    borderRadius: RADIUS.xlarge,
-    marginBottom: SPACING.xl,
-    alignSelf: 'center',
-    ...SHADOWS.lg,
-  },
-  badgeGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: RADIUS.xlarge,
-    justifyContent: 'center',
-    alignItems: 'center',
+  content: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 20,
   },
   header: {
-    marginBottom: SPACING.xxxl,
+    marginBottom: 48,
+  },
+  logoContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: THEME.bgCard,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  logoImage: {
+    width: 50,
+    height: 50,
+  },
+  brandName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.accent,
+    letterSpacing: 4,
+    marginBottom: 20,
+  },
+  divider: {
+    width: 40,
+    height: 3,
+    backgroundColor: THEME.primary,
+    borderRadius: 2,
+    marginBottom: 24,
   },
   welcomeAnimation: {
     width: 180,
     height: 180,
     alignSelf: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: 20,
   },
   title: {
-    fontSize: TYPOGRAPHY.size.xxxl,
+    fontSize: 40,
     fontWeight: '800',
-    color: COLORS.text,
-    letterSpacing: -1,
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
+    color: THEME.text,
+    letterSpacing: -1.5,
+    lineHeight: 46,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
+    fontSize: 16,
+    color: THEME.textMuted,
     lineHeight: 24,
-    textAlign: 'center',
+    marginBottom: 8,
   },
   form: {
-    marginBottom: SPACING.xl,
+    marginBottom: 32,
   },
   label: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.text,
+    letterSpacing: 1.5,
+    marginBottom: 12,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    marginBottom: SPACING.lg,
+    backgroundColor: THEME.bgCard,
     borderWidth: 2,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
+    borderColor: THEME.border,
+    borderRadius: 16,
+    marginBottom: 28,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   inputFocused: {
-    borderColor: COLORS.primary,
-    ...SHADOWS.md,
+    borderColor: THEME.primary,
+    shadowColor: THEME.primary,
+    shadowOpacity: 0.12,
+  },
+  inputIcon: {
+    width: 52,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.bgElevated,
   },
   input: {
     flex: 1,
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.text,
-    marginLeft: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    fontSize: 16,
+    color: THEME.text,
+    letterSpacing: 0.3,
   },
   button: {
-    borderRadius: RADIUS.medium,
+    borderRadius: 16,
     overflow: 'hidden',
-    ...SHADOWS.md,
+    marginBottom: 16,
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -311,46 +380,76 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xl,
-    gap: SPACING.xs,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
   },
   buttonText: {
-    fontSize: TYPOGRAPHY.size.lg,
+    fontSize: 15,
     fontWeight: '700',
-    color: COLORS.white,
-    letterSpacing: 0.5,
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
   },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: `${COLORS.primary}10`,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
-    marginBottom: SPACING.xl,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary,
+  buttonIcon: {
+    marginLeft: 12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoText: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    marginLeft: SPACING.sm,
+    fontSize: 14,
+    color: THEME.textSubtle,
+    textAlign: 'center',
     lineHeight: 20,
   },
   footer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.xs,
-    marginTop: SPACING.xl,
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 32,
   },
   footerText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
+    fontSize: 15,
+    color: THEME.textMuted,
   },
   footerLink: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '600',
-    color: COLORS.primary,
+    fontSize: 15,
+    color: THEME.primary,
+    fontWeight: '700',
+  },
+  emailSentOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  emailSentContainer: {
+    backgroundColor: THEME.bgCard,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  emailSentAnimation: {
+    width: 200,
+    height: 200,
+  },
+  emailSentText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME.text,
+    marginTop: 16,
   },
 });

@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const THEME = {
@@ -103,27 +104,21 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView edges={['top']} style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={THEME.colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <Text style={styles.saveButtonText}>Saving...</Text>
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
-        <LoadingSpinner visible={isSaving} />
-      </View>
+      <LoadingSpinner visible={isSaving} />
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
+          {/* Back Button */}
+          <TouchableOpacity 
+            style={styles.backButtonTop}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={THEME.colors.text} />
+          </TouchableOpacity>
+
           {/* Avatar Section */}
           <View style={styles.avatarSection}>
             <View style={styles.avatar}>
@@ -221,6 +216,19 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
           </View>
+
+          {/* Save Button */}
+          <TouchableOpacity 
+            style={[styles.saveButtonBottom, isSaving && styles.saveButtonDisabled]} 
+            onPress={handleSave} 
+            disabled={isSaving}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark-circle" size={20} color={THEME.colors.card} />
+            <Text style={styles.saveButtonBottomText}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Text>
+          </TouchableOpacity>
 
           <View style={{ height: 100 }} />
         </Animated.View>
@@ -386,5 +394,35 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: THEME.colors.border,
     marginVertical: THEME.spacing.xs,
+  },
+  backButtonTop: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.lg,
+    ...THEME.shadow,
+  },
+  saveButtonBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: THEME.spacing.sm,
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: THEME.spacing.md,
+    paddingHorizontal: THEME.spacing.xl,
+    borderRadius: THEME.radius.md,
+    marginTop: THEME.spacing.xl,
+    ...THEME.shadow,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonBottomText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.card,
   },
 });

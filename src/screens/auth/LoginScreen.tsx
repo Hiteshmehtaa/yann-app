@@ -49,6 +49,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [showEmailSent, setShowEmailSent] = useState(false);
   const { sendOTP } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
   
@@ -90,10 +91,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
     try {
       await sendOTP(email);
-      showSuccess('OTP sent to your email!');
+      setShowEmailSent(true);
       setTimeout(() => {
+        setShowEmailSent(false);
         navigation.navigate('VerifyOTP', { email });
-      }, 1500);
+      }, 2000);
     } catch (error: any) {
       showError(error.message || 'Failed to send OTP');
     } finally {
@@ -112,6 +114,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         type={toast.type}
         onHide={hideToast}
       />
+
+      {/* Email Sent Animation Overlay */}
+      {showEmailSent && (
+        <View style={styles.emailSentOverlay}>
+          <View style={styles.emailSentContainer}>
+            <LottieView
+              source={require('../../../assets/lottie/Email-Sent.json')}
+              autoPlay
+              loop={false}
+              style={styles.emailSentAnimation}
+            />
+            <Text style={styles.emailSentText}>Email Sent!</Text>
+          </View>
+        </View>
+      )}
       
       {/* Background pattern */}
       <View style={styles.bgPattern}>
@@ -431,5 +448,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: THEME.primary,
     fontWeight: '700',
+  },
+  emailSentOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  emailSentContainer: {
+    backgroundColor: THEME.bgCard,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  emailSentAnimation: {
+    width: 200,
+    height: 200,
+  },
+  emailSentText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME.text,
+    marginTop: 16,
   },
 });
