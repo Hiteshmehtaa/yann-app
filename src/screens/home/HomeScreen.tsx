@@ -9,7 +9,9 @@ import {
   RefreshControl,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
@@ -21,7 +23,7 @@ import { SearchBar } from '../../components/ui/SearchBar';
 import { ServiceCard } from '../../components/ui/ServiceCard';
 import { SpecialOfferBanner } from '../../components/ui/SpecialOfferBanner';
 import { AnimatedCard } from '../../components/AnimatedCard';
-import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS } from '../../utils/theme';
+import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS, SHADOWS } from '../../utils/theme';
 import { useResponsive } from '../../hooks/useResponsive';
 
 type Props = {
@@ -161,23 +163,36 @@ const EmptyState = () => (
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { width, isTablet } = useResponsive();
+  const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  // ... (keep state variables SAME) ...
   const [searchQuery, setSearchQuery] = useState('');
-  const [services, setServices] = useState<Service[]>(SERVICES); // Fallback to static services
+  const [services, setServices] = useState<Service[]>(SERVICES);
   const [filteredServices, setFilteredServices] = useState<Service[]>(SERVICES);
   const [partnerCounts, setPartnerCounts] = useState<{ [serviceTitle: string]: number }>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasFetchedInitial, setHasFetchedInitial] = useState(false); // Prevent duplicate initial fetches
+  const [hasFetchedInitial, setHasFetchedInitial] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [categories, setCategories] = useState<string[]>(['all']);
-  const [showAll, setShowAll] = useState(false);
+  
+  // Header Animation
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [0, -10],
+    extrapolate: 'clamp',
+  });
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [1, 0.95],
+    extrapolate: 'clamp',
+  });
 
-  // Fetch services from backend (like website - GET /api/services)
+  // Fetch services and data
+  // ... (keep fetch functions SAME) ...
   const fetchServices = async () => {
     try {
       const response = await apiService.getAllServices();
-      
       const servicesList = response.data || [];
       if (servicesList.length > 0) {
         const mappedServices: Service[] = servicesList.map((s: any, index: number) => ({
@@ -192,294 +207,301 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }));
         setServices(mappedServices);
         setFilteredServices(mappedServices);
-        
-        // Extract unique categories from services
         const uniqueCategories = ['all', ...Array.from(new Set(servicesList.map((s: any) => s.category).filter(Boolean)))];
         setCategories(uniqueCategories);
-        
-        console.log(`✅ Loaded ${mappedServices.length} services with ${uniqueCategories.length - 1} categories`);
       } else {
         setServices(SERVICES);
         setFilteredServices(SERVICES);
       }
     } catch (err) {
       console.error('Error fetching services:', err);
-      // Use static services as fallback silently
       setServices(SERVICES);
       setFilteredServices(SERVICES);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Get service icon based on category or name
   const getServiceIcon = (categoryOrName: string): string => {
-    const name = (categoryOrName || '').toLowerCase();
-    if (name.includes('clean')) return '🧹';
-    if (name.includes('driver')) return '🚗';
-    if (name.includes('puja') || name.includes('pujari')) return '🙏';
-    if (name.includes('maid')) return '🧹';
-    if (name.includes('baby') || name.includes('sitter')) return '👶';
-    if (name.includes('nurse')) return '👩‍⚕️';
-    if (name.includes('cook')) return '👨‍🍳';
-    if (name.includes('garden')) return '🌿';
-    if (name.includes('pet')) return '🐕';
-    if (name.includes('repair')) return '🔧';
-    if (name.includes('laundry')) return '👕';
-    if (name.includes('attendant')) return '🤝';
-    if (name.includes('office')) return '👔';
-    if (name.includes('security')) return '🛡️';
-    if (name.includes('heena') || name.includes('henna')) return '🎨';
     return '✨';
   };
 
-  // Fetch partner counts from backend (like website - GET /api/provider/service-counts)
   const fetchPartnerCounts = async () => {
     try {
-      const response = await apiService.getServicePartnerCounts();
-      
-      if (response.success && response.data && Array.isArray(response.data)) {
-        const countsObject: { [key: string]: number } = {};
-        
-        for (const item of response.data) {
-          if (item?.service && typeof item?.providerCount === 'number') {
-            countsObject[item.service] = item.providerCount;
-          }
+        const response = await apiService.getServicePartnerCounts();
+        if (response.success && response.data && Array.isArray(response.data)) {
+            const countsObject: { [key: string]: number } = {};
+            for (const item of response.data) {
+                if (item?.service && typeof item?.providerCount === 'number') {
+                    countsObject[item.service] = item.providerCount;
+                }
+            }
+            setPartnerCounts(countsObject);
         }
-        
-        setPartnerCounts(countsObject);
-      } else {
-        setPartnerCounts({});
-      }
     } catch (err) {
-      console.error('Error fetching partner counts:', err);
-      // Silently handle - partner counts are optional
-      setPartnerCounts({});
+        console.error(err);
     } finally {
-      setIsRefreshing(false);
+        setIsRefreshing(false);
     }
   };
 
-  // Fade-in animation on mount
   useEffect(() => {
-    // Prevent duplicate fetches in React Strict Mode
     if (hasFetchedInitial) return;
-    
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: ANIMATIONS.verySlow,
-      useNativeDriver: true,
-    }).start();
-    
-    // Fetch services and partner counts in parallel
-    Promise.all([fetchServices(), fetchPartnerCounts()]).then(() => {
-      setHasFetchedInitial(true);
-    });
+    Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+    Promise.all([fetchServices(), fetchPartnerCounts()]).then(() => setHasFetchedInitial(true));
   }, [hasFetchedInitial]);
 
-  // Handle pull-to-refresh
   const onRefresh = () => {
     setIsRefreshing(true);
-    Promise.all([fetchServices(), fetchPartnerCounts()]);
+    fetchServices();
+    fetchPartnerCounts();
   };
 
-  // Live search with debounce (300ms) and category filter
+  // Sort services: Active (has providers) -> Popular -> Others
+  useEffect(() => {
+    if (Object.keys(partnerCounts).length === 0 && services.length > 0) return;
+
+    const sorted = [...filteredServices].sort((a, b) => {
+      const countA = partnerCounts[a.title] || 0;
+      const countB = partnerCounts[b.title] || 0;
+      const providersA = typeof countA === 'number' ? countA : (countA as any)?.providerCount || 0;
+      const providersB = typeof countB === 'number' ? countB : (countB as any)?.providerCount || 0;
+
+      // 1. Availability Priority (Has Providers vs No Providers)
+      if (providersA > 0 && providersB === 0) return -1;
+      if (providersA === 0 && providersB > 0) return 1;
+
+      // 2. Popularity Priority
+      if (a.popular && !b.popular) return -1;
+      if (!a.popular && b.popular) return 1;
+
+      // 3. Alphabetical Fallback
+      return a.title.localeCompare(b.title);
+    });
+
+    // Only update if order actually changed to avoid loop
+    const currentIds = filteredServices.map(s => s.id).join(',');
+    const newIds = sorted.map(s => s.id).join(',');
+    
+    if (currentIds !== newIds) {
+      setFilteredServices(sorted);
+    }
+  }, [partnerCounts, services]); // Depend on main list, filtered list is derived
+
+  // Search effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       let filtered = services;
-      
-      // Apply category filter
       if (selectedCategory !== 'all') {
-        filtered = filtered.filter(
-          (service) => service.category?.toLowerCase() === selectedCategory.toLowerCase()
-        );
+        filtered = filtered.filter(s => s.category?.toLowerCase() === selectedCategory.toLowerCase());
       }
-      
-      // Apply search filter
       if (searchQuery.trim() !== '') {
-        filtered = filtered.filter(
-          (service) =>
-            service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            service.description.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(s => s.title.toLowerCase().includes(query) || s.description.toLowerCase().includes(query));
       }
-      
-      setFilteredServices(filtered);
-    }, ANIMATIONS.normal); // 300ms debounce
 
+      // Apply Sorting to result
+      const sorted = filtered.sort((a, b) => {
+         const countA = partnerCounts[a.title] || 0;
+         const countB = partnerCounts[b.title] || 0;
+         const providersA = typeof countA === 'number' ? countA : (countA as any)?.providerCount || 0;
+         const providersB = typeof countB === 'number' ? countB : (countB as any)?.providerCount || 0;
+   
+         if (providersA > 0 && providersB === 0) return -1;
+         if (providersA === 0 && providersB > 0) return 1;
+         if (a.popular && !b.popular) return -1;
+         if (!a.popular && b.popular) return 1;
+         return a.title.localeCompare(b.title);
+      });
+
+      setFilteredServices(sorted);
+    }, 300);
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, services, selectedCategory]);
+  }, [searchQuery, services, selectedCategory, partnerCounts]);
 
-  // Get minimum provider price for a service
-  const getMinPrice = (serviceTitle: string): string => {
-    // Check if we have partner count data for this service
+  const getMinPrice = (serviceTitle: string) => {
     const countData = partnerCounts[serviceTitle];
-    
-    // If countData is object with minPrice, use it
     if (typeof countData === 'object' && countData !== null && 'minPrice' in countData) {
-      const minPrice = (countData as any).minPrice;
-      if (minPrice && minPrice > 0) {
-        return `Starting from ₹${minPrice}`;
-      }
+        const min = (countData as any).minPrice;
+        return min ? `From ₹${min}` : 'View prices'; 
     }
-    
-    // Otherwise check provider count
-    const count = typeof countData === 'number' ? countData : (countData as any)?.providerCount || 0;
-    if (count === 0) {
-      return 'No providers available';
-    }
-    
-    // Fallback to item price if available
-    return 'View prices';
+    return (typeof countData === 'number' && countData === 0) ? 'No providers' : 'View prices';
   };
 
-  // Get displayed services (8 initially, or all when expanded)
-  const hasMore = filteredServices.length > 8;
-  const displayedServices = showAll 
-    ? filteredServices 
-    : filteredServices.slice(0, 8);
-  
-  // Add More button as a grid item if needed
-  const gridData = (!showAll && hasMore) 
-    ? [...displayedServices, { id: 'more-button', isMoreButton: true }] 
-    : displayedServices;
+  // Animated Item Component for Staggered Effect
+  const AnimatedServiceItem = ({ index, children }: { index: number; children: React.ReactNode }) => {
+    const itemAnim = useRef(new Animated.Value(0)).current;
+    const itemSlide = useRef(new Animated.Value(20)).current;
 
-  // Render service card or More button
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(itemAnim, {
+          toValue: 1,
+          duration: 600,
+          delay: index * 50, // Stagger effect
+          useNativeDriver: true,
+        }),
+        Animated.spring(itemSlide, {
+          toValue: 0,
+          tension: 50,
+          friction: 7,
+          delay: index * 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+
+    return (
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity: itemAnim,
+          transform: [{ translateY: itemSlide }],
+          // Ensure it takes up the full space of the grid column
+          maxWidth: '100%', 
+        }}
+      >
+        {children}
+      </Animated.View>
+    );
+  };
+
   const renderGridItem = ({ item, index }: { item: any; index: number }) => {
-    // Render More button
-    if (item.isMoreButton) {
-      return (
-        <TouchableOpacity 
-          style={styles.cardWrapper}
-          onPress={() => setShowAll(true)}
-        >
-          <View style={styles.moreButton}>
-            <View style={styles.moreIconContainer}>
-              <Ionicons name="ellipsis-horizontal" size={24} color="#999" />
-            </View>
-            <Text style={styles.moreText}>More</Text>
-          </View>
-        </TouchableOpacity>
-      );
-    }
-
-    // Render service card
     const iconName = SERVICE_ICONS[item.title] || 'grid-outline';
     const iconImage = getServiceIconImage(item.title);
     const countData = partnerCounts[item.title];
     const count = typeof countData === 'number' ? countData : (countData as any)?.providerCount || 0;
-    const displayPrice = getMinPrice(item.title);
-    const isComingSoon = count === 0;
 
     return (
-      <Animated.View style={styles.cardWrapper}>
-        <ServiceCard
-          title={item.title}
-          price={displayPrice}
-          icon={iconName}
-          iconImage={iconImage}
-          popular={item.popular}
-          partnerCount={count}
-          isComingSoon={isComingSoon}
-          onPress={() => navigation.navigate('ServiceDetail', { service: item })}
-        />
+      <View style={styles.cardWrapper}>
+        <AnimatedServiceItem index={index}>
+          <ServiceCard
+            title={item.title}
+            price={getMinPrice(item.title)}
+            icon={iconName}
+            iconImage={iconImage}
+            popular={item.popular}
+            partnerCount={count}
+            isComingSoon={count === 0}
+            onPress={() => navigation.navigate('ServiceDetail', { service: item })}
+          />
+        </AnimatedServiceItem>
+      </View>
+    );
+  };
+
+  const Header = () => {
+    // Get primary address or first available address
+    const primaryAddress = user?.addressBook?.find(addr => addr.isPrimary) || user?.addressBook?.[0];
+    
+    // Format address string: "Home • Bangalore" or "Select Location"
+    const locationText = primaryAddress 
+      ? `${primaryAddress.label} • ${primaryAddress.city}` 
+      : 'Add Location';
+
+    return (
+      <Animated.View 
+        style={[
+          styles.headerContainer, 
+          { 
+            paddingTop: insets.top + SPACING.sm, // Dynamic Safe Area Padding
+            opacity: headerOpacity, 
+            transform: [{ translateY: headerTranslateY }] 
+          }
+        ]}
+      >
+        <View style={styles.headerTop}>
+          <View>
+            <TouchableOpacity 
+              style={styles.locationPill} 
+              onPress={() => navigation.navigate('SavedAddresses')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="location" size={16} color={COLORS.primary} />
+              <Text style={styles.locationText} numberOfLines={1}>{locationText}</Text>
+              <Ionicons name="chevron-down" size={14} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+            <Text style={styles.greetingText}>Hello, {user?.name?.split(' ')[0] || 'Guest'} 👋</Text>
+          </View>
+          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Profile')}>
+              {user?.avatar ? (
+                <Image source={{ uri: user.avatar }} style={styles.profileImage} />
+              ) : (
+                <View style={styles.profileInitial}>
+                    <Text style={styles.profileInitialText}>{user?.name?.charAt(0) || 'U'}</Text>
+                </View>
+              )}
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      {/* Translucent Status Bar for Content to flow under */}
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      
+      <Header />
 
-      {/* Top Bar with Logo, Welcome Text, and Profile */}
-      <TopBar
-        userName={user?.name}
-        onProfilePress={() => navigation.navigate('Profile')}
-      />
-
-      {/* Services Grid - 3 Columns */}
-      <FlatList
+      <Animated.FlatList
+        data={filteredServices}
+        renderItem={renderGridItem}
+        keyExtractor={item => item.id.toString()}
+        numColumns={3}
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={styles.gridRow}
+        showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <Animated.View style={{ opacity: fadeAnim }}>
-            {/* Search Bar with Live Filtering */}
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search for services..."
-            />
+          <>
+            <View style={styles.searchSection}>
+                <Text style={styles.headlineText}>What are you looking for?</Text>
+                <SearchBar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search 'AC Repair', 'Cleaning'..."
+                style={styles.searchBar}
+                />
+            </View>
 
-            {/* Special Offer Banner */}
+            {/* Categories */}
+            <View style={styles.categorySection}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+                    {categories.map((cat, index) => (
+                        <TouchableOpacity 
+                            key={cat} 
+                            style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+                            onPress={() => setSelectedCategory(cat)}
+                        >
+                            <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
+                                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
+            {/* Banners */}
             <SpecialOfferBanner
               discount="40%"
               title="Special Offer!"
-              description="Get discount for every fkin order , only valid for today"
-              onPress={() => {
-                // Navigate to offers/promotions screen if you have one
-                console.log('Special offer pressed');
-              }}
+              description="Get 40% off your first order! Valid for today only."
+              onPress={() => {}}
             />
-
-            {/* Section Header - Popular Services */}
+            
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Popular Services</Text>
-              <TouchableOpacity onPress={() => setShowAll(!showAll)}>
-                <Text style={styles.seeAllText}>
-                  {showAll ? 'Show Less' : 'See All'}
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Recommended Services</Text>
             </View>
-
-            {/* Category Filter Tabs */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoriesContainer}
-              contentContainerStyle={styles.categoriesContent}
-            >
-              {categories.map((category) => (
-                <AnimatedCard
-                  key={category}
-                  style={[
-                    styles.categoryTag,
-                    selectedCategory === category && styles.categoryTagActive
-                  ]}
-                  onPress={() => setSelectedCategory(category)}
-                  isSelected={selectedCategory === category}
-                  glowColor={COLORS.primary}
-                >
-                  <Text
-                    style={[
-                      styles.categoryTagText,
-                      selectedCategory === category && styles.categoryTagTextActive
-                    ]}
-                  >
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Text>
-                </AnimatedCard>
-              ))}
-            </ScrollView>
-          </Animated.View>
-        }        data={gridData}
-        renderItem={renderGridItem}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={3}
-        contentContainerStyle={[
-          styles.servicesGrid,
-          { paddingBottom: isTablet ? 120 : 100 }
-        ]}
-        columnWrapperStyle={styles.gridRow}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-        alwaysBounceVertical={true}
+          </>
+        }
         ListEmptyComponent={EmptyState}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh} 
+            tintColor={COLORS.primary} 
+            progressViewOffset={insets.top + 60} // Push loader down below header
           />
         }
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
       />
     </View>
   );
@@ -490,120 +512,137 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  // Metrics Card Styles
-  metricsCard: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.cardBg,
-    marginHorizontal: LAYOUT.screenPadding,
-    marginBottom: SPACING.xl,
-    padding: SPACING.lg,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+  headerContainer: {
+    paddingHorizontal: LAYOUT.screenPadding,
+    // paddingTop handled inline with safe area
+    paddingBottom: SPACING.lg,
+    backgroundColor: COLORS.background, // Clean background
+    zIndex: 10,
+    // Border bottom removed for seamless feel
   },
-  metricItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
-    marginBottom: SPACING.xs,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  metricNumber: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.text,
-    letterSpacing: -0.5,
-  },
-  metricDivider: {
-    width: 1,
-    height: 60,
-    backgroundColor: COLORS.border,
-    marginHorizontal: SPACING.xs,
-  },
-  // Section Header Styles
-  sectionHeader: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: LAYOUT.screenPadding,
-    marginBottom: SPACING.md,
   },
-  sectionTitleRow: {
+  locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    marginBottom: 6,
+    backgroundColor: '#FFFFFF', // White pill bg
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    ...SHADOWS.sm, // Soft shadow for pill
   },
-  accentBar: {
-    width: 4,
-    height: 24,
-    backgroundColor: COLORS.primary,
-    borderRadius: 2,
-  },
-  sectionTitle: {
-    fontSize: 14,
+  locationText: {
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.text,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+    marginHorizontal: 6,
   },
-  seeAllText: {
-    fontSize: 13,
-    fontWeight: '600',
+  greetingText: {
+    fontSize: 18, // Larger greeting
+    color: COLORS.text,
+    fontWeight: '700', // Bold greeting
+    marginTop: 2,
+    paddingHorizontal: 4, // Align with pill text ish
+  },
+  profileButton: {
+    padding: 4,
+  },
+  profileInitial: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInitialText: {
+    fontSize: 18,
+    fontWeight: '700',
     color: COLORS.primary,
   },
-  // Services Grid Styles
+  profileImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
+  searchSection: {
+    paddingHorizontal: LAYOUT.screenPadding,
+    marginBottom: SPACING.lg,
+    marginTop: SPACING.md,
+  },
+  headlineText: {
+    fontSize: 28, // Massive Headline
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: SPACING.lg,
+    letterSpacing: -1, // Tight tracking
+    lineHeight: 34,
+  },
+  searchBar: {
+    // Custom overrides if needed for the component
+  },
+  categorySection: {
+    marginBottom: SPACING.lg,
+  },
+  categoryScroll: {
+    paddingHorizontal: LAYOUT.screenPadding,
+    gap: 12,
+  },
+  categoryPill: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  categoryPillActive: {
+    backgroundColor: COLORS.primary, // Changed to Primary Blue
+    borderColor: COLORS.primary,
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  categoryTextActive: {
+    color: '#FFFFFF',
+  },
+  sectionHeader: {
+    paddingHorizontal: LAYOUT.screenPadding,
+    marginBottom: SPACING.md,
+    marginTop: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  // Grid Styles
   servicesGrid: {
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingBottom: 100,
   },
   gridRow: {
     justifyContent: 'flex-start',
     marginBottom: SPACING.md,
-    gap: SPACING.sm,
+    gap: 12, // Gap between columns
+    paddingHorizontal: LAYOUT.screenPadding, // Ensure padding for row wrapper
   },
   cardWrapper: {
-    width: '31.5%',
-  },
-  moreButton: {
-    alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.large,
-  },
-  moreIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: RADIUS.medium,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  moreText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#000',
-    textAlign: 'center',
+    flex: 1,
+    maxWidth: '31.5%', // Ensure 3 columns fit (100% / 3 - gaps)
   },
   // Empty State Styles
   emptyState: {
@@ -621,59 +660,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textTertiary,
     marginTop: 4,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: SPACING.xxxl,
-  },
-  loadingText: {
-    marginTop: SPACING.md,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: `${COLORS.warning}15`,
-    marginHorizontal: LAYOUT.screenPadding,
-    marginBottom: SPACING.md,
-    padding: SPACING.md,
-    borderRadius: 12,
-  },
-  errorText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  // Category Filter Styles
-  categoriesContainer: {
-    marginHorizontal: LAYOUT.screenPadding,
-    marginBottom: SPACING.md,
-  },
-  categoriesContent: {
-    paddingRight: LAYOUT.screenPadding,
-    gap: SPACING.sm,
-  },
-  categoryTag: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    backgroundColor: COLORS.cardBg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  categoryTagActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  categoryTagText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  categoryTagTextActive: {
-    color: '#FFFFFF',
   },
 });

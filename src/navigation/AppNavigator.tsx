@@ -26,6 +26,9 @@ import { VerifyOTPScreen } from '../screens/auth/VerifyOTPScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ProviderSignupScreen } from '../screens/auth/ProviderSignupScreen';
 
+// Common Screens
+import { ComingSoonScreen } from '../screens/common/ComingSoonScreen';
+
 // Home Screens
 import { HomeScreen } from '../screens/home/HomeScreen';
 
@@ -208,7 +211,7 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Favorites"
-        component={FavoritesScreen}
+        component={ComingSoonScreen}
         options={{
           tabBarLabel: 'FAVORITES',
           tabBarIcon: renderFavoritesIcon,
@@ -217,7 +220,7 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Chat"
-        component={ChatScreen}
+        component={ComingSoonScreen}
         options={{
           tabBarLabel: 'CHAT',
           tabBarIcon: renderChatIcon,

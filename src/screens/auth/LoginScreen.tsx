@@ -20,25 +20,9 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { Toast } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../contexts/AuthContext';
+import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useResponsive } from '../../hooks/useResponsive';
-
-// YANN Official Website Color Palette
-const THEME = {
-  bg: '#F6F7FB',              // Background Light
-  bgCard: '#FFFFFF',          // Card Background
-  bgElevated: '#FFFFFF',      // Elevated surfaces
-  primary: '#2E59F3',         // Primary Blue
-  primaryLight: '#4362FF',    // Gradient end
-  accent: '#2E59F3',          // Accent (same as primary)
-  accentOrange: '#FF8A3D',    // Accent Orange
-  accentYellow: '#F7C948',    // Accent Yellow
-  text: '#1A1C1E',            // Heading Text
-  textMuted: '#4A4D52',       // Body Text
-  textSubtle: '#9CA3AF',      // Muted text
-  border: '#E5E7EB',          // Borders
-  shadow: 'rgba(46, 89, 243, 0.08)',
-};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -60,7 +44,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 700,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
@@ -105,7 +89,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       
       {/* Toast Notification */}
       <Toast
@@ -152,7 +136,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={22} color={THEME.text} />
+            <Ionicons name="arrow-back" size={22} color={COLORS.text} />
           </TouchableOpacity>
 
           <Animated.View 
@@ -171,9 +155,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 />
               </View>
               <Text style={styles.brandName}>YANN</Text>
-              <View style={styles.divider} />
               
-              {/* Welcome Animation */}
+              {/* Welcome Animation - Restored */}
               <LottieView
                 source={require('../../../assets/lottie/Campers-Welcome.json')}
                 autoPlay
@@ -183,7 +166,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               
               <Text style={styles.title}>Welcome{'\n'}Back</Text>
               <Text style={styles.subtitle}>
-                Continue your premium experience
+                Sign in to manage your services
               </Text>
             </View>
 
@@ -192,12 +175,12 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.label}>EMAIL ADDRESS</Text>
               <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons name="mail" size={20} color={isFocused ? THEME.primary : THEME.textMuted} />
+                  <Ionicons name="mail" size={20} color={isFocused ? COLORS.primary : COLORS.textTertiary} />
                 </View>
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor={THEME.textSubtle}
+                  placeholderTextColor={COLORS.textTertiary}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -213,23 +196,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleSendOTP}
                 disabled={isLoading}
-                activeOpacity={0.85}
+                activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={[THEME.primary, THEME.primaryLight]}
+                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
                 >
-                  <Text style={styles.buttonText}>CONTINUE</Text>
-                  <View style={styles.buttonIcon}>
-                    <Ionicons name="arrow-forward" size={18} color="#FFF" />
-                  </View>
+                  <Text style={styles.buttonText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
                 </LinearGradient>
               </TouchableOpacity>
 
               <Text style={styles.infoText}>
-                We'll send a verification code to your email
+                We'll send a 4-digit code to your email
               </Text>
             </View>
 
@@ -251,31 +232,32 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.bg,
+    backgroundColor: COLORS.background,
   },
   bgPattern: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+    zIndex: -1,
   },
   patternCircle1: {
     position: 'absolute',
     top: -100,
-    right: -100,
+    right: -50,
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: THEME.accent,
-    opacity: 0.03,
+    backgroundColor: COLORS.primary,
+    opacity: 0.04,
   },
   patternCircle2: {
     position: 'absolute',
-    bottom: 100,
-    left: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: THEME.accent,
-    opacity: 0.02,
+    bottom: 50,
+    left: -100,
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    backgroundColor: COLORS.accentOrange,
+    opacity: 0.03,
   },
   keyboardView: {
     flex: 1,
@@ -284,75 +266,69 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   backButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: THEME.bgCard,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.small,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 20,
+    marginLeft: 24,
+    marginTop: 12,
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 20,
+    paddingHorizontal: 32,
+    paddingTop: 32,
   },
   header: {
     marginBottom: 48,
+    alignItems: 'center',
   },
   logoContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: THEME.bgCard,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: '#F0F0F0',
+    ...SHADOWS.sm,
   },
   logoImage: {
-    width: 50,
-    height: 50,
-  },
-  logo: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
   },
   brandName: {
     fontSize: 12,
     fontWeight: '700',
-    color: THEME.accent,
+    color: COLORS.primary,
     letterSpacing: 4,
-    marginBottom: 20,
-  },
-  divider: {
-    width: 40,
-    height: 3,
-    backgroundColor: THEME.accent,
-    marginBottom: 20,
-    borderRadius: 2,
+    marginBottom: 24,
   },
   welcomeAnimation: {
     width: 180,
     height: 180,
-    alignSelf: 'center',
     marginVertical: 10,
   },
   title: {
-    fontSize: 42,
+    fontSize: 36,
     fontWeight: '800',
-    color: THEME.text,
-    letterSpacing: -2,
-    lineHeight: 46,
-    marginBottom: 12,
+    color: COLORS.text,
+    letterSpacing: -1,
+    lineHeight: 44,
+    marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 15,
-    color: THEME.textMuted,
-    letterSpacing: 0.5,
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   form: {
     marginBottom: 32,
@@ -360,77 +336,65 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     fontWeight: '700',
-    color: THEME.textMuted,
-    letterSpacing: 2,
+    color: COLORS.textTertiary,
+    letterSpacing: 1.5,
     marginBottom: 12,
+    marginLeft: 4,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.bgCard,
-    borderWidth: 2,
-    borderColor: THEME.border,
-    borderRadius: 16,
-    marginBottom: 28,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.medium,
+    marginBottom: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    height: 56,
   },
   inputFocused: {
-    borderColor: THEME.primary,
-    shadowColor: THEME.primary,
-    shadowOpacity: 0.12,
+    borderColor: COLORS.primary,
+    backgroundColor: '#F8FAFF',
   },
   inputIcon: {
-    width: 52,
-    height: 56,
+    width: 50,
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.bgElevated,
   },
   input: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    height: '100%',
+    paddingRight: 16,
     fontSize: 16,
-    color: THEME.text,
-    letterSpacing: 0.3,
+    fontWeight: '500',
+    color: COLORS.text,
   },
   button: {
-    borderRadius: 14,
+    borderRadius: RADIUS.medium,
     overflow: 'hidden',
     marginBottom: 20,
+    ...SHADOWS.md,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 12,
+    paddingVertical: 16,
+    gap: 10,
   },
   buttonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 2,
-  },
-  buttonIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    letterSpacing: 0.5,
   },
   infoText: {
     fontSize: 13,
-    color: THEME.textSubtle,
+    color: COLORS.textTertiary,
     textAlign: 'center',
   },
   footer: {
@@ -438,15 +402,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 'auto',
-    paddingBottom: 20,
+    paddingBottom: 32,
   },
   footerText: {
     fontSize: 14,
-    color: THEME.textMuted,
+    color: COLORS.textSecondary,
   },
   footerLink: {
     fontSize: 14,
-    color: THEME.primary,
+    color: COLORS.primary,
     fontWeight: '700',
   },
   emailSentOverlay: {
@@ -455,30 +419,26 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
   emailSentContainer: {
-    backgroundColor: THEME.bgCard,
-    borderRadius: 20,
-    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
+    ...SHADOWS.lg,
   },
   emailSentAnimation: {
-    width: 200,
-    height: 200,
+    width: 160,
+    height: 160,
   },
   emailSentText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: THEME.text,
-    marginTop: 16,
+    color: COLORS.text,
+    marginTop: 12,
   },
 });

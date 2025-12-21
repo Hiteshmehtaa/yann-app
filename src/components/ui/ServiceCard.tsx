@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType } from 'react-native';
-import { SPACING, RADIUS } from '../../utils/theme';
+import { SPACING, RADIUS, SHADOWS } from '../../utils/theme';
 import { ServiceIcon } from '../icons/ServiceIcon';
 
 type ServiceCardProps = {
@@ -71,54 +71,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   comingSoonContainer: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.medium,
-    padding: SPACING.sm,
+    borderRadius: RADIUS.xlarge, // More rounded
+    padding: SPACING.md, // Increased padding
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    // Stronger shadow for "Pop" effect
+    ...SHADOWS.md,
+    height: 140, // Fixed height for uniformity
+    justifyContent: 'space-between',
   },
   imageContainer: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: RADIUS.medium,
-    overflow: 'hidden',
-    marginBottom: SPACING.sm,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: SPACING.xs,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F0F6FF', // Soft blue tint
   },
   serviceImage: {
-    width: '80%',
-    height: '80%',
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
   },
   title: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#1A1C1E',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
+    marginTop: 4,
+    marginBottom: 4,
   },
   comingSoonText: {
     color: '#999',
   },
   comingSoonBadge: {
-    marginTop: 4,
+    position: 'absolute',
+    top: 6,
+    right: 6,
     paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: '#E5E5E5',
-    borderRadius: 4,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 6,
   },
   comingSoonBadgeText: {
-    fontSize: 8,
-    fontWeight: '600',
-    color: '#999',
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFF',
     textTransform: 'uppercase',
   },
 });

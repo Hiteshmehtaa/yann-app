@@ -2,7 +2,7 @@
 
 # dependencies
 node_modules/
-Yann app/
+Yann_app/
 # Expo
 .expo/
 dist/

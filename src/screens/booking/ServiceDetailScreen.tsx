@@ -79,24 +79,24 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   
+  // Staggered Animations
+  const heroAnim = useRef(new Animated.Value(0)).current;
+  const overviewAnim = useRef(new Animated.Value(0)).current;
+  const featuresAnim = useRef(new Animated.Value(0)).current;
+  const providersAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
-  const contentFadeAnim = useRef(new Animated.Value(0)).current;
 
   /**
    * Fetch available providers for this service
-   * Uses same endpoint as website: GET /api/provider/by-service?service=X
    */
   const fetchAvailableProviders = useCallback(async (isRefresh = false) => {
-    // Prevent duplicate fetches (React Strict Mode in dev can cause double calls)
+    // Prevent duplicate fetches
     if (!isRefresh && hasFetched) return;
     
     try {
       setIsLoadingProviders(true);
       if (!isRefresh) setIsLoading(true);
       
-      console.log(`🔵 Fetching providers for "${service.title}"`);
-      
-      // Only call the provider endpoint - skip service details/reviews as they don't exist
       const response = await apiService.getProvidersByService(service.title);
       
       if (response.success && response.data) {
@@ -113,17 +113,14 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           workingHours: p.workingHours || null,
           profileImage: p.profileImage || '',
           status: p.status || 'active',
-          // Store the price for this specific service (from by-service endpoint)
           priceForService: p.price,
         }));
         
         setAvailableProviders(mappedProviders);
         
-        // Auto-select first provider if only one available
         if (mappedProviders.length === 1) {
           setSelectedProvider(mappedProviders[0]);
         }
-        console.log(`✅ Found ${mappedProviders.length} providers for "${service.title}"`);
       } else {
         setAvailableProviders([]);
       }
@@ -131,7 +128,6 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setHasFetched(true);
     } catch (err: any) {
       console.error('Error fetching providers:', err);
-      // No providers available for this service
       setAvailableProviders([]);
       setHasFetched(true);
     } finally {
@@ -141,15 +137,35 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [service.title, hasFetched]);
 
-  // Fade-in animation and initial fetch
+  // Initial Sequence
   useEffect(() => {
-    Animated.timing(contentFadeAnim, {
-      toValue: 1,
-      duration: ANIMATIONS.slow,
-      useNativeDriver: true,
-    }).start();
+    Animated.stagger(100, [
+      Animated.timing(heroAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(overviewAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.spring(featuresAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.spring(providersAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-    // Fetch providers on mount
+    // Fetch providers
     fetchAvailableProviders(false);
   }, [fetchAvailableProviders]);
 
@@ -178,6 +194,36 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       .filter((price) => price > 0);
     if (prices.length === 0) return service.price;
     return `₹${Math.min(...prices)}`;
+  };
+
+  // Animated List Item
+  const AnimatedListItem = ({ index, children }: { index: number; children: React.ReactNode }) => {
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const translateAnim = useRef(new Animated.Value(20)).current;
+
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          delay: index * 100 + 300, // Initial delay + stagger
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateAnim, {
+          toValue: 0,
+          tension: 50,
+          friction: 8,
+          delay: index * 100 + 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+
+    return (
+      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: translateAnim }] }}>
+        {children}
+      </Animated.View>
+    );
   };
 
   return (
@@ -238,28 +284,52 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         }
       >
-        {/* Hero Section */}
-        <ServiceHero
-          title={service.title}
-          category={service.category || ''}
-          rating={4.8}
-          reviewCount={256}
-        />
-
-        {/* Main Content */}
-        <Animated.View style={[styles.content, { opacity: contentFadeAnim }]}>
-          {/* Service Overview Card */}
-          <ServiceOverviewCard
-            description={serviceDetails.aboutService}
-            startingPrice={service.price}
-            providerCount={availableProviders.length}
+        {/* Hero Section with Parallax Opacity */}
+        <Animated.View style={{ opacity: heroAnim }}>
+          <ServiceHero
+            title={service.title}
+            category={service.category || ''}
+            rating={4.8}
+            reviewCount={256}
           />
+        </Animated.View>
+
+        {/* Main Content Sheet */}
+        <View style={styles.content}>
+          {/* Service Overview Card */}
+          <Animated.View 
+            style={{ 
+              opacity: overviewAnim, 
+              transform: [{ translateY: overviewAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] 
+            }}
+          >
+            <ServiceOverviewCard
+              description={serviceDetails.aboutService}
+              startingPrice={service.price}
+              providerCount={availableProviders.length}
+            />
+          </Animated.View>
 
           {/* What's Included Section */}
-          <IncludedFeatures features={serviceDetails.whatsIncluded} />
+          <Animated.View 
+            style={{ 
+              opacity: featuresAnim, 
+              transform: [{ translateY: featuresAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] 
+            }}
+          >
+            <IncludedFeatures features={serviceDetails.whatsIncluded} />
+          </Animated.View>
 
           {/* Available Professionals Section */}
-          <View style={styles.section}>
+          <Animated.View 
+            style={[
+              styles.section,
+              { 
+                opacity: providersAnim, 
+                transform: [{ translateY: providersAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] 
+              }
+            ]}
+          >
             <View style={styles.sectionHeader}>
               <View style={styles.iconBadge}>
                 <Ionicons name="people" size={20} color={COLORS.primary} />
@@ -294,17 +364,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     Tap to select your preferred professional
                   </Text>
                 )}
-                {availableProviders.map((provider) => (
-                  <ProviderListCard
-                    key={provider._id}
-                    provider={provider}
-                    isSelected={selectedProvider?._id === provider._id}
-                    onSelect={() => setSelectedProvider(provider)}
-                  />
+                {availableProviders.map((provider, index) => (
+                  <AnimatedListItem key={provider._id} index={index}>
+                    <ProviderListCard
+                      provider={provider}
+                      isSelected={selectedProvider?._id === provider._id}
+                      onSelect={() => setSelectedProvider(provider)}
+                    />
+                  </AnimatedListItem>
                 ))}
               </>
             )}
-          </View>
+          </Animated.View>
 
           {/* Why Choose Us Section */}
           <View style={styles.section}>
@@ -315,13 +386,15 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.sectionTitle}>Why Choose Us</Text>
             </View>
             <View style={styles.whyChooseList}>
-              {serviceDetails.whyChooseUs.map((item) => (
-                <View key={item} style={styles.whyChooseItem}>
-                  <View style={styles.checkCircle}>
-                    <Ionicons name="checkmark" size={12} color={COLORS.white} />
+              {serviceDetails.whyChooseUs.map((item, index) => (
+                <AnimatedListItem key={item} index={index + 2}>
+                  <View style={styles.whyChooseItem}>
+                    <View style={styles.checkCircle}>
+                      <Ionicons name="checkmark" size={12} color={COLORS.white} />
+                    </View>
+                    <Text style={styles.whyChooseText}>{item}</Text>
                   </View>
-                  <Text style={styles.whyChooseText}>{item}</Text>
-                </View>
+                </AnimatedListItem>
               ))}
             </View>
           </View>
@@ -354,7 +427,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
           {/* Bottom Spacer */}
           <View style={{ height: 140 }} />
-        </Animated.View>
+        </View>
       </Animated.ScrollView>
 
       {/* Floating Bottom CTA */}
@@ -432,31 +505,36 @@ const styles = StyleSheet.create({
   },
   // Content
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    marginTop: -40, // Overlap the hero
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
   },
   // Section Styles
   section: {
-    marginBottom: 24,
+    marginBottom: 32, // Increased spacing between sections
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    gap: 10,
+    marginBottom: 16,
+    gap: 12,
   },
   iconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: COLORS.background,
+    width: 40, // Larger badge
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primaryLight, // Using primary light bg
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
+    letterSpacing: -0.5,
   },
   // Provider List States
   loadingState: {
@@ -497,64 +575,69 @@ const styles = StyleSheet.create({
   },
   // Why Choose Us
   whyChooseList: {
-    gap: 10,
+    gap: 12,
   },
   whyChooseItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.medium,
-    padding: 14,
-    gap: 12,
-    ...SHADOWS.sm,
+    padding: 16,
+    gap: 14,
+    ...SHADOWS.sm, // Soft shadow
+    borderWidth: 1,
+    borderColor: '#F8F8F8', // Subtle border
   },
   checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: COLORS.success,
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.sm,
   },
   whyChooseText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22, // Better readability
     color: COLORS.text,
+    fontWeight: '500',
   },
   // Details Grid
   detailsGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: 16,
+    marginBottom: 32,
   },
   detailCard: {
     flex: 1,
     backgroundColor: COLORS.white,
-    borderRadius: RADIUS.medium,
-    padding: 16,
+    borderRadius: RADIUS.large, // Larger radius
+    padding: 20,
     alignItems: 'center',
-    ...SHADOWS.sm,
+    ...SHADOWS.md, // Floating effect
   },
   detailIconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: COLORS.gray50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   detailLabel: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '600',
     color: COLORS.textTertiary,
-    marginBottom: 4,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   detailValue: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
   },

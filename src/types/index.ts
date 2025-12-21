@@ -172,6 +172,17 @@ export interface ApiResponse<T = any> {
     serviceName?: string;
   };
   service?: Service;
+  // Payment specific fields
+  orderId?: string;
+  keyId?: string;
+  amount?: number;
+  currency?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  razorpay_payment_id?: string;
+  razorpay_order_id?: string;
+  razorpay_signature?: string;
 }
 
 // Provider list item (from /api/providers and /api/provider/by-service)

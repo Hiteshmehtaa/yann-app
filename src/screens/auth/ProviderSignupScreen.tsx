@@ -12,34 +12,19 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
+import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-// YANN Official Website Color Palette
-const THEME = {
-  bg: '#F6F7FB',              // Background Light
-  bgCard: '#FFFFFF',          // Card Background  
-  bgInput: '#FFFFFF',         // Input Background
-  bgElevated: '#FFFFFF',      // Elevated surfaces
-  text: '#1A1C1E',            // Heading Text
-  textMuted: '#4A4D52',       // Body Text
-  textSubtle: '#9CA3AF',      // Muted text
-  primary: '#2E59F3',         // Primary Blue
-  accentOrange: '#FF8A3D',    // Accent Orange
-  accent: '#2E59F3',          // Accent (same as primary)
-  accentSoft: 'rgba(46, 89, 243, 0.12)',
-  border: '#E5E7EB',          // Borders
-  shadow: 'rgba(46, 89, 243, 0.08)',
-};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-// Service definitions with proper display namessss
+// Service definitions with proper display names
 const SERVICES = {
   cleaning: [
     'House Cleaning',
@@ -117,10 +102,12 @@ const SERVICE_CATEGORIES = [
 ];
 
 export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [dynamicServiceCategories, setDynamicServiceCategories] = useState(SERVICE_CATEGORIES);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -166,10 +153,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         }));
         
         setDynamicServiceCategories(newCategories as any);
-        console.log(`✅ Loaded ${response.data.length} services from DB`);
       }
     } catch (error) {
-      console.log('⚠️ Using fallback services');
+      console.log('Using fallback services');
     } finally {
       setIsLoadingServices(false);
     }
@@ -328,12 +314,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         workingHours: formData.workingHours,
       };
 
-      console.log('🔵 Sending Provider Registration:', JSON.stringify(payload, null, 2));
-
       await apiService.registerProvider(payload);
       
-      console.log('✅ Provider Registration Success');
-
       Alert.alert(
         'Success! 🎉',
         'Your provider account has been created and is pending approval.',
@@ -345,7 +327,6 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         ]
       );
     } catch (error: any) {
-      console.error('❌ Provider Registration Error:', error.response?.data || error.message);
       Alert.alert(
         'Registration Failed',
         error.response?.data?.message || 'Something went wrong. Please try again.'
@@ -354,6 +335,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       setIsLoading(false);
     }
   };
+
   const renderStepIndicator = () => (
     <View style={styles.stepIndicator}>
       {[1, 2, 3, 4].map(step => (
@@ -381,68 +363,112 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.stepSubtitle}>Tell us about yourself</Text>
       
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Full name</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
+        <Text style={styles.label}>FULL NAME</Text>
+        <View style={[
+          styles.inputContainer,
+          focusedField === 'name' && styles.inputFocused
+        ]}>
+          <View style={styles.inputIcon}>
+            <Ionicons 
+              name="person" 
+              size={20} 
+              color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary} 
+            />
+          </View>
           <TextInput
             style={styles.input}
             placeholder="Enter your full name"
-            placeholderTextColor={THEME.textMuted}
+            placeholderTextColor={COLORS.textTertiary}
             value={formData.name}
             onChangeText={(value) => updateField('name', value)}
             autoCapitalize="words"
             editable={!isLoading}
+            onFocus={() => setFocusedField('name')}
+            onBlur={() => setFocusedField(null)}
           />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Phone number</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="call-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
+        <Text style={styles.label}>PHONE NUMBER</Text>
+        <View style={[
+          styles.inputContainer,
+          focusedField === 'phone' && styles.inputFocused
+        ]}>
+           <View style={styles.inputIcon}>
+            <Ionicons 
+              name="call" 
+              size={20} 
+              color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary} 
+            />
+          </View>
           <TextInput
             style={styles.input}
             placeholder="10-digit phone number"
-            placeholderTextColor={THEME.textMuted}
+            placeholderTextColor={COLORS.textTertiary}
             value={formData.phone}
             onChangeText={(value) => updateField('phone', value)}
             keyboardType="phone-pad"
             maxLength={10}
             editable={!isLoading}
+            onFocus={() => setFocusedField('phone')}
+            onBlur={() => setFocusedField(null)}
           />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Email address</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
+        <Text style={styles.label}>EMAIL ADDRESS</Text>
+        <View style={[
+          styles.inputContainer,
+          focusedField === 'email' && styles.inputFocused
+        ]}>
+           <View style={styles.inputIcon}>
+            <Ionicons 
+              name="mail" 
+              size={20} 
+              color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary} 
+            />
+          </View>
           <TextInput
             style={styles.input}
             placeholder="Enter email address"
-            placeholderTextColor={THEME.textMuted}
+            placeholderTextColor={COLORS.textTertiary}
             value={formData.email}
             onChangeText={(value) => updateField('email', value)}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
             editable={!isLoading}
+            onFocus={() => setFocusedField('email')}
+            onBlur={() => setFocusedField(null)}
           />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Years of experience</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="briefcase-outline" size={18} color={THEME.textMuted} style={styles.inputIcon} />
+        <Text style={styles.label}>YEARS OF EXPERIENCE</Text>
+        <View style={[
+          styles.inputContainer,
+          focusedField === 'experience' && styles.inputFocused
+        ]}>
+           <View style={styles.inputIcon}>
+            <Ionicons 
+              name="briefcase" 
+              size={20} 
+              color={focusedField === 'experience' ? COLORS.primary : COLORS.textTertiary} 
+            />
+          </View>
           <TextInput
             style={styles.input}
-            placeholder="Enter years of experience"
-            placeholderTextColor={THEME.textMuted}
+            placeholder="Enter years"
+            placeholderTextColor={COLORS.textTertiary}
             value={formData.experience}
             onChangeText={(value) => updateField('experience', value)}
             keyboardType="numeric"
             editable={!isLoading}
+            onFocus={() => setFocusedField('experience')}
+            onBlur={() => setFocusedField(null)}
           />
         </View>
       </View>
@@ -462,7 +488,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             <View key={category.id} style={styles.categoryCard}>
               <View style={styles.categoryHeader}>
                 <View style={styles.categoryIconContainer}>
-                  <Ionicons name={category.icon} size={18} color={THEME.accent} />
+                  <Ionicons name={category.icon} size={18} color={COLORS.primary} />
                 </View>
                 <Text style={styles.categoryName}>{category.name}</Text>
               </View>
@@ -494,7 +520,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           ))}
         </>
       )}
-
+      
       <View style={styles.selectedCount}>
         <Text style={styles.selectedCountText}>
           {formData.services.length} service{formData.services.length === 1 ? '' : 's'} selected
@@ -511,12 +537,12 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       {formData.serviceRates.map(rate => (
         <View key={rate.serviceName} style={styles.priceInputGroup}>
           <Text style={styles.priceLabel}>{rate.serviceName}</Text>
-          <View style={styles.priceInputContainer}>
+          <View style={[styles.inputContainer, styles.priceInputContainer]}>
             <Text style={styles.currencySymbol}>₹</Text>
             <TextInput
               style={styles.priceInput}
               placeholder="0"
-              placeholderTextColor={THEME.textMuted}
+              placeholderTextColor={COLORS.textTertiary}
               value={rate.price}
               onChangeText={(value) => updateServiceRate(rate.serviceName, value)}
               keyboardType="numeric"
@@ -535,12 +561,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       
       <View style={styles.row}>
         <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Start time</Text>
+          <Text style={styles.label}>START TIME</Text>
           <View style={styles.inputContainer}>
+            <View style={styles.inputIcon}>
+                <Ionicons name="time" size={20} color={COLORS.textTertiary} />
+            </View>
             <TextInput
               style={styles.input}
               placeholder="09:00"
-              placeholderTextColor={THEME.textMuted}
+              placeholderTextColor={COLORS.textTertiary}
               value={formData.workingHours.startTime}
               onChangeText={(value) => updateField('workingHours', { ...formData.workingHours, startTime: value })}
             />
@@ -548,12 +577,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={[styles.inputGroup, styles.halfWidth]}>
-          <Text style={styles.label}>End time</Text>
+          <Text style={styles.label}>END TIME</Text>
           <View style={styles.inputContainer}>
+             <View style={styles.inputIcon}>
+                <Ionicons name="time" size={20} color={COLORS.textTertiary} />
+            </View>
             <TextInput
               style={styles.input}
               placeholder="17:00"
-              placeholderTextColor={THEME.textMuted}
+              placeholderTextColor={COLORS.textTertiary}
               value={formData.workingHours.endTime}
               onChangeText={(value) => updateField('workingHours', { ...formData.workingHours, endTime: value })}
             />
@@ -578,8 +610,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
+      {/* Background pattern */}
+      <View style={styles.bgPattern}>
+        <View style={styles.patternCircle1} />
+        <View style={styles.patternCircle2} />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -592,20 +631,18 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={22} color={THEME.text} />
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-              <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../../public/Logo.jpg')} 
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.headerTitle}>PROVIDER REGISTRATION</Text>
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../../../public/Logo.jpg')} 
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
-            <View style={{ width: 44 }} />
+            <Text style={styles.brandName}>YANN</Text>
+            <Text style={styles.title}>Provider Sign Up</Text>
+            <Text style={styles.subtitle}>
+              Join YANN as a service partner
+            </Text>
           </View>
 
           {renderStepIndicator()}
@@ -621,8 +658,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.7}
                 style={styles.partnerLinkButton}
               >
-                <Text style={styles.partnerLinkText}>Sign in as Service Partner</Text>
-                <Ionicons name="arrow-forward" size={16} color={THEME.primary} style={{ marginLeft: 4 }} />
+                <Text style={styles.partnerLinkText}>Sign in</Text>
+                <Ionicons name="arrow-forward" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
               </TouchableOpacity>
             </View>
           )}
@@ -633,7 +670,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         </ScrollView>
 
         {/* Bottom Button */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : insets.bottom + 20 }]}>
           {currentStep < 4 ? (
             <TouchableOpacity
               style={styles.nextButton}
@@ -641,8 +678,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
               disabled={isLoading}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>CONTINUE</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFF" />
+              <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                <Text style={styles.buttonText}>CONTINUE</Text>
+                <Ionicons name="arrow-forward" size={18} color="#FFF" />
+              </LinearGradient>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -651,8 +695,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
               disabled={isLoading}
               activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>COMPLETE REGISTRATION</Text>
-              <Ionicons name="checkmark" size={18} color="#FFF" />
+               <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                <Text style={styles.buttonText}>COMPLETE REGISTRATION</Text>
+                <Ionicons name="checkmark" size={18} color="#FFF" />
+              </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
@@ -665,66 +716,87 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.bg,
+    backgroundColor: COLORS.background,
+  },
+  bgPattern: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    zIndex: -1,
+  },
+  patternCircle1: {
+    position: 'absolute',
+    top: -100,
+    right: -50,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: COLORS.primary,
+    opacity: 0.04,
+  },
+  patternCircle2: {
+    position: 'absolute',
+    bottom: 50,
+    left: -100,
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    backgroundColor: COLORS.accentOrange,
+    opacity: 0.03,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 100,
+    paddingBottom: 120, // Space for bottom bar
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.border,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: THEME.bgCard,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.border,
-  },
-  headerCenter: {
-    alignItems: 'center',
-    gap: 8,
+    marginTop: 24,
+    marginBottom: 40,
   },
   logoContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    width: 64, 
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    ...SHADOWS.sm,
   },
   logoImage: {
-    width: 24,
-    height: 24,
+    width: 40,
+    height: 40,
   },
-  headerTitle: {
-    fontSize: 13,
+  brandName: {
+    fontSize: 12,
     fontWeight: '700',
-    color: THEME.text,
-    letterSpacing: 1.5,
+    color: COLORS.primary,
+    letterSpacing: 4,
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: 8,
+    letterSpacing: -1,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   stepIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 28,
+    paddingVertical: 20,
   },
   stepItem: {
     flexDirection: 'row',
@@ -734,20 +806,20 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: THEME.bgCard,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.border,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
   },
   stepDotActive: {
-    backgroundColor: THEME.accent,
-    borderColor: THEME.accent,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   stepNumber: {
     fontSize: 12,
     fontWeight: '700',
-    color: THEME.textMuted,
+    color: COLORS.textTertiary,
   },
   stepNumberActive: {
     color: '#FFF',
@@ -755,29 +827,32 @@ const styles = StyleSheet.create({
   stepLine: {
     width: 28,
     height: 2,
-    backgroundColor: THEME.border,
+    backgroundColor: COLORS.border,
     marginHorizontal: 4,
   },
   stepLineActive: {
-    backgroundColor: THEME.accent,
+    backgroundColor: COLORS.primary,
   },
   stepContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 28,
   },
   stepTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: THEME.text,
+    color: COLORS.text,
     marginBottom: 6,
     letterSpacing: -1,
+    textAlign: 'center',
   },
   stepSubtitle: {
-    fontSize: 14,
-    color: THEME.textMuted,
+    fontSize: 16,
+    color: COLORS.textSecondary,
     marginBottom: 28,
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   row: {
     flexDirection: 'row',
@@ -789,55 +864,96 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     fontWeight: '700',
-    color: THEME.textMuted,
+    color: COLORS.textTertiary,
     marginBottom: 10,
+    marginLeft: 4,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.bgInput,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.medium,
+    overflow: 'hidden',
+    height: 56,
+  },
+  inputFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#F8FAFF',
   },
   inputIcon: {
-    marginRight: 10,
+    width: 50,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: THEME.text,
+    height: '100%',
+    paddingRight: 16,
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  priceInputGroup: {
+    marginBottom: 16,
+  },
+  priceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  priceInputContainer: {
+    paddingHorizontal: 16,
+  },
+  priceInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    paddingVertical: 10,
+  },
+  currencySymbol: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textTertiary,
+    marginRight: 8,
+  },
+  priceUnit: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
   },
   categoryCard: {
-    backgroundColor: THEME.bgCard,
-    borderRadius: 14,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.medium,
+    marginBottom: 16,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   categoryIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: THEME.accentSoft,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F0F4FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   categoryName: {
     fontSize: 15,
     fontWeight: '700',
-    color: THEME.text,
+    color: COLORS.text,
   },
   servicesGrid: {
     flexDirection: 'row',
@@ -847,92 +963,49 @@ const styles = StyleSheet.create({
   serviceChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 10,
-    backgroundColor: THEME.bgElevated,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.background,
     borderWidth: 1,
-    borderColor: THEME.border,
-    gap: 6,
-    flexShrink: 1,
+    borderColor: COLORS.border,
   },
   serviceChipActive: {
-    backgroundColor: THEME.accent,
-    borderColor: THEME.accent,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   serviceChipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: THEME.textMuted,
-    flexShrink: 1,
+    color: COLORS.textSecondary,
+    marginRight: 4,
   },
   serviceChipTextActive: {
     color: '#FFF',
+    fontWeight: '600',
   },
   selectedCount: {
-    backgroundColor: THEME.accentSoft,
-    padding: 16,
-    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 53, 0.3)',
+    marginTop: 10,
   },
   selectedCountText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: THEME.accent,
-  },
-  priceInputGroup: {
-    marginBottom: 16,
-  },
-  priceLabel: {
     fontSize: 13,
+    color: COLORS.primary,
     fontWeight: '600',
-    color: THEME.text,
-    marginBottom: 8,
-    textTransform: 'capitalize',
-  },
-  priceInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.bgInput,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-  },
-  currencySymbol: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: THEME.accent,
-    marginRight: 4,
-  },
-  priceInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    fontWeight: '700',
-    color: THEME.text,
-  },
-  priceUnit: {
-    fontSize: 12,
-    color: THEME.textMuted,
   },
   summaryCard: {
-    backgroundColor: THEME.bgCard,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.medium,
     padding: 20,
-    borderRadius: 14,
-    marginTop: 16,
     borderWidth: 1,
-    borderColor: THEME.accent,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
   },
   summaryTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
-    color: THEME.text,
+    color: COLORS.textTertiary,
+    letterSpacing: 1.5,
     marginBottom: 16,
-    letterSpacing: 1,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -940,61 +1013,70 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   summaryLabel: {
-    fontSize: 13,
-    color: THEME.textMuted,
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
   summaryValue: {
     fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  partnerCtaContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+    gap: 6,
+  },
+  partnerCtaText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  partnerLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  partnerLinkText: {
+    fontSize: 14,
+    color: COLORS.primary,
     fontWeight: '700',
-    color: THEME.accent,
   },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
-    backgroundColor: THEME.bg,
-    borderTopWidth: 1,
-    borderTopColor: THEME.border,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20,
   },
   nextButton: {
+    borderRadius: RADIUS.medium,
+    overflow: 'hidden',
+    ...SHADOWS.md,
+  },
+  buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.accent,
-    borderRadius: 14,
-    paddingVertical: 17,
+    paddingVertical: 16,
     gap: 10,
   },
   buttonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 1,
-  },
-  // Partner CTA Styles (Simple Link)
-  partnerCtaContainer: {
-    marginTop: 24,
-    marginBottom: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  partnerCtaText: {
-    fontSize: 13,
-    color: THEME.textMuted,
-    marginBottom: 8,
-  },
-  partnerLinkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  partnerLinkText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: THEME.primary,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
 });

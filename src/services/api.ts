@@ -61,32 +61,32 @@ class ApiService {
       async (error: AxiosError<any>) => {
         const url = error.config?.url || '';
         const status = error.response?.status;
-        
+
         // Handle network errors
         if (!error.response) {
           console.error(`🌐 Network Error: ${url}`);
           (error as any).isNetworkError = true;
           throw error;
         }
-        
+
         // Check if this is an expected 404 (endpoints not yet implemented)
         const isExpected404 = status === 404 && (
-          url.includes('/services/') || 
+          url.includes('/services/') ||
           url.includes('/reviews')
         );
-        
+
         // Only log unexpected errors
         if (!isExpected404 && status !== 200) {
           console.error(`❌ API Error: ${url} - ${status}`);
         }
-        
+
         // Handle specific status codes
         if (status === 401) {
           console.log('🔐 Session expired');
         } else if (status === 500) {
           console.error('🚨 Server error');
         }
-        
+
         throw error;
       }
     );
@@ -94,7 +94,7 @@ class ApiService {
 
   // Authentication (Using existing backend endpoints)
   async sendOTP(email: string, audience: 'homeowner' | 'provider' = 'homeowner', intent: 'login' | 'signup' = 'login'): Promise<ApiResponse> {
-    const response = await this.client.post('/auth/send-otp', { 
+    const response = await this.client.post('/auth/send-otp', {
       email,
       audience,  // Backend expects: homeowner or provider
       intent     // Backend expects: login or signup
@@ -103,7 +103,7 @@ class ApiService {
   }
 
   async sendSignupOTP(email: string, metadata: { name: string; phone?: string }): Promise<ApiResponse> {
-    const response = await this.client.post('/auth/send-otp', { 
+    const response = await this.client.post('/auth/send-otp', {
       email,
       audience: 'homeowner',
       intent: 'signup',
@@ -114,7 +114,7 @@ class ApiService {
 
   // Provider Login - uses different audience and returns provider data
   async sendProviderOTP(email: string): Promise<ApiResponse> {
-    const response = await this.client.post('/auth/send-otp', { 
+    const response = await this.client.post('/auth/send-otp', {
       email,
       audience: 'provider',  // Provider login
       intent: 'login'
@@ -123,22 +123,22 @@ class ApiService {
   }
 
   async verifyProviderOTP(email: string, otp: string): Promise<AuthResponse> {
-    const response = await this.client.post('/auth/verify-otp', { 
-      email, 
+    const response = await this.client.post('/auth/verify-otp', {
+      email,
       otp,
       audience: 'provider'
     });
-    
+
     console.log('🔐 Provider OTP verify raw response:', JSON.stringify(response.data, null, 2));
-    
+
     // Extract provider data from response
     const rawUserData = response.data.provider || response.data.user || response.data.data?.provider;
-    
+
     if (!rawUserData) {
       console.error('❌ No provider data found in response:', response.data);
       throw new Error(response.data?.message || 'No provider data in response');
     }
-    
+
     // Map to User type with provider role
     const userData = {
       id: rawUserData._id || rawUserData.id,
@@ -153,12 +153,12 @@ class ApiService {
       rating: rawUserData.rating,
       totalReviews: rawUserData.totalReviews,
     };
-    
+
     console.log('✅ Mapped provider data:', userData);
-    
+
     // Save marker for cookie-based auth
     await storage.saveToken('cookie-based-auth-provider');
-    
+
     return {
       success: response.data.success,
       message: response.data.message,
@@ -176,24 +176,24 @@ class ApiService {
       isApproved: false, // Needs admin approval
       audience: 'provider', // Specify this is a provider registration
     };
-    
+
     // Try primary endpoint
     const response = await this.client.post('/register', payload);
-    
+
     return response.data;
   }
 
   async verifyOTP(email: string, otp: string, intent: 'login' | 'signup' = 'login'): Promise<AuthResponse> {
-    const response = await this.client.post('/auth/verify-otp', { 
-      email, 
+    const response = await this.client.post('/auth/verify-otp', {
+      email,
       otp,
       audience: 'homeowner',
       intent
     });
-    
+
     // Extract user data from response (backend returns "homeowner" not "user")
     const rawUserData = response.data.homeowner || response.data.user || response.data.data?.user;
-    
+
     // Map to User type with role
     const userData = {
       id: rawUserData.id,
@@ -206,10 +206,10 @@ class ApiService {
       savedProviders: rawUserData.savedProviders || [],
       addressBook: rawUserData.addressBook || []
     };
-    
+
     // Save a marker to indicate we're using cookie-based auth
     await storage.saveToken('cookie-based-auth');
-    
+
     // Return formatted response with user data
     return {
       success: response.data.success,
@@ -245,10 +245,10 @@ class ApiService {
   async getAllServices(): Promise<ApiResponse<Service[]>> {
     try {
       const response = await this.client.get('/services');
-      
+
       // Website response format: { success: true, data: [...services] }
       const services = response?.data?.data || response?.data?.services || response?.data || [];
-      
+
       // Ensure we always return an array
       if (!Array.isArray(services)) {
         return {
@@ -257,7 +257,7 @@ class ApiService {
           data: [],
         };
       }
-      
+
       return {
         success: true,
         message: 'Services loaded',
@@ -295,10 +295,10 @@ class ApiService {
   async getProvidersForService(serviceId: string): Promise<ApiResponse<ServiceProviderListItem[]>> {
     try {
       const response = await this.client.get(`/services/${serviceId}/providers`);
-      
+
       // Response includes: { success, data: providers[], service: {...}, meta: { total, serviceName } }
       const providers = response.data.data || response.data.providers || [];
-      
+
       return {
         success: true,
         message: 'Providers loaded',
@@ -342,9 +342,9 @@ class ApiService {
   }): Promise<ApiResponse<ServiceProviderListItem[]>> {
     try {
       const response = await this.client.get('/providers', { params });
-      
+
       const providers = response.data.data || [];
-      
+
       return {
         success: true,
         message: 'Providers loaded',
@@ -364,7 +364,7 @@ class ApiService {
   async getProviderById(providerId: string): Promise<ApiResponse<ServiceProvider>> {
     try {
       const response = await this.client.get(`/providers/${providerId}`);
-      
+
       return {
         success: true,
         message: 'Provider loaded',
@@ -386,10 +386,10 @@ class ApiService {
       const response = await this.client.get('/provider/by-service', {
         params: { service: serviceName },
       });
-      
+
       // Response: { success, data: providers[], providers: providers[], meta: { total, service } }
       const providers = response?.data?.data || response?.data?.providers || response?.data || [];
-      
+
       // Ensure array type
       if (!Array.isArray(providers)) {
         return {
@@ -399,7 +399,7 @@ class ApiService {
           meta: { total: 0, service: serviceName },
         };
       }
-      
+
       return {
         success: providers.length > 0,
         message: providers.length > 0 ? 'Providers loaded' : 'No providers available',
@@ -426,15 +426,15 @@ class ApiService {
   async getServicePartnerCounts(): Promise<ApiResponse<ServiceCount[]>> {
     try {
       const response = await this.client.get('/provider/service-counts');
-      
+
       // Response: { success, data: [{ service, providerCount, avgRating }] }
       const counts = response?.data?.data || response?.data || [];
-      
+
       // Ensure we return an array
       if (!Array.isArray(counts)) {
         return { success: true, message: 'No partner data', data: [] };
       }
-      
+
       return {
         success: true,
         message: 'Partner counts loaded',
@@ -459,14 +459,14 @@ class ApiService {
   async getMyBookings(): Promise<ApiResponse<Booking[]>> {
     console.log('🔵 API: Calling GET /bookings');
     const response = await this.client.get('/bookings');
-    
+
     console.log('📦 API: Raw response from /bookings:', JSON.stringify(response.data, null, 2));
-    
+
     // Website response: { success, data: bookings[], meta: { total } }
     const bookings = response.data.data || response.data.bookings || [];
-    
+
     console.log(`✅ API: Parsed ${bookings.length} bookings from response`);
-    
+
     return {
       success: true,
       message: 'Bookings loaded',
@@ -505,7 +505,7 @@ class ApiService {
     if (!bookingData.providerId) {
       throw new Error('providerId is required - select a provider first');
     }
-    
+
     // Sanitize booking data - remove undefined/null non-required fields
     const cleanedData = {
       serviceId: bookingData.serviceId,
@@ -528,9 +528,9 @@ class ApiService {
       basePrice: bookingData.basePrice || 0,
       totalPrice: bookingData.totalPrice || 0,
     };
-    
+
     const response = await this.client.post('/bookings/create', cleanedData);
-    
+
     return response.data;
   }
 
@@ -551,7 +551,7 @@ class ApiService {
     const payload: any = { bookingId };
     if (providerId) payload.providerId = providerId;
     if (providerName) payload.providerName = providerName;
-    
+
     const response = await this.client.post('/bookings/accept', payload);
     return response.data;
   }
@@ -562,10 +562,10 @@ class ApiService {
    * Used by providers to manage job progress
    */
   async updateBookingStatus(bookingId: string, status: 'in_progress' | 'completed' | 'cancelled', providerId?: string): Promise<ApiResponse> {
-    const response = await this.client.post('/bookings/update-status', { 
-      bookingId, 
+    const response = await this.client.post('/bookings/update-status', {
+      bookingId,
       status,
-      providerId 
+      providerId
     });
     return response.data;
   }
@@ -584,10 +584,10 @@ class ApiService {
    * Negotiate booking price (provider action)
    */
   async negotiateBooking(bookingId: string, proposedAmount: number, note?: string): Promise<ApiResponse> {
-    const response = await this.client.post('/bookings/negotiate', { 
-      bookingId, 
+    const response = await this.client.post('/bookings/negotiate', {
+      bookingId,
       proposedAmount,
-      note 
+      note
     });
     return response.data;
   }
@@ -595,6 +595,39 @@ class ApiService {
   // Alias for cancel - requires providerId for provider cancellations
   async cancelBooking(bookingId: string, providerId?: string): Promise<ApiResponse> {
     return this.rejectBooking(bookingId, providerId || '', 'Cancelled by user');
+  }
+
+  // ====================================================================
+  // PAYMENT ENDPOINTS
+  // ====================================================================
+
+  /**
+   * POST /api/payment/create-order
+   * Create a Razorpay order
+   */
+  async createPaymentOrder(data: {
+    amount: number;
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+    serviceName?: string;
+    bookingId?: string;
+  }): Promise<ApiResponse> {
+    const response = await this.client.post('/payment/create-order', data);
+    return response.data;
+  }
+
+  /**
+   * POST /api/payment/verify
+   * Verify Razorpay payment signature
+   */
+  async verifyPayment(data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }): Promise<ApiResponse> {
+    const response = await this.client.post('/payment/verify', data);
+    return response.data;
   }
 
   // ====================================================================
@@ -608,10 +641,10 @@ class ApiService {
    */
   async getProfile(): Promise<{ user: User }> {
     const response = await this.client.get('/homeowner/me');
-    
+
     // Website response: { success, homeowner: {...} }
     const userData = response.data.homeowner || response.data.user || response.data.data;
-    
+
     return { user: userData };
   }
 
@@ -632,10 +665,10 @@ class ApiService {
    */
   async getMyRequests(): Promise<ApiResponse<any[]>> {
     const response = await this.client.get('/resident/requests');
-    
+
     // Response: { success, data: requests[], requests: requests[] }
     const requests = response.data.data || response.data.requests || [];
-    
+
     return {
       success: true,
       message: 'Requests loaded',
@@ -675,9 +708,9 @@ class ApiService {
       const params: any = {};
       if (providerId) params.providerId = providerId;
       if (email) params.email = email;
-      
+
       const response = await this.client.get('/provider/requests', { params });
-      
+
       // Return the complete dashboard data structure
       return response.data;
     } catch (error: any) {

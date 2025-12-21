@@ -13,6 +13,8 @@ import {
   TextInput,
 } from 'react-native';
 
+import RazorpayCheckout from 'react-native-razorpay';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -218,6 +220,23 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     setIsLoading(true);
     setShowSuccess(false);
 
+    // Check if online payment is required
+    if (formData.paymentMethod !== 'cash') {
+      try {
+        console.log('💳 Initiating Razorpay payment...');
+        await executeRazorpayPayment();
+      } catch (error: any) {
+         console.error('❌ Payment flow failed:', error);
+         setIsLoading(false);
+         // Error is already shown in executeRazorpayPayment or we show it here
+         if (!error.message?.includes('cancelled')) {
+            showError(error.message || 'Payment failed. Please try again.');
+         }
+      }
+      return;
+    }
+
+    // Cash Booking Flow
     try {
       // Get the numeric service ID
       let numericServiceId: number;
@@ -292,18 +311,144 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  // Safety check
-  if (!service) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner visible={true} />
-          <Text style={styles.loadingText}>Loading service details...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Handle Razorpay Payment Flow
+  const executeRazorpayPayment = async () => {
+    try {
+      // 1. Create Order on Backend
+      const orderRes = await apiService.createPaymentOrder({
+        amount: totalPrice,
+        customerName: selectedAddress?.name || user?.name || 'Guest',
+        customerPhone: selectedAddress?.phone || user?.phone || '',
+        customerEmail: user?.email || '',
+        serviceName: service?.title || 'Service Booking',
+      });
+
+      if (!orderRes.success || !orderRes.orderId || !orderRes.keyId) {
+        throw new Error(orderRes.message || 'Failed to create payment order');
+      }
+
+      console.log('✅ Order created:', orderRes.orderId);
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        description: `Payment for ${service?.title}`,
+        image: 'https://yann-care.vercel.app/logo.png', // Or app logo URL
+        currency: 'INR',
+        key: orderRes.keyId || '', // Get key from backend response
+        amount: orderRes.amount?.toString() || '0', // Ensure string or number
+        name: 'Yann',
+        order_id: orderRes.orderId,
+        prefill: {
+          email: orderRes.customerEmail || user?.email || '',
+          contact: orderRes.customerPhone || selectedAddress?.phone || '',
+          name: orderRes.customerName || selectedAddress?.name || '',
+        },
+        theme: { color: COLORS.primary },
+      };
+
+      const data = await RazorpayCheckout.open(options);
+      
+      console.log('✅ Razorpay payment success:', data);
+
+      // 3. Verify Payment
+      await verifyAndCreateBooking(
+        orderRes.orderId, 
+        data.razorpay_payment_id, 
+        data.razorpay_signature
+      );
+
+    } catch (error: any) {
+      console.log('❌ Razorpay Error:', error);
+      // specific error handling
+      if (error.code === 0) {
+         // Payment cancelled by user
+         throw new Error('Payment cancelled');
+      }
+      throw error;
+    }
+  };
+
+  const verifyAndCreateBooking = async (orderId: string, paymentId: string, signature: string) => {
+     try {
+       const verifyRes = await apiService.verifyPayment({
+         razorpay_order_id: orderId,
+         razorpay_payment_id: paymentId,
+         razorpay_signature: signature,
+       });
+
+       if (verifyRes.success) {
+         // 4. Create Booking with Payment Details
+         await createBookingAfterPayment(orderId, paymentId);
+       } else {
+         throw new Error('Payment verification failed on server');
+       }
+     } catch (error) {
+       throw error;
+     }
+  };
+
+  const createBookingAfterPayment = async (orderId: string, paymentId: string) => {
+      // Get the numeric service ID (same logic as cash)
+      let numericServiceId: number;
+      const serviceId = service?.id || (service as any)?._id;
+      
+      if (typeof serviceId === 'number') {
+        numericServiceId = serviceId;
+      } else if (typeof serviceId === 'string') {
+        const parsed = Number(serviceId);
+        if (!isNaN(parsed)) {
+          numericServiceId = parsed;
+        } else {
+          numericServiceId = Math.abs(hashCode(serviceId));
+        }
+      } else {
+        numericServiceId = Math.abs(hashCode(service?.title || 'unknown'));
+      }
+
+      const bookingPayload: any = {
+        serviceId: numericServiceId,
+        serviceName: service?.title,
+        serviceCategory: service?.category,
+        customerId: (user as any)?._id || user?.id,
+        customerName: selectedAddress?.name || user?.name || 'Guest',
+        customerPhone: selectedAddress?.phone || user?.phone || '',
+        customerAddress: selectedAddress?.fullAddress || '',
+        latitude: selectedAddress?.latitude || 0,
+        longitude: selectedAddress?.longitude || 0,
+        providerNavigationAddress: {
+          fullAddress: selectedAddress?.fullAddress || '',
+          latitude: selectedAddress?.latitude || 0,
+          longitude: selectedAddress?.longitude || 0,
+          phone: selectedAddress?.phone || user?.phone || '',
+        },
+        bookingDate: bookingDate?.toISOString().split('T')[0],
+        bookingTime: bookingTime?.toTimeString().substring(0, 5),
+        basePrice,
+        gstAmount,
+        totalPrice,
+        paymentMethod: 'online', // Confirmed online payment
+        notes: formData.notes,
+        paymentStatus: 'paid',
+        paymentOrderId: orderId,
+        paymentId: paymentId,
+      };
+
+      if (selectedProvider?._id) {
+        bookingPayload.providerId = selectedProvider._id;
+      }
+
+      if (isDriverService && bookingTime && endTime) {
+        bookingPayload.driverDetails = {
+          startTime: bookingTime.toTimeString().substring(0, 5),
+          endTime: endTime.toTimeString().substring(0, 5),
+        };
+      }
+
+      await apiService.createBooking(bookingPayload);
+
+      setIsLoading(false);
+      setShowSuccess(true);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -502,9 +647,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                     ]}
                     onPress={() => {
                       setFormData({ ...formData, paymentMethod: method.id });
+                      // Removed dummy modal trigger for card/upi
                       if (method.id === 'upi' || method.id === 'card') {
                         setSelectedPaymentMethod(method.id);
-                        setShowPaymentModal(true);
+                        // setShowPaymentModal(true); // Disable dummy modal
                       }
                     }}
                     activeOpacity={0.7}
@@ -709,32 +855,33 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F8F9FA', // Professional light gray
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.white,
-    ...SHADOWS.sm,
+    paddingVertical: SPACING.md,
+    backgroundColor: 'transparent', // Seamless
+    zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.sm,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1A1C1E',
   },
   headerSpacer: {
-    width: 40,
+    width: 44,
   },
   scrollView: {
     flex: 1,
@@ -754,24 +901,27 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   serviceCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    marginBottom: SPACING.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.xlarge,
+    marginBottom: SPACING.xl,
     overflow: 'hidden',
-    ...SHADOWS.lg,
+    ...SHADOWS.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   serviceGradient: {
     padding: SPACING.lg,
+    paddingBottom: SPACING.xl,
   },
   serviceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   serviceIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: COLORS.white,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
@@ -781,36 +931,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   serviceName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
+    fontSize: 20,
+    fontWeight: '800', // Heavy weight
+    color: '#1A1C1E',
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(46, 89, 243, 0.12)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)', 
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   categoryBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.primary,
-  },
-  serviceCategory: {
-    fontSize: 14,
     color: COLORS.textSecondary,
-    textTransform: 'capitalize',
+  },
+  // Ticket Divider
+  ticketDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    width: '100%',
+    marginVertical: SPACING.md,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 1,
   },
   providerInfo: {
+    backgroundColor: '#FFFFFF',
+    padding: SPACING.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
     borderTopWidth: 1,
-    borderTopColor: '#E8EEFF',
+    borderTopColor: '#F3F4F6',
   },
   providerAvatar: {
     width: 48,
@@ -822,39 +980,41 @@ const styles = StyleSheet.create({
     ...SHADOWS.sm,
   },
   providerAvatarText: {
+    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.white,
   },
   providerDetails: {
     flex: 1,
   },
   providerName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontWeight: '700',
+    color: '#1A1C1E',
     marginBottom: 4,
   },
   providerRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   providerRatingText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontWeight: '700',
+    color: '#1A1C1E',
+    marginLeft: 4,
+    marginRight: 6,
   },
   providerRatingLabel: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: COLORS.textTertiary,
   },
+  // Summary Section
   priceSummaryCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    marginBottom: SPACING.lg,
-    overflow: 'hidden',
-    ...SHADOWS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.sm,
   },
   priceSummaryHeader: {
     flexDirection: 'row',

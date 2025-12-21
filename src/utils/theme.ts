@@ -13,35 +13,35 @@ export const COLORS = {
   primaryLight: '#E8EEFF',     // Light blue background for icons
   primaryGradientStart: '#2E59F3',  // Gradient start
   primaryGradientEnd: '#4362FF',    // Gradient end
-  
+
   // SECONDARY COLORS (from YANN website)
   accentOrange: '#FF8A3D',     // Accent Orange
   accentYellow: '#F7C948',     // Accent Yellow
-  
+
   // NEUTRAL COLORS (from YANN website)
   background: '#F8F9FA',       // Background Light (softer gray)
   cardBg: '#FFFFFF',           // Card Background (pure white)
   elevated: '#FFFFFF',         // Elevated surfaces (pure white)
-  
+
   // TEXT COLORS (from YANN website)
   text: '#1A1C1E',             // Heading Text
   textSecondary: '#6B7280',    // Body Text (softer gray)
   textTertiary: '#9CA3AF',     // Muted text
-  
+
   // BORDERS & LINES (from YANN website)
   border: '#E5E7EB',           // Borders / Light Lines
   divider: '#F0F0F0',          // Dividers (lighter)
-  
+
   // SUPPORTING COLORS (from YANN website)
   success: '#27C07D',          // Success Green
   error: '#E63946',            // Error Red
   warning: '#F7C948',          // Warning Yellow (same as accent)
   info: '#2E59F3',             // Info Blue (same as primary)
-  
+
   // OVERLAYS
   overlay: 'rgba(0, 0, 0, 0.5)',
   gradientOverlay: 'rgba(26, 28, 30, 0.6)',
-  
+
   // UTILITY
   white: '#FFFFFF',
   black: '#000000',
@@ -78,7 +78,7 @@ export const TYPOGRAPHY = {
     xxxl: 32,
     heading: 28,
   },
-  
+
   // Font Weights
   weight: {
     regular: '400' as const,
@@ -87,15 +87,15 @@ export const TYPOGRAPHY = {
     bold: '700' as const,
     heavy: '800' as const,
   },
-  
+
   // Letter Spacing
   letterSpacing: {
-    tight: -0.5,
+    tight: -0.4,
     normal: 0,
-    wide: 0.5,
+    wide: 0.3, // Reduced from 0.5 for cleaner look
     extraWide: 1,
   },
-  
+
   // Line Heights
   lineHeight: {
     tight: 1.2,
@@ -127,48 +127,48 @@ export const ICON_SIZES = {
 } as const;
 
 // ============================================
-// 🎭 SHADOWS - Soft & Premium (opacity 0.1)
+// 🎭 SHADOWS - Soft & Premium (Apple-like)
 // ============================================
 export const SHADOWS = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.03, // Reduced from 0.04
+    shadowRadius: 8,     // Increased from 6
     elevation: 2,
   },
-  
+
   md: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 }, // Increased height
+    shadowOpacity: 0.05, // Reduced from 0.06
+    shadowRadius: 14,    // Increased from 10
+    elevation: 4,
   },
-  
+
   lg: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.07, // Reduced from 0.08
+    shadowRadius: 30,    // Increased from 20
+    elevation: 8,
   },
-  
+
   // Colored shadows for emphasis
   primary: {
     shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 6,
   },
-  
+
   orange: {
     shadowColor: COLORS.accentOrange,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 6,
   },
 } as const;
 
@@ -178,23 +178,23 @@ export const SHADOWS = {
 export const LAYOUT = {
   // Screen Padding
   screenPadding: SPACING.lg,
-  
+
   // Card Aspect Ratios
   serviceCardAspectRatio: 1.1,
-  
+
   // Grid
   gridGap: 12,
   gridColumns: 2,
-  
+
   // Top Bar
   topBarHeight: 64,
   logoSize: 36,
   avatarSize: 44,
-  
+
   // Bottom Tab Bar
   tabBarHeight: 68,
   tabIconSize: ICON_SIZES.large,
-  
+
   // Sticky CTA
   ctaHeight: 80,
 } as const;
