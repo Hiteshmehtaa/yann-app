@@ -225,12 +225,17 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         console.log('💳 Initiating Razorpay payment...');
         await executeRazorpayPayment();
+        // Payment success and booking created - loading state handled in executeRazorpayPayment
       } catch (error: any) {
          console.error('❌ Payment flow failed:', error);
          setIsLoading(false);
-         // Error is already shown in executeRazorpayPayment or we show it here
-         if (!error.message?.includes('cancelled')) {
-            showError(error.message || 'Payment failed. Please try again.');
+         
+         // Show error message to user (unless cancelled)
+         if (error.message?.toLowerCase().includes('cancel')) {
+            showError('Payment was cancelled. Please try again when ready.');
+         } else {
+            const errorMsg = error.message || 'Payment failed. Please try again.';
+            showError(errorMsg);
          }
       }
       return;
@@ -314,140 +319,232 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   // Handle Razorpay Payment Flow
   const executeRazorpayPayment = async () => {
     try {
-      // 1. Create Order on Backend
+      // 1. Validate required data before creating order
+      const customerPhone = selectedAddress?.phone || user?.phone || '';
+      const customerEmail = user?.email || '';
+      const customerName = selectedAddress?.name || user?.name || 'Guest';
+
+      if (!customerPhone || customerPhone.length < 10) {
+        throw new Error('Valid phone number is required for payment');
+      }
+
+      if (!customerEmail) {
+        throw new Error('Email is required for payment');
+      }
+
+      console.log('💳 Creating payment order...', {
+        amount: totalPrice,
+        customerName,
+        customerPhone,
+        customerEmail,
+        serviceName: service?.title,
+      });
+
+      // 2. Create Order on Backend
       const orderRes = await apiService.createPaymentOrder({
         amount: totalPrice,
-        customerName: selectedAddress?.name || user?.name || 'Guest',
-        customerPhone: selectedAddress?.phone || user?.phone || '',
-        customerEmail: user?.email || '',
+        customerName,
+        customerPhone,
+        customerEmail,
         serviceName: service?.title || 'Service Booking',
       });
 
-      if (!orderRes.success || !orderRes.orderId || !orderRes.keyId) {
+      console.log('📦 Order response:', {
+        success: orderRes.success,
+        orderId: orderRes.orderId,
+        amount: orderRes.amount,
+        hasKeyId: !!orderRes.keyId,
+      });
+
+      // Validate backend response
+      if (!orderRes.success) {
         throw new Error(orderRes.message || 'Failed to create payment order');
+      }
+
+      if (!orderRes.orderId) {
+        throw new Error('Order ID not received from server');
+      }
+
+      if (!orderRes.keyId) {
+        throw new Error('Razorpay Key ID not received from server');
+      }
+
+      if (!orderRes.amount || orderRes.amount <= 0) {
+        throw new Error('Invalid payment amount received from server');
       }
 
       console.log('✅ Order created:', orderRes.orderId);
 
-      // 2. Open Razorpay Checkout
+      // 3. Prepare Razorpay Options with validated data
       const options = {
-        description: `Payment for ${service?.title}`,
-        image: 'https://yann-care.vercel.app/logo.png', // Or app logo URL
+        description: `Payment for ${service?.title || 'Service'}`,
+        image: 'https://yann-care.vercel.app/logo.png',
         currency: 'INR',
-        key: orderRes.keyId || '', // Get key from backend response
-        amount: orderRes.amount?.toString() || '0', // Ensure string or number
+        key: orderRes.keyId,
+        amount: orderRes.amount.toString(), // Convert to string for React Native SDK
         name: 'Yann',
         order_id: orderRes.orderId,
         prefill: {
-          email: orderRes.customerEmail || user?.email || '',
-          contact: orderRes.customerPhone || selectedAddress?.phone || '',
-          name: orderRes.customerName || selectedAddress?.name || '',
+          email: customerEmail,
+          contact: customerPhone,
+          name: customerName,
         },
         theme: { color: COLORS.primary },
       };
 
+      console.log('🚀 Opening Razorpay with options:', {
+        ...options,
+        key: options.key.substring(0, 10) + '...',
+      });
+
+      // 4. Open Razorpay Checkout
       const data = await RazorpayCheckout.open(options);
       
-      console.log('✅ Razorpay payment success:', data);
+      console.log('✅ Razorpay payment success:', {
+        payment_id: data.razorpay_payment_id,
+        order_id: data.razorpay_order_id,
+        hasSignature: !!data.razorpay_signature,
+      });
 
-      // 3. Verify Payment
+      // 5. Verify Payment
       await verifyAndCreateBooking(
-        orderRes.orderId, 
+        data.razorpay_order_id, 
         data.razorpay_payment_id, 
         data.razorpay_signature
       );
 
     } catch (error: any) {
-      console.log('❌ Razorpay Error:', error);
-      // specific error handling
+      console.error('❌ Payment Error Details:', {
+        message: error.message,
+        code: error.code,
+        description: error.description,
+        reason: error.reason,
+        step: error.step,
+        source: error.source,
+      });
+
+      // Handle specific error codes
       if (error.code === 0) {
-         // Payment cancelled by user
-         throw new Error('Payment cancelled');
+        // Payment cancelled by user
+        throw new Error('Payment cancelled');
       }
-      throw error;
+
+      if (error.code === 2) {
+        // Network error
+        throw new Error('Network error. Please check your internet connection.');
+      }
+
+      // Re-throw with descriptive message
+      const errorMessage = error.description || error.message || 'Payment failed';
+      throw new Error(errorMessage);
     }
   };
 
   const verifyAndCreateBooking = async (orderId: string, paymentId: string, signature: string) => {
      try {
+       console.log('🔐 Verifying payment...', {
+         orderId,
+         paymentId: paymentId.substring(0, 15) + '...',
+         hasSignature: !!signature,
+       });
+
        const verifyRes = await apiService.verifyPayment({
          razorpay_order_id: orderId,
          razorpay_payment_id: paymentId,
          razorpay_signature: signature,
        });
 
-       if (verifyRes.success) {
-         // 4. Create Booking with Payment Details
-         await createBookingAfterPayment(orderId, paymentId);
-       } else {
-         throw new Error('Payment verification failed on server');
+       console.log('✅ Payment verification response:', verifyRes);
+
+       if (!verifyRes.success) {
+         throw new Error(verifyRes.message || 'Payment verification failed on server');
        }
-     } catch (error) {
-       throw error;
+
+       // 4. Create Booking with Payment Details
+       console.log('📝 Creating booking after successful payment...');
+       await createBookingAfterPayment(orderId, paymentId);
+       
+     } catch (error: any) {
+       console.error('❌ Verify and create booking failed:', error);
+       throw new Error(error.message || 'Failed to verify payment or create booking');
      }
   };
 
   const createBookingAfterPayment = async (orderId: string, paymentId: string) => {
-      // Get the numeric service ID (same logic as cash)
-      let numericServiceId: number;
-      const serviceId = service?.id || (service as any)?._id;
-      
-      if (typeof serviceId === 'number') {
-        numericServiceId = serviceId;
-      } else if (typeof serviceId === 'string') {
-        const parsed = Number(serviceId);
-        if (!isNaN(parsed)) {
-          numericServiceId = parsed;
+      try {
+        // Get the numeric service ID (same logic as cash)
+        let numericServiceId: number;
+        const serviceId = service?.id || (service as any)?._id;
+        
+        if (typeof serviceId === 'number') {
+          numericServiceId = serviceId;
+        } else if (typeof serviceId === 'string') {
+          const parsed = Number(serviceId);
+          if (!isNaN(parsed)) {
+            numericServiceId = parsed;
+          } else {
+            numericServiceId = Math.abs(hashCode(serviceId));
+          }
         } else {
-          numericServiceId = Math.abs(hashCode(serviceId));
+          numericServiceId = Math.abs(hashCode(service?.title || 'unknown'));
         }
-      } else {
-        numericServiceId = Math.abs(hashCode(service?.title || 'unknown'));
-      }
 
-      const bookingPayload: any = {
-        serviceId: numericServiceId,
-        serviceName: service?.title,
-        serviceCategory: service?.category,
-        customerId: (user as any)?._id || user?.id,
-        customerName: selectedAddress?.name || user?.name || 'Guest',
-        customerPhone: selectedAddress?.phone || user?.phone || '',
-        customerAddress: selectedAddress?.fullAddress || '',
-        latitude: selectedAddress?.latitude || 0,
-        longitude: selectedAddress?.longitude || 0,
-        providerNavigationAddress: {
-          fullAddress: selectedAddress?.fullAddress || '',
+        const bookingPayload: any = {
+          serviceId: numericServiceId,
+          serviceName: service?.title,
+          serviceCategory: service?.category,
+          customerId: (user as any)?._id || user?.id,
+          customerName: selectedAddress?.name || user?.name || 'Guest',
+          customerPhone: selectedAddress?.phone || user?.phone || '',
+          customerAddress: selectedAddress?.fullAddress || '',
           latitude: selectedAddress?.latitude || 0,
           longitude: selectedAddress?.longitude || 0,
-          phone: selectedAddress?.phone || user?.phone || '',
-        },
-        bookingDate: bookingDate?.toISOString().split('T')[0],
-        bookingTime: bookingTime?.toTimeString().substring(0, 5),
-        basePrice,
-        gstAmount,
-        totalPrice,
-        paymentMethod: 'online', // Confirmed online payment
-        notes: formData.notes,
-        paymentStatus: 'paid',
-        paymentOrderId: orderId,
-        paymentId: paymentId,
-      };
-
-      if (selectedProvider?._id) {
-        bookingPayload.providerId = selectedProvider._id;
-      }
-
-      if (isDriverService && bookingTime && endTime) {
-        bookingPayload.driverDetails = {
-          startTime: bookingTime.toTimeString().substring(0, 5),
-          endTime: endTime.toTimeString().substring(0, 5),
+          providerNavigationAddress: {
+            fullAddress: selectedAddress?.fullAddress || '',
+            latitude: selectedAddress?.latitude || 0,
+            longitude: selectedAddress?.longitude || 0,
+            phone: selectedAddress?.phone || user?.phone || '',
+          },
+          bookingDate: bookingDate?.toISOString().split('T')[0],
+          bookingTime: bookingTime?.toTimeString().substring(0, 5),
+          basePrice,
+          gstAmount,
+          totalPrice,
+          paymentMethod: 'online', // Confirmed online payment
+          notes: formData.notes,
+          paymentStatus: 'paid',
+          paymentOrderId: orderId,
+          paymentId: paymentId,
         };
+
+        if (selectedProvider?._id) {
+          bookingPayload.providerId = selectedProvider._id;
+        }
+
+        if (isDriverService && bookingTime && endTime) {
+          bookingPayload.driverDetails = {
+            startTime: bookingTime.toTimeString().substring(0, 5),
+            endTime: endTime.toTimeString().substring(0, 5),
+          };
+        }
+
+        console.log('📤 Sending booking payload:', {
+          ...bookingPayload,
+          paymentOrderId: orderId,
+          paymentId: paymentId.substring(0, 15) + '...',
+        });
+
+        const bookingResponse = await apiService.createBooking(bookingPayload);
+
+        console.log('✅ Booking created successfully:', bookingResponse);
+
+        setIsLoading(false);
+        setShowSuccess(true);
+      } catch (error: any) {
+        console.error('❌ Failed to create booking after payment:', error);
+        setIsLoading(false);
+        throw new Error(error.message || 'Failed to create booking after successful payment');
       }
-
-      await apiService.createBooking(bookingPayload);
-
-      setIsLoading(false);
-      setShowSuccess(true);
   };
 
   return (
