@@ -2,7 +2,7 @@
   "expo": {
     "name": "yann-mobile",
     "slug": "yann-mobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
