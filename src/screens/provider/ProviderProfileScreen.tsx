@@ -231,125 +231,131 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-          {/* Header with gradient background */}
-          <View style={styles.profileHeader}>
-            <TouchableOpacity 
-              style={styles.backButtonTop}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
+            {/* Header with gradient background */}
+            <View style={styles.profileHeader}>
+              <View style={styles.headerTopRow}>
+                <TouchableOpacity 
+                  style={styles.backButtonTop}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Ionicons name="arrow-back" size={24} color="#FFF" />
+                </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={() => setIsEditing(!isEditing)}
-            >
-              <Ionicons name={isEditing ? "close" : "pencil"} size={20} color="#FFF" />
-            </TouchableOpacity>
+                <Text style={styles.headerTitle}>Tasker Profile</Text>
 
-            {/* Profile Picture */}
-            <View style={styles.profilePictureContainer}>
-              <View style={styles.profilePictureWrapper}>
-                {user?.profileImage || user?.avatar ? (
-                  <Image 
-                    source={{ uri: user.profileImage || user.avatar }} 
-                    style={styles.profilePicture} 
-                  />
-                ) : (
-                  <View style={[styles.profilePicture, styles.placeholderPicture]}>
-                    <Text style={styles.placeholderText}>
-                      {user?.name?.charAt(0).toUpperCase() || 'P'}
-                    </Text>
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={() => setIsEditing(!isEditing)}
+                >
+                  <Ionicons name={isEditing ? "close" : "pencil"} size={20} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Profile Picture - Overlapping Header */}
+            <View style={styles.profileSection}>
+              <View style={styles.profilePictureContainer}>
+                <View style={styles.profilePictureWrapper}>
+                  {user?.profileImage || user?.avatar ? (
+                    <Image 
+                      source={{ uri: user.profileImage || user.avatar }} 
+                      style={styles.profilePicture} 
+                    />
+                  ) : (
+                    <View style={[styles.profilePicture, styles.placeholderPicture]}>
+                      <Text style={styles.placeholderText}>
+                        {user?.name?.charAt(0).toUpperCase() || 'P'}
+                      </Text>
+                    </View>
+                  )}
+                  {isEditing && (
+                    <TouchableOpacity style={styles.cameraButton} onPress={pickImage}>
+                      <Ionicons name="camera" size={18} color="#FFF" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                
+                {/* Badge */}
+                <View style={styles.topBadge}>
+                  <Ionicons name="ribbon" size={12} color={THEME.colors.primary} />
+                  <Text style={styles.topBadgeText}>Top TaskKing</Text>
+                </View>
+              </View>
+
+              {/* Name and Title */}
+              {isEditing ? null : (
+                <>
+                  <Text style={styles.profileName}>{user?.name || 'Professional'}</Text>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.profileTitle}>INDIVIDUAL</Text>
+                    <View style={styles.dot} />
+                    <Text style={styles.profileTitle}>ASSEMBLY</Text>
                   </View>
-                )}
-                {isEditing && (
-                  <TouchableOpacity style={styles.cameraButton} onPress={pickImage}>
-                    <Ionicons name="camera" size={18} color="#FFF" />
-                  </TouchableOpacity>
-                )}
+                </>
+              )}
+            </View>
+
+            {/* Stats Section */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statBox}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="star" size={20} color="#FFB800" />
+                </View>
+                <Text style={styles.statValue}>{stats.rating}</Text>
+                <Text style={styles.statLabel}>rating</Text>
               </View>
               
-              {/* Badge */}
-              <View style={styles.topBadge}>
-                <Ionicons name="ribbon" size={12} color="#FFD700" />
-                <Text style={styles.topBadgeText}>Top TaskKing</Text>
-              </View>
-            </View>
-
-            {/* Name and Title */}
-            {isEditing ? null : (
-              <>
-                <Text style={styles.profileName}>{user?.name || 'Professional'}</Text>
-                <View style={styles.titleRow}>
-                  <Text style={styles.profileTitle}>INDIVIDUAL</Text>
-                  <View style={styles.dot} />
-                  <Text style={styles.profileTitle}>ASSEMBLY</Text>
+              <View style={styles.statDivider} />
+              
+              <View style={styles.statBox}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="checkmark-circle" size={20} color={THEME.colors.primary} />
                 </View>
-              </>
+                <Text style={styles.statValue}>{stats.tasksDone}</Text>
+                <Text style={styles.statLabel}>tasks done</Text>
+              </View>
+              
+              <View style={styles.statDivider} />
+              
+              <View style={styles.statBox}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="time" size={20} color="#10B981" />
+                </View>
+                <Text style={styles.statValue}>{stats.avgJobTime}</Text>
+                <Text style={styles.statLabel}>avg job done</Text>
+              </View>
+            </View>
+
+            {/* About Section */}
+            {isEditing ? null : (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>About Tasker</Text>
+                <Text style={styles.aboutText}>
+                  {user?.bio || 'As a professional assembler, I possess the necessary skills and experience to assemble furniture and equipment for clients. My expertise...'}
+                </Text>
+                <TouchableOpacity onPress={() => setIsEditing(true)}>
+                  <Text style={styles.viewMoreText}>View More</Text>
+                </TouchableOpacity>
+              </View>
             )}
-          </View>
 
-          {/* Stats Section */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="star" size={20} color="#FFB800" />
+            {/* Cost Section */}
+            {isEditing ? null : (
+              <View style={styles.infoRow}>
+                <Ionicons name="cash-outline" size={20} color={THEME.colors.primary} />
+                <Text style={styles.infoLabel}>Cost</Text>
+                <Text style={styles.infoValue}>₹{formData.hourlyRate || '0'}/hour</Text>
               </View>
-              <Text style={styles.statValue}>{stats.rating}</Text>
-              <Text style={styles.statLabel}>rating</Text>
-            </View>
-            
-            <View style={styles.statDivider} />
-            
-            <View style={styles.statBox}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="checkmark-circle" size={20} color={THEME.colors.primary} />
+            )}
+
+            {/* Distance Section */}
+            {isEditing ? null : (
+              <View style={styles.infoRow}>
+                <Ionicons name="location-outline" size={20} color={THEME.colors.primary} />
+                <Text style={styles.infoLabel}>Distance from you</Text>
+                <Text style={styles.infoValue}>25 km</Text>
               </View>
-              <Text style={styles.statValue}>{stats.tasksDone}</Text>
-              <Text style={styles.statLabel}>tasks done</Text>
-            </View>
-            
-            <View style={styles.statDivider} />
-            
-            <View style={styles.statBox}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="time" size={20} color="#10B981" />
-              </View>
-              <Text style={styles.statValue}>{stats.avgJobTime}</Text>
-              <Text style={styles.statLabel}>avg job done</Text>
-            </View>
-          </View>
-
-          {/* About Section */}
-          {isEditing ? null : (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About Tasker</Text>
-              <Text style={styles.aboutText}>
-                {user?.bio || 'As a professional assembler, I possess the necessary skills and experience to assemble furniture and equipment for clients. My expertise...'}
-              </Text>
-              <TouchableOpacity onPress={() => setIsEditing(true)}>
-                <Text style={styles.viewMoreText}>View More</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Cost Section */}
-          {isEditing ? null : (
-            <View style={styles.infoRow}>
-              <Ionicons name="cash-outline" size={20} color={THEME.colors.primary} />
-              <Text style={styles.infoLabel}>Cost</Text>
-              <Text style={styles.infoValue}>₹{formData.hourlyRate || '0'}/hour</Text>
-            </View>
-          )}
-
-          {/* Distance Section */}
-          {isEditing ? null : (
-            <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={20} color={THEME.colors.primary} />
-              <Text style={styles.infoLabel}>Distance from you</Text>
-              <Text style={styles.infoValue}>25 km</Text>
-            </View>
-          )}
+            )}
 
           {/* Reviews Section */}
           {isEditing ? null : (
@@ -476,11 +482,21 @@ const styles = StyleSheet.create({
   profileHeader: {
     backgroundColor: THEME.colors.primary,
     paddingTop: THEME.spacing.lg,
-    paddingBottom: THEME.spacing.xxl,
+    paddingBottom: 80, // Space for the overlap
     paddingHorizontal: THEME.spacing.lg,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    position: 'relative',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: THEME.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFF',
   },
   backButtonTop: {
     width: 40,
@@ -489,12 +505,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: THEME.spacing.lg,
   },
   editButton: {
-    position: 'absolute',
-    top: THEME.spacing.lg,
-    right: THEME.spacing.lg,
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -502,17 +514,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  profileSection: {
+    alignItems: 'center',
+    marginTop: -60, // Overlap amount
+    marginBottom: THEME.spacing.lg,
+  },
   profilePictureContainer: {
     alignItems: 'center',
-    marginTop: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
   },
   profilePictureWrapper: {
     position: 'relative',
+    ...THEME.shadow, // Add shadow to the picture for depth
   },
   profilePicture: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120, // Slightly larger
+    height: 120,
+    borderRadius: 60,
     borderWidth: 4,
     borderColor: '#FFF',
   },
@@ -522,7 +540,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderText: {
-    fontSize: 40,
+    fontSize: 48,
     fontWeight: '700',
     color: '#FFF',
   },
@@ -530,9 +548,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: THEME.colors.primary,
     borderWidth: 3,
     borderColor: '#FFF',
@@ -540,51 +558,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topBadge: {
+    position: 'absolute',
+    bottom: -15,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#FFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
-    marginTop: THEME.spacing.sm,
+    borderRadius: 20,
+    ...THEME.shadow,
   },
   topBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFF',
+    color: THEME.colors.primary,
   },
   profileName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFF',
+    color: THEME.colors.text, // Dark text
     textAlign: 'center',
-    marginTop: THEME.spacing.md,
+    marginTop: THEME.spacing.xl, // Space for badge
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: THEME.spacing.xs,
-    marginTop: THEME.spacing.xs,
+    marginTop: 4,
   },
   profileTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: THEME.colors.primary,
     letterSpacing: 1,
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: THEME.colors.textTertiary,
   },
   statsContainer: {
     flexDirection: 'row',
     backgroundColor: THEME.colors.card,
     marginHorizontal: THEME.spacing.lg,
-    marginTop: -THEME.spacing.xl,
+    marginTop: THEME.spacing.xs,
     borderRadius: THEME.radius.md,
     padding: THEME.spacing.md,
     ...THEME.shadow,

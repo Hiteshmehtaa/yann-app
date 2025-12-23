@@ -98,16 +98,28 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
         }
 
         // Upload as JSON with base64 image
+        console.log('Uploading avatar...');
         const response = await apiService.uploadAvatar(base64Image);
         
-        if (response.success && response.data) {
-           // Update local user state with new avatar URL
-           const newAvatarUrl = response.data.profileImage || response.data.avatar || response.data.url;
-           updateUser({
-             ...user,
-             avatar: newAvatarUrl
-           });
-           Alert.alert('Success', 'Profile photo updated');
+        if (response.success) {
+           // Support multiple response formats from backend
+           const data = response.data || {};
+           const newAvatarUrl = data.profileImage || data.avatar || data.url || data.image;
+           
+           if (newAvatarUrl) {
+             console.log('Avatar updated:', newAvatarUrl);
+             updateUser({
+               ...user,
+               avatar: newAvatarUrl,
+               profileImage: newAvatarUrl,
+             });
+             Alert.alert('Success', 'Profile photo updated');
+           } else {
+             // If success but no URL returned, maybe it was just a 200 OK
+             Alert.alert('Success', 'Profile photo updated');
+             // Refresh profile to get new image
+             // Note: In a real app we might want to fetch the profile again here
+           }
         } else {
            Alert.alert('Error', response.message || 'Failed to upload image');
         }

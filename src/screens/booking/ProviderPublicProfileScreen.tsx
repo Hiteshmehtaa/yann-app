@@ -52,7 +52,11 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
              ...prev,
              ...newData,
              // Ensure access to nested fields if backend structure differs slightly
-             serviceRates: newData.serviceRates || prev.serviceRates
+             serviceRates: newData.serviceRates || prev.serviceRates,
+             // Prefer fetched profile image
+             profileImage: newData.profileImage || newData.avatar || prev.profileImage,
+             // Map bio/about
+             bio: newData.bio || newData.about || prev.bio,
            }));
         }
       } catch (error) {
@@ -64,21 +68,30 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   }, [initialProvider._id]);
 
   // Animations
+  const HEADER_HEIGHT_MAX = 180;
+  const HEADER_HEIGHT_MIN = 100;
+  const AVATAR_SIZE_MAX = 100;
+  const AVATAR_SIZE_MIN = 60;
+
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [180, 100],
+    outputRange: [HEADER_HEIGHT_MAX, HEADER_HEIGHT_MIN],
     extrapolate: 'clamp',
   });
 
   const avatarSize = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [100, 60],
+    outputRange: [AVATAR_SIZE_MAX, AVATAR_SIZE_MIN],
     extrapolate: 'clamp',
   });
 
+  // Avatar's center should sit exactly on the boundary: avatarTop = headerHeight - avatarSize / 2
   const avatarTop = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [130, 70], // Position relative to top
+    outputRange: [
+      HEADER_HEIGHT_MAX - AVATAR_SIZE_MAX / 2,  // 180 - 50 = 130
+      HEADER_HEIGHT_MIN - AVATAR_SIZE_MIN / 2,  // 100 - 30 = 70
+    ],
     extrapolate: 'clamp',
   });
   
@@ -113,7 +126,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             </TouchableOpacity>
             
             <Animated.Text style={[styles.headerTitle, { opacity: titleOpacity }]}>
-              Provider Profile
+              {provider.name}
             </Animated.Text>
             
             <Text style={[styles.headerTitleStatic, { opacity: 0 }]}>Provider Profile</Text> 
@@ -132,9 +145,51 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
           </View>
           
           <Animated.Text style={[styles.bigHeaderTitle, { opacity: scrollY.interpolate({ inputRange: [0, 60], outputRange: [1, 0] }) }]}>
-            Provider Profile
+             Provider Profile
           </Animated.Text>
         </SafeAreaView>
+      </Animated.View>
+
+      {/* Absolute positioned avatar that overlaps header and content */}
+      <Animated.View 
+        style={[
+          styles.avatarContainerAbsolute,
+          { 
+            top: avatarTop,
+            width: avatarSize,
+            height: avatarSize,
+          }
+        ]}
+      >
+        {provider.profileImage ? (
+          <Animated.Image 
+            source={{ uri: provider.profileImage }} 
+            style={[
+              styles.avatar,
+              { 
+                width: avatarSize,
+                height: avatarSize,
+                borderRadius: Animated.divide(avatarSize, 2),
+              }
+            ]}
+          />
+        ) : (
+          <Animated.View 
+            style={[
+              styles.avatar, 
+              styles.avatarPlaceholder,
+              { 
+                width: avatarSize,
+                height: avatarSize,
+                borderRadius: Animated.divide(avatarSize, 2),
+              }
+            ]}
+          >
+            <Text style={styles.avatarPlaceholderText}>
+              {provider.name?.charAt(0).toUpperCase() || 'P'}
+            </Text>
+          </Animated.View>
+        )}
       </Animated.View>
 
       <ScrollView
@@ -149,29 +204,19 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
         <View style={styles.placeholderHeader} />
         
         <View style={styles.profileContent}>
-          {/* Avatar Section */}
-          <View style={styles.avatarContainer}>
-            {provider.profileImage ? (
-              <Image 
-                source={{ uri: provider.profileImage }} 
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarPlaceholderText}>
-                  {provider.name?.charAt(0).toUpperCase() || 'P'}
-                </Text>
-              </View>
-            )}
-            {/* Badge removed as per request */}
-          </View>
+          {/* Avatar space - empty to prevent content overlap */}
+          <View style={styles.avatarSpacer} />
 
           {/* Name & Type */}
           <Text style={styles.name}>{provider.name}</Text>
           <View style={styles.typeContainer}>
-            <Text style={styles.typeText}>{MOCK_DATA.type}</Text>
+            <Text style={styles.typeText}>{provider.type || 'INDIVIDUAL'}</Text>
             <View style={styles.dot} />
-            <Text style={styles.specialtyText}>{provider.services[0]?.toUpperCase() || MOCK_DATA.specialty}</Text>
+            <Text style={styles.specialtyText}>
+              {provider.services?.[0]?.toUpperCase() || 
+               ((provider as any).specialty?.toUpperCase()) || 
+               'GENERAL'}
+             </Text>
           </View>
 
           {/* Stats Row */}
@@ -179,7 +224,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             <View style={styles.statItem}>
               <View style={styles.statValueContainer}>
                 <Ionicons name="star" size={20} color="#FFB800" />
-                <Text style={styles.statValue}>{provider.rating}</Text>
+                <Text style={styles.statValue}>{provider.rating ? provider.rating.toFixed(1) : 'New'}</Text>
               </View>
               <Text style={styles.statLabel}>rating</Text>
             </View>
@@ -187,7 +232,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             <View style={styles.statItem}>
               <View style={styles.statValueContainer}>
                 <Ionicons name="checkbox" size={20} color="#6B9EFF" />
-                <Text style={styles.statValue}>{provider.totalReviews}</Text>
+                <Text style={styles.statValue}>{provider.totalReviews || 0}</Text>
               </View>
               <Text style={styles.statLabel}>tasks done</Text>
             </View>
@@ -195,9 +240,9 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             <View style={styles.statItem}>
               <View style={styles.statValueContainer}>
                 <Ionicons name="time" size={20} color="#6B9EFF" />
-                <Text style={styles.statValue}>{MOCK_DATA.avgTime}</Text>
+                <Text style={styles.statValue}>{(provider as any).avgTime || '1 hour'}</Text>
               </View>
-              <Text style={styles.statLabel}>avg. job done</Text>
+              <Text style={styles.statLabel}>avg. job time</Text>
             </View>
           </View>
 
@@ -207,7 +252,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>About Tasker</Text>
             <Text style={styles.aboutText} numberOfLines={3}>
-              {provider.bio || MOCK_DATA.about}
+              {provider.bio || (provider as any).about || 'No description available.'}
               <Text style={styles.viewMore}> View More</Text>
             </Text>
           </View>
@@ -229,7 +274,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                       const rate = provider.serviceRates.find(r => r.serviceName === route.params.service?.title);
                       if (rate) price = rate.price;
                     } else {
-                       price = provider.serviceRates[route.params.service.title] || 0;
+                       price = (provider.serviceRates as any)[route.params.service.title] || 0;
                     }
                   }
                   
@@ -292,7 +337,13 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 
       {/* Bottom Bar */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.chatButton}>
+        <TouchableOpacity 
+          style={styles.chatButton}
+          onPress={() => {
+            // Navigate to MainTabs > Chat (nested navigation)
+            (navigation as any).navigate('MainTabs', { screen: 'Chat' });
+          }}
+        >
           <Ionicons name="chatbubble-ellipses" size={24} color="#2E59F3" />
         </TouchableOpacity>
         <TouchableOpacity 
@@ -372,7 +423,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 2,
   },
   scrollContent: {
     flexGrow: 1,
@@ -385,13 +436,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  avatarContainer: {
-    marginTop: -50, // This pulls it up 50px, so with 100px avatar height, center is at boundary
+  avatarContainerAbsolute: {
+    position: 'absolute',
+    left: width / 2 - 50, // Center horizontally (50 = half of max avatar size)
     alignItems: 'center',
-    zIndex: 100,
-    elevation: 100,
-    marginBottom: 16,
-    position: 'relative',
+    justifyContent: 'center',
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  avatarSpacer: {
+    height: 116, // Space for avatar: AVATAR_SIZE_MAX + marginBottom = 100 + 16 = 116
+    width: '100%',
   },
   avatar: {
     width: 100,
@@ -399,8 +454,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 4,
     borderColor: '#FFF',
-    zIndex: 100,
-    elevation: 100,
   },
   avatarPlaceholder: {
     backgroundColor: '#FFD700',

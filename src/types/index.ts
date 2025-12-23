@@ -61,6 +61,14 @@ export interface ServiceProvider {
   rating: number;
   totalReviews: number;
   bio?: string;
+  // UI helper fields
+  type?: string;
+  specialty?: string;
+  avgTime?: string;
+  about?: string;
+  avatar?: string;
+  priceForService?: number; // Helper for service detail screen
+  reviews?: any[]; // Helper field for reviews
 }
 
 export interface ServiceRate {

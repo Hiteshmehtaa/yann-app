@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
+  Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { ComingSoonModal } from '../../components/ComingSoonModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +19,7 @@ import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { useResponsive } from '../../hooks/useResponsive';
 
 type Props = {
@@ -30,9 +34,10 @@ type MenuItemType = {
 };
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { isTablet } = useResponsive();
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [stats, setStats] = useState({
     bookingsCount: 0,
     rating: 0,
@@ -137,6 +142,66 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     });
   };
 
+  const handleImagePick = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant camera roll permissions to upload a profile picture.'
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setIsUploadingAvatar(true);
+        
+        // Determine image type from URI
+        const uri = result.assets[0].uri;
+        const imageType = uri.split('.').pop()?.toLowerCase() || 'jpeg';
+        const mimeType = imageType === 'png' ? 'image/png' : 'image/jpeg';
+        
+        // Create base64 string with proper format
+        const base64Image = `data:${mimeType};base64,${result.assets[0].base64}`;
+        
+        // Upload to backend
+        const response = await apiService.uploadAvatar(base64Image);
+        
+        if (response.success && response.data) {
+          // Update user context with new avatar
+          const newAvatar = response.data.avatar || response.data.profileImage;
+          updateUser({ 
+            avatar: newAvatar,
+            profileImage: newAvatar 
+          });
+          
+          Alert.alert('Success', 'Profile picture updated successfully!');
+        } else {
+          throw new Error(response.message || 'Upload failed');
+        }
+      }
+    } catch (error: any) {
+      console.error('Image upload error:', error);
+      Alert.alert(
+        'Upload Failed',
+        error.message || 'Failed to upload profile picture. Please try again.'
+      );
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const menuItems: MenuItemType[] = [
     {
       icon: 'create-outline',
@@ -211,11 +276,27 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Profile Card */}
           <View style={styles.profileCard}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
+            <TouchableOpacity 
+              style={styles.avatarContainer}
+              onPress={handleImagePick}
+              disabled={isUploadingAvatar}
+            >
+              {isUploadingAvatar ? (
+                <ActivityIndicator size="large" color={COLORS.white} />
+              ) : user?.avatar || user?.profileImage ? (
+                <Image 
+                  source={{ uri: user.avatar || user.profileImage }} 
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              )}
+              <View style={styles.cameraIconContainer}>
+                <Ionicons name="camera" size={16} color={COLORS.white} />
+              </View>
+            </TouchableOpacity>
             <View style={styles.profileInfo}>
               <Text style={styles.name}>{user?.name || 'User'}</Text>
               <Text style={styles.email}>{user?.email || 'No email'}</Text>
@@ -313,11 +394,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.md,
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   avatarText: {
     fontSize: 28,
     fontWeight: '800',
     color: COLORS.white,
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
   },
   profileInfo: {
     flex: 1,

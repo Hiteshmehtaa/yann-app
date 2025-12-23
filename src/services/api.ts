@@ -36,12 +36,21 @@ class ApiService {
       withCredentials: true, // Enable cookies for session-based auth (same as website)
     });
 
-    // Request interceptor - cookies are handled automatically by withCredentials
+
+    // Request interceptor - add JWT token for mobile auth
     this.client.interceptors.request.use(
       async (config) => {
-        // For cookie-based auth, no need to add Authorization header
-        // Cookies are automatically sent with withCredentials: true
-        // This matches exactly how the website handles auth
+        // For mobile app, we need to send the JWT token in Authorization header
+        // since React Native doesn't support httpOnly cookies
+        try {
+          const token = await storage.getToken();
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+        } catch (error) {
+          // Silently fail - request will proceed without auth
+        }
+
         if (__DEV__) {
           // Only log in development mode
           // console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
@@ -152,6 +161,8 @@ class ApiService {
       status: rawUserData.status || 'pending',
       rating: rawUserData.rating,
       totalReviews: rawUserData.totalReviews,
+      avatar: rawUserData.avatar || rawUserData.profileImage || '',
+      profileImage: rawUserData.profileImage || rawUserData.avatar || '',
     };
 
     console.log('✅ Mapped provider data:', userData);

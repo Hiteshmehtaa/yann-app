@@ -93,21 +93,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: response.user.name,
           email: response.user.email,
           phone: response.user.phone || '',
-          role: response.user.role || 'homeowner'
+          role: response.user.role || 'homeowner',
+          avatar: response.user.avatar || response.user.profileImage || '',
+          profileImage: response.user.profileImage || response.user.avatar || '',
         };
         
         console.log('👤 Setting user data:', userData);
         
-        // Note: The new API uses httpOnly cookies for auth, no token in response
-        // We'll use a dummy token for compatibility
-        const dummyToken = 'cookie-based-auth';
+        // Use the actual JWT token from response for mobile auth
+        const actualToken = response.token || 'cookie-based-auth';
         
         // Save to storage first
-        await storage.saveToken(dummyToken);
+        await storage.saveToken(actualToken);
         await storage.saveUserData(userData);
         
         // Then update state (this triggers navigation)
-        setToken(dummyToken);
+        setToken(actualToken);
         setUser(userData);
         
         console.log('✅ Login successful, auth state updated');
@@ -149,16 +150,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: 'provider',
           services: response.user.services || [],
           status: response.user.status,
+          avatar: response.user.avatar || response.user.profileImage || '',
+          profileImage: response.user.profileImage || response.user.avatar || '',
         };
         
         console.log('👤 Setting provider data:', userData);
         
-        const providerToken = 'cookie-based-auth-provider';
+        // Use the actual JWT token from response for mobile auth
+        const actualToken = response.token || 'cookie-based-auth-provider';
         
-        await storage.saveToken(providerToken);
+        await storage.saveToken(actualToken);
         await storage.saveUserData(userData);
         
-        setToken(providerToken);
+        setToken(actualToken);
         setUser(userData);
         
         console.log('✅ Provider login successful');

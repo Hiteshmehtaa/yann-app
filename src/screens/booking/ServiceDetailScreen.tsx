@@ -7,443 +7,365 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
-  RefreshControl,
+  Image,
+  Dimensions,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import LottieView from 'lottie-react-native';
-import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Service, ServiceProvider } from '../../types';
-import { ServiceHero } from '../../components/ui/ServiceHero';
-import { ServiceOverviewCard } from '../../components/ui/ServiceOverviewCard';
-import { IncludedFeatures } from '../../components/ui/IncludedFeatures';
-import { ProviderListCard } from '../../components/ui/ProviderListCard';
-import { FloatingCTA } from '../../components/ui/FloatingCTA';
-import { ProviderReviewsSection } from '../../components/ui/ProviderReviewsSection';
 import { apiService } from '../../services/api';
-import { COLORS, RADIUS, SHADOWS, ANIMATIONS } from '../../utils/theme';
+import { getServiceIconImage } from '../../utils/serviceImages';
+import { COLORS, RADIUS, SHADOWS } from '../../utils/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ params: { service: Service } }, 'params'>;
 };
 
-const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  'House Cleaning': 'sparkles',
-  'Repairs & Maintenance': 'construct',
-  'Delivery Services': 'bicycle',
-  'Pet Care': 'paw',
-  'Personal Assistant': 'briefcase',
-  'Garden & Landscaping': 'leaf',
-  'Full-Day Personal Driver': 'car-sport',
-  'Pujari Services': 'flower',
-};
-
-// Mock data for service details
-const SERVICE_DETAILS = {
-  whatsIncluded: [
-    'Professional equipment and supplies',
-    'Experienced and verified service providers',
-    'Quality guarantee on all services',
-    'Flexible scheduling options',
-  ],
-  aboutService:
-    'Our premium service ensures top-quality results with attention to every detail. We work with verified professionals who are trained to deliver exceptional service every time.',
-  whyChooseUs: [
-    'Over 5 years of experience in the industry',
-    'Thousands of satisfied customers',
-    '24/7 customer support',
-    'Money-back guarantee',
-    'Fully insured and licensed professionals',
-  ],
-  estimatedTime: '2-3 hours',
-  requirements: 'Basic access to the service area',
-  reviews: [
-    { name: 'Sarah M.', rating: 5, comment: 'Excellent service! Very professional.' },
-    { name: 'John D.', rating: 5, comment: 'Highly recommend. Will book again.' },
-    { name: 'Emma L.', rating: 4, comment: 'Great work, on time and efficient.' },
-  ],
-};
+const { width, height } = Dimensions.get('window');
+const HERO_HEIGHT = height * 0.45;
 
 export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { service: initialService } = route.params;
-  const service = initialService;
-  const [serviceDetails] = useState(SERVICE_DETAILS);
-  const [availableProviders, setAvailableProviders] = useState<ServiceProvider[]>([]);
+  const { service } = route.params;
+  const insets = useSafeAreaInsets();
   
+  // State
+  const [activeTab, setActiveTab] = useState('providers'); // providers | details | reviews
+  const [providers, setProviders] = useState<ServiceProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
-  
-  // Staggered Animations
-  const heroAnim = useRef(new Animated.Value(0)).current;
-  const overviewAnim = useRef(new Animated.Value(0)).current;
-  const featuresAnim = useRef(new Animated.Value(0)).current;
-  const providersAnim = useRef(new Animated.Value(0)).current;
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Animations
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  /**
-   * Fetch available providers for this service
-   */
-  const fetchAvailableProviders = useCallback(async (isRefresh = false) => {
-    // Prevent duplicate fetches
-    if (!isRefresh && hasFetched) return;
-    
-    try {
-      setIsLoadingProviders(true);
-      if (!isRefresh) setIsLoading(true);
-      
-      const response = await apiService.getProvidersByService(service.title);
-      
-      if (response.success && response.data) {
-        const mappedProviders: ServiceProvider[] = response.data.map((p: any) => ({
-          _id: p.id || p._id,
-          name: p.name,
-          email: p.email || '',
-          phone: p.phone || '',
-          experience: p.experience || 0,
-          rating: p.rating || 0,
-          totalReviews: p.totalReviews || 0,
-          services: p.services || [service.title],
-          serviceRates: p.serviceRates || [{ serviceName: service.title, price: p.price || 0 }],
-          workingHours: p.workingHours || null,
-          profileImage: p.profileImage || '',
-          status: p.status || 'active',
-          priceForService: p.price,
-        }));
-        
-        setAvailableProviders(mappedProviders);
-        
-        if (mappedProviders.length === 1) {
-          setSelectedProvider(mappedProviders[0]);
-        }
-      } else {
-        setAvailableProviders([]);
-      }
-      
-      setHasFetched(true);
-    } catch (err: any) {
-      console.error('Error fetching providers:', err);
-      setAvailableProviders([]);
-      setHasFetched(true);
-    } finally {
-      setIsLoadingProviders(false);
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [service.title, hasFetched]);
-
-  // Initial Sequence
+  
+  // Fetch Logic
   useEffect(() => {
-    Animated.stagger(100, [
-      Animated.timing(heroAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(overviewAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-      Animated.spring(featuresAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-      Animated.spring(providersAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const loadData = async () => {
+      try {
+        const response = await apiService.getProvidersByService(service.title);
+        if (response.success && response.data) {
+          const mapped = response.data.map((p: any) => ({
+            _id: p.id || p._id,
+            name: p.name,
+            email: p.email || 'provider@yann.com',
+            phone: p.phone || '0000000000',
+            services: p.services || [],
+            serviceRates: p.serviceRates || [],
+            status: 'active' as 'active' | 'inactive' | 'pending',
+            rating: p.rating || 4.8,
+            totalReviews: p.totalReviews || 0,
+            profileImage: p.profileImage,
+            priceForService: p.price || service.price,
+            experience: p.experience || 2,
+            bio: p.bio,
+            reviews: p.reviews || []
+          }));
+          setProviders(mapped);
+          if (mapped.length === 1) setSelectedProvider(mapped[0]);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [service.title]);
 
-    // Fetch providers
-    fetchAvailableProviders(false);
-  }, [fetchAvailableProviders]);
+  // Derived Values
+  const startPrice = providers.length > 0 
+    ? Math.min(...providers.map(p => p.priceForService || 0))
+    : service.price;
 
-  const onRefresh = () => {
-    setIsRefreshing(true);
-    fetchAvailableProviders(true);
-  };
-
-  const handleBookNow = () => {
-    // Only allow booking if provider is selected (or no providers available for now)
-    if (availableProviders.length > 1 && !selectedProvider) {
-      alert('Please select a provider to continue');
-      return;
-    }
-    navigation.navigate('BookingForm', { 
-      service,
-      selectedProvider: selectedProvider || undefined,
+  // Render Helpers
+  const renderHeader = () => {
+    const headerOpacity = scrollY.interpolate({
+      inputRange: [HERO_HEIGHT - 100, HERO_HEIGHT - 50],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
     });
-  };
-
-  // Calculate lowest price from available providers
-  const getLowestPrice = () => {
-    if (availableProviders.length === 0) return service.price;
-    const prices = availableProviders
-      .map((p) => (p as any).priceForService)
-      .filter((price) => price > 0);
-    if (prices.length === 0) return service.price;
-    return `₹${Math.min(...prices)}`;
-  };
-
-  // Animated List Item
-  const AnimatedListItem = ({ index, children }: { index: number; children: React.ReactNode }) => {
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const translateAnim = useRef(new Animated.Value(20)).current;
-
-    useEffect(() => {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 500,
-          delay: index * 100 + 300, // Initial delay + stagger
-          useNativeDriver: true,
-        }),
-        Animated.spring(translateAnim, {
-          toValue: 0,
-          tension: 50,
-          friction: 8,
-          delay: index * 100 + 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, []);
 
     return (
-      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: translateAnim }] }}>
-        {children}
+      <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: headerOpacity }]}>
+          <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+          <View style={styles.headerBorder} />
+        </Animated.View>
+        
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            style={styles.roundButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+
+          <Animated.Text style={[styles.headerTitle, { opacity: headerOpacity }]}>
+            {service.title}
+          </Animated.Text>
+
+          <TouchableOpacity style={styles.roundButton}>
+            <Ionicons name="share-outline" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderHero = () => {
+    const scale = scrollY.interpolate({
+      inputRange: [-HERO_HEIGHT, 0, HERO_HEIGHT],
+      outputRange: [2, 1, 1],
+      extrapolate: 'clamp',
+    });
+    
+    const translateY = scrollY.interpolate({
+      inputRange: [-HERO_HEIGHT, 0, HERO_HEIGHT],
+      outputRange: [-HERO_HEIGHT / 2, 0, HERO_HEIGHT * 0.5],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.heroContainer, { transform: [{ translateY }, { scale }] }]}>
+        <Image 
+          source={getServiceIconImage(service.title)} 
+          style={styles.heroImage} 
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.6)']}
+          style={styles.heroGradient}
+        />
+        <View style={styles.heroContent}>
+          <View style={styles.categoryTag}>
+            <Text style={styles.categoryText}>{service.category?.toUpperCase()}</Text>
+          </View>
+          <Text style={styles.heroTitle}>{service.title}</Text>
+          <View style={styles.heroStats}>
+            <View style={styles.heroStatItem}>
+              <Ionicons name="star" size={16} color="#FFD700" />
+              <Text style={styles.heroStatText}>4.8 (250+)</Text>
+            </View>
+            <View style={styles.dotSeparator} />
+            <View style={styles.heroStatItem}>
+              <Ionicons name="time-outline" size={16} color="#FFF" />
+              <Text style={styles.heroStatText}>60 mins</Text>
+            </View>
+          </View>
+        </View>
       </Animated.View>
     );
   };
 
+  const renderQuickStats = () => (
+    <View style={styles.quickStatsRow}>
+      <View style={styles.statBox}>
+        <View style={[styles.statIcon, { backgroundColor: '#E3F2FD' }]}>
+          <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+        </View>
+        <Text style={styles.statLabel}>Verified</Text>
+      </View>
+      <View style={styles.statDivider} />
+      <View style={styles.statBox}>
+        <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
+          <Ionicons name="wallet-outline" size={20} color={COLORS.success} />
+        </View>
+        <Text style={styles.statLabel}>Best Price</Text>
+      </View>
+      <View style={styles.statDivider} />
+      <View style={styles.statBox}>
+        <View style={[styles.statIcon, { backgroundColor: '#FFF3E0' }]}>
+          <Ionicons name="headset-outline" size={20} color={COLORS.warning} />
+        </View>
+        <Text style={styles.statLabel}>Support</Text>
+      </View>
+    </View>
+  );
+
+  const renderTabs = () => (
+    <View style={styles.tabsContainer}>
+      {['providers', 'details', 'reviews'].map((tab) => (
+        <TouchableOpacity 
+          key={tab} 
+          style={[styles.tabItem, activeTab === tab && styles.activeTab]}
+          onPress={() => setActiveTab(tab)}
+        >
+          <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderProvider = (item: any, index: number) => (
+    <TouchableOpacity 
+      key={item._id}
+      style={[
+        styles.providerCard, 
+        selectedProvider?._id === item._id && styles.selectedProviderCard
+      ]}
+      onPress={() => setSelectedProvider(item)}
+      activeOpacity={0.9}
+    >
+      <View style={styles.providerHeader}>
+        {item.profileImage ? (
+          <Image 
+            source={{ uri: item.profileImage }}
+            style={styles.providerAvatar}
+          />
+        ) : (
+          <View style={[styles.providerAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="person" size={24} color={COLORS.textTertiary} />
+          </View>
+        )}
+        <View style={styles.providerInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.providerName}>{item.name}</Text>
+            {index === 0 && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>TOP RATED</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.providerMeta}>{item.experience} years exp • {item.totalReviews} jobs</Text>
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={14} color="#FFD700" />
+            <Text style={styles.ratingVal}>{item.rating}</Text>
+          </View>
+        </View>
+        <View style={styles.priceTag}>
+          <Text style={styles.priceVal}>₹{item.priceForService}</Text>
+          <Text style={styles.priceUnit}>/hr</Text>
+        </View>
+      </View>
+      
+      {/* Selection Checkmark */}
+      <View style={[
+        styles.radioButton,
+        selectedProvider?._id === item._id && styles.radioButtonSelected
+      ]}>
+        {selectedProvider?._id === item._id && (
+          <Ionicons name="checkmark" size={16} color="#FFF" />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" />
+      
+      {renderHero()}
+      {renderHeader()}
 
-      {/* Animated Floating Header */}
-      <Animated.View
-        style={[
-          styles.floatingHeader,
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [0, 120],
-              outputRange: [0, 1],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}
-      >
-        <SafeAreaView edges={['top']}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={22} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {service.title}
-            </Text>
-            <View style={styles.headerSpacer} />
-          </View>
-        </SafeAreaView>
-      </Animated.View>
-
-      {/* Fixed Back Button */}
-      <SafeAreaView edges={['top']} style={styles.fixedBackButton}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-      </SafeAreaView>
-
-      {/* Loading Overlay */}
-      <LoadingSpinner visible={isLoading} />
-
-      {/* Scrollable Content */}
       <Animated.ScrollView
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-          useNativeDriver: false,
-        })}
-        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: HERO_HEIGHT - 40, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
-            progressViewOffset={80}
-          />
-        }
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
-        {/* Hero Section with Parallax Opacity */}
-        <Animated.View style={{ opacity: heroAnim }}>
-          <ServiceHero
-            title={service.title}
-            category={service.category || ''}
-            rating={4.8}
-            reviewCount={256}
-          />
-        </Animated.View>
+        <View style={styles.sheetContainer}>
+          {/* Dragger */}
+          <View style={styles.dragHandleCenter}>
+            <View style={styles.dragHandle} />
+          </View>
 
-        {/* Main Content Sheet */}
-        <View style={styles.content}>
-          {/* Service Overview Card */}
-          <Animated.View 
-            style={{ 
-              opacity: overviewAnim, 
-              transform: [{ translateY: overviewAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] 
-            }}
-          >
-            <ServiceOverviewCard
-              description={serviceDetails.aboutService}
-              startingPrice={service.price}
-              providerCount={availableProviders.length}
-            />
-          </Animated.View>
-
-          {/* What's Included Section */}
-          <Animated.View 
-            style={{ 
-              opacity: featuresAnim, 
-              transform: [{ translateY: featuresAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] 
-            }}
-          >
-            <IncludedFeatures features={serviceDetails.whatsIncluded} />
-          </Animated.View>
-
-          {/* Available Professionals Section */}
-          <Animated.View 
-            style={[
-              styles.section,
-              { 
-                opacity: providersAnim, 
-                transform: [{ translateY: providersAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) }] 
-              }
-            ]}
-          >
-            <View style={styles.sectionHeader}>
-              <View style={styles.iconBadge}>
-                <Ionicons name="people" size={20} color={COLORS.primary} />
-              </View>
-              <Text style={styles.sectionTitle}>Available Professionals</Text>
-            </View>
-            
-            {isLoadingProviders && (
-              <View style={styles.loadingState}>
-                <LottieView
-                  source={require('../../../assets/lottie/loading.json')}
-                  autoPlay
-                  loop
-                  style={{ width: 60, height: 60 }}
-                />
-                <Text style={styles.loadingText}>Finding professionals...</Text>
-              </View>
-            )}
-            
-            {!isLoadingProviders && availableProviders.length === 0 && (
-              <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={40} color={COLORS.textTertiary} />
-                <Text style={styles.emptyTitle}>No professionals available</Text>
-                <Text style={styles.emptySubtitle}>Check back soon or try another service</Text>
-              </View>
-            )}
-            
-            {!isLoadingProviders && availableProviders.length > 0 && (
-              <>
-                {availableProviders.length > 1 && (
-                  <Text style={styles.selectHint}>
-                    Tap to select your preferred professional
-                  </Text>
-                )}
-                {availableProviders.map((provider, index) => (
-                  <AnimatedListItem key={provider._id} index={index}>
-                    <ProviderListCard
-                      provider={provider}
-                      isSelected={selectedProvider?._id === provider._id}
-                      onSelect={() => {
-                        setSelectedProvider(provider);
-                        navigation.navigate('ProviderPublicProfile', { 
-                          provider,
-                          service: service 
-                        });
-                      }}
-                    />
-                  </AnimatedListItem>
-                ))}
-              </>
-            )}
-          </Animated.View>
-
-          {/* Why Choose Us Section */}
+          {renderQuickStats()}
+          
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.iconBadge}>
-                <Ionicons name="shield-checkmark" size={20} color={COLORS.success} />
+            <Text style={styles.sectionTitle}>Description</Text>
+            <Text style={styles.descriptionText}>
+              {service.description || 'Experience top-tier service quality with verified professionals. We ensure satisfaction with every booking.'}
+            </Text>
+          </View>
+
+          {renderTabs()}
+
+          <View style={styles.contentArea}>
+            {activeTab === 'providers' && (
+              <View style={{ gap: 16 }}>
+                 {isLoading ? (
+                   <Text style={styles.loadingText}>Loading professionals...</Text>
+                 ) : providers.length === 0 ? (
+                   <View style={styles.emptyState}>
+                     <Ionicons name="search" size={32} color={COLORS.textTertiary} />
+                     <Text style={styles.emptyText}>No providers currently available.</Text>
+                   </View>
+                 ) : (
+                   providers.map((p, i) => renderProvider(p, i))
+                 )}
               </View>
-              <Text style={styles.sectionTitle}>Why Choose Us</Text>
-            </View>
-            <View style={styles.whyChooseList}>
-              {serviceDetails.whyChooseUs.map((item, index) => (
-                <AnimatedListItem key={item} index={index + 2}>
-                  <View style={styles.whyChooseItem}>
-                    <View style={styles.checkCircle}>
-                      <Ionicons name="checkmark" size={12} color={COLORS.white} />
+            )}
+
+            {activeTab === 'details' && (
+               <View style={styles.detailsList}>
+                 {['Professional Equipment', 'Safety Protocols', 'Insured Service', 'Satisfaction Guarantee'].map((feat, i) => (
+                   <View key={i} style={styles.detailRow}>
+                     <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                     <Text style={styles.detailText}>{feat}</Text>
+                   </View>
+                 ))}
+               </View>
+            )}
+
+            {activeTab === 'reviews' && (
+               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll}>
+                  {[1, 2, 3].map((i) => (
+                    <View key={i} style={styles.reviewCard}>
+                       <View style={styles.reviewHeader}>
+                         <View style={styles.reviewAvatar}>
+                            <Text style={styles.reviewInitial}>U{i}</Text>
+                         </View>
+                         <View>
+                           <Text style={styles.reviewerName}>User {i}</Text>
+                           <View style={{flexDirection:'row'}}><Ionicons name="star" size={12} color="#FFD700"/><Text style={{fontSize:12}}> 5.0</Text></View>
+                         </View>
+                       </View>
+                       <Text style={styles.reviewBody}>"Amazing service! The professional was on time and did a great job."</Text>
                     </View>
-                    <Text style={styles.whyChooseText}>{item}</Text>
-                  </View>
-                </AnimatedListItem>
-              ))}
-            </View>
+                  ))}
+               </ScrollView>
+            )}
           </View>
 
-          {/* Service Details Grid */}
-          <View style={styles.detailsGrid}>
-            <View style={styles.detailCard}>
-              <View style={styles.detailIconBadge}>
-                <Ionicons name="time-outline" size={22} color={COLORS.primary} />
-              </View>
-              <Text style={styles.detailLabel}>Duration</Text>
-              <Text style={styles.detailValue}>{serviceDetails.estimatedTime}</Text>
-            </View>
-            <View style={styles.detailCard}>
-              <View style={styles.detailIconBadge}>
-                <Ionicons name="clipboard-outline" size={22} color={COLORS.warning} />
-              </View>
-              <Text style={styles.detailLabel}>Requirements</Text>
-              <Text style={styles.detailValue}>{serviceDetails.requirements}</Text>
-            </View>
-          </View>
-
-          {/* Provider Reviews Section - Shows when provider is selected */}
-          {selectedProvider && (selectedProvider as any).reviews && (selectedProvider as any).reviews.length > 0 && (
-            <ProviderReviewsSection
-              reviews={(selectedProvider as any).reviews}
-              providerName={selectedProvider.name}
-            />
-          )}
-
-          {/* Bottom Spacer */}
-          <View style={{ height: 140 }} />
         </View>
       </Animated.ScrollView>
 
-      {/* Floating Bottom CTA */}
-      <FloatingCTA
-        providerName={selectedProvider?.name}
-        price={getLowestPrice()}
-        selectedProviderPrice={(selectedProvider as any)?.priceForService}
-        onPress={handleBookNow}
-        disabled={availableProviders.length > 1 && !selectedProvider}
-      />
+      {/* Bottom FAB */}
+      <BlurView intensity={20} tint="light" style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={styles.priceContainer}>
+          <Text style={styles.totalLabel}>Total Estimate</Text>
+          <Text style={styles.totalPrice}>
+            {selectedProvider ? `₹${selectedProvider.priceForService}` : `From ₹${startPrice}`}
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={[styles.bookBtn, (!selectedProvider && providers.length > 1) && styles.bookBtnDisabled]}
+          onPress={() => {
+            if (providers.length > 1 && !selectedProvider) return;
+            const providerToView = selectedProvider || providers[0];
+            if (!providerToView || !providerToView._id) {
+              console.warn('No valid provider to view');
+              return;
+            }
+            navigation.navigate('ProviderPublicProfile', { 
+              provider: providerToView,
+              service: service
+            });
+          }}
+        >
+          <Text style={styles.bookBtnText}>View Profile</Text>
+          <Ionicons name="arrow-forward" size={20} color="#FFF" />
+        </TouchableOpacity>
+      </BlurView>
     </View>
   );
 };
@@ -451,217 +373,453 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F5F5F7', // Slightly grey background for contrast
   },
-  // Floating Header
-  floatingHeader: {
+  // Header
+  headerContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 100,
-    backgroundColor: COLORS.white,
-    ...SHADOWS.lg,
+    height: 100, // Approximate safe area + nav height
+    justifyContent: 'center',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    height: 50,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerBorder: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: COLORS.text,
-    textAlign: 'center',
-    marginHorizontal: 12,
   },
-  headerSpacer: {
-    width: 40,
-  },
-  // Fixed Back Button
-  fixedBackButton: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 99,
-    paddingHorizontal: 16,
-  },
-  backButton: {
+  roundButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255,255,255,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  // Scroll Content
-  scrollContent: {
-    flexGrow: 1,
+  
+  // Hero
+  heroContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HERO_HEIGHT,
+    zIndex: 0,
   },
-  // Content
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 32,
-    marginTop: -40, // Overlap the hero
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  // Section Styles
-  section: {
-    marginBottom: 32, // Increased spacing between sections
+  heroGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
   },
-  sectionHeader: {
+  heroContent: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+  },
+  categoryTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  categoryText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  heroTitle: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  heroStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
   },
-  iconBadge: {
-    width: 40, // Larger badge
+  heroStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroStatText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  dotSeparator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginHorizontal: 8,
+  },
+
+  // Sheet
+  sheetContainer: {
+    backgroundColor: '#FAFAFA',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    minHeight: height - HERO_HEIGHT + 40,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    ...SHADOWS.lg,
+  },
+  dragHandleCenter: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0E0E0',
+  },
+
+  // Quick Stats
+  quickStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 24,
+    ...SHADOWS.sm,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+  },
+  statIcon: {
+    width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: COLORS.primaryLight, // Using primary light bg
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#F0F0F0',
+  },
+
+  // Section
+  section: {
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
-    letterSpacing: -0.5,
+    marginBottom: 8,
   },
-  // Provider List States
-  loadingState: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 24,
-    gap: 10,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.medium,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
-  },
-  emptyTitle: {
+  descriptionText: {
     fontSize: 15,
-    fontWeight: '600',
+    lineHeight: 24,
     color: COLORS.textSecondary,
-    marginTop: 12,
-    textAlign: 'center',
   },
-  emptySubtitle: {
-    fontSize: 13,
-    color: COLORS.textTertiary,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  selectHint: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: 12,
-    fontStyle: 'italic',
-  },
-  // Why Choose Us
-  whyChooseList: {
-    gap: 12,
-  },
-  whyChooseItem: {
+
+  // Tabs
+  tabsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.medium,
-    padding: 16,
-    gap: 14,
-    ...SHADOWS.sm, // Soft shadow
-    borderWidth: 1,
-    borderColor: '#F8F8F8', // Subtle border
+    backgroundColor: '#EEE',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
   },
-  checkCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: COLORS.success,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.sm,
-  },
-  whyChooseText: {
+  tabItem: {
     flex: 1,
-    fontSize: 15,
-    lineHeight: 22, // Better readability
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  activeTab: {
+    backgroundColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textTertiary,
+  },
+  activeTabText: {
     color: COLORS.text,
-    fontWeight: '500',
   },
-  // Details Grid
-  detailsGrid: {
+  
+  contentArea: {
+    minHeight: 200,
+  },
+
+  // Providers
+  providerCard: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 32,
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    ...SHADOWS.sm,
+    shadowOpacity: 0.05,
+    alignItems: 'center',
   },
-  detailCard: {
+  selectedProviderCard: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#F5F9FF',
+  },
+  providerHeader: {
+    flexDirection: 'row',
+    gap: 12,
     flex: 1,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.large, // Larger radius
-    padding: 20,
-    alignItems: 'center',
-    ...SHADOWS.md, // Floating effect
   },
-  detailIconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: COLORS.gray50,
+  providerAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#F0F0F0',
+  },
+  providerInfo: {
+    flex: 1,
     justifyContent: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 4,
   },
-  detailLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textTertiary,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  detailValue: {
-    fontSize: 15,
+  providerName: {
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.text,
-    textAlign: 'center',
   },
-  // Loading States
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  badgeContainer: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  providerMeta: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    marginBottom: 4,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  priceTag: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  priceVal: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  priceUnit: {
+    fontSize: 11,
+    color: COLORS.textTertiary,
+  },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+  },
+  radioButtonSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+  },
+
+  // Details
+  detailsList: {
+    gap: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 16,
+  },
+  detailText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+
+  // Reviews
+  reviewsScroll: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  reviewCard: {
+    width: 280,
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 20,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  reviewAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewInitial: {
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  reviewerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  reviewBody: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    color: COLORS.textTertiary,
+    fontSize: 14,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    textAlign: 'center',
+    color: COLORS.textTertiary,
+    marginTop: 20,
+  },
+
+  // Bottom Bar
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  priceContainer: {
+    gap: 4,
+  },
+  totalLabel: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+  },
+  totalPrice: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  bookBtn: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    height: 50,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  bookBtnDisabled: {
+    backgroundColor: '#E0E0E0',
+    shadowOpacity: 0,
+  },
+  bookBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
   },
 });
