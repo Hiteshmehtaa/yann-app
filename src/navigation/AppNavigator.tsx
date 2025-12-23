@@ -36,6 +36,7 @@ import { HomeScreen } from '../screens/home/HomeScreen';
 import { ServiceDetailScreen } from '../screens/booking/ServiceDetailScreen';
 import { BookingFormScreen } from '../screens/booking/BookingFormScreen';
 import { BookingsListScreen } from '../screens/booking/BookingsListScreen';
+import { ProviderPublicProfileScreen } from '../screens/booking/ProviderPublicProfileScreen';
 
 // Profile Screens
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
@@ -71,9 +72,10 @@ type RootStackParamList = {
   MainTabs: undefined;
   ProviderTabs: undefined;
   ServiceDetail: { service: any };
-  BookingForm: { service: any };
+  BookingForm: { service: any; selectedProvider?: any };
+  ProviderPublicProfile: { provider: any; service?: any };
   // Provider screens
-  ProviderProfile: undefined;
+  ProviderEditProfile: undefined;
   ProviderServices: undefined;
   ProviderEarnings: undefined;
   // Homeowner profile screens
@@ -340,7 +342,8 @@ export function AppNavigator() {
             {isProvider ? (
               <>
                 <Stack.Screen name="ProviderTabs" component={ProviderTabNavigator} options={fadeTransitionConfig} />
-                <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderEditProfile" component={ProviderProfileScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderServices" component={ProviderServicesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderEarnings" component={ProviderEarningsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />
@@ -354,6 +357,7 @@ export function AppNavigator() {
               <>
                 <Stack.Screen name="MainTabs" component={TabNavigator} options={fadeTransitionConfig} />
                 <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderPublicProfile" component={ProviderPublicProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingForm" component={BookingFormScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />

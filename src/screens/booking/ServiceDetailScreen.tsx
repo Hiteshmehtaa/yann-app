@@ -369,7 +369,13 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     <ProviderListCard
                       provider={provider}
                       isSelected={selectedProvider?._id === provider._id}
-                      onSelect={() => setSelectedProvider(provider)}
+                      onSelect={() => {
+                        setSelectedProvider(provider);
+                        navigation.navigate('ProviderPublicProfile', { 
+                          provider,
+                          service: service 
+                        });
+                      }}
                     />
                   </AnimatedListItem>
                 ))}

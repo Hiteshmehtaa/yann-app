@@ -142,7 +142,13 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       icon: 'create-outline',
       title: 'Edit Profile',
       subtitle: '',
-      onPress: () => navigation.navigate('EditProfile'),
+      onPress: () => {
+        if (user?.role === 'provider') {
+          navigation.navigate('ProviderEditProfile');
+        } else {
+          navigation.navigate('EditProfile');
+        }
+      },
     },
     {
       icon: 'location-outline',

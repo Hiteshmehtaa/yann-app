@@ -9,9 +9,11 @@ import {
   Animated,
   TextInput,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -60,13 +62,31 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, updateUser } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
     experience: user?.experience?.toString() || '',
     bio: user?.bio || '',
+    hourlyRate: (() => {
+      if (Array.isArray(user?.serviceRates)) {
+        return user.serviceRates[0]?.price?.toString() || '';
+      }
+      if (typeof user?.serviceRates === 'object' && user.serviceRates) {
+        return Object.values(user.serviceRates)[0]?.toString() || '';
+      }
+      return '';
+    })(),
   });
+
+  // Mock stats - you can replace with real data from API
+  const stats = {
+    rating: user?.rating || 4.9,
+    totalReviews: user?.totalReviews || 1098,
+    tasksDone: (user as any)?.completedBookings || 1098,
+    avgJobTime: (user as any)?.avgJobTime || '1 hour',
+  };
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -80,6 +100,84 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const pickImage = async () => {
+    try {
+      // Request permissions first
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photos to upload a profile picture.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true, // Request base64 encoding
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsSaving(true);
+        const asset = result.assets[0];
+        
+        // Get the base64 string or read from URI
+        let base64Image = asset.base64;
+        
+        if (!base64Image && asset.uri) {
+          // Fallback: read file and convert to base64 if needed
+          const response = await fetch(asset.uri);
+          const blob = await response.blob();
+          base64Image = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = reader.result as string;
+              resolve(dataUrl);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } else if (base64Image) {
+          // Add data URL prefix if not present
+          const mimeType = asset.mimeType || 'image/jpeg';
+          if (!base64Image.startsWith('data:')) {
+            base64Image = `data:${mimeType};base64,${base64Image}`;
+          }
+        }
+
+        if (!base64Image) {
+          Alert.alert('Error', 'Failed to process image');
+          return;
+        }
+
+        console.log('📤 Uploading avatar, user:', user?.email, 'size:', base64Image.length);
+
+        // Upload as JSON with base64 image
+        const response = await apiService.uploadAvatar(base64Image);
+        
+        console.log('📥 Avatar upload response:', response.success, response.message);
+        
+        if (response.success && response.data) {
+           // Update local user state with new avatar URL
+           const newAvatarUrl = response.data.profileImage || response.data.avatar || response.data.url;
+           updateUser({
+             ...user,
+             profileImage: newAvatarUrl,
+             avatar: newAvatarUrl // Cover both fields depending on role schema
+           });
+           Alert.alert('Success', 'Profile photo updated');
+        } else {
+           Alert.alert('Error', response.message || 'Failed to upload image');
+        }
+      }
+    } catch (error) {
+      console.log('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick or upload image');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       Alert.alert('Error', 'Name is required');
@@ -88,8 +186,30 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
     setIsSaving(true);
     try {
-      await apiService.getProviderOwnProfile(); // Verify session
-      // Update would go here once endpoint is ready
+      // Prepare update payload
+      const updateData: any = {
+        name: formData.name,
+        phone: formData.phone,
+        experience: Number.parseInt(formData.experience, 10) || 0,
+        bio: formData.bio,
+      };
+
+      // Handle service rates (updating first service rate for now as simple implementation)
+      if (formData.hourlyRate && user?.services?.[0]) {
+        updateData.serviceRates = [{
+          serviceName: user.services[0],
+          price: Number.parseInt(formData.hourlyRate, 10) || 0
+        }];
+      }
+
+      await apiService.updateProviderProfile(updateData);
+      
+      // Update local context
+      updateUser({
+        ...user,
+        ...updateData
+      });
+
       Alert.alert('Success', 'Profile updated successfully');
       navigation.goBack();
     } catch (error) {
@@ -111,124 +231,232 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-          {/* Back Button */}
-          <TouchableOpacity 
-            style={styles.backButtonTop}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={THEME.colors.text} />
-          </TouchableOpacity>
-
-          {/* Avatar Section */}
-          <View style={styles.avatarSection}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user?.name?.charAt(0).toUpperCase() || 'P'}
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.changePhotoButton}>
-              <Ionicons name="camera-outline" size={18} color={THEME.colors.primary} />
-              <Text style={styles.changePhotoText}>Change Photo</Text>
+          {/* Header with gradient background */}
+          <View style={styles.profileHeader}>
+            <TouchableOpacity 
+              style={styles.backButtonTop}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={() => setIsEditing(!isEditing)}
+            >
+              <Ionicons name={isEditing ? "close" : "pencil"} size={20} color="#FFF" />
+            </TouchableOpacity>
+
+            {/* Profile Picture */}
+            <View style={styles.profilePictureContainer}>
+              <View style={styles.profilePictureWrapper}>
+                {user?.profileImage || user?.avatar ? (
+                  <Image 
+                    source={{ uri: user.profileImage || user.avatar }} 
+                    style={styles.profilePicture} 
+                  />
+                ) : (
+                  <View style={[styles.profilePicture, styles.placeholderPicture]}>
+                    <Text style={styles.placeholderText}>
+                      {user?.name?.charAt(0).toUpperCase() || 'P'}
+                    </Text>
+                  </View>
+                )}
+                {isEditing && (
+                  <TouchableOpacity style={styles.cameraButton} onPress={pickImage}>
+                    <Ionicons name="camera" size={18} color="#FFF" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              {/* Badge */}
+              <View style={styles.topBadge}>
+                <Ionicons name="ribbon" size={12} color="#FFD700" />
+                <Text style={styles.topBadgeText}>Top TaskKing</Text>
+              </View>
+            </View>
+
+            {/* Name and Title */}
+            {isEditing ? null : (
+              <>
+                <Text style={styles.profileName}>{user?.name || 'Professional'}</Text>
+                <View style={styles.titleRow}>
+                  <Text style={styles.profileTitle}>INDIVIDUAL</Text>
+                  <View style={styles.dot} />
+                  <Text style={styles.profileTitle}>ASSEMBLY</Text>
+                </View>
+              </>
+            )}
           </View>
 
-          {/* Form Fields */}
-          <View style={styles.formSection}>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
+          {/* Stats Section */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statBox}>
+              <View style={styles.statIconContainer}>
+                <Ionicons name="star" size={20} color="#FFB800" />
+              </View>
+              <Text style={styles.statValue}>{stats.rating}</Text>
+              <Text style={styles.statLabel}>rating</Text>
+            </View>
             
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.name}
-                onChangeText={(value) => updateField('name', value)}
-                placeholder="Enter your name"
-                placeholderTextColor={THEME.colors.textTertiary}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <View style={styles.inputDisabled}>
-                <Text style={styles.inputDisabledText}>{formData.email}</Text>
-                <Ionicons name="lock-closed-outline" size={18} color={THEME.colors.textTertiary} />
+            <View style={styles.statDivider} />
+            
+            <View style={styles.statBox}>
+              <View style={styles.statIconContainer}>
+                <Ionicons name="checkmark-circle" size={20} color={THEME.colors.primary} />
               </View>
-              <Text style={styles.inputHint}>Email cannot be changed</Text>
+              <Text style={styles.statValue}>{stats.tasksDone}</Text>
+              <Text style={styles.statLabel}>tasks done</Text>
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.phone}
-                onChangeText={(value) => updateField('phone', value)}
-                placeholder="Enter phone number"
-                placeholderTextColor={THEME.colors.textTertiary}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Experience (years)</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.experience}
-                onChangeText={(value) => updateField('experience', value)}
-                placeholder="Years of experience"
-                placeholderTextColor={THEME.colors.textTertiary}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Bio</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.bio}
-                onChangeText={(value) => updateField('bio', value)}
-                placeholder="Tell customers about yourself..."
-                placeholderTextColor={THEME.colors.textTertiary}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
+            
+            <View style={styles.statDivider} />
+            
+            <View style={styles.statBox}>
+              <View style={styles.statIconContainer}>
+                <Ionicons name="time" size={20} color="#10B981" />
+              </View>
+              <Text style={styles.statValue}>{stats.avgJobTime}</Text>
+              <Text style={styles.statLabel}>avg job done</Text>
             </View>
           </View>
 
-          {/* Account Status */}
-          <View style={styles.statusSection}>
-            <Text style={styles.sectionTitle}>Account Status</Text>
-            <View style={styles.statusCard}>
-              <View style={styles.statusRow}>
-                <Text style={styles.statusLabel}>Account Type</Text>
-                <View style={styles.statusBadge}>
-                  <Ionicons name="shield-checkmark" size={14} color={THEME.colors.primary} />
-                  <Text style={styles.statusValue}>Partner</Text>
-                </View>
+          {/* About Section */}
+          {isEditing ? null : (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>About Tasker</Text>
+              <Text style={styles.aboutText}>
+                {user?.bio || 'As a professional assembler, I possess the necessary skills and experience to assemble furniture and equipment for clients. My expertise...'}
+              </Text>
+              <TouchableOpacity onPress={() => setIsEditing(true)}>
+                <Text style={styles.viewMoreText}>View More</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Cost Section */}
+          {isEditing ? null : (
+            <View style={styles.infoRow}>
+              <Ionicons name="cash-outline" size={20} color={THEME.colors.primary} />
+              <Text style={styles.infoLabel}>Cost</Text>
+              <Text style={styles.infoValue}>₹{formData.hourlyRate || '0'}/hour</Text>
+            </View>
+          )}
+
+          {/* Distance Section */}
+          {isEditing ? null : (
+            <View style={styles.infoRow}>
+              <Ionicons name="location-outline" size={20} color={THEME.colors.primary} />
+              <Text style={styles.infoLabel}>Distance from you</Text>
+              <Text style={styles.infoValue}>25 km</Text>
+            </View>
+          )}
+
+          {/* Reviews Section */}
+          {isEditing ? null : (
+            <View style={styles.section}>
+              <View style={styles.reviewsHeader}>
+                <Text style={styles.sectionTitle}>Reviews</Text>
+                <TouchableOpacity style={styles.seeAllButton}>
+                  <Text style={styles.seeAllText}>See all</Text>
+                  <Ionicons name="arrow-forward" size={16} color={THEME.colors.primary} />
+                </TouchableOpacity>
               </View>
-              <View style={styles.divider} />
-              <View style={styles.statusRow}>
-                <Text style={styles.statusLabel}>Verification</Text>
-                <View style={[styles.statusBadge, { backgroundColor: `${THEME.colors.success}15` }]}>
-                  <Ionicons name="checkmark-circle" size={14} color={THEME.colors.success} />
-                  <Text style={[styles.statusValue, { color: THEME.colors.success }]}>Verified</Text>
-                </View>
+              <View style={styles.reviewSummary}>
+                <Ionicons name="star" size={16} color="#FFB800" />
+                <Text style={styles.reviewRating}>{stats.rating}/5 ({stats.totalReviews} review)</Text>
               </View>
             </View>
-          </View>
+          )}
 
-          {/* Save Button */}
-          <TouchableOpacity 
-            style={[styles.saveButtonBottom, isSaving && styles.saveButtonDisabled]} 
-            onPress={handleSave} 
-            disabled={isSaving}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="checkmark-circle" size={20} color={THEME.colors.card} />
-            <Text style={styles.saveButtonBottomText}>
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Text>
-          </TouchableOpacity>
+          {/* Edit Form */}
+          {isEditing && (
+            <View style={styles.formSection}>
+              <Text style={styles.sectionTitle}>Personal Information</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Full Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.name}
+                  onChangeText={(value) => updateField('name', value)}
+                  placeholder="Enter your name"
+                  placeholderTextColor={THEME.colors.textTertiary}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <View style={styles.inputDisabled}>
+                  <Text style={styles.inputDisabledText}>{formData.email}</Text>
+                  <Ionicons name="lock-closed-outline" size={18} color={THEME.colors.textTertiary} />
+                </View>
+                <Text style={styles.inputHint}>Email cannot be changed</Text>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.phone}
+                  onChangeText={(value) => updateField('phone', value)}
+                  placeholder="Enter phone number"
+                  placeholderTextColor={THEME.colors.textTertiary}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Experience (years)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.experience}
+                  onChangeText={(value) => updateField('experience', value)}
+                  placeholder="Years of experience"
+                  placeholderTextColor={THEME.colors.textTertiary}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Bio</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.bio}
+                  onChangeText={(value) => updateField('bio', value)}
+                  placeholder="Tell customers about yourself..."
+                  placeholderTextColor={THEME.colors.textTertiary}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Hourly Rate (₹)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.hourlyRate}
+                  onChangeText={(value) => updateField('hourlyRate', value)}
+                  placeholder="0"
+                  placeholderTextColor={THEME.colors.textTertiary}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              {/* Save Button */}
+              <TouchableOpacity 
+                style={[styles.saveButtonBottom, isSaving && styles.saveButtonDisabled]} 
+                onPress={handleSave} 
+                disabled={isSaving}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="checkmark-circle" size={20} color={THEME.colors.card} />
+                <Text style={styles.saveButtonBottomText}>
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={{ height: 100 }} />
         </Animated.View>
@@ -242,80 +470,220 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: THEME.spacing.lg,
-    paddingVertical: THEME.spacing.md,
-    backgroundColor: THEME.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
+  content: {
+    paddingBottom: THEME.spacing.xl,
   },
-  backButton: {
+  profileHeader: {
+    backgroundColor: THEME.colors.primary,
+    paddingTop: THEME.spacing.lg,
+    paddingBottom: THEME.spacing.xxl,
+    paddingHorizontal: THEME.spacing.lg,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    position: 'relative',
+  },
+  backButtonTop: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...THEME.shadow,
+    marginBottom: THEME.spacing.lg,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: THEME.colors.text,
-  },
-  saveButton: {
-    paddingHorizontal: THEME.spacing.md,
-    paddingVertical: THEME.spacing.xs,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.colors.primary,
-  },
-  content: {
-    padding: THEME.spacing.lg,
-  },
-  avatarSection: {
+  editButton: {
+    position: 'absolute',
+    top: THEME.spacing.lg,
+    right: THEME.spacing.lg,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: THEME.spacing.xxl,
   },
-  avatar: {
+  profilePictureContainer: {
+    alignItems: 'center',
+    marginTop: THEME.spacing.md,
+  },
+  profilePictureWrapper: {
+    position: 'relative',
+  },
+  profilePicture: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: THEME.colors.primary,
+    borderWidth: 4,
+    borderColor: '#FFF',
+  },
+  placeholderPicture: {
+    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: THEME.spacing.md,
   },
-  avatarText: {
+  placeholderText: {
     fontSize: 40,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF',
   },
-  changePhotoButton: {
+  cameraButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.primary,
+    borderWidth: 3,
+    borderColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: THEME.spacing.xs,
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: THEME.spacing.sm,
   },
-  changePhotoText: {
+  topBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFF',
+    textAlign: 'center',
+    marginTop: THEME.spacing.md,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: THEME.spacing.xs,
+    marginTop: THEME.spacing.xs,
+  },
+  profileTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    letterSpacing: 1,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    backgroundColor: THEME.colors.card,
+    marginHorizontal: THEME.spacing.lg,
+    marginTop: -THEME.spacing.xl,
+    borderRadius: THEME.radius.md,
+    padding: THEME.spacing.md,
+    ...THEME.shadow,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statIconContainer: {
+    marginBottom: THEME.spacing.xs,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginTop: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: THEME.colors.border,
+    marginHorizontal: THEME.spacing.sm,
+  },
+  section: {
+    backgroundColor: THEME.colors.card,
+    marginHorizontal: THEME.spacing.lg,
+    marginTop: THEME.spacing.md,
+    padding: THEME.spacing.md,
+    borderRadius: THEME.radius.md,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.sm,
+  },
+  aboutText: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    lineHeight: 20,
+  },
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.primary,
+    marginTop: THEME.spacing.xs,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.card,
+    marginHorizontal: THEME.spacing.lg,
+    marginTop: THEME.spacing.md,
+    padding: THEME.spacing.md,
+    borderRadius: THEME.radius.md,
+  },
+  infoLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    marginLeft: THEME.spacing.sm,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.sm,
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  seeAllText: {
     fontSize: 14,
     fontWeight: '600',
     color: THEME.colors.primary,
   },
-  formSection: {
-    marginBottom: THEME.spacing.xl,
+  reviewSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  sectionTitle: {
+  reviewRating: {
     fontSize: 14,
-    fontWeight: '700',
     color: THEME.colors.textSecondary,
-    letterSpacing: 0.5,
-    marginBottom: THEME.spacing.md,
-    textTransform: 'uppercase',
+  },
+  formSection: {
+    marginTop: THEME.spacing.md,
+    paddingHorizontal: THEME.spacing.lg,
   },
   inputGroup: {
     marginBottom: THEME.spacing.md,
@@ -357,54 +725,6 @@ const styles = StyleSheet.create({
     color: THEME.colors.textTertiary,
     marginTop: THEME.spacing.xs,
   },
-  statusSection: {
-    marginBottom: THEME.spacing.xl,
-  },
-  statusCard: {
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.md,
-    padding: THEME.spacing.md,
-    ...THEME.shadow,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: THEME.spacing.sm,
-  },
-  statusLabel: {
-    fontSize: 15,
-    color: THEME.colors.textSecondary,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: THEME.spacing.xs,
-    backgroundColor: `${THEME.colors.primary}15`,
-    paddingHorizontal: THEME.spacing.sm,
-    paddingVertical: THEME.spacing.xs,
-    borderRadius: THEME.radius.sm,
-  },
-  statusValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME.colors.primary,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: THEME.colors.border,
-    marginVertical: THEME.spacing.xs,
-  },
-  backButtonTop: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME.colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: THEME.spacing.lg,
-    ...THEME.shadow,
-  },
   saveButtonBottom: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -415,6 +735,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.spacing.xl,
     borderRadius: THEME.radius.md,
     marginTop: THEME.spacing.xl,
+    marginHorizontal: THEME.spacing.lg,
     ...THEME.shadow,
   },
   saveButtonDisabled: {

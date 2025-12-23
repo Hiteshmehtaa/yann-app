@@ -778,16 +778,31 @@ class ApiService {
     return response.data;
   }
 
+  /**
+   * PATCH /api/provider/profile
+   * Update provider's own profile
+   */
+  async updateProviderProfile(data: Partial<ServiceProvider>): Promise<ApiResponse<ServiceProvider>> {
+    const response = await this.client.patch('/provider/profile', data);
+    return response.data;
+  }
+
   // ====================================================================
   // UPLOAD ENDPOINTS
   // ====================================================================
 
-  async uploadAvatar(formData: FormData): Promise<ApiResponse> {
-    const response = await this.client.post('/profile/avatar', formData, {
+  async uploadAvatar(base64Image: string): Promise<ApiResponse> {
+    console.log('🔐 Uploading avatar with credentials...');
+    const response = await this.client.post('/profile/avatar', {
+      image: base64Image // Backend expects { image: "data:image/jpeg;base64,..." }
+    }, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
+      withCredentials: true, // Explicitly ensure credentials are sent
     });
+    console.log('✅ Avatar upload successful');
     return response.data;
   }
 

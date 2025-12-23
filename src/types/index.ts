@@ -12,9 +12,10 @@ export interface User {
   savedProviders?: string[];
   addressBook?: Address[];
   lastLoginAt?: Date;
+  profileImage?: string; // For providers and uniform access
   // Provider-specific fields
   services?: string[];
-  serviceRates?: Record<string, number>;
+  serviceRates?: Record<string, number> | ServiceRate[];
   status?: 'active' | 'inactive' | 'pending';
   rating?: number;
   totalReviews?: number;
@@ -59,6 +60,7 @@ export interface ServiceProvider {
   status: 'active' | 'inactive' | 'pending';
   rating: number;
   totalReviews: number;
+  bio?: string;
 }
 
 export interface ServiceRate {
