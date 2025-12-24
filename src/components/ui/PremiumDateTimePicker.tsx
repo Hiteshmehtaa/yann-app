@@ -53,11 +53,12 @@ export const PremiumDateTimePicker: React.FC<PremiumDateTimePickerProps> = ({
     if (!value) return null;
 
     if (mode === 'date') {
+      // More structured format: "Wed, 24 Dec 2024"
       const day = value.getDate().toString().padStart(2, '0');
-      const month = (value.getMonth() + 1).toString().padStart(2, '0');
+      const monthShort = value.toLocaleDateString('en-US', { month: 'short' });
       const year = value.getFullYear();
       const weekday = value.toLocaleDateString('en-US', { weekday: 'short' });
-      return `${weekday}, ${day}/${month}/${year}`;
+      return `${weekday}, ${day} ${monthShort} ${year}`;
     } else {
       const hours = value.getHours().toString().padStart(2, '0');
       const minutes = value.getMinutes().toString().padStart(2, '0');

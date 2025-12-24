@@ -37,7 +37,7 @@ export const getServiceIconImage = (serviceTitle: string): ImageSourcePropType |
     if (title.includes('satyanarayan') || title.includes('katha')) {
         return SERVICE_IMAGES.puja4; // Diya/Lamp image
     }
-    if (title.includes('griha pravesh') || title.includes('housewarming') || title.includes('grihapravesh')) {
+    if (title.includes('griha pravesh') || title.includes('housewarming') || title.includes('grihapravesh') || title.includes('vastu')) {
         return SERVICE_IMAGES.puja2; // Kalash image
     }
 

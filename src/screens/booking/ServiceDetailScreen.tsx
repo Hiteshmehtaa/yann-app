@@ -42,7 +42,34 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Animations
   const scrollY = useRef(new Animated.Value(0)).current;
+  const tabAnim = useRef(new Animated.Value(0)).current;
+  const contentFade = useRef(new Animated.Value(1)).current;
   
+  // Tab Switch Handler
+  const switchTab = (tab: string, index: number) => {
+    setActiveTab(tab);
+    Animated.parallel([
+      Animated.spring(tabAnim, {
+        toValue: index,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 150,
+      }),
+      Animated.sequence([
+        Animated.timing(contentFade, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentFade, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        })
+      ])
+    ]).start();
+  };
+
   // Fetch Logic
   useEffect(() => {
     const loadData = async () => {
@@ -186,21 +213,38 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     </View>
   );
 
-  const renderTabs = () => (
-    <View style={styles.tabsContainer}>
-      {['providers', 'details', 'reviews'].map((tab) => (
-        <TouchableOpacity 
-          key={tab} 
-          style={[styles.tabItem, activeTab === tab && styles.activeTab]}
-          onPress={() => setActiveTab(tab)}
-        >
-          <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+  const renderTabs = () => {
+    const tabWidth = (width - 40 - 16) / 3; // (Screen Width - Sheet Padding - Internal Tab Padding) / 3
+    const translateX = tabAnim.interpolate({
+      inputRange: [0, 1, 2],
+      outputRange: [4, 4 + tabWidth, 4 + tabWidth * 2] // Adjusting for padding
+    });
+
+    return (
+      <View style={styles.tabsContainer}>
+        {/* Animated Background Indicator */}
+        <Animated.View style={[styles.activeTabIndicator, { 
+            width: tabWidth,
+            transform: [{ translateX }] 
+        }]} />
+        
+        {['providers', 'details', 'reviews'].map((tab, index) => (
+          <TouchableOpacity 
+            key={tab} 
+            style={styles.tabItem}
+            onPress={() => switchTab(tab, index)}
+          >
+            <Text style={[
+              styles.tabText, 
+              activeTab === tab && styles.activeTabText
+            ]}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
 
   const renderProvider = (item: any, index: number) => (
     <TouchableOpacity 
@@ -289,7 +333,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
           {renderTabs()}
 
-          <View style={styles.contentArea}>
+          <Animated.View style={[styles.contentArea, { opacity: contentFade, transform: [{ translateY: contentFade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }]}>
             {activeTab === 'providers' && (
               <View style={{ gap: 16 }}>
                  {isLoading ? (
@@ -334,7 +378,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   ))}
                </ScrollView>
             )}
-          </View>
+          </Animated.View>
 
         </View>
       </Animated.ScrollView>
@@ -567,23 +611,37 @@ const styles = StyleSheet.create({
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EEE',
-    borderRadius: 12,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 16,
     padding: 4,
     marginBottom: 24,
+    position: 'relative', // for absolute indicator
+    height: 48,
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  // validation fix: Removed activeTab style as it is no longer used directly on the item
+  activeTabIndicator: {
+    position: 'absolute',
+    top: 4,
+    left: 0, 
+    height: 40,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    zIndex: 0,
   },
   activeTab: {
-    backgroundColor: '#FFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    // keeping for reference or if we fall back, but currently relying on indicator
   },
   tabText: {
     fontSize: 13,
@@ -592,6 +650,7 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: COLORS.text,
+    fontWeight: '700',
   },
   
   contentArea: {
