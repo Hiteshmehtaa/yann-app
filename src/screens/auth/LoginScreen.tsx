@@ -79,7 +79,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       setTimeout(() => {
         setShowEmailSent(false);
         navigation.navigate('VerifyOTP', { email });
-      }, 2000);
+      }, 1000); // Reduced from 2000ms to 1000ms
     } catch (error: any) {
       showError(error.message || 'Failed to send OTP');
     } finally {

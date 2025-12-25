@@ -47,18 +47,32 @@ class ApiService {
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
           }
+
+          // Add user ID header for wallet and other authenticated endpoints
+          const userData = await storage.getUserData();
+          const userId = userData?.id || userData?._id;
+          if (userId) {
+            config.headers['x-user-id'] = userId;
+          }
+
+          // Debug logging for wallet endpoints
+          if (__DEV__ && config.url?.includes('/wallet')) {
+            console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`, {
+              hasUserId: !!userId,
+              userId: userId ? `${userId.substring(0, 8)}...` : 'missing',
+              data: config.data
+            });
+          }
         } catch (error) {
           // Silently fail - request will proceed without auth
+          console.error('Request interceptor error:', error);
         }
 
-        if (__DEV__) {
-          // Only log in development mode
-          // console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
-        }
         return config;
       },
       (error) => Promise.reject(error)
     );
+
 
     // Response interceptor for error handling and data synchronization
     this.client.interceptors.response.use(
@@ -207,7 +221,8 @@ class ApiService {
 
     // Map to User type with role
     const userData = {
-      id: rawUserData.id,
+      id: rawUserData._id || rawUserData.id,
+      _id: rawUserData._id || rawUserData.id,
       name: rawUserData.name,
       email: rawUserData.email,
       phone: rawUserData.phone || '',
@@ -913,6 +928,68 @@ class ApiService {
     } catch (error: any) {
       throw error;
     }
+  }
+
+  // ====================================================================
+  // WALLET ENDPOINTS
+  // ====================================================================
+
+  /**
+   * GET /api/wallet
+   * Get wallet balance and transaction history
+   */
+  async getWalletBalance(): Promise<ApiResponse<{ balance: number; currency: string; transactions: any[] }>> {
+    const response = await this.client.get('/wallet');
+    return response.data;
+  }
+
+  /**
+   * POST /api/wallet/topup
+   * Create Razorpay order for wallet topup
+   */
+  async createWalletTopupOrder(amount: number): Promise<ApiResponse> {
+    const response = await this.client.post('/wallet/topup', { amount });
+    return response.data;
+  }
+
+  /**
+   * POST /api/wallet/topup/verify
+   * Verify wallet topup payment
+   */
+  async verifyWalletTopup(data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }): Promise<ApiResponse> {
+    const response = await this.client.post('/wallet/topup/verify', data);
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/pay-with-wallet
+   * Create booking and pay with wallet balance
+   */
+  async createBookingWithWallet(bookingData: any): Promise<ApiResponse<Booking>> {
+    const response = await this.client.post('/bookings/pay-with-wallet', bookingData);
+    return response.data;
+  }
+
+  /**
+   * GET /api/wallet/refund
+   * Check for failed transactions that can be refunded
+   */
+  async getFailedTransactions(): Promise<ApiResponse<{ refundableTransactions: any[]; totalRefundable: number }>> {
+    const response = await this.client.get('/wallet/refund');
+    return response.data;
+  }
+
+  /**
+   * POST /api/wallet/refund
+   * Request automatic refund for failed transactions
+   */
+  async requestAutoRefund(): Promise<ApiResponse<{ refundAmount: number; transactionCount: number; newBalance: number }>> {
+    const response = await this.client.post('/wallet/refund');
+    return response.data;
   }
 }
 

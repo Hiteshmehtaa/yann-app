@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { COLORS, TYPOGRAPHY, SPACING } from '../utils/theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface EmptyStateProps {
   title: string;
@@ -14,6 +15,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   subtitle,
   animationSource = require('../../assets/lottie/empty cart.json'),
 }) => {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       <LottieView
@@ -22,8 +24,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         loop
         style={styles.animation}
       />
-      <Text style={styles.title}>{title}</Text>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
     </View>
   );
 };

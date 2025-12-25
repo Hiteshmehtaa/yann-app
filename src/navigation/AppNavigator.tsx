@@ -40,6 +40,7 @@ import { ProviderPublicProfileScreen } from '../screens/booking/ProviderPublicPr
 
 // Profile Screens
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { WalletScreen } from '../screens/WalletScreen';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { SavedAddressesScreen } from '../screens/profile/SavedAddressesScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
@@ -83,6 +84,7 @@ type RootStackParamList = {
   SavedAddresses: undefined;
   Notifications: undefined;
   HelpSupport: undefined;
+  Wallet: undefined;
   // Legal screens
   Terms: undefined;
   Privacy: undefined;
@@ -361,6 +363,7 @@ export function AppNavigator() {
                 <Stack.Screen name="BookingForm" component={BookingFormScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Wallet" component={WalletScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Terms" component={TermsConditionsScreen as any} options={screenTransitionConfig} />

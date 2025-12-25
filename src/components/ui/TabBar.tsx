@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/theme';
+import { useTheme } from '../../contexts/ThemeContext';
+import { haptics } from '../../utils/haptics';
 
 interface Tab {
   key: string;
@@ -14,8 +16,10 @@ interface TabBarProps {
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ tabs, activeTab, onTabChange }) => {
+  const { colors } = useTheme();
+  
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider }]}>
       {tabs.map((tab) => {
         const isActive = tab.key === activeTab;
         
@@ -23,13 +27,20 @@ export const TabBar: React.FC<TabBarProps> = ({ tabs, activeTab, onTabChange }) 
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, isActive && styles.activeTab]}
-            onPress={() => onTabChange(tab.key)}
+            onPress={() => {
+              haptics.light();
+              onTabChange(tab.key);
+            }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+            <Text style={[
+                styles.tabText, 
+                { color: colors.textSecondary },
+                isActive && { color: colors.primary, fontWeight: '700' }
+            ]}>
               {tab.label}
             </Text>
-            {isActive && <View style={styles.indicator} />}
+            {isActive && <View style={[styles.indicator, { backgroundColor: colors.primary }]} />}
           </TouchableOpacity>
         );
       })}
@@ -40,10 +51,8 @@ export const TabBar: React.FC<TabBarProps> = ({ tabs, activeTab, onTabChange }) 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
     paddingHorizontal: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
   },
   tab: {
     paddingVertical: SPACING.md,
@@ -57,11 +66,6 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: TYPOGRAPHY.weight.medium,
-    color: COLORS.textTertiary,
-  },
-  activeTabText: {
-    color: COLORS.primary,
-    fontWeight: TYPOGRAPHY.weight.bold,
   },
   indicator: {
     position: 'absolute',

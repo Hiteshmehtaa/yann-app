@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/api';
 import { SERVICES } from '../../utils/constants';
 import type { Service } from '../../types';
@@ -23,6 +24,7 @@ import { SearchBar } from '../../components/ui/SearchBar';
 import { ServiceCard } from '../../components/ui/ServiceCard';
 import { SpecialOfferBanner } from '../../components/ui/SpecialOfferBanner';
 import { AnimatedCard } from '../../components/AnimatedCard';
+import { SkeletonServiceCard } from '../../components/ui/SkeletonLoader';
 import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS, SHADOWS } from '../../utils/theme';
 import { useResponsive } from '../../hooks/useResponsive';
 
@@ -31,8 +33,6 @@ type Props = {
 };
 
 import { getServiceIconImage } from '../../utils/serviceImages';
-
-// Map service titles to appropriate Ionicons
 
 // Map service titles to appropriate Ionicons
 const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -80,17 +80,21 @@ const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   'Garden & Landscaping': 'leaf',
 };
 
-// Empty State Component - Moved outside for performance
-const EmptyState = () => (
-  <View style={styles.emptyState}>
-    <Ionicons name="search-outline" size={48} color={COLORS.textTertiary} />
-    <Text style={styles.emptyText}>No services found</Text>
-    <Text style={styles.emptySubtext}>Try a different search term</Text>
-  </View>
-);
+// Empty State Component
+const EmptyState = () => {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.emptyState}>
+      <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
+      <Text style={[styles.emptyText, { color: colors.text }]}>No services found</Text>
+      <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Try a different search term</Text>
+    </View>
+  );
+};
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
   const { width, isTablet } = useResponsive();
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -124,16 +128,24 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       const response = await apiService.getAllServices();
       const servicesList = response.data || [];
       if (servicesList.length > 0) {
-        const mappedServices: Service[] = servicesList.map((s: any, index: number) => ({
-          id: s._id || s.id || `service-${index + 1}`,
-          title: s.title || s.name,
-          description: s.description || '',
-          category: s.category || 'other',
-          price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-          icon: s.icon || getServiceIcon(s.category || s.title),
-          popular: s.popular || false,
-          features: s.features || [],
-        }));
+        const mappedServices: Service[] = servicesList.map((s: any, index: number) => {
+          // Check if service is new (added in last 7 days)
+          const isNew = s.createdAt 
+            ? (Date.now() - new Date(s.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
+            : false;
+          
+          return {
+            id: s._id || s.id || `service-${index + 1}`,
+            title: s.title || s.name,
+            description: s.description || '',
+            category: s.category || 'other',
+            price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
+            icon: s.icon || getServiceIcon(s.category || s.title),
+            popular: s.popular || false,
+            features: s.features || [],
+            isNew,
+          };
+        });
         setServices(mappedServices);
         setFilteredServices(mappedServices);
         const uniqueCategories = ['all', ...Array.from(new Set(servicesList.map((s: any) => s.category).filter(Boolean)))];
@@ -308,6 +320,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             icon={iconName}
             iconImage={iconImage}
             popular={item.popular}
+            isNew={item.isNew}
             partnerCount={count}
             isComingSoon={count === 0}
             onPress={() => navigation.navigate('ServiceDetail', { service: item })}
@@ -316,6 +329,17 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       </View>
     );
   };
+
+  // Skeleton loader for initial load
+  const renderSkeletonGrid = () => (
+    <>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <View key={`skeleton-${index}`} style={styles.cardWrapper}>
+          <SkeletonServiceCard />
+        </View>
+      ))}
+    </>
+  );
 
   const Header = () => {
     // Get primary address or first available address
@@ -331,7 +355,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         style={[
           styles.headerContainer, 
           { 
-            paddingTop: insets.top + SPACING.sm, // Dynamic Safe Area Padding
+            paddingTop: insets.top + SPACING.sm,
+            backgroundColor: colors.background,
             opacity: headerOpacity, 
             transform: [{ translateY: headerTranslateY }] 
           }
@@ -340,22 +365,22 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.headerTop}>
           <View>
             <TouchableOpacity 
-              style={styles.locationPill} 
+              style={[styles.locationPill, { backgroundColor: colors.cardBg }]} 
               onPress={() => navigation.navigate('SavedAddresses')}
               activeOpacity={0.7}
             >
-              <Ionicons name="location" size={16} color={COLORS.primary} />
-              <Text style={styles.locationText} numberOfLines={1}>{locationText}</Text>
-              <Ionicons name="chevron-down" size={14} color={COLORS.textSecondary} />
+              <Ionicons name="location" size={16} color={colors.primary} />
+              <Text style={[styles.locationText, { color: colors.text }]} numberOfLines={1}>{locationText}</Text>
+              <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
-            <Text style={styles.greetingText}>Hello, {user?.name?.split(' ')[0] || 'Guest'} 👋</Text>
+            <Text style={[styles.greetingText, { color: colors.text }]}>Hello, {user?.name?.split(' ')[0] || 'Guest'} 👋</Text>
           </View>
           <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Profile')}>
               {user?.avatar ? (
                 <Image source={{ uri: user.avatar }} style={styles.profileImage} />
               ) : (
-                <View style={styles.profileInitial}>
-                    <Text style={styles.profileInitialText}>{user?.name?.charAt(0) || 'U'}</Text>
+                <View style={[styles.profileInitial, { backgroundColor: colors.primaryLight }]}>
+                    <Text style={[styles.profileInitialText, { color: colors.primary }]}>{user?.name?.charAt(0) || 'U'}</Text>
                 </View>
               )}
           </TouchableOpacity>
@@ -365,29 +390,29 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Translucent Status Bar for Content to flow under */}
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       
       <Header />
 
       <Animated.FlatList
-        data={filteredServices}
+        data={!hasFetchedInitial ? [] : filteredServices}
         renderItem={renderGridItem}
         keyExtractor={item => item.id.toString()}
         numColumns={3}
         contentContainerStyle={styles.listContent}
-        columnWrapperStyle={styles.gridRow}
+        columnWrapperStyle={!hasFetchedInitial ? undefined : styles.gridRow}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
             <View style={styles.searchSection}>
-                <Text style={styles.headlineText}>What are you looking for?</Text>
+                <Text style={[styles.headlineText, { color: colors.text }]}>What are you looking for?</Text>
                 <SearchBar
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search 'AC Repair', 'Cleaning'..."
-                style={styles.searchBar}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search 'AC Repair', 'Cleaning'..."
+                  style={styles.searchBar}
                 />
             </View>
 
@@ -397,10 +422,18 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                     {categories.map((cat, index) => (
                         <TouchableOpacity 
                             key={cat} 
-                            style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+                            style={[
+                              styles.categoryPill, 
+                              { backgroundColor: colors.cardBg, borderColor: colors.border },
+                              selectedCategory === cat && styles.categoryPillActive
+                            ]}
                             onPress={() => setSelectedCategory(cat)}
                         >
-                            <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
+                            <Text style={[
+                              styles.categoryText, 
+                              { color: colors.text },
+                              selectedCategory === cat && styles.categoryTextActive
+                            ]}>
                                 {cat.charAt(0).toUpperCase() + cat.slice(1)}
                             </Text>
                         </TouchableOpacity>
@@ -417,16 +450,23 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             />
             
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recommended Services</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Services</Text>
             </View>
+            
+            {/* Show skeleton loaders during initial fetch */}
+            {!hasFetchedInitial && (
+              <View style={styles.gridRow}>
+                {renderSkeletonGrid()}
+              </View>
+            )}
           </>
         }
-        ListEmptyComponent={EmptyState}
+        ListEmptyComponent={hasFetchedInitial ? EmptyState : null}
         refreshControl={
           <RefreshControl 
             refreshing={isRefreshing} 
             onRefresh={onRefresh} 
-            tintColor={COLORS.primary} 
+            tintColor={colors.primary} 
             progressViewOffset={insets.top + 60} // Push loader down below header
           />
         }

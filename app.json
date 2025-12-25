@@ -2,7 +2,7 @@
   "expo": {
     "name": "yann-mobile",
     "slug": "yann-mobile",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -19,7 +19,8 @@
     },
     "android": {
       "package": "com.yanncare.mobile",
-      "versionCode": 3,
+      "versionCode": 4,
+      "userInterfaceStyle": "light",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"

@@ -7,48 +7,69 @@
 // ============================================
 // 🎨 OFFICIAL YANN WEBSITE COLOR PALETTE
 // ============================================
-export const COLORS = {
-  // PRIMARY COLORS (from YANN website)
+// ============================================
+// 🎨 OFFICIAL YANN WEBSITE COLOR PALETTE
+// ============================================
+
+const lightColors = {
   primary: '#2E59F3',          // Primary Blue
   primaryLight: '#E8EEFF',     // Light blue background for icons
   primaryGradientStart: '#2E59F3',  // Gradient start
   primaryGradientEnd: '#4362FF',    // Gradient end
-
-  // SECONDARY COLORS (from YANN website)
   accentOrange: '#FF8A3D',     // Accent Orange
   accentYellow: '#F7C948',     // Accent Yellow
-
-  // NEUTRAL COLORS (from YANN website)
   background: '#F8F9FA',       // Background Light (softer gray)
   cardBg: '#FFFFFF',           // Card Background (pure white)
   elevated: '#FFFFFF',         // Elevated surfaces (pure white)
-
-  // TEXT COLORS (from YANN website)
   text: '#1A1C1E',             // Heading Text
   textSecondary: '#6B7280',    // Body Text (softer gray)
   textTertiary: '#9CA3AF',     // Muted text
-
-  // BORDERS & LINES (from YANN website)
   border: '#E5E7EB',           // Borders / Light Lines
   divider: '#F0F0F0',          // Dividers (lighter)
-
-  // SUPPORTING COLORS (from YANN website)
   success: '#27C07D',          // Success Green
   error: '#E63946',            // Error Red
   warning: '#F7C948',          // Warning Yellow (same as accent)
   info: '#2E59F3',             // Info Blue (same as primary)
-
-  // OVERLAYS
   overlay: 'rgba(0, 0, 0, 0.5)',
   gradientOverlay: 'rgba(26, 28, 30, 0.6)',
-
-  // UTILITY
   white: '#FFFFFF',
   black: '#000000',
   gray50: '#F9FAFB',
   gray100: '#F3F4F6',
   gray200: '#E5E7EB',
-} as const;
+};
+
+const darkColors = {
+  primary: '#3B82F6',          // Slightly lighter blue for dark mode
+  primaryLight: '#1E293B',     // Dark slate blue
+  primaryGradientStart: '#2563EB',
+  primaryGradientEnd: '#3B82F6',
+  accentOrange: '#FB923C',
+  accentYellow: '#FBBF24',
+  background: '#121212',       // Dark Background
+  cardBg: '#1E1E1E',           // Dark Card Background
+  elevated: '#2C2C2C',         // Elevated surfaces
+  text: '#F3F4F6',             // Light Text
+  textSecondary: '#9CA3AF',    // Gray Text
+  textTertiary: '#6B7280',     // Muted Text
+  border: '#374151',           // Dark Border
+  divider: '#2D2D2D',          // Dark Divider
+  success: '#34D399',
+  error: '#F87171',
+  warning: '#FBBF24',
+  info: '#60A5FA',
+  overlay: 'rgba(0, 0, 0, 0.7)',
+  gradientOverlay: 'rgba(0, 0, 0, 0.8)',
+  white: '#FFFFFF',
+  black: '#000000',
+  gray50: '#1F2937',
+  gray100: '#374151',
+  gray200: '#4B5563',
+};
+
+export const COLORS = lightColors; // Default export for backwards compatibility
+export const THEME = { light: lightColors, dark: darkColors };
+
 
 // ============================================
 // 📐 SPACING SYSTEM - 12 / 16 / 20

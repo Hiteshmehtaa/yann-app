@@ -97,16 +97,24 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     paymentMethod: 'cash',
   });
   const [formErrors, setFormErrors] = useState<any>({});
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingWallet, setLoadingWallet] = useState(false);
 
   // Check if this is a driver service
   const isDriverService = service?.category?.toLowerCase() === 'driver' || false;
 
   // Pricing Logic
   const getProviderPrice = (): number => {
-    // Check serviceRates first
+    // 1. Check priceForService first (set in ServiceDetailScreen from backend)
+    if (selectedProvider?.priceForService && selectedProvider.priceForService > 0) {
+      return Number(selectedProvider.priceForService);
+    }
+
+    // 2. Check serviceRates array
     if (selectedProvider?.serviceRates && Array.isArray(selectedProvider.serviceRates)) {
       const rateObj = selectedProvider.serviceRates.find(
         (rate: any) => 
+          rate.serviceName === service?.title ||
           rate._id === (service as any)?._id || 
           rate._id === service?.id ||
           rate.serviceId === (service as any)?._id ||
@@ -114,7 +122,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       );
       if (rateObj?.price) return Number(rateObj.price);
     }
-    // Check services array
+
+    // 3. Check services array
     if (selectedProvider?.services && Array.isArray(selectedProvider.services)) {
       const providerService = selectedProvider.services.find(
         (s: any) => 
@@ -124,8 +133,9 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       );
       if (providerService?.price) return Number(providerService.price);
     }
-    // Fallback
-    return typeof service?.price === 'number' ? service.price : 0;
+
+    // 4. Fallback to 0 (don't use service.price - it's unreliable)
+    return 0;
   };
 
   const basePrice = getProviderPrice();
@@ -159,6 +169,24 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [route.params?.selectedAddress]);
 
+  // Fetch Wallet Balance
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      try {
+        setLoadingWallet(true);
+        const response = await apiService.getWalletBalance();
+        if (response.success && response.data) {
+          setWalletBalance(response.data.balance || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch wallet balance:', error);
+      } finally {
+        setLoadingWallet(false);
+      }
+    };
+    fetchWalletBalance();
+  }, []);
+
   // Validation
   const validateForm = (): boolean => {
     const errors: any = {};
@@ -187,6 +215,23 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
     setIsLoading(true);
     setShowSuccess(false);
+
+    // Wallet Payment
+    if (formData.paymentMethod === 'wallet') {
+      if (walletBalance < totalPrice) {
+        setIsLoading(false);
+        showError(`Insufficient wallet balance. You have ₹${walletBalance.toFixed(2)}, but need ₹${totalPrice.toFixed(2)}`);
+        return;
+      }
+      try {
+        await submitBookingPayload('wallet', { paymentStatus: 'paid', paidVia: 'wallet' });
+      } catch (error: any) {
+        console.error('Wallet payment failed:', error);
+        setIsLoading(false);
+        showError(error.response?.data?.message || 'Wallet payment failed.');
+      }
+      return;
+    }
 
     if (formData.paymentMethod !== 'cash') {
       try {
@@ -260,7 +305,16 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         };
       }
 
-      await apiService.createBooking(bookingPayload);
+      // Use wallet-specific endpoint for wallet payments
+      if (method === 'wallet') {
+        const response = await apiService.createBookingWithWallet(bookingPayload);
+        if (response.success && (response as any).newBalance !== undefined) {
+          setWalletBalance((response as any).newBalance); // Update wallet balance
+        }
+      } else {
+        await apiService.createBooking(bookingPayload);
+      }
+      
       setIsLoading(false);
       setShowSuccess(true);
   };
@@ -440,25 +494,40 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paymentScroll}>
                   {PAYMENT_METHODS.map((method) => {
                     const isSelected = formData.paymentMethod === method.id;
+                    const isWallet = method.id === 'wallet';
+                    const insufficientBalance = isWallet && walletBalance < totalPrice;
                     return (
                       <TouchableOpacity
                         key={method.id}
                         style={[
                           styles.paymentOption,
-                          isSelected && styles.paymentOptionSelected
+                          isSelected && styles.paymentOptionSelected,
+                          insufficientBalance && styles.paymentOptionDisabled
                         ]}
-                        onPress={() => setFormData({ ...formData, paymentMethod: method.id })}
+                        onPress={() => {
+                          if (insufficientBalance) {
+                            showError(`Insufficient balance. Add ₹${(totalPrice - walletBalance).toFixed(0)} to wallet`);
+                            return;
+                          }
+                          setFormData({ ...formData, paymentMethod: method.id });
+                        }}
+                        disabled={insufficientBalance}
                       >
                          <View style={[styles.paymentIcon, isSelected && { backgroundColor: COLORS.primary }]}>
                             <Ionicons 
                               name={method.icon as any} 
                               size={20} 
-                              color={isSelected ? '#FFF' : COLORS.textSecondary} 
+                              color={isSelected ? '#FFF' : insufficientBalance ? '#D1D5DB' : COLORS.textSecondary} 
                             />
                          </View>
-                         <Text style={[styles.paymentLabel, isSelected && styles.textSelected]}>
+                         <Text style={[styles.paymentLabel, isSelected && styles.textSelected, insufficientBalance && styles.textDisabled]}>
                            {method.label}
                          </Text>
+                         {isWallet && (
+                           <Text style={[styles.walletBalanceText, insufficientBalance && styles.textDisabled]}>
+                             ₹{walletBalance.toFixed(0)}
+                           </Text>
+                         )}
                          {isSelected && (
                            <View style={styles.checkBadge}>
                              <Ionicons name="checkmark" size={10} color="#FFF" />
@@ -871,6 +940,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
     marginLeft: 4,
+  },
+  paymentOptionDisabled: {
+    opacity: 0.5,
+    borderColor: '#E5E7EB',
+  },
+  walletBalanceText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginTop: 2,
+  },
+  textDisabled: {
+    color: '#D1D5DB',
   },
 });
 

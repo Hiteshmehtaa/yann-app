@@ -208,6 +208,7 @@ export const SERVICE_CATEGORIES = [
 
 // Payment Methods (using valid Ionicons names)
 export const PAYMENT_METHODS = [
+  { id: 'wallet', label: 'Yann Wallet', value: 'wallet', icon: 'wallet-outline' },
   { id: 'cash', label: 'Cash', value: 'cash', icon: 'cash-outline' },
   { id: 'upi', label: 'UPI', value: 'upi', icon: 'phone-portrait-outline' },
   { id: 'card', label: 'Card', value: 'card', icon: 'card-outline' },

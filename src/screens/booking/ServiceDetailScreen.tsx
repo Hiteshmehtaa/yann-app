@@ -21,6 +21,7 @@ import type { Service, ServiceProvider } from '../../types';
 import { apiService } from '../../services/api';
 import { getServiceIconImage } from '../../utils/serviceImages';
 import { COLORS, RADIUS, SHADOWS } from '../../utils/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -32,6 +33,7 @@ const HERO_HEIGHT = height * 0.45;
 
 export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service } = route.params;
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   
   // State
@@ -82,12 +84,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             email: p.email || 'provider@yann.com',
             phone: p.phone || '0000000000',
             services: p.services || [],
-            serviceRates: p.serviceRates || [],
+            serviceRates: p.serviceRates || (p.price ? [{ serviceName: service.title, price: p.price }] : []),
             status: 'active' as 'active' | 'inactive' | 'pending',
             rating: p.rating || 4.8,
             totalReviews: p.totalReviews || 0,
             profileImage: p.profileImage,
-            priceForService: p.price || service.price,
+            priceForService: p.price || 0,
             experience: p.experience || 2,
             bio: p.bio,
             reviews: p.reviews || []
@@ -120,24 +122,24 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     return (
       <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: headerOpacity }]}>
-          <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
-          <View style={styles.headerBorder} />
+          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          <View style={[styles.headerBorder, { backgroundColor: colors.divider }]} />
         </Animated.View>
         
         <View style={styles.headerContent}>
           <TouchableOpacity 
-            style={styles.roundButton} 
+            style={[styles.roundButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)' }]} 
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <Animated.Text style={[styles.headerTitle, { opacity: headerOpacity }]}>
+          <Animated.Text style={[styles.headerTitle, { opacity: headerOpacity, color: colors.text }]}>
             {service.title}
           </Animated.Text>
 
-          <TouchableOpacity style={styles.roundButton}>
-            <Ionicons name="share-outline" size={24} color={COLORS.text} />
+          <TouchableOpacity style={[styles.roundButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)' }]}>
+            <Ionicons name="share-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -189,26 +191,26 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const renderQuickStats = () => (
-    <View style={styles.quickStatsRow}>
+    <View style={[styles.quickStatsRow, { backgroundColor: colors.cardBg, shadowColor: colors.text }]}>
       <View style={styles.statBox}>
-        <View style={[styles.statIcon, { backgroundColor: '#E3F2FD' }]}>
-          <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+        <View style={[styles.statIcon, { backgroundColor: isDark ? colors.primary + '20' : '#E3F2FD' }]}>
+          <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
         </View>
-        <Text style={styles.statLabel}>Verified</Text>
+        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Verified</Text>
       </View>
-      <View style={styles.statDivider} />
+      <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
       <View style={styles.statBox}>
-        <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
-          <Ionicons name="wallet-outline" size={20} color={COLORS.success} />
+        <View style={[styles.statIcon, { backgroundColor: isDark ? colors.success + '20' : '#E8F5E9' }]}>
+          <Ionicons name="wallet-outline" size={20} color={colors.success} />
         </View>
-        <Text style={styles.statLabel}>Best Price</Text>
+        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Best Price</Text>
       </View>
-      <View style={styles.statDivider} />
+      <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
       <View style={styles.statBox}>
-        <View style={[styles.statIcon, { backgroundColor: '#FFF3E0' }]}>
-          <Ionicons name="headset-outline" size={20} color={COLORS.warning} />
+        <View style={[styles.statIcon, { backgroundColor: isDark ? colors.warning + '20' : '#FFF3E0' }]}>
+          <Ionicons name="headset-outline" size={20} color={colors.warning} />
         </View>
-        <Text style={styles.statLabel}>Support</Text>
+        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Support</Text>
       </View>
     </View>
   );
@@ -221,11 +223,13 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     });
 
     return (
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
         {/* Animated Background Indicator */}
         <Animated.View style={[styles.activeTabIndicator, { 
             width: tabWidth,
-            transform: [{ translateX }] 
+            transform: [{ translateX }],
+            backgroundColor: colors.cardBg,
+            shadowColor: colors.text
         }]} />
         
         {['providers', 'details', 'reviews'].map((tab, index) => (
@@ -236,7 +240,8 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             <Text style={[
               styles.tabText, 
-              activeTab === tab && styles.activeTabText
+              { color: colors.textTertiary },
+              activeTab === tab && { color: colors.text, fontWeight: '700' }
             ]}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Text>
@@ -251,7 +256,15 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       key={item._id}
       style={[
         styles.providerCard, 
-        selectedProvider?._id === item._id && styles.selectedProviderCard
+        { 
+            backgroundColor: colors.cardBg, 
+            borderColor: 'transparent',
+            shadowColor: colors.text
+        },
+        selectedProvider?._id === item._id && { 
+            borderColor: colors.primary, 
+            backgroundColor: isDark ? colors.primary + '10' : '#F5F9FF' 
+        }
       ]}
       onPress={() => setSelectedProvider(item)}
       activeOpacity={0.9}
@@ -263,35 +276,39 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             style={styles.providerAvatar}
           />
         ) : (
-          <View style={[styles.providerAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
-            <Ionicons name="person" size={24} color={COLORS.textTertiary} />
+          <View style={[styles.providerAvatar, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
+            <Ionicons name="person" size={24} color={colors.textTertiary} />
           </View>
         )}
         <View style={styles.providerInfo}>
           <View style={styles.nameRow}>
-            <Text style={styles.providerName}>{item.name}</Text>
+            <Text style={[styles.providerName, { color: colors.text }]}>{item.name}</Text>
             {index === 0 && (
-              <View style={styles.badgeContainer}>
+              <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
                 <Text style={styles.badgeText}>TOP RATED</Text>
               </View>
             )}
           </View>
-          <Text style={styles.providerMeta}>{item.experience} years exp • {item.totalReviews} jobs</Text>
+          <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>{item.experience} years exp • {item.totalReviews} jobs</Text>
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={14} color="#FFD700" />
-            <Text style={styles.ratingVal}>{item.rating}</Text>
+            <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
           </View>
         </View>
         <View style={styles.priceTag}>
-          <Text style={styles.priceVal}>₹{item.priceForService}</Text>
-          <Text style={styles.priceUnit}>/hr</Text>
+          <Text style={[styles.priceVal, { color: colors.primary }]}>₹{item.priceForService}</Text>
+          <Text style={[styles.priceUnit, { color: colors.textTertiary }]}>/hr</Text>
         </View>
       </View>
       
       {/* Selection Checkmark */}
       <View style={[
         styles.radioButton,
-        selectedProvider?._id === item._id && styles.radioButtonSelected
+        { borderColor: isDark ? colors.border : '#E0E0E0' },
+        selectedProvider?._id === item._id && { 
+            borderColor: colors.primary, 
+            backgroundColor: colors.primary 
+        }
       ]}>
         {selectedProvider?._id === item._id && (
           <Ionicons name="checkmark" size={16} color="#FFF" />
@@ -301,8 +318,8 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
       {renderHero()}
       {renderHeader()}
@@ -316,17 +333,17 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
         scrollEventThrottle={16}
       >
-        <View style={styles.sheetContainer}>
+        <View style={[styles.sheetContainer, { backgroundColor: colors.background }]}>
           {/* Dragger */}
           <View style={styles.dragHandleCenter}>
-            <View style={styles.dragHandle} />
+            <View style={[styles.dragHandle, { backgroundColor: colors.divider }]} />
           </View>
 
           {renderQuickStats()}
           
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.descriptionText}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Description</Text>
+            <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
               {service.description || 'Experience top-tier service quality with verified professionals. We ensure satisfaction with every booking.'}
             </Text>
           </View>
@@ -337,11 +354,11 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {activeTab === 'providers' && (
               <View style={{ gap: 16 }}>
                  {isLoading ? (
-                   <Text style={styles.loadingText}>Loading professionals...</Text>
+                   <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading professionals...</Text>
                  ) : providers.length === 0 ? (
                    <View style={styles.emptyState}>
-                     <Ionicons name="search" size={32} color={COLORS.textTertiary} />
-                     <Text style={styles.emptyText}>No providers currently available.</Text>
+                     <Ionicons name="search" size={32} color={colors.textTertiary} />
+                     <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No providers currently available.</Text>
                    </View>
                  ) : (
                    providers.map((p, i) => renderProvider(p, i))
@@ -352,9 +369,9 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {activeTab === 'details' && (
                <View style={styles.detailsList}>
                  {['Professional Equipment', 'Safety Protocols', 'Insured Service', 'Satisfaction Guarantee'].map((feat, i) => (
-                   <View key={i} style={styles.detailRow}>
-                     <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                     <Text style={styles.detailText}>{feat}</Text>
+                   <View key={i} style={[styles.detailRow, { backgroundColor: colors.cardBg }]}>
+                     <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                     <Text style={[styles.detailText, { color: colors.text }]}>{feat}</Text>
                    </View>
                  ))}
                </View>
@@ -363,17 +380,17 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {activeTab === 'reviews' && (
                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll}>
                   {[1, 2, 3].map((i) => (
-                    <View key={i} style={styles.reviewCard}>
+                    <View key={i} style={[styles.reviewCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
                        <View style={styles.reviewHeader}>
-                         <View style={styles.reviewAvatar}>
-                            <Text style={styles.reviewInitial}>U{i}</Text>
+                         <View style={[styles.reviewAvatar, { backgroundColor: isDark ? colors.border : '#E0E0E0' }]}>
+                            <Text style={[styles.reviewInitial, { color: colors.textSecondary }]}>U{i}</Text>
                          </View>
                          <View>
-                           <Text style={styles.reviewerName}>User {i}</Text>
-                           <View style={{flexDirection:'row'}}><Ionicons name="star" size={12} color="#FFD700"/><Text style={{fontSize:12}}> 5.0</Text></View>
+                           <Text style={[styles.reviewerName, { color: colors.text }]}>User {i}</Text>
+                           <View style={{flexDirection:'row'}}><Ionicons name="star" size={12} color="#FFD700"/><Text style={{fontSize:12, color: colors.text}}> 5.0</Text></View>
                          </View>
                        </View>
-                       <Text style={styles.reviewBody}>"Amazing service! The professional was on time and did a great job."</Text>
+                       <Text style={[styles.reviewBody, { color: colors.textSecondary }]}>"Amazing service! The professional was on time and did a great job."</Text>
                     </View>
                   ))}
                </ScrollView>
@@ -384,15 +401,15 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </Animated.ScrollView>
 
       {/* Bottom FAB */}
-      <BlurView intensity={20} tint="light" style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+      <BlurView intensity={20} tint={isDark ? "dark" : "light"} style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)' }]}>
         <View style={styles.priceContainer}>
-          <Text style={styles.totalLabel}>Total Estimate</Text>
-          <Text style={styles.totalPrice}>
+          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total Estimate</Text>
+          <Text style={[styles.totalPrice, { color: colors.text }]}>
             {selectedProvider ? `₹${selectedProvider.priceForService}` : `From ₹${startPrice}`}
           </Text>
         </View>
         <TouchableOpacity 
-          style={[styles.bookBtn, (!selectedProvider && providers.length > 1) && styles.bookBtnDisabled]}
+          style={[styles.bookBtn, { backgroundColor: colors.primary }, (!selectedProvider && providers.length > 1) && styles.bookBtnDisabled]}
           onPress={() => {
             if (providers.length > 1 && !selectedProvider) return;
             const providerToView = selectedProvider || providers[0];

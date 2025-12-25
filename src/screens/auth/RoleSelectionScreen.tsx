@@ -119,7 +119,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                   </View>
                 </View>
                 
-                <Text style={styles.cardTitleDark}>BECOME A PRO</Text>
+                <Text style={styles.cardTitleDark}>BECOME A PROVIDER  </Text>
                 <Text style={styles.cardDescriptionDark}>
                   Join our network of experts
                 </Text>

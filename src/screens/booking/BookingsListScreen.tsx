@@ -18,11 +18,12 @@ import type { Booking } from '../../types';
 import { format } from 'date-fns';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY } from '../../utils/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { EmptyStateAnimation } from '../../components/animations';
 import { EmptyState } from '../../components/EmptyState';
-import { AnimatedButton } from '../../components/AnimatedButton';
 import { TabBar } from '../../components/ui/TabBar';
+import { CountdownTimer } from '../../components/ui/CountdownTimer';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -36,6 +37,7 @@ const TABS = [
 
 export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const { isTablet } = useResponsive();
+  const { colors, isDark } = useTheme();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -101,45 +103,84 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     // Get provider name from booking data
     const providerName = (item as any).provider?.name || (item as any).providerName || 'Service Provider';
 
+    // Get status color for left border
+    const getStatusBorderColor = () => {
+      const status = item.status.toLowerCase();
+      if (status === 'confirmed' || status === 'active') return COLORS.success;
+      if (status === 'completed') return COLORS.primary;
+      if (status === 'pending') return COLORS.warning;
+      if (status === 'cancelled') return COLORS.error;
+      return COLORS.textTertiary;
+    };
+
+    // Check if booking is upcoming (within next 24 hours)
+    const isUpcoming = item.bookingDate && item.bookingTime
+      ? (() => {
+          const bookingDateTime = new Date(`${item.bookingDate}T${item.bookingTime}`);
+          const now = new Date();
+          const diff = bookingDateTime.getTime() - now.getTime();
+          return diff > 0 && diff < 24 * 60 * 60 * 1000;
+        })()
+      : false;
+
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={[
+            styles.card, 
+            { 
+                backgroundColor: colors.cardBg,
+                borderLeftColor: getStatusBorderColor(),
+                borderLeftWidth: 4,
+                shadowColor: colors.text 
+            }
+        ]}
         onPress={() => navigation.navigate('BookingDetail', { booking: item })}
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={styles.serviceName}>{item.serviceName}</Text>
+            <Text style={[styles.serviceName, { color: colors.text }]}>{item.serviceName}</Text>
             <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
               <Text style={[styles.statusText, getStatusTextStyle(item.status)]}>
                 {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
               </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={COLORS.textTertiary} />
+          <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={colors.textTertiary} />
         </View>
 
         <View style={styles.cardBody}>
           {/* Provider Info */}
-          <View style={styles.providerRow}>
-            <Ionicons name="person-outline" size={ICON_SIZES.medium} color={COLORS.primary} />
-            <Text style={styles.providerName}>{providerName}</Text>
+          <View style={[styles.providerRow, { borderBottomColor: colors.divider }]}>
+            <Ionicons name="person-outline" size={ICON_SIZES.medium} color={colors.primary} />
+            <Text style={[styles.providerName, { color: colors.text }]}>{providerName}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <Ionicons name="calendar-outline" size={ICON_SIZES.medium} color={COLORS.textSecondary} />
-              <Text style={styles.infoValue}>{formattedDate}</Text>
+              <Ionicons name="calendar-outline" size={ICON_SIZES.medium} color={colors.textSecondary} />
+              <Text style={[styles.infoValue, { color: colors.textSecondary }]}>{formattedDate}</Text>
             </View>
             <View style={styles.infoItem}>
-              <Ionicons name="time-outline" size={ICON_SIZES.medium} color={COLORS.textSecondary} />
-              <Text style={styles.infoValue}>{item.bookingTime}</Text>
+              <Ionicons name="time-outline" size={ICON_SIZES.medium} color={colors.textSecondary} />
+              <Text style={[styles.infoValue, { color: colors.textSecondary }]}>{item.bookingTime}</Text>
             </View>
           </View>
           
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Total</Text>
-            <Text style={styles.priceValue}>₹{item.totalPrice}</Text>
+          {/* Countdown Timer for Upcoming Bookings */}
+          {isUpcoming && (
+            <View style={[styles.countdownContainer, { backgroundColor: colors.primary + '10' }]}>
+              <Ionicons name="timer-outline" size={16} color={colors.primary} />
+              <CountdownTimer
+                targetDate={new Date(`${item.bookingDate}T${item.bookingTime}`)}
+                style={{ ...styles.countdownText, color: colors.primary }}
+              />
+            </View>
+          )}
+          
+          <View style={[styles.priceRow, { borderTopColor: colors.divider }]}>
+            <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>Total</Text>
+            <Text style={[styles.priceValue, { color: colors.primary }]}>₹{item.totalPrice}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -174,21 +215,25 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           subtitle={message.subtitle}
         />
         {activeTab === 'ongoing' && (
-          <AnimatedButton
+          <TouchableOpacity
             style={styles.browseButton}
             onPress={() => navigation.navigate('Home')}
+            activeOpacity={0.8}
           >
             <Text style={styles.browseButtonText}>Browse services</Text>
             <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />
-          </AnimatedButton>
+          </TouchableOpacity>
         )}
       </View>
-    );
+    ); // EmptyState needs to handle its own theme inside or be passed colors? EmptyState component usually uses internal styles. Assuming it needs updates if it's external.
+       // Actually EmptyState is likely a component using theme internally if updated, or accepts props.
+       // Looking at imports: import { EmptyState } from '../../components/EmptyState';
+       // We should check that component too.
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <LoadingSpinner visible={true} />
       </SafeAreaView>
     );
@@ -214,18 +259,18 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bookings</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Bookings</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -254,8 +299,8 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -451,5 +496,20 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  countdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: `${COLORS.primary}10`,
+    borderRadius: RADIUS.small,
+    marginBottom: SPACING.sm,
+  },
+  countdownText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.primary,
+    fontWeight: TYPOGRAPHY.weight.bold,
   },
 });

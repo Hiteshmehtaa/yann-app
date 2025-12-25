@@ -1,7 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType, Animated } from 'react-native';
 import { SPACING, RADIUS, SHADOWS } from '../../utils/theme';
 import { ServiceIcon } from '../icons/ServiceIcon';
+import { Badge } from './Badge';
+import { haptics } from '../../utils/haptics';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type ServiceCardProps = {
   title: string;
@@ -12,9 +15,12 @@ type ServiceCardProps = {
   popular?: boolean;
   partnerCount?: number;
   isComingSoon?: boolean;
+  isNew?: boolean;
   onPress: () => void;
   style?: ViewStyle;
 };
+
+
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   title,
@@ -25,20 +31,69 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   popular = false,
   partnerCount = 0,
   isComingSoon = false,
+  isNew = false,
   onPress,
   style,
 }) => {
+  const { colors } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Partner Count Logic
+  const displayCount = partnerCount > 2 ? '2+' : partnerCount;
+  const showCount = partnerCount > 0 && !isComingSoon;
+
+  const handlePressIn = () => {
+    if (!isComingSoon) {
+      haptics.light();
+      Animated.spring(scaleAnim, {
+        toValue: 0.97,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePress = () => {
+    if (!isComingSoon) {
+      haptics.medium();
+      onPress();
+    }
+  };
+
   return (
     <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={isComingSoon ? 1 : 0.7}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
       style={[styles.container, isComingSoon && styles.comingSoonContainer, style]}
       disabled={isComingSoon}
     >
-      {/* Card with white background and shadow */}
-      <View style={styles.card}>
-        {/* Image Container with rounded background */}
-        <View style={styles.imageContainer}>
+      <Animated.View style={[
+        styles.card, 
+        { 
+          backgroundColor: colors.cardBg,
+          transform: [{ scale: scaleAnim }],
+          shadowColor: colors.text, // Adapt shadow color
+        }
+      ]}>
+        {/* Partner Count Badge - Top Left */}
+        {showCount && (
+          <View style={[styles.partnerCountBadge, { backgroundColor: colors.primary }]}>
+            <Text style={styles.partnerCountText}>{displayCount}</Text>
+          </View>
+        )}
+
+        {/* Image Container */}
+        <View style={[styles.imageContainer, { backgroundColor: isComingSoon ? colors.gray100 : colors.primaryLight }]}>
           {iconImage ? (
             <Image 
               source={iconImage} 
@@ -50,18 +105,32 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           )}
         </View>
 
-        {/* Title - Bold and clear */}
-        <Text style={[styles.title, isComingSoon && styles.comingSoonText]} numberOfLines={2}>
+        {/* Title */}
+        <Text style={[styles.title, { color: colors.text }, isComingSoon && { color: colors.textTertiary }]} numberOfLines={2}>
           {title}
         </Text>
         
-        {/* Coming Soon Badge */}
-        {isComingSoon && (
-          <View style={styles.comingSoonBadge}>
-            <Text style={styles.comingSoonBadgeText}>Coming Soon</Text>
-          </View>
-        )}
-      </View>
+        {/* Badges - Top Right Stack */}
+        <View style={styles.badgesContainer}>
+          {isNew && !isComingSoon && (
+            <View style={styles.badgeWrapper}>
+              <Badge variant="new" />
+            </View>
+          )}
+          
+          {popular && !isComingSoon && !isNew && (
+            <View style={styles.badgeWrapper}>
+              <Badge variant="popular" />
+            </View>
+          )}
+          
+          {isComingSoon && (
+            <View style={styles.badgeWrapper}>
+              <Badge variant="coming-soon" />
+            </View>
+          )}
+        </View>
+      </Animated.View>
     </TouchableOpacity>
   );
 };
@@ -74,14 +143,13 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.xlarge, // More rounded
-    padding: SPACING.md, // Increased padding
+    borderRadius: RADIUS.xlarge,
+    padding: SPACING.md,
     alignItems: 'center',
-    // Stronger shadow for "Pop" effect
     ...SHADOWS.md,
-    height: 140, // Fixed height for uniformity
+    height: 150, // Increased slightly for spacing
     justifyContent: 'space-between',
+    position: 'relative',
   },
   imageContainer: {
     width: 60,
@@ -90,7 +158,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F0F6FF', // Soft blue tint
+    marginTop: 8, // Space for top badges
   },
   serviceImage: {
     width: '100%',
@@ -100,28 +168,35 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1A1C1E',
     textAlign: 'center',
     lineHeight: 18,
     marginTop: 4,
     marginBottom: 4,
   },
-  comingSoonText: {
-    color: '#999',
-  },
-  comingSoonBadge: {
+  badgesContainer: {
     position: 'absolute',
     top: 6,
     right: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 6,
+    alignItems: 'flex-end',
+    gap: 4,
   },
-  comingSoonBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
+  badgeWrapper: {
+    // scale down slightly if multiple
+  },
+  partnerCountBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 20, // Circular or small bubble
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  partnerCountText: {
+    fontSize: 10,
+    fontWeight: '800',
     color: '#FFF',
-    textTransform: 'uppercase',
   },
 });
