@@ -428,21 +428,38 @@ export const WalletScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.quickActionsSection}>
-              <Text style={styles.sectionTitle}>Quick Top-up</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ paddingRight: 20 }}>
-                {QUICK_AMOUNTS.map((amt) => (
-                  <AnimatedButton
-                    key={amt}
-                    style={styles.amountChip}
-                    onPress={() => handleAddMoney(amt)}
-                    disabled={isAddingMoney}
-                  >
-                    <Text style={styles.amountChipText}>+ ₹{amt}</Text>
-                  </AnimatedButton>
-                ))}
-              </ScrollView>
-            </View>
+            <>
+              <View style={styles.quickActionsSection}>
+                <Text style={styles.sectionTitle}>Quick Top-up</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ paddingRight: 20 }}>
+                  {QUICK_AMOUNTS.map((amt) => (
+                    <AnimatedButton
+                      key={amt}
+                      style={styles.amountChip}
+                      onPress={() => handleAddMoney(amt)}
+                      disabled={isAddingMoney}
+                    >
+                      <Text style={styles.amountChipText}>+ ₹{amt}</Text>
+                    </AnimatedButton>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              {/* Withdrawal for Members */}
+              <View style={[styles.quickActionsSection, { marginTop: 0 }]}>
+                <Text style={styles.sectionTitle}>Withdraw Money</Text>
+                <TouchableOpacity
+                  style={[styles.withdrawButton, { backgroundColor: '#059669' }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    showSuccess('Withdrawal feature coming soon!');
+                  }}
+                >
+                  <Ionicons name="arrow-up-outline" size={24} color="#FFF" />
+                  <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
 
           {/* Transactions */}
