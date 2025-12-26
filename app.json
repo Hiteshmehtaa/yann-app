@@ -56,12 +56,6 @@
           "cameraPermission": "Allow Yann to access your camera to take a profile picture."
         }
       ],
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "AIzaSyDXxZ8qZ9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z9Z"
-        }
-      ],
       "expo-web-browser"
     ],
     "runtimeVersion": {
