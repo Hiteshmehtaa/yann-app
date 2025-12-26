@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useMemo } from 'react';
 import { apiService } from '../services/api';
 import { storage } from '../utils/storage';
+import { registerForPushNotificationsAsync, setupNotificationListeners } from '../utils/notifications';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -111,6 +112,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setToken(actualToken);
         setUser(userData);
         
+        // Register for push notifications after successful login
+        try {
+          const pushToken = await registerForPushNotificationsAsync();
+          if (pushToken) {
+            await apiService.savePushToken(pushToken);
+            console.log('📱 Push token registered:', pushToken);
+          }
+          setupNotificationListeners();
+        } catch (pushError) {
+          console.error('Failed to register push notifications:', pushError);
+          // Don't fail login if push registration fails
+        }
+        
         console.log('✅ Login successful, auth state updated');
       } else {
         throw new Error('No user data in response');
@@ -164,6 +178,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setToken(actualToken);
         setUser(userData);
+        
+        // Register for push notifications after successful provider login
+        try {
+          const pushToken = await registerForPushNotificationsAsync();
+          if (pushToken) {
+            await apiService.savePushToken(pushToken);
+            console.log('📱 Provider push token registered:', pushToken);
+          }
+          setupNotificationListeners();
+        } catch (pushError) {
+          console.error('Failed to register push notifications:', pushError);
+          // Don't fail login if push registration fails
+        }
         
         console.log('✅ Provider login successful');
       } else {

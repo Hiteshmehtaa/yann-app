@@ -993,6 +993,19 @@ class ApiService {
   }
 
   // ====================================================================
+  // PUSH NOTIFICATION ENDPOINTS
+  // ====================================================================
+
+  /**
+   * POST /api/user/push-token
+   * Save push notification token for the current user
+   */
+  async savePushToken(pushToken: string): Promise<ApiResponse> {
+    const response = await this.client.post('/user/push-token', { pushToken });
+    return response.data;
+  }
+
+  // ====================================================================
   // PROVIDER SERVICE MANAGEMENT ENDPOINTS
   // ====================================================================
 
