@@ -181,14 +181,22 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {/* Map */}
+        {/* Map with OpenStreetMap (Free, no API key needed) */}
         <MapView
           style={styles.map}
           region={region}
           onRegionChangeComplete={handleRegionChangeComplete}
           showsUserLocation
           showsMyLocationButton={false}
-        />
+          mapType="standard"
+        >
+          {/* OpenStreetMap Tile Overlay - Free alternative to Google Maps */}
+          <MapView.UrlTile
+            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maximumZ={19}
+            flipY={false}
+          />
+        </MapView>
 
         {/* Center Pin (fixed in center) */}
         <View style={styles.centerMarker} pointerEvents="none">
