@@ -29,8 +29,10 @@ import { CountdownTimer } from '../../components/ui/CountdownTimer';
 
 // Gradient presets for status
 const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
+  accepted: ['#10B981', '#059669'],
   confirmed: ['#10B981', '#059669'],
   active: ['#10B981', '#059669'],
+  in_progress: ['#3B82F6', '#2563EB'],
   completed: ['#667eea', '#764ba2'],
   pending: ['#F59E0B', '#D97706'],
   cancelled: ['#EF4444', '#DC2626'],
@@ -274,7 +276,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     }
     
     if (activeTab === 'ongoing') {
-      return status === 'pending' || status === 'confirmed' || status === 'active';
+      return status === 'pending' || status === 'accepted' || status === 'confirmed' || status === 'active' || status === 'in_progress';
     } else if (activeTab === 'completed') {
       return status === 'completed';
     } else if (activeTab === 'cancelled') {
