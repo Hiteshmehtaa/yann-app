@@ -28,13 +28,18 @@ const { width } = Dimensions.get('window');
 
 interface Transaction {
   _id: string;
-  type: 'CREDIT' | 'DEBIT';
+  type: string; // wallet_topup, wallet_debit, wallet_credit, wallet_refund
   category: string;
   amount: number;
   description: string;
   createdAt: string;
   balanceAfter: number;
 }
+
+// Helper to determine if transaction is income or expense
+const isIncomeTransaction = (type: string) => {
+  return ['wallet_topup', 'wallet_refund', 'wallet_credit'].includes(type);
+};
 
 const QUICK_AMOUNTS = [100, 500, 1000, 2000];
 
@@ -224,24 +229,24 @@ export const WalletScreen = ({ navigation }: any) => {
   };
 
   const renderTransaction = ({ item, index }: { item: Transaction, index: number }) => {
-    const isCredit = item.type === 'CREDIT';
+    const isIncome = isIncomeTransaction(item.type);
     const iconName = getTransactionIcon(item.description, item.type);
     
-    // Modern color scheme
+    // Modern color scheme - Green for income, Red for expense
     const colors = {
-      credit: {
+      income: {
         icon: '#10B981',
         iconBg: '#ECFDF5',
         amount: '#059669',
       },
-      debit: {
+      expense: {
         icon: '#EF4444',
         iconBg: '#FEF2F2',
         amount: '#DC2626',
       },
     };
     
-    const colorScheme = isCredit ? colors.credit : colors.debit;
+    const colorScheme = isIncome ? colors.income : colors.expense;
     
     const date = new Date(item.createdAt);
     const isToday = new Date().toDateString() === date.toDateString();
@@ -266,10 +271,10 @@ export const WalletScreen = ({ navigation }: any) => {
         
         <View style={styles.transactionAmountContainer}>
           <Text style={[styles.transactionAmount, { color: colorScheme.amount }]}>
-            {isCredit ? '+' : '-'}₹{Math.abs(item.amount).toFixed(2)}
+            {isIncome ? '+' : '-'}₹{Math.abs(item.amount).toFixed(2)}
           </Text>
           <Text style={[styles.transactionStatus, { color: colorScheme.icon }]}>
-            {isCredit ? 'Credit' : 'Debit'}
+            {isIncome ? 'Income' : 'Expense'}
           </Text>
         </View>
       </View>
@@ -385,7 +390,7 @@ export const WalletScreen = ({ navigation }: any) => {
                 <View>
                   <Text style={styles.statLabel}>Income</Text>
                   <Text style={[styles.statValue, { color: '#059669' }]}>
-                    ₹{transactions.filter(t => t.type === 'CREDIT').reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
+                    ₹{transactions.filter(t => isIncomeTransaction(t.type)).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
@@ -397,7 +402,7 @@ export const WalletScreen = ({ navigation }: any) => {
                 <View>
                   <Text style={styles.statLabel}>Expense</Text>
                   <Text style={[styles.statValue, { color: '#DC2626' }]}>
-                    ₹{transactions.filter(t => t.type === 'DEBIT').reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
+                    ₹{transactions.filter(t => !isIncomeTransaction(t.type)).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
@@ -407,22 +412,38 @@ export const WalletScreen = ({ navigation }: any) => {
           {/* Spacer for overlapping stats */}
           <View style={{ height: 40 }} />
 
-          {/* Quick Add Actions - Styled Chips */}
-          <View style={styles.quickActionsSection}>
-            <Text style={styles.sectionTitle}>Quick Top-up</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ paddingRight: 20 }}>
-              {QUICK_AMOUNTS.map((amt) => (
-                <AnimatedButton
-                  key={amt}
-                  style={styles.amountChip}
-                  onPress={() => handleAddMoney(amt)}
-                  disabled={isAddingMoney}
-                >
-                  <Text style={styles.amountChipText}>+ ₹{amt}</Text>
-                </AnimatedButton>
-              ))}
-            </ScrollView>
-          </View>
+          {/* Quick Actions - Top-up for Members, Withdrawal for Providers */}
+          {user?.role === 'provider' ? (
+            <View style={styles.quickActionsSection}>
+              <Text style={styles.sectionTitle}>Withdraw Earnings</Text>
+              <TouchableOpacity
+                style={styles.withdrawButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  showSuccess('Withdrawal feature coming soon!');
+                }}
+              >
+                <Ionicons name="cash-outline" size={24} color="#FFF" />
+                <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.quickActionsSection}>
+              <Text style={styles.sectionTitle}>Quick Top-up</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ paddingRight: 20 }}>
+                {QUICK_AMOUNTS.map((amt) => (
+                  <AnimatedButton
+                    key={amt}
+                    style={styles.amountChip}
+                    onPress={() => handleAddMoney(amt)}
+                    disabled={isAddingMoney}
+                  >
+                    <Text style={styles.amountChipText}>+ ₹{amt}</Text>
+                  </AnimatedButton>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Transactions */}
           <View style={styles.transactionsSection}>
@@ -761,6 +782,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  withdrawButton: {
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 12,
+    ...SHADOWS.md,
+  },
+  withdrawButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 
   // Transactions
