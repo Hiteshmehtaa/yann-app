@@ -11,6 +11,7 @@ build/
 # dependencies
 node_modules/
 Yann_app/
+Yann app/
 # Expo
 .expo/
 dist/
