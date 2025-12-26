@@ -220,25 +220,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSubmit = async () => {
-    // Check Aadhaar verification first
-    if (!aadhaarVerified) {
-      Alert.alert(
-        'Verification Required',
-        'Please verify your Aadhaar to book services.',
-        [
-          {
-            text: 'Verify Now',
-            onPress: () => navigation.navigate('AadhaarVerification' as any),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
-      return;
-    }
-
+    // Aadhaar verification check temporarily disabled
+    // Users can book services without Aadhaar verification for now
+    // TODO: Re-enable this check once Aadhaar verification is fully functional
+    
     if (!validateForm()) {
       showError('Please fill all details to proceed.');
       return;
