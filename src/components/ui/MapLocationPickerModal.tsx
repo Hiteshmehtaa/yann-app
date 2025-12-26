@@ -23,6 +23,10 @@ interface MapLocationPickerModalProps {
     longitude: number;
     address: string;
     fullAddress: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    district: string;
   }) => void;
   initialLocation?: {
     latitude: number;
@@ -88,8 +92,17 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       
       if (result[0]) {
         const addr = result[0];
-        const shortAddress = `${addr.street || addr.name || ''}, ${addr.city || ''}`.trim();
-        const full = `${addr.street || ''} ${addr.name || ''}, ${addr.district || ''}, ${addr.city || ''}, ${addr.region || ''} ${addr.postalCode || ''}`.trim();
+        console.log('Geocode result:', addr); // Debug log
+        
+        // Correctly map the fields
+        const street = addr.street || addr.name || '';
+        const district = addr.district || addr.subregion || '';
+        const city = addr.city || addr.subregion || ''; // city is the actual city
+        const state = addr.region || ''; // region is the state
+        const postalCode = addr.postalCode || '';
+        
+        const shortAddress = `${street}, ${city}`.trim();
+        const full = `${street}, ${district}, ${city}, ${state} ${postalCode}`.trim();
         
         setAddress(shortAddress || 'Address not found');
         setFullAddress(full || shortAddress || 'Address not found');
@@ -116,14 +129,40 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
   }, []);
 
   // Confirm location
-  const handleConfirm = () => {
-    onLocationSelect({
-      latitude: region.latitude,
-      longitude: region.longitude,
-      address,
-      fullAddress,
-    });
-    onClose();
+  const handleConfirm = async () => {
+    try {
+      const result = await Location.reverseGeocodeAsync({
+        latitude: region.latitude,
+        longitude: region.longitude,
+      });
+      
+      const addr = result[0];
+      
+      onLocationSelect({
+        latitude: region.latitude,
+        longitude: region.longitude,
+        address,
+        fullAddress,
+        city: addr?.city || '',
+        state: addr?.region || '',
+        postalCode: addr?.postalCode || '',
+        district: addr?.district || addr?.subregion || '',
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error confirming location:', error);
+      onLocationSelect({
+        latitude: region.latitude,
+        longitude: region.longitude,
+        address,
+        fullAddress,
+        city: '',
+        state: '',
+        postalCode: '',
+        district: '',
+      });
+      onClose();
+    }
   };
 
   // Initialize with current location when modal opens
@@ -142,18 +181,12 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {/* Map */}
-        <MapView
-          style={styles.map}
-          region={region}
-          onRegionChangeComplete={handleRegionChangeComplete}
-          showsUserLocation
-          showsMyLocationButton={false}
-        />
-
-        {/* Center Pin (fixed in center) */}
-        <View style={styles.centerMarker} pointerEvents="none">
-          <Ionicons name="location-sharp" size={48} color="#EF4444" />
+        {/* Map Placeholder - Map requires development build */}
+        <View style={styles.mapPlaceholder}>
+          <Ionicons name="map-outline" size={64} color="#D1D5DB" />
+          <Text style={styles.placeholderTitle}>Map View</Text>
+          <Text style={styles.placeholderText}>Interactive map requires development build</Text>
+          <Text style={styles.placeholderSubtext}>Use the button below to get your current location</Text>
         </View>
 
         {/* Top Bar */}
@@ -220,6 +253,32 @@ const styles = StyleSheet.create({
   map: {
     width,
     height,
+  },
+  mapPlaceholder: {
+    width,
+    height,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: SPACING.xl,
+  },
+  placeholderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: SPACING.md,
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: SPACING.sm,
+    textAlign: 'center',
+  },
+  placeholderSubtext: {
+    fontSize: 12,
+    color: '#D1D5DB',
+    marginTop: SPACING.xs,
+    textAlign: 'center',
   },
   centerMarker: {
     position: 'absolute',
