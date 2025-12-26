@@ -416,7 +416,8 @@ export const WalletScreen = ({ navigation }: any) => {
           {user?.role === 'provider' ? (
             <View style={styles.quickActionsSection}>
               <Text style={styles.sectionTitle}>Withdraw Earnings</Text>
-              <TouchableOpacity
+              {/* Withdrawal button temporarily commented out */}
+              {/* <TouchableOpacity
                 style={styles.withdrawButton}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -425,7 +426,10 @@ export const WalletScreen = ({ navigation }: any) => {
               >
                 <Ionicons name="cash-outline" size={24} color="#FFF" />
                 <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
+              <View style={styles.comingSoonCard}>
+                <Text style={styles.comingSoonText}>Withdrawal feature coming soon!</Text>
+              </View>
             </View>
           ) : (
             <>
@@ -445,8 +449,8 @@ export const WalletScreen = ({ navigation }: any) => {
                 </ScrollView>
               </View>
               
-              {/* Withdrawal for Members */}
-              <View style={[styles.quickActionsSection, { marginTop: 0 }]}>
+              {/* Withdrawal for Members - temporarily commented out */}
+              {/* <View style={[styles.quickActionsSection, { marginTop: 0 }]}>
                 <Text style={styles.sectionTitle}>Withdraw Money</Text>
                 <TouchableOpacity
                   style={[styles.withdrawButton, { backgroundColor: '#059669' }]}
@@ -458,7 +462,7 @@ export const WalletScreen = ({ navigation }: any) => {
                   <Ionicons name="arrow-up-outline" size={24} color="#FFF" />
                   <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
                 </TouchableOpacity>
-              </View>
+              </View> */}
             </>
           )}
 
@@ -815,6 +819,19 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  comingSoonCard: {
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  comingSoonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
 
   // Transactions
