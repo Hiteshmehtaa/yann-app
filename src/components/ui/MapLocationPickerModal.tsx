@@ -181,12 +181,18 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {/* Map Placeholder - Map requires development build */}
-        <View style={styles.mapPlaceholder}>
-          <Ionicons name="map-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.placeholderTitle}>Map View</Text>
-          <Text style={styles.placeholderText}>Interactive map requires development build</Text>
-          <Text style={styles.placeholderSubtext}>Use the button below to get your current location</Text>
+        {/* Map */}
+        <MapView
+          style={styles.map}
+          region={region}
+          onRegionChangeComplete={handleRegionChangeComplete}
+          showsUserLocation
+          showsMyLocationButton={false}
+        />
+
+        {/* Center Pin (fixed in center) */}
+        <View style={styles.centerMarker} pointerEvents="none">
+          <Ionicons name="location-sharp" size={48} color="#EF4444" />
         </View>
 
         {/* Top Bar */}
