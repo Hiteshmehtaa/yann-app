@@ -993,6 +993,27 @@ class ApiService {
   }
 
   // ====================================================================
+  // PROVIDER SERVICE MANAGEMENT ENDPOINTS
+  // ====================================================================
+
+  /**
+   * POST /api/provider/add-service
+   * Add new service(s) to provider profile (requires admin approval)
+   */
+  async addProviderService(data: {
+    providerId: string;
+    services: string[];
+    serviceRates: Array<{ serviceName: string; price: number }>;
+  }): Promise<ApiResponse<{
+    provider: any;
+    addedServices: string[];
+    previousStatus: string;
+  }>> {
+    const response = await this.client.post('/provider/add-service', data);
+    return response.data;
+  }
+
+  // ====================================================================
   // AADHAAR VERIFICATION ENDPOINTS
   // ====================================================================
 

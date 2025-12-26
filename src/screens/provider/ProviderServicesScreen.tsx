@@ -63,6 +63,7 @@ interface ServiceItem {
   icon: string;
   isActive: boolean;
   rate: number;
+  isPending?: boolean; // Service awaiting admin approval
 }
 
 export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
@@ -158,49 +159,81 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
 
   const performToggle = async (serviceId: number, price: number = 0) => {
     try {
-      // Use callback to get the latest state and calculate updates
-      let activeServiceNames: string[] = [];
-      let activeServiceRates: { serviceName: string; price: number }[] = [];
-      
-      // Update UI and capture the new state
-      setServices(prev => {
-        const updatedServices = prev.map(s => 
-          s.id === serviceId ? { ...s, isActive: !s.isActive, rate: s.isActive ? s.rate : (price || s.rate) } : s
-        );
-        
-        // Calculate active services from the updated list
-        activeServiceNames = updatedServices
-          .filter(s => s.isActive)
-          .map(s => s.title);
-        
-        activeServiceRates = updatedServices
-          .filter(s => s.isActive && s.rate > 0)
-          .map(s => ({ serviceName: s.title, price: s.rate }));
-        
-        return updatedServices;
-      });
+      const service = services.find(s => s.id === serviceId);
+      if (!service) return;
 
-      // Update backend using provider-specific endpoint
-      await apiService.updateProviderProfile({
-        services: activeServiceNames,
-        serviceRates: activeServiceRates,
-      });
+      // If turning ON a new service, use the admin approval workflow
+      if (!service.isActive) {
+        // Validate price
+        if (price <= 0) {
+          alert('Please enter a valid price');
+          return;
+        }
 
-      // CRITICAL: Update local user context so changes persist across navigation
-      if (user) {
-        // Sync context with new services
-        updateUser({ 
-          services: activeServiceNames, 
-          serviceRates: activeServiceRates 
+        // Call the new add-service endpoint that requires admin approval
+        const response = await apiService.addProviderService({
+          providerId: user?._id || user?.id || '',
+          services: [service.title],
+          serviceRates: [{ serviceName: service.title, price }],
         });
-      }
 
-      console.log('✅ Service toggled and saved to DB');
-    } catch (error) {
+        if (response.success) {
+          // Update UI to show pending status
+          setServices(prev =>
+            prev.map(s =>
+              s.id === serviceId ? { ...s, isActive: false, rate: price, isPending: true } : s
+            )
+          );
+
+          alert(
+            'Service request submitted!\n\nYour request to add this service has been sent to admin for approval. You will be notified once approved.'
+          );
+        }
+      } else {
+        // If turning OFF, use the regular update endpoint
+        let activeServiceNames: string[] = [];
+        let activeServiceRates: { serviceName: string; price: number }[] = [];
+
+        // Update UI and capture the new state
+        setServices(prev => {
+          const updatedServices = prev.map(s =>
+            s.id === serviceId ? { ...s, isActive: false } : s
+          );
+
+          // Calculate active services from the updated list
+          activeServiceNames = updatedServices
+            .filter(s => s.isActive)
+            .map(s => s.title);
+
+          activeServiceRates = updatedServices
+            .filter(s => s.isActive && s.rate > 0)
+            .map(s => ({ serviceName: s.title, price: s.rate }));
+
+          return updatedServices;
+        });
+
+        // Update backend using provider-specific endpoint
+        await apiService.updateProviderProfile({
+          services: activeServiceNames,
+          serviceRates: activeServiceRates,
+        });
+
+        // Update local user context
+        if (user) {
+          updateUser({
+            services: activeServiceNames,
+            serviceRates: activeServiceRates
+          });
+        }
+
+        console.log('✅ Service removed successfully');
+      }
+    } catch (error: any) {
       console.error('❌ Failed to update service:', error);
+      alert(error.response?.data?.message || 'Failed to update service. Please try again.');
       // Revert on error
-      setServices(prev => 
-        prev.map(s => 
+      setServices(prev =>
+        prev.map(s =>
           s.id === serviceId ? { ...s, isActive: !s.isActive } : s
         )
       );
