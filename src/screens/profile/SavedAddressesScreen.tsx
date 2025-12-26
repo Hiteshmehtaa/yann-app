@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
-import { AddressPicker } from '../../components/ui/AddressPicker';
+import { MapLocationPickerModal } from '../../components/ui/MapLocationPickerModal';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -128,15 +128,24 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
     }
   };
 
-  const handleLocationSelect = (location: { latitude: number; longitude: number; formattedAddress: string }) => {
+  const handleLocationSelect = (location: { 
+    latitude: number; 
+    longitude: number; 
+    address: string;
+    fullAddress: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    district: string;
+  }) => {
     setSelectedCoordinates({ latitude: location.latitude, longitude: location.longitude });
-    // Try to parse the formatted address into components
-    const parts = location.formattedAddress.split(',').map(p => p.trim());
+    // Use the correctly mapped fields from the location picker
     setNewAddress(prev => ({
       ...prev,
-      street: parts[0] || '',
-      city: parts.at(-2) || '',
-      state: parts.at(-1) || '',
+      street: location.district || location.address, // Use district as street
+      city: location.city, // Correct city field
+      state: location.state, // Correct state field
+      postalCode: location.postalCode, // Correct postal code
     }));
     setShowMapPicker(false);
   };
@@ -533,23 +542,12 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
       </ScrollView>
 
       {/* Map Picker Modal */}
-      <Modal
+      <MapLocationPickerModal
         visible={showMapPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowMapPicker(false)}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowMapPicker(false)}>
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Pick Location</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          <AddressPicker onLocationSelect={handleLocationSelect} />
-        </SafeAreaView>
-      </Modal>
+        onClose={() => setShowMapPicker(false)}
+        onLocationSelect={handleLocationSelect}
+        initialLocation={selectedCoordinates || undefined}
+      />
     </SafeAreaView>
   );
 };
