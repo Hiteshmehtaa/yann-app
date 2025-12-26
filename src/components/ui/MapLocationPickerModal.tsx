@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import MapView from 'react-native-maps';
+import MapView, { UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../utils/theme';
@@ -191,7 +191,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
           mapType="standard"
         >
           {/* OpenStreetMap Tile Overlay - Free alternative to Google Maps */}
-          <MapView.UrlTile
+          <UrlTile
             urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
             maximumZ={19}
             flipY={false}
