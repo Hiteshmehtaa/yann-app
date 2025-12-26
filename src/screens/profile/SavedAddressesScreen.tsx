@@ -515,7 +515,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                     )}
                     <TouchableOpacity 
                       style={styles.deleteButton}
-                      onPress={() => handleDeleteAddress(addr.id)}
+                      onPress={() => handleDeleteAddress(addr.id || addr._id || '')}
                     >
                       <Ionicons name="trash-outline" size={18} color={COLORS.error} />
                     </TouchableOpacity>
