@@ -9,6 +9,7 @@ import {
   Animated,
   Switch,
   TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -165,16 +166,29 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       // If turning ON a new service, use the admin approval workflow
       if (!service.isActive) {
         // Validate price
-        if (price <= 0) {
-          alert('Please enter a valid price');
+        if (!price || price <= 0 || isNaN(price)) {
+          Alert.alert('Invalid Price', 'Please enter a valid price greater than 0');
           return;
         }
 
+        // Validate user ID
+        const providerId = user?._id || user?.id;
+        if (!providerId) {
+          Alert.alert('Error', 'User ID not found. Please log in again.');
+          return;
+        }
+
+        console.log('📤 Adding service:', {
+          providerId,
+          service: service.title,
+          price
+        });
+
         // Call the new add-service endpoint that requires admin approval
         const response = await apiService.addProviderService({
-          providerId: user?._id || user?.id || '',
+          providerId,
           services: [service.title],
-          serviceRates: [{ serviceName: service.title, price }],
+          serviceRates: [{ serviceName: service.title, price: Number(price) }],
         });
 
         if (response.success) {
@@ -185,8 +199,10 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
             )
           );
 
-          alert(
-            'Service request submitted!\n\nYour request to add this service has been sent to admin for approval. You will be notified once approved.'
+          Alert.alert(
+            'Service Request Submitted!',
+            'Your request to add this service has been sent to admin for approval. You will be notified once approved.',
+            [{ text: 'OK' }]
           );
         }
       } else {
@@ -230,7 +246,8 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       }
     } catch (error: any) {
       console.error('❌ Failed to update service:', error);
-      alert(error.response?.data?.message || 'Failed to update service. Please try again.');
+      const errorMessage = error.response?.data?.message || 'Failed to update service. Please try again.';
+      Alert.alert('Error', errorMessage);
       // Revert on error
       setServices(prev =>
         prev.map(s =>
