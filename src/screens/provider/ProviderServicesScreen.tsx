@@ -8,6 +8,7 @@ import {
   StatusBar,
   Animated,
   Switch,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,10 +66,13 @@ interface ServiceItem {
 }
 
 export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [isLoading, setIsLoading] = useState(true);
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [priceInput, setPriceInput] = useState('');
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -116,7 +120,12 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       console.error('Failed to load services from API, using fallback', err);
       // Fallback to hardcoded SERVICES
       const userServices = user?.services || [];
-      const userRates: Record<string, number> = user?.serviceRates || {};
+      const userRates: Record<string, number> = {};
+      if (Array.isArray(user?.serviceRates)) {
+        user?.serviceRates.forEach((rate: any) => {
+          if (rate.serviceName && rate.price) userRates[rate.serviceName] = rate.price;
+        });
+      }
       
       const mappedServices = SERVICES.map((service) => ({
         id: service.id,
@@ -133,32 +142,58 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const toggleService = async (serviceId: number) => {
-    // Optimistically update UI
-    setServices(prev => 
-      prev.map(s => 
-        s.id === serviceId ? { ...s, isActive: !s.isActive } : s
-      )
-    );
+    const service = services.find(s => s.id === serviceId);
+    if (!service) return;
 
+    // If turning ON and no price set, show price modal
+    if (!service.isActive && service.rate === 0) {
+      setSelectedService(service);
+      setShowPriceModal(true);
+      return;
+    }
+
+    // If turning OFF or price already set, proceed with toggle
+    await performToggle(serviceId, service.rate);
+  };
+
+  const performToggle = async (serviceId: number, price: number = 0) => {
     try {
-      // Get updated services list
-      const updatedServices = services.map(s => 
-        s.id === serviceId ? { ...s, isActive: !s.isActive } : s
-      );
+      // Use callback to get the latest state and calculate updates
+      let activeServiceNames: string[] = [];
+      let activeServiceRates: { serviceName: string; price: number }[] = [];
       
-      const activeServiceNames = updatedServices
-        .filter(s => s.isActive)
-        .map(s => s.title);
-      
-      const activeServiceRates = updatedServices
-        .filter(s => s.isActive && s.rate > 0)
-        .map(s => ({ serviceName: s.title, price: s.rate }));
+      // Update UI and capture the new state
+      setServices(prev => {
+        const updatedServices = prev.map(s => 
+          s.id === serviceId ? { ...s, isActive: !s.isActive, rate: s.isActive ? s.rate : (price || s.rate) } : s
+        );
+        
+        // Calculate active services from the updated list
+        activeServiceNames = updatedServices
+          .filter(s => s.isActive)
+          .map(s => s.title);
+        
+        activeServiceRates = updatedServices
+          .filter(s => s.isActive && s.rate > 0)
+          .map(s => ({ serviceName: s.title, price: s.rate }));
+        
+        return updatedServices;
+      });
 
-      // Update backend
-      await apiService.updateProfile({
+      // Update backend using provider-specific endpoint
+      await apiService.updateProviderProfile({
         services: activeServiceNames,
         serviceRates: activeServiceRates,
       });
+
+      // CRITICAL: Update local user context so changes persist across navigation
+      if (user) {
+        // Sync context with new services
+        updateUser({ 
+          services: activeServiceNames, 
+          serviceRates: activeServiceRates 
+        });
+      }
 
       console.log('✅ Service toggled and saved to DB');
     } catch (error) {
@@ -291,6 +326,57 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           <View style={{ height: 100 }} />
         </Animated.View>
       </ScrollView>
+
+      {/* Price Input Modal */}
+      {showPriceModal && selectedService && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Set Price for {selectedService.title}</Text>
+            <Text style={styles.modalSubtitle}>Enter your hourly rate for this service</Text>
+            
+            <View style={styles.priceInputContainer}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <TextInput
+                style={styles.priceInput}
+                placeholder="0"
+                keyboardType="numeric"
+                value={priceInput}
+                onChangeText={setPriceInput}
+                autoFocus
+              />
+              <Text style={styles.perHourText}>/hr</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowPriceModal(false);
+                  setSelectedService(null);
+                  setPriceInput('');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={async () => {
+                  const price = parseInt(priceInput);
+                  if (price > 0) {
+                    setShowPriceModal(false);
+                    setPriceInput('');
+                    await performToggle(selectedService.id, price);
+                    setSelectedService(null);
+                  }
+                }}
+              >
+                <Text style={styles.confirmButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -430,5 +516,88 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.colors.textSecondary,
     lineHeight: 18,
+  },
+  // Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: THEME.spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: THEME.radius.lg,
+    padding: THEME.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    marginBottom: THEME.spacing.lg,
+  },
+  priceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: THEME.radius.md,
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: THEME.spacing.sm,
+    marginBottom: THEME.spacing.lg,
+  },
+  currencySymbol: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginRight: THEME.spacing.xs,
+  },
+  priceInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    padding: 0,
+  },
+  perHourText: {
+    fontSize: 16,
+    color: THEME.colors.textSecondary,
+    marginLeft: THEME.spacing.xs,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: THEME.spacing.sm,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: THEME.spacing.md,
+    borderRadius: THEME.radius.md,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: THEME.colors.text,
+  },
+  confirmButton: {
+    backgroundColor: THEME.colors.primary,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

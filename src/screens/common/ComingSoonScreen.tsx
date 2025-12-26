@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../utils/theme';
 import { useNavigation } from '@react-navigation/native';
 
@@ -58,18 +59,37 @@ export const ComingSoonScreen = () => {
             }
           ]}
         >
-          <View style={styles.iconCircle}>
-            <Ionicons name="construct" size={60} color={COLORS.primary} />
-          </View>
+          <LinearGradient
+            colors={['#1E3A5F', '#2E5077']}
+            style={styles.iconGradient}
+          >
+            <Ionicons name="chatbubbles" size={48} color="#FFF" />
+          </LinearGradient>
           <View style={[styles.decorationCircle, styles.circle1]} />
           <View style={[styles.decorationCircle, styles.circle2]} />
         </Animated.View>
 
         <Animated.View style={[styles.textContainer, { opacity: fadeAnim }]}>
-          <Text style={styles.title}>Coming Soon</Text>
+          <Text style={styles.title}>Coming Soon!</Text>
           <Text style={styles.subtitle}>
-            We're building something amazing!{'\n'}This feature is currently under development.
+            Chat with your service providers directly in the app.{'\n'}
+            Real-time messaging is under development.
           </Text>
+        </Animated.View>
+
+        <Animated.View style={[styles.featureList, { opacity: fadeAnim }]}>
+          <View style={styles.featureItem}>
+            <Ionicons name="checkmark-circle" size={20} color="#0D9488" />
+            <Text style={styles.featureText}>Real-time messaging</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Ionicons name="checkmark-circle" size={20} color="#0D9488" />
+            <Text style={styles.featureText}>Photo & file sharing</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Ionicons name="checkmark-circle" size={20} color="#0D9488" />
+            <Text style={styles.featureText}>Booking updates</Text>
+          </View>
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim, width: '100%', alignItems: 'center' }}>
@@ -89,7 +109,7 @@ export const ComingSoonScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
   },
   content: {
     flex: 1,
@@ -98,63 +118,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   iconContainer: {
-    marginBottom: 40,
+    marginBottom: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 200,
-    height: 200,
+    width: 160,
+    height: 160,
   },
-  iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.white,
+  iconGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
-    ...SHADOWS.md,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    ...SHADOWS.lg,
   },
   decorationCircle: {
     position: 'absolute',
     borderRadius: 999,
   },
   circle1: {
-    width: 160,
-    height: 160,
-    backgroundColor: COLORS.primary,
+    width: 130,
+    height: 130,
+    backgroundColor: '#1E3A5F',
     opacity: 0.1,
     zIndex: 5,
   },
   circle2: {
-    width: 200,
-    height: 200,
-    backgroundColor: COLORS.accentOrange,
+    width: 160,
+    height: 160,
+    backgroundColor: '#0D9488',
     opacity: 0.05,
     zIndex: 1,
   },
   textContainer: {
     alignItems: 'center',
-    marginBottom: 50,
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 12,
-    letterSpacing: -0.5,
+    marginBottom: 10,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+  },
+  featureList: {
+    alignSelf: 'stretch',
+    backgroundColor: COLORS.gray100,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    marginBottom: 24,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  featureText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '500',
   },
   button: {
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
-    paddingHorizontal: 32,
+    paddingHorizontal: 40,
     borderRadius: RADIUS.medium,
     ...SHADOWS.sm,
     minWidth: 160,
@@ -163,7 +197,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: COLORS.white,
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontWeight: '600',
   },
 });
+

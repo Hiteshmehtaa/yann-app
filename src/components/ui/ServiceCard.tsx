@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType, Animated, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SPACING, RADIUS, SHADOWS } from '../../utils/theme';
 import { ServiceIcon } from '../icons/ServiceIcon';
 import { Badge } from './Badge';
@@ -20,7 +21,14 @@ type ServiceCardProps = {
   style?: ViewStyle;
 };
 
-
+// Gradient presets for different service categories
+const GRADIENT_PRESETS: Record<string, readonly [string, string]> = {
+  default: ['#667eea', '#764ba2'],
+  transport: ['#11998e', '#38ef7d'],
+  cleaning: ['#667eea', '#764ba2'],
+  health: ['#eb3349', '#f45c43'],
+  spiritual: ['#f7971e', '#ffd200'],
+};
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   title,
@@ -35,30 +43,54 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   onPress,
   style,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   // Partner Count Logic
   const displayCount = partnerCount > 2 ? '2+' : partnerCount;
   const showCount = partnerCount > 0 && !isComingSoon;
 
+  // Get gradient based on service title
+  const getGradient = (): readonly [string, string] => {
+    if (title.includes('Driver')) return GRADIENT_PRESETS.transport;
+    if (title.includes('Clean') || title.includes('Maid')) return GRADIENT_PRESETS.cleaning;
+    if (title.includes('Nurse') || title.includes('Attendant')) return GRADIENT_PRESETS.health;
+    if (title.includes('Pujari')) return GRADIENT_PRESETS.spiritual;
+    return GRADIENT_PRESETS.default;
+  };
+
   const handlePressIn = () => {
     if (!isComingSoon) {
       haptics.light();
-      Animated.spring(scaleAnim, {
-        toValue: 0.97,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 0.95,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+      ]).start();
     }
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 3,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start();
   };
 
   const handlePress = () => {
@@ -67,6 +99,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       onPress();
     }
   };
+
+  const gradientColors = getGradient();
+  const shadowColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(0,0,0,0.1)', gradientColors[0]],
+  });
 
   return (
     <TouchableOpacity
@@ -80,20 +118,41 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       <Animated.View style={[
         styles.card, 
         { 
-          backgroundColor: colors.cardBg,
+          backgroundColor: isDark ? colors.cardBg : colors.cardBg,
           transform: [{ scale: scaleAnim }],
-          shadowColor: colors.text, // Adapt shadow color
+          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+          borderWidth: 1,
         }
       ]}>
-        {/* Partner Count Badge - Top Left */}
-        {showCount && (
-          <View style={[styles.partnerCountBadge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.partnerCountText}>{displayCount}</Text>
-          </View>
+        {/* Subtle gradient overlay for dark mode */}
+        {isDark && (
+          <LinearGradient
+            colors={['rgba(99,102,241,0.05)', 'rgba(168,85,247,0.02)', 'transparent']}
+            style={styles.gradientOverlay}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
         )}
 
-        {/* Image Container */}
-        <View style={[styles.imageContainer, { backgroundColor: isComingSoon ? colors.gray100 : colors.primaryLight }]}>
+        {/* Partner Count Badge - Top Left */}
+        {showCount && (
+          <LinearGradient
+            colors={gradientColors}
+            style={styles.partnerCountBadge}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.partnerCountText}>{displayCount}</Text>
+          </LinearGradient>
+        )}
+
+        {/* Image Container with Gradient Background */}
+        <LinearGradient
+          colors={isComingSoon ? ['#9CA3AF', '#6B7280'] : gradientColors}
+          style={styles.imageContainer}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
           {iconImage ? (
             <Image 
               source={iconImage} 
@@ -101,12 +160,19 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               resizeMode="cover"
             />
           ) : (
-            <ServiceIcon size={60} color={isComingSoon ? '#999' : undefined} />
+            <ServiceIcon size={36} color="#FFF" />
           )}
-        </View>
+        </LinearGradient>
 
         {/* Title */}
-        <Text style={[styles.title, { color: colors.text }, isComingSoon && { color: colors.textTertiary }]} numberOfLines={2}>
+        <Text 
+          style={[
+            styles.title, 
+            { color: colors.text }, 
+            isComingSoon && { color: colors.textTertiary }
+          ]} 
+          numberOfLines={2}
+        >
           {title}
         </Text>
         
@@ -143,53 +209,84 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   card: {
-    borderRadius: RADIUS.xlarge,
+    borderRadius: 20,
     padding: SPACING.md,
     alignItems: 'center',
-    ...SHADOWS.md,
-    height: 150, // Increased slightly for spacing
+    height: 155,
     justifyContent: 'space-between',
     position: 'relative',
+    overflow: 'hidden',
+    // Modern shadow
+    ...Platform.select({
+      ios: {
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
   },
   imageContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
     marginBottom: SPACING.xs,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8, // Space for top badges
+    marginTop: 8,
+    // Subtle inner glow
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   serviceImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 30,
+    borderRadius: 18,
   },
   title: {
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 4,
+    lineHeight: 17,
+    marginTop: 6,
     marginBottom: 4,
+    letterSpacing: 0.2,
   },
   badgesContainer: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 8,
+    right: 8,
     alignItems: 'flex-end',
     gap: 4,
   },
-  badgeWrapper: {
-    // scale down slightly if multiple
-  },
+  badgeWrapper: {},
   partnerCountBadge: {
     position: 'absolute',
     top: 8,
     left: 8,
-    width: 20, // Circular or small bubble
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -200,3 +297,4 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 });
+

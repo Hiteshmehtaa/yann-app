@@ -991,6 +991,39 @@ class ApiService {
     const response = await this.client.post('/wallet/refund');
     return response.data;
   }
+
+  // ====================================================================
+  // AADHAAR VERIFICATION ENDPOINTS
+  // ====================================================================
+
+  /**
+   * POST /api/aadhaar/initiate
+   * Initiate Aadhaar verification via Meon DigiLocker
+   */
+  async initiateAadhaarVerification(data: {
+    userId: string;
+    userType: 'homeowner' | 'provider';
+    aadhaarNumber: string;
+  }): Promise<ApiResponse<{ verificationUrl: string; requestId: string; expiresAt: string }>> {
+    const response = await this.client.post('/aadhaar/initiate', data);
+    return response.data;
+  }
+
+  /**
+   * GET /api/aadhaar/status
+   * Check Aadhaar verification status
+   */
+  async getAadhaarStatus(): Promise<ApiResponse<{
+    userType: string;
+    aadhaarVerified: boolean;
+    aadhaarPhone: string | null;
+    aadhaarVerifiedAt: string | null;
+    adminApproved?: boolean;
+    adminApprovedAt?: string | null;
+  }>> {
+    const response = await this.client.get('/aadhaar/status');
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

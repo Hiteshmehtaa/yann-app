@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   StatusBar,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +26,15 @@ import { EmptyStateAnimation } from '../../components/animations';
 import { EmptyState } from '../../components/EmptyState';
 import { TabBar } from '../../components/ui/TabBar';
 import { CountdownTimer } from '../../components/ui/CountdownTimer';
+
+// Gradient presets for status
+const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
+  confirmed: ['#10B981', '#059669'],
+  active: ['#10B981', '#059669'],
+  completed: ['#667eea', '#764ba2'],
+  pending: ['#F59E0B', '#D97706'],
+  cancelled: ['#EF4444', '#DC2626'],
+};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -129,25 +140,38 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
             styles.card, 
             { 
                 backgroundColor: colors.cardBg,
-                borderLeftColor: getStatusBorderColor(),
-                borderLeftWidth: 4,
-                shadowColor: colors.text 
+                borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                borderWidth: 1,
             }
         ]}
         onPress={() => navigation.navigate('BookingDetail', { booking: item })}
         activeOpacity={0.7}
       >
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderLeft}>
-            <Text style={[styles.serviceName, { color: colors.text }]}>{item.serviceName}</Text>
-            <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
-              <Text style={[styles.statusText, getStatusTextStyle(item.status)]}>
-                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-              </Text>
+        {/* Gradient Status Indicator */}
+        <LinearGradient
+          colors={STATUS_GRADIENTS[item.status.toLowerCase()] || ['#9CA3AF', '#6B7280']}
+          style={styles.statusIndicator}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+        
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderLeft}>
+              <Text style={[styles.serviceName, { color: colors.text }]}>{item.serviceName}</Text>
+              <LinearGradient
+                colors={STATUS_GRADIENTS[item.status.toLowerCase()] || ['#9CA3AF', '#6B7280']}
+                style={styles.statusBadgeGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.statusTextWhite}>
+                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                </Text>
+              </LinearGradient>
             </View>
+            <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={colors.textTertiary} />
           </View>
-          <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={colors.textTertiary} />
-        </View>
 
         <View style={styles.cardBody}>
           {/* Provider Info */}
@@ -182,6 +206,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>Total</Text>
             <Text style={[styles.priceValue, { color: colors.primary }]}>₹{item.totalPrice}</Text>
           </View>
+        </View>
         </View>
       </TouchableOpacity>
     );
@@ -511,5 +536,30 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.primary,
     fontWeight: TYPOGRAPHY.weight.bold,
+  },
+  // New gradient status styles
+  statusIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 12,
+    bottom: 12,
+    width: 4,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  cardContent: {
+    flex: 1,
+    paddingLeft: 8,
+  },
+  statusBadgeGradient: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusTextWhite: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.3,
   },
 });

@@ -10,7 +10,9 @@ import {
   Linking,
   Alert,
   Animated,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
@@ -39,7 +41,10 @@ interface ProviderBooking {
 
 type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed';
 
+import { useNavigation } from '@react-navigation/native';
+
 export const ProviderBookingsScreen = () => {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const [bookings, setBookings] = useState<ProviderBooking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<ProviderBooking[]>([]);
@@ -342,6 +347,17 @@ export const ProviderBookingsScreen = () => {
     }
   };
 
+  const getStatusGradient = (status: string): [string, string] => {
+    switch (status) {
+      case 'pending': return ['#FF8A3D', '#F59E0B'];
+      case 'accepted': return ['#0D9488', '#14B8A6'];
+      case 'in_progress': return ['#2563EB', '#3B82F6'];
+      case 'completed': return ['#059669', '#10B981'];
+      case 'cancelled': return ['#DC2626', '#EF4444'];
+      default: return ['#6B7280', '#9CA3AF'];
+    }
+  };
+
   const renderFilterChip = (label: string, value: FilterStatus, count: number) => {
     const isActive = activeFilter === value;
     return (
@@ -363,6 +379,13 @@ export const ProviderBookingsScreen = () => {
 
     return (
       <View key={booking.id} style={styles.bookingCard}>
+        {/* Status Indicator Bar */}
+        <LinearGradient
+          colors={getStatusGradient(booking.status)}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.statusBar}
+        />
         {/* Header */}
         <View style={styles.bookingHeader}>
           <View style={styles.customerInfo}>
@@ -505,7 +528,22 @@ export const ProviderBookingsScreen = () => {
   const completedCount = bookings.filter(b => b.status === 'completed').length;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor="#2563EB" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButtonIcon}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Bookings</Text>
+        <View style={{ width: 40 }} />
+      </View>
+      
+      <View style={styles.container}>
       {/* Error Banner */}
       {error && (
         <View style={styles.errorBanner}>
@@ -519,10 +557,9 @@ export const ProviderBookingsScreen = () => {
         </View>
       )}
 
-      {/* Header Stats */}
       <View style={styles.statsContainer}>
         <LinearGradient
-          colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+          colors={['#2563EB', '#1E40AF']} // App Theme Blue
           style={styles.statsGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -587,7 +624,8 @@ export const ProviderBookingsScreen = () => {
           filteredBookings.map(renderBookingCard)
         )}
       </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -652,6 +690,33 @@ const MOCK_BOOKINGS: ProviderBooking[] = [
 ];
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  headerTitle: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    color: COLORS.text,
+  },
+  backButtonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -751,8 +816,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.large,
     padding: SPACING.md,
+    paddingLeft: SPACING.md + 4,
     marginBottom: SPACING.md,
+    position: 'relative',
+    overflow: 'hidden',
     ...SHADOWS.md,
+  },
+  statusBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: RADIUS.large,
+    borderBottomLeftRadius: RADIUS.large,
   },
   bookingHeader: {
     flexDirection: 'row',

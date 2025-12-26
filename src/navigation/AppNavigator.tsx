@@ -54,6 +54,7 @@ import { ProviderBookingsScreen } from '../screens/provider/ProviderBookingsScre
 import { ProviderProfileScreen } from '../screens/provider/ProviderProfileScreen';
 import { ProviderServicesScreen } from '../screens/provider/ProviderServicesScreen';
 import { ProviderEarningsScreen } from '../screens/provider/ProviderEarningsScreen';
+import { AadhaarVerificationScreen } from '../screens/auth/AadhaarVerificationScreen';
 
 // Legal Screens
 import { TermsConditionsScreen } from '../screens/legal/TermsConditionsScreen';
@@ -91,6 +92,7 @@ type RootStackParamList = {
   RefundPolicy: undefined;
   ProviderTerms: undefined;
   SafetyPolicy: undefined;
+  AadhaarVerification: undefined;
 };
 
 // Premium Apple-like Theme - Using new design system
@@ -348,12 +350,16 @@ export function AppNavigator() {
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderServices" component={ProviderServicesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderEarnings" component={ProviderEarningsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Wallet" component={WalletScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Terms" component={TermsConditionsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Privacy" component={PrivacyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="RefundPolicy" component={RefundPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
               </>
             ) : (
               <>
@@ -371,6 +377,7 @@ export function AppNavigator() {
                 <Stack.Screen name="RefundPolicy" component={RefundPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
               </>
             )}
           </>

@@ -40,31 +40,50 @@ const lightColors = {
 };
 
 const darkColors = {
-  primary: '#3B82F6',          // Slightly lighter blue for dark mode
-  primaryLight: '#1E293B',     // Dark slate blue
-  primaryGradientStart: '#2563EB',
-  primaryGradientEnd: '#3B82F6',
-  accentOrange: '#FB923C',
-  accentYellow: '#FBBF24',
-  background: '#121212',       // Dark Background
-  cardBg: '#1E1E1E',           // Dark Card Background
-  elevated: '#2C2C2C',         // Elevated surfaces
-  text: '#F3F4F6',             // Light Text
-  textSecondary: '#9CA3AF',    // Gray Text
-  textTertiary: '#6B7280',     // Muted Text
-  border: '#374151',           // Dark Border
-  divider: '#2D2D2D',          // Dark Divider
-  success: '#34D399',
-  error: '#F87171',
-  warning: '#FBBF24',
-  info: '#60A5FA',
-  overlay: 'rgba(0, 0, 0, 0.7)',
-  gradientOverlay: 'rgba(0, 0, 0, 0.8)',
+  // Primary colors - More vibrant for dark mode
+  primary: '#6366F1',             // Indigo - more vibrant
+  primaryLight: '#1E1B4B',        // Deep indigo background
+  primaryGradientStart: '#667eea',
+  primaryGradientEnd: '#764ba2',
+
+  // Accent colors - Neon-like for futuristic feel
+  accentOrange: '#F97316',
+  accentYellow: '#FCD34D',
+  accentCyan: '#22D3EE',          // NEW: Cyan accent for futuristic
+  accentPurple: '#A855F7',        // NEW: Purple accent
+
+  // Backgrounds - Softer dark, not pure black
+  background: '#0F0F1A',          // Deep navy (softer than pure black)
+  cardBg: '#1A1A2E',              // Elevated navy
+  elevated: '#252542',            // Higher elevation
+  glass: 'rgba(30, 30, 60, 0.7)', // NEW: Glass effect background
+
+  // Text colors
+  text: '#F1F5F9',                // Bright text
+  textSecondary: '#94A3B8',       // Slate text
+  textTertiary: '#64748B',        // Muted slate
+
+  // Borders & Dividers
+  border: '#334155',              // Slate border
+  divider: '#1E293B',             // Subtle divider
+  borderGlow: 'rgba(99, 102, 241, 0.3)', // NEW: Glow border
+
+  // Status colors - Brighter for dark mode
+  success: '#10B981',
+  error: '#EF4444',
+  warning: '#F59E0B',
+  info: '#3B82F6',
+
+  // Overlays
+  overlay: 'rgba(0, 0, 0, 0.8)',
+  gradientOverlay: 'rgba(15, 15, 26, 0.9)',
+
+  // Gray scale
   white: '#FFFFFF',
   black: '#000000',
-  gray50: '#1F2937',
-  gray100: '#374151',
-  gray200: '#4B5563',
+  gray50: '#1E293B',
+  gray100: '#334155',
+  gray200: '#475569',
 };
 
 export const COLORS = lightColors; // Default export for backwards compatibility

@@ -55,7 +55,8 @@
           "photosPermission": "Allow Yann to access your photos to upload a profile picture.",
           "cameraPermission": "Allow Yann to access your camera to take a profile picture."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

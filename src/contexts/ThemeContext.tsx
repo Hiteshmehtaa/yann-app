@@ -16,49 +16,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const systemScheme = useColorScheme();
-  const [theme, setThemeState] = useState<ThemeType>('system');
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    loadTheme();
-  }, []);
-
-  useEffect(() => {
-    const computedDark = 
-      theme === 'system' 
-        ? systemScheme === 'dark' 
-        : theme === 'dark';
-    
-    setIsDark(computedDark);
-  }, [theme, systemScheme]);
-
-  const loadTheme = async () => {
-    try {
-      const storedTheme = await AsyncStorage.getItem('user_theme');
-      if (storedTheme) {
-        setThemeState(storedTheme as ThemeType);
-      }
-    } catch (error) {
-      console.error('Failed to load theme:', error);
-    }
-  };
+  // FORCE LIGHT MODE - Dark mode disabled for production
+  const [theme] = useState<ThemeType>('light');
+  const isDark = false; // Always false - dark mode disabled
 
   const setTheme = async (newTheme: ThemeType) => {
-    try {
-      setThemeState(newTheme);
-      await AsyncStorage.setItem('user_theme', newTheme);
-    } catch (error) {
-      console.error('Failed to save theme:', error);
-    }
+    // No-op - theme changes disabled
+    console.log('Theme changes are disabled - app is locked to light mode');
   };
 
   const toggleTheme = async () => {
-    const nextTheme = isDark ? 'light' : 'dark';
-    await setTheme(nextTheme);
+    // No-op - theme toggle disabled
+    console.log('Theme toggle is disabled - app is locked to light mode');
   };
 
-  const colors = isDark ? THEME.dark : THEME.light;
+  const colors = THEME.light; // Always use light colors
 
   return (
     <ThemeContext.Provider value={{ theme, isDark, colors, setTheme, toggleTheme }}>

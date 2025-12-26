@@ -227,17 +227,17 @@ export const WalletScreen = ({ navigation }: any) => {
     const isCredit = item.type === 'CREDIT';
     const iconName = getTransactionIcon(item.description, item.type);
     
-    // Enhanced color scheme
+    // Modern color scheme
     const colors = {
       credit: {
-        text: '#10B981',
-        bg: 'rgba(16, 185, 129, 0.1)',
-        border: 'rgba(16, 185, 129, 0.2)',
+        icon: '#10B981',
+        iconBg: '#ECFDF5',
+        amount: '#059669',
       },
       debit: {
-        text: '#EF4444',
-        bg: 'rgba(239, 68, 68, 0.1)',
-        border: 'rgba(239, 68, 68, 0.2)',
+        icon: '#EF4444',
+        iconBg: '#FEF2F2',
+        amount: '#DC2626',
       },
     };
     
@@ -249,30 +249,30 @@ export const WalletScreen = ({ navigation }: any) => {
     const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <AnimatedButton
-        key={item._id}
-        onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-        style={[styles.transactionItem, { borderLeftWidth: 3, borderLeftColor: colorScheme.border }]}
-      >
-        <View style={[styles.transactionIcon, { backgroundColor: colorScheme.bg }]}>
-          <MaterialCommunityIcons name={iconName} size={24} color={colorScheme.text} />
+
+      <View key={item._id} style={styles.transactionCard}>
+        <View style={[styles.transactionIconCircle, { backgroundColor: colorScheme.iconBg }]}>
+          <MaterialCommunityIcons name={iconName} size={20} color={colorScheme.icon} />
         </View>
         
-        <View style={styles.transactionContent}>
-          <View style={styles.transactionRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.transactionTitle}>{item.description || 'Transaction'}</Text>
-              <Text style={styles.transactionCategory}>{item.category || 'General'}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.transactionAmount, { color: colorScheme.text }]}>
-                {isCredit ? '+' : '-'}₹{Math.abs(item.amount).toFixed(2)}
-              </Text>
-              <Text style={styles.transactionDate}>{dateStr} • {timeStr}</Text>
-            </View>
-          </View>
+        <View style={styles.transactionDetails}>
+          <Text style={styles.transactionTitle} numberOfLines={1}>
+            {item.description || 'Transaction'}
+          </Text>
+          <Text style={styles.transactionMeta}>
+            {dateStr} • {timeStr}
+          </Text>
         </View>
-      </AnimatedButton>
+        
+        <View style={styles.transactionAmountContainer}>
+          <Text style={[styles.transactionAmount, { color: colorScheme.amount }]}>
+            {isCredit ? '+' : '-'}₹{Math.abs(item.amount).toFixed(2)}
+          </Text>
+          <Text style={[styles.transactionStatus, { color: colorScheme.icon }]}>
+            {isCredit ? 'Credit' : 'Debit'}
+          </Text>
+        </View>
+      </View>
     );
   };
 
@@ -345,76 +345,72 @@ export const WalletScreen = ({ navigation }: any) => {
             </View>
           )}
 
-          {/* Premium Wallet Card */}
-          <LinearGradient
-            colors={['#667eea', '#764ba2']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.walletCard}
-          >
-            <View style={styles.patternCircle1} />
-            <View style={styles.patternCircle2} />
-            
-            <View style={styles.cardHeader}>
-              <View>
-                <Text style={styles.cardLabel}>Total Balance</Text>
-                <Text style={styles.cardBalance}>₹{balance.toFixed(2)}</Text>
+          {/* Premium Mesh Gradient Card */}
+          <View style={styles.cardContainer}>
+            <LinearGradient
+              colors={['#2563EB', '#1E40AF']} // Blue-600 -> Blue-800
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.walletCard}
+            >
+              <View style={styles.patternDot1} />
+              <View style={styles.patternDot2} />
+              <View style={styles.patternAhoy} />
+              
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={styles.cardLabel}>Total Balance</Text>
+                  <Text style={styles.cardBalance}>₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.glassChip}>
+                  <MaterialCommunityIcons name="contactless-payment" size={24} color="rgba(255,255,255,0.9)" />
+                </View>
               </View>
-              <View style={styles.chipContainer}>
-                <MaterialCommunityIcons name="integrated-circuit-chip" size={32} color={addAlpha('#FFF', 0.6)} />
-              </View>
-            </View>
 
-            <View style={styles.cardFooter}>
-              <View style={styles.cardUserInfo}>
-                <Text style={styles.cardUserValues}>YANN CREDIT</Text>
-                <Text style={styles.cardUserLabel}>Valid User</Text>
+              <View style={styles.cardFooter}>
+                <View style={styles.cardUserInfo}>
+                  <Text style={styles.cardUserValues}>YANN PREMIUM</Text>
+                  <Text style={styles.cardUserLabel}>•••• 8832</Text>
+                </View>
+                {/* Top Up button removed as requested */}
+              </View>
+            </LinearGradient>
+            
+            {/* Floating 3D Stats - Overlapping the Card */}
+            <View style={styles.floatingStatsContainer}>
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="arrow-down" size={20} color="#059669" />
+                </View>
+                <View>
+                  <Text style={styles.statLabel}>Income</Text>
+                  <Text style={[styles.statValue, { color: '#059669' }]}>
+                    ₹{transactions.filter(t => t.type === 'CREDIT').reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
+                  </Text>
+                </View>
               </View>
               
-              <AnimatedButton
-                style={styles.mainAddButton}
-                onPress={openAmountModal}
-                disabled={isAddingMoney}
-              >
-                {isAddingMoney ? (
-                  <LoadingSpinner visible={true} color={COLORS.primary} size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="add" size={20} color="#667eea" />
-                    <Text style={styles.mainAddButtonText}>Top Up</Text>
-                  </>
-                )}
-              </AnimatedButton>
-            </View>
-          </LinearGradient>
-
-          {/* Quick Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                <Ionicons name="trending-up" size={20} color="#10B981" />
+              <View style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="arrow-up" size={20} color="#DC2626" />
+                </View>
+                <View>
+                  <Text style={styles.statLabel}>Expense</Text>
+                  <Text style={[styles.statValue, { color: '#DC2626' }]}>
+                    ₹{transactions.filter(t => t.type === 'DEBIT').reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.statLabel}>Total Income</Text>
-              <Text style={styles.statValue}>
-                ₹{transactions.filter(t => t.type === 'CREDIT').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
-              </Text>
-            </View>
-            
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                <Ionicons name="trending-down" size={20} color="#EF4444" />
-              </View>
-              <Text style={styles.statLabel}>Total Expenses</Text>
-              <Text style={styles.statValue}>
-                ₹{transactions.filter(t => t.type === 'DEBIT').reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
-              </Text>
             </View>
           </View>
 
-          {/* Quick Add Actions */}
+          {/* Spacer for overlapping stats */}
+          <View style={{ height: 40 }} />
+
+          {/* Quick Add Actions - Styled Chips */}
           <View style={styles.quickActionsSection}>
             <Text style={styles.sectionTitle}>Quick Top-up</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ paddingRight: 20 }}>
               {QUICK_AMOUNTS.map((amt) => (
                 <AnimatedButton
                   key={amt}
@@ -431,7 +427,7 @@ export const WalletScreen = ({ navigation }: any) => {
           {/* Transactions */}
           <View style={styles.transactionsSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Transactions</Text>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
               {transactions.length > 5 && (
                 <AnimatedButton onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
                   <Text style={styles.seeAllText}>See All</Text>
@@ -444,14 +440,8 @@ export const WalletScreen = ({ navigation }: any) => {
                 <View style={styles.emptyIconContainer}>
                   <Ionicons name="receipt-outline" size={48} color={COLORS.textTertiary} />
                 </View>
-                <Text style={styles.emptyTitle}>No transactions yet</Text>
-                <Text style={styles.emptyDescription}>Your transaction history will appear here</Text>
-                <AnimatedButton
-                  style={styles.emptyActionButton}
-                  onPress={openAmountModal}
-                >
-                  <Text style={styles.emptyActionText}>Add Money</Text>
-                </AnimatedButton>
+                <Text style={styles.emptyTitle}>No transaction history</Text>
+                <Text style={styles.emptyDescription}>Your recent payments and top-ups will show here</Text>
               </View>
             ) : (
               <View style={styles.transactionsList}>
@@ -584,121 +574,162 @@ const styles = StyleSheet.create({
   },
   
   // Wallet Card
+  // Premium Wallet Card
+  cardContainer: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
+    marginBottom: 40, // Space for overlapping stats
+    zIndex: 1,
+  },
   walletCard: {
-    margin: SPACING.lg,
     padding: SPACING.xl,
-    borderRadius: RADIUS.xlarge,
-    height: 200,
+    borderRadius: 24,
+    height: 220,
     justifyContent: 'space-between',
     position: 'relative',
     overflow: 'hidden',
-    ...SHADOWS.primary,
+    ...SHADOWS.md,
+    elevation: 10,
   },
-  patternCircle1: {
+  patternDot1: {
     position: 'absolute',
-    top: -50,
-    right: -50,
+    top: -60,
+    right: -60,
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    zIndex: 0,
   },
-  patternCircle2: {
+  patternDot2: {
     position: 'absolute',
-    bottom: -80,
+    bottom: -40,
     left: -40,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    zIndex: 0,
+  },
+  patternAhoy: {
+    position: 'absolute',
+    top: 40,
+    left: '40%',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(139, 92, 246, 0.3)', // Violet glow
+    filter: 'blur(40px)', // Note: blur might not work on native without library, using opacity fallback
+    opacity: 0.5,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    zIndex: 2,
   },
   cardLabel: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-    marginBottom: 4,
+    fontWeight: '600',
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   cardBalance: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '800',
     color: '#FFF',
-    letterSpacing: -0.5,
+    letterSpacing: -1,
+    lineHeight: 42,
   },
-  chipContainer: {
-    marginTop: 4,
+  glassChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
+    zIndex: 2,
   },
   cardUserInfo: {
     justifyContent: 'center',
   },
   cardUserValues: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFF',
-    marginBottom: 2,
+    marginBottom: 4,
     letterSpacing: 1,
+    opacity: 0.9,
   },
   cardUserLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'monospace', // Monospace for card number feel
   },
   mainAddButton: {
     backgroundColor: '#FFF',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 30,
+    paddingVertical: 12,
+    borderRadius: 100,
     gap: 6,
     ...SHADOWS.sm,
   },
   mainAddButtonText: {
-    color: '#667eea',
+    color: '#4338CA', // Indigo Primary
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
   },
 
-  // Stats Section
-  statsContainer: {
+  // Floating Stats Section - 3D Overlap
+  floatingStatsContainer: {
+    position: 'absolute',
+    bottom: -35,
+    left: 20,
+    right: 20,
     flexDirection: 'row',
-    paddingHorizontal: SPACING.lg,
+    justifyContent: 'space-between',
     gap: 12,
-    marginBottom: SPACING.lg,
+    zIndex: 10,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFF',
-    padding: SPACING.md,
-    borderRadius: RADIUS.medium,
-    ...SHADOWS.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 20,
+    ...SHADOWS.md, // Elevated shadow
+    elevation: 8,
+    gap: 12,
   },
   statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 12, // Softer square
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
   },
   statLabel: {
     fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-    marginBottom: 4,
+    color: '#9CA3AF', // Gray-400
+    fontWeight: '600',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
   },
 
   // Quick Actions
@@ -750,54 +781,55 @@ const styles = StyleSheet.create({
   transactionsList: {
     gap: 12,
   },
-  transactionItem: {
+  // Transaction Styles - Clean List
+  transactionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
-    padding: SPACING.md + 2,
-    borderRadius: RADIUS.medium,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-    ...SHADOWS.sm,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 0, // No horizontal padding for cleaner list look
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  transactionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  transactionIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 16,
   },
-  transactionContent: {
+  transactionDetails: {
     flex: 1,
-  },
-  transactionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   transactionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#1F2937', // Gray-900
     marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  transactionCategory: {
-    fontSize: 12,
+  transactionMeta: {
+    fontSize: 13,
+    color: '#6B7280', // Gray-500
     fontWeight: '500',
-    color: COLORS.textTertiary,
-    textTransform: 'capitalize',
+  },
+  transactionAmountContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   transactionAmount: {
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
+    fontVariant: ['tabular-nums'], // Better alignment for numbers
   },
-  transactionDate: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
+  transactionStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   // Empty State

@@ -11,7 +11,9 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ComingSoonModal } from '../../components/ComingSoonModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -209,6 +211,12 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       onPress: () => navigation.navigate('SavedAddresses'),
     },
     {
+      icon: 'shield-checkmark-outline',
+      title: 'Verify Aadhaar',
+      subtitle: 'Complete your KYC verification',
+      onPress: () => navigation.navigate('AadhaarVerification' as any),
+    },
+    {
       icon: 'wallet-outline',
       title: 'Yann Wallet',
       subtitle: '',
@@ -238,28 +246,25 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       subtitle: '',
       onPress: () => navigation.navigate('HelpSupport'),
     },
-    {
-      icon: 'moon-outline',
-      title: 'Dark Mode',
-      subtitle: '',
-      onPress: () => setShowComingSoon(true),
-    }
+    // Dark Mode removed - app locked to light mode
   ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider, borderBottomWidth: 1 }]}>
+      {/* Clean Professional Header */}
+      <View style={[styles.cleanHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider }]}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={styles.headerIconButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
-        <View style={styles.headerRight} />
+        <Text style={[styles.cleanHeaderTitle, { color: colors.text }]}>Profile</Text>
+        <TouchableOpacity style={styles.headerIconButton}>
+          <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -272,32 +277,58 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
 
-          {/* Profile Card */}
+          {/* Premium Profile Card */}
           <View style={[styles.profileCard, { backgroundColor: colors.cardBg }]}>
+            {/* Avatar with Gradient Ring */}
             <TouchableOpacity 
-              style={[styles.avatarContainer, { backgroundColor: colors.primary }]}
               onPress={handleImagePick}
               disabled={isUploadingAvatar}
+              style={styles.avatarWrapper}
             >
-              {isUploadingAvatar ? (
-                <ActivityIndicator size="large" color={colors.white} />
-              ) : user?.avatar || user?.profileImage ? (
-                <Image 
-                  source={{ uri: user.avatar || user.profileImage }} 
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <Text style={[styles.avatarText, { color: colors.white }]}>
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
-                </Text>
-              )}
-              <View style={[styles.cameraIconContainer, { borderColor: colors.cardBg, backgroundColor: colors.primary }]}>
-                <Ionicons name="camera" size={16} color={colors.white} />
+              <LinearGradient
+                colors={['#667eea', '#764ba2', '#667eea']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatarGradientRing}
+              >
+                <View style={[styles.avatarInner, { backgroundColor: colors.cardBg }]}>
+                  {isUploadingAvatar ? (
+                    <ActivityIndicator size="large" color={colors.primary} />
+                  ) : user?.avatar || user?.profileImage ? (
+                    <Image 
+                      source={{ uri: user.avatar || user.profileImage }} 
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#667eea', '#764ba2']}
+                      style={styles.avatarPlaceholder}
+                    >
+                      <Text style={styles.avatarText}>
+                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                      </Text>
+                    </LinearGradient>
+                  )}
+                </View>
+              </LinearGradient>
+              <View style={styles.cameraIconContainer}>
+                <LinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  style={styles.cameraIconGradient}
+                >
+                  <Ionicons name="camera" size={14} color="#FFF" />
+                </LinearGradient>
               </View>
             </TouchableOpacity>
+            
+            {/* User Info */}
             <View style={styles.profileInfo}>
               <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'User'}</Text>
               <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'No email'}</Text>
+              <View style={styles.roleBadge}>
+                <Ionicons name={getRoleBadgeIcon()} size={12} color="#FFF" />
+                <Text style={styles.roleText}>{getRoleDisplay()}</Text>
+              </View>
             </View>
           </View>
 
@@ -524,5 +555,107 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  // New gradient header styles
+  gradientHeader: {
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButtonWhite: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerTitleWhite: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  settingsButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  // Avatar gradient ring styles
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatarGradientRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraIconGradient: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Role badge styles
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#667eea',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  roleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  // Clean professional header styles
+  cleanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  cleanHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

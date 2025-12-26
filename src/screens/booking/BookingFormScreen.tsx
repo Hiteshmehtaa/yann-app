@@ -14,6 +14,7 @@ import {
   TextInput,
   Image,
   Dimensions,
+  Alert,
 } from 'react-native';
 
 import RazorpayCheckout from 'react-native-razorpay';
@@ -98,6 +99,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   });
   const [formErrors, setFormErrors] = useState<any>({});
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [aadhaarVerified, setAadhaarVerified] = useState<boolean>(true); // Assume verified initially
   const [loadingWallet, setLoadingWallet] = useState(false);
 
   // Check if this is a driver service
@@ -169,22 +171,32 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [route.params?.selectedAddress]);
 
-  // Fetch Wallet Balance
+  // Fetch wallet balance and Aadhaar verification status
   useEffect(() => {
-    const fetchWalletBalance = async () => {
+    const fetchUserData = async () => {
       try {
+        // Fetch wallet balance
         setLoadingWallet(true);
-        const response = await apiService.getWalletBalance();
-        if (response.success && response.data) {
-          setWalletBalance(response.data.balance || 0);
+        const walletResponse = await apiService.getWalletBalance();
+        if (walletResponse.success && walletResponse.data) {
+          setWalletBalance(walletResponse.data.balance || 0);
+        }
+        setLoadingWallet(false);
+
+        // Fetch Aadhaar verification status
+        const aadhaarResponse = await apiService.getAadhaarStatus();
+        if (aadhaarResponse.success && aadhaarResponse.data) {
+          setAadhaarVerified(aadhaarResponse.data.aadhaarVerified || false);
         }
       } catch (error) {
-        console.error('Failed to fetch wallet balance:', error);
-      } finally {
+        console.error('Error fetching user data:', error);
         setLoadingWallet(false);
+        // If API fails, assume not verified for safety
+        setAadhaarVerified(false);
       }
     };
-    fetchWalletBalance();
+
+    fetchUserData();
   }, []);
 
   // Validation
@@ -208,6 +220,25 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSubmit = async () => {
+    // Check Aadhaar verification first
+    if (!aadhaarVerified) {
+      Alert.alert(
+        'Verification Required',
+        'Please verify your Aadhaar to book services.',
+        [
+          {
+            text: 'Verify Now',
+            onPress: () => navigation.navigate('AadhaarVerification' as any),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+      return;
+    }
+
     if (!validateForm()) {
       showError('Please fill all details to proceed.');
       return;

@@ -8,7 +8,10 @@ import {
   Animated,
   RefreshControl,
   StatusBar,
+  Platform,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -159,8 +162,58 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor="#667eea" />
       
+      {/* Premium Gradient Header */}
+      <LinearGradient
+        colors={['#2563EB', '#1E40AF']} // Blue-600 -> Blue-800 (App Theme)
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.gradientHeader, { borderBottomLeftRadius: 30, borderBottomRightRadius: 30 }]}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarRing}>
+              {user?.avatar || user?.profileImage ? (
+                <Image source={{ uri: user.avatar || user.profileImage }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {user?.name?.charAt(0).toUpperCase() || 'P'}
+                </Text>
+              )}
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.greetingWhite}>Welcome back,</Text>
+              <Text style={styles.userNameWhite}>{user?.name || 'Partner'}</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.notificationBtnWhite} activeOpacity={0.7}>
+            <Ionicons name="notifications-outline" size={24} color="#FFF" />
+            {(dashboardData?.stats?.acceptedBookings || 0) > 0 && (
+              <View style={styles.notificationDotWhite} />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Stats in Header */}
+        <View style={styles.headerStats}>
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>₹{(dashboardData?.stats?.totalEarnings ?? 0).toLocaleString()}</Text>
+            <Text style={styles.headerStatLabel}>Total Earnings</Text>
+          </View>
+          <View style={styles.headerStatDivider} />
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>{dashboardData?.stats?.completedBookings ?? 0}</Text>
+            <Text style={styles.headerStatLabel}>Completed</Text>
+          </View>
+          <View style={styles.headerStatDivider} />
+          <View style={styles.headerStatItem}>
+            <Text style={styles.headerStatValue}>{(dashboardData?.provider?.rating ?? 0).toFixed(1)} ★</Text>
+            <Text style={styles.headerStatLabel}>Rating</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -171,54 +224,51 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
             tintColor={THEME.colors.primary}
           />
         }
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
       >
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        <Animated.View style={{ opacity: fadeAnim }}>
           
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.name?.charAt(0).toUpperCase() || 'P'}
-                </Text>
-              </View>
-              <View style={styles.headerInfo}>
-                <Text style={styles.greeting}>Welcome back,</Text>
-                <Text style={styles.userName}>{user?.name || 'Partner'}</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.notificationBtn} activeOpacity={0.7}>
-              <Ionicons name="notifications-outline" size={24} color={THEME.colors.text} />
-              {(dashboardData?.stats?.acceptedBookings || 0) > 0 && (
-                <View style={styles.notificationDot} />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Profile Card */}
-          <View style={styles.profileCard}>
-            <View style={styles.profileRow}>
+          {/* Status Card */}
+          <View style={styles.statusCard}>
+            <View style={styles.statusRow}>
               <View style={styles.roleBadge}>
-                <Ionicons name="shield-checkmark-outline" size={16} color={THEME.colors.primary} />
-                <Text style={styles.roleText}>{getRoleDisplay()}</Text>
+                <Ionicons name="shield-checkmark" size={16} color="#667eea" />
+                <Text style={styles.roleTextNew}>{getRoleDisplay()}</Text>
               </View>
-              <View style={styles.statusBadge}>
+              <View style={[styles.statusBadgeNew, { backgroundColor: accountStatus.color + '20' }]}>
                 <View style={[styles.statusDot, { backgroundColor: accountStatus.color }]} />
-                <Text style={styles.statusText}>{accountStatus.text}</Text>
+                <Text style={[styles.statusTextNew, { color: accountStatus.color }]}>{accountStatus.text}</Text>
               </View>
             </View>
           </View>
 
-          {/* Stats Grid */}
-          <View style={styles.statsGrid}>
-            {statsData.map((stat) => (
-              <View key={stat.id} style={styles.statCard}>
-                <View style={styles.statIconContainer}>
-                  <Ionicons name={stat.icon} size={22} color={THEME.colors.primary} />
-                </View>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
+          {/* Action Cards Grid */}
+          <Text style={styles.sectionTitleNew}>Quick Actions</Text>
+          <View style={styles.actionCardsGrid}>
+            {menuItems.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.actionCard}
+                activeOpacity={0.8}
+                onPress={item.onPress}
+              >
+                <LinearGradient
+                  colors={index === 0 ? ['#4338CA', '#3730A3'] : index === 1 ? ['#0D9488', '#14B8A6'] : index === 2 ? ['#EA580C', '#F97316'] : ['#2563EB', '#3B82F6']}
+                  style={styles.actionCardGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Ionicons name={item.icon} size={28} color="#FFF" />
+                  {item.badge && item.badge > 0 && (
+                    <View style={styles.actionBadge}>
+                      <Text style={styles.actionBadgeText}>{item.badge}</Text>
+                    </View>
+                  )}
+                </LinearGradient>
+                <Text style={styles.actionCardTitle}>{item.title}</Text>
+                <Text style={styles.actionCardSubtitle}>{item.subtitle}</Text>
+              </TouchableOpacity>
             ))}
           </View>
 
@@ -693,5 +743,184 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.colors.textSecondary,
     lineHeight: 18,
+  },
+  // New gradient header styles
+  gradientHeader: {
+    paddingTop: THEME.spacing.md,
+    paddingBottom: THEME.spacing.xl,
+    paddingHorizontal: THEME.spacing.lg,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.lg,
+  },
+  avatarRing: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: THEME.spacing.sm,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  greetingWhite: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 2,
+  },
+  userNameWhite: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  notificationBtnWhite: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationDotWhite: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FCD34D',
+  },
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    paddingVertical: THEME.spacing.md,
+    paddingHorizontal: THEME.spacing.sm,
+  },
+  headerStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 2,
+  },
+  headerStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+  },
+  headerStatDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: THEME.spacing.lg,
+    paddingTop: THEME.spacing.lg,
+    paddingBottom: 100,
+  },
+  statusCard: {
+    backgroundColor: THEME.colors.card,
+    borderRadius: THEME.radius.lg,
+    padding: THEME.spacing.md,
+    marginBottom: THEME.spacing.lg,
+    ...THEME.shadow,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  roleTextNew: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#667eea',
+    marginLeft: 6,
+  },
+  statusBadgeNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusTextNew: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  sectionTitleNew: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: THEME.colors.text,
+    marginBottom: THEME.spacing.md,
+  },
+  actionCardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: THEME.spacing.sm,
+    marginBottom: THEME.spacing.xl,
+  },
+  actionCard: {
+    width: '48%',
+    backgroundColor: THEME.colors.card,
+    borderRadius: THEME.radius.lg,
+    padding: THEME.spacing.md,
+    alignItems: 'center',
+    ...THEME.shadow,
+  },
+  actionCardGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.sm,
+    position: 'relative',
+  },
+  actionBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  actionBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  actionCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.text,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  actionCardSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
   },
 });

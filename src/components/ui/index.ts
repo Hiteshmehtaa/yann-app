@@ -3,6 +3,10 @@
  * Central export for all enhanced UI components
  */
 
+// Premium Components (NEW)
+export { GlassCard } from './GlassCard';
+export { GradientButton } from './GradientButton';
+
 // Core Interactive Components
 export { AnimatedTouchable } from './AnimatedTouchable';
 export { FAB } from './FAB';
