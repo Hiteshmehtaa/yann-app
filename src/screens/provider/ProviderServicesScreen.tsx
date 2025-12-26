@@ -147,14 +147,15 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
     const service = services.find(s => s.id === serviceId);
     if (!service) return;
 
-    // If turning ON and no price set, show price modal
-    if (!service.isActive && service.rate === 0) {
+    // If turning ON, always show price modal to set/confirm price
+    if (!service.isActive) {
       setSelectedService(service);
       setShowPriceModal(true);
+      setPriceInput(service.rate > 0 ? service.rate.toString() : '');
       return;
     }
 
-    // If turning OFF or price already set, proceed with toggle
+    // If turning OFF, proceed with toggle
     await performToggle(serviceId, service.rate);
   };
 
