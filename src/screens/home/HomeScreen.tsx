@@ -345,10 +345,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     // Get primary address or first available address
     const primaryAddress = user?.addressBook?.find(addr => addr.isPrimary) || user?.addressBook?.[0];
     
-    // Format address string: "Home • Bangalore" or "Select Location"
-    const locationText = primaryAddress 
-      ? `${primaryAddress.label} • ${primaryAddress.city}` 
-      : 'Add Location';
+    // Full address for display
+    const fullAddress = primaryAddress?.fullAddress || 'Add your delivery address';
 
     return (
       <Animated.View 
@@ -356,33 +354,38 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           styles.headerContainer, 
           { 
             paddingTop: insets.top + SPACING.sm,
-            backgroundColor: colors.background,
+            backgroundColor: '#1E3A8A', // Deep blue background
             opacity: headerOpacity, 
             transform: [{ translateY: headerTranslateY }] 
           }
         ]}
       >
-        <View style={styles.headerTop}>
-          <View>
+        <View style={styles.headerContent}>
+          {/* Left Section - Home dropdown and address */}
+          <View style={styles.leftSection}>
             <TouchableOpacity 
-              style={[styles.locationPill, { backgroundColor: colors.cardBg }]} 
+              style={styles.homeDropdown}
               onPress={() => navigation.navigate('SavedAddresses')}
               activeOpacity={0.7}
             >
-              <Ionicons name="location" size={16} color={colors.primary} />
-              <Text style={[styles.locationText, { color: colors.text }]} numberOfLines={1}>{locationText}</Text>
-              <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+              <Ionicons name="home" size={18} color="#FFFFFF" />
+              <Text style={styles.homeText}>Home</Text>
+              <Ionicons name="chevron-down" size={16} color="#FFFFFF" />
             </TouchableOpacity>
-            <Text style={[styles.greetingText, { color: colors.text }]}>Hello, {user?.name?.split(' ')[0] || 'Guest'} 👋</Text>
+            <Text style={styles.fullAddressText} numberOfLines={1}>
+              {fullAddress}
+            </Text>
           </View>
+
+          {/* Right Section - Profile */}
           <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Profile')}>
-              {user?.avatar ? (
-                <Image source={{ uri: user.avatar }} style={styles.profileImage} />
-              ) : (
-                <View style={[styles.profileInitial, { backgroundColor: colors.primaryLight }]}>
-                    <Text style={[styles.profileInitialText, { color: colors.primary }]}>{user?.name?.charAt(0) || 'U'}</Text>
-                </View>
-              )}
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.profileImage} />
+            ) : (
+              <View style={styles.profileInitial}>
+                <Text style={styles.profileInitialText}>{user?.name?.charAt(0) || 'U'}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -489,39 +492,34 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingHorizontal: LAYOUT.screenPadding,
-    // paddingTop handled inline with safe area
     paddingBottom: SPACING.lg,
-    backgroundColor: COLORS.background, // Clean background
+    backgroundColor: '#1E3A8A', // Deep blue background
     zIndex: 10,
-    // Border bottom removed for seamless feel
   },
-  headerTop: {
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  locationPill: {
+  leftSection: {
+    flex: 1,
+    marginRight: 12,
+  },
+  homeDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
-    backgroundColor: '#FFFFFF', // White pill bg
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    ...SHADOWS.sm, // Soft shadow for pill
+    gap: 6,
+    marginBottom: 4,
   },
-  locationText: {
-    fontSize: 13,
+  homeText: {
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
-    marginHorizontal: 6,
   },
-  greetingText: {
-    fontSize: 18, // Larger greeting
-    color: COLORS.text,
-    fontWeight: '700', // Bold greeting
-    marginTop: 2,
-    paddingHorizontal: 4, // Align with pill text ish
+  fullAddressText: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 13,
+    lineHeight: 18,
   },
   profileButton: {
     padding: 4,
@@ -530,19 +528,23 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   profileInitialText: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: '#1E3A8A',
   },
   profileImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   listContent: {
     paddingBottom: 100,
