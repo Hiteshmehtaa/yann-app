@@ -206,6 +206,16 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!bookingDate) errors.date = 'Please select a booking date';
     if (!bookingTime) errors.time = 'Please select a booking time';
     if (isDriverService && !endTime) errors.endTime = 'Please select end time';
+    
+    // Validate end time is after start time for driver services
+    if (isDriverService && bookingTime && endTime) {
+      const startMinutes = bookingTime.getHours() * 60 + bookingTime.getMinutes();
+      const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+      if (endMinutes <= startMinutes) {
+        errors.endTime = 'End time must be after start time';
+      }
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -496,9 +506,25 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                    <PremiumDateTimePicker
                     label="End Time"
                     value={endTime}
-                    onChange={setEndTime}
+                    onChange={(time) => {
+                      // Validate that end time is after start time
+                      if (bookingTime && time) {
+                        const startMinutes = bookingTime.getHours() * 60 + bookingTime.getMinutes();
+                        const endMinutes = time.getHours() * 60 + time.getMinutes();
+                        if (endMinutes <= startMinutes) {
+                          showError('End time must be after start time');
+                          return;
+                        }
+                      }
+                      setEndTime(time);
+                      // Clear error if valid
+                      if (formErrors.endTime) {
+                        setFormErrors({ ...formErrors, endTime: undefined });
+                      }
+                    }}
                     mode="time"
                     error={formErrors.endTime}
+                    minimumDate={bookingTime || undefined}
                   />
                 </View>
               )}
