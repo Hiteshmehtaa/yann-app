@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../utils/theme';
@@ -147,7 +147,6 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = ({
           style={styles.map}
           region={region}
           onRegionChangeComplete={handleRegionChangeComplete}
-          provider={PROVIDER_GOOGLE}
           showsUserLocation
           showsMyLocationButton={false}
         />
