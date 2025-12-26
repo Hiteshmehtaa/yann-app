@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
+import { getErrorMessage } from '../utils/errorMessages';
 import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service, ServiceProviderListItem, ServiceCount, ProviderDashboardData, Address } from '../types';
 
 /**
@@ -89,6 +90,8 @@ class ApiService {
         if (!error.response) {
           console.error(`🌐 Network Error: ${url}`);
           (error as any).isNetworkError = true;
+          // Enhance error with user-friendly message
+          error.message = getErrorMessage(error);
           throw error;
         }
 
@@ -110,6 +113,8 @@ class ApiService {
           console.error('🚨 Server error');
         }
 
+        // Enhance error with user-friendly message
+        error.message = getErrorMessage(error);
         throw error;
       }
     );
