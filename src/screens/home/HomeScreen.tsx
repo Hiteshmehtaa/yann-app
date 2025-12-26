@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -190,11 +190,11 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     Promise.all([fetchServices(), fetchPartnerCounts()]).then(() => setHasFetchedInitial(true));
   }, [hasFetchedInitial]);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setIsRefreshing(true);
     fetchServices();
     fetchPartnerCounts();
-  };
+  }, []);
 
   // Sort services: Active (has providers) -> Popular -> Others
   useEffect(() => {
@@ -404,6 +404,12 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={!hasFetchedInitial ? undefined : styles.gridRow}
         showsVerticalScrollIndicator={false}
+        // Performance optimizations
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={9}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={9}
+        windowSize={5}
         ListHeaderComponent={
           <>
             <View style={styles.searchSection}>
