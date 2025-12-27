@@ -9,11 +9,11 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, otp: string, intent?: 'login' | 'signup') => Promise<void>;
-  loginAsProvider: (email: string, otp: string) => Promise<void>;
+  login: (identifier: string, otp: string, intent?: 'login' | 'signup') => Promise<void>;
+  loginAsProvider: (identifier: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
-  sendOTP: (email: string) => Promise<void>;
-  sendProviderOTP: (email: string) => Promise<void>;
+  sendOTP: (identifier: string) => Promise<void>;
+  sendProviderOTP: (identifier: string) => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
 
@@ -61,28 +61,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const sendOTP = async (email: string): Promise<void> => {
+  const sendOTP = async (identifier: string): Promise<void> => {
     try {
-      await apiService.sendOTP(email, 'homeowner', 'login');
-      await storage.saveEmail(email);
+      await apiService.sendOTP(identifier, 'homeowner', 'login');
+      await storage.saveEmail(identifier); // Save identifier for later use
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to send OTP');
     }
   };
 
   // Send OTP for provider/partner login
-  const sendProviderOTP = async (email: string): Promise<void> => {
+  const sendProviderOTP = async (identifier: string): Promise<void> => {
     try {
-      await apiService.sendProviderOTP(email);
-      await storage.saveEmail(email);
+      await apiService.sendProviderOTP(identifier);
+      await storage.saveEmail(identifier); // Save identifier for later use
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to send OTP. Make sure you are registered as a partner.');
     }
   };
 
-  const login = async (email: string, otp: string, intent: 'login' | 'signup' = 'login'): Promise<void> => {
+  const login = async (identifier: string, otp: string, intent: 'login' | 'signup' = 'login'): Promise<void> => {
     try {
-      const response = await apiService.verifyOTP(email, otp, intent);
+      const response = await apiService.verifyOTP(identifier, otp, intent);
       
       console.log('🔐 Processing login response:', response);
       
@@ -116,7 +116,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
           const pushToken = await registerForPushNotificationsAsync();
           if (pushToken) {
-            await apiService.savePushToken(pushToken);
+            await apiService.savePushToken(pushToken, 'homeowner');
             console.log('📱 Push token registered:', pushToken);
           }
           setupNotificationListeners();
@@ -148,9 +148,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Login as provider/partner - uses different backend endpoint
-  const loginAsProvider = async (email: string, otp: string): Promise<void> => {
+  const loginAsProvider = async (identifier: string, otp: string): Promise<void> => {
     try {
-      const response = await apiService.verifyProviderOTP(email, otp);
+      const response = await apiService.verifyProviderOTP(identifier, otp);
       
       console.log('🔐 Processing provider login response:', response);
       
@@ -183,12 +183,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
           const pushToken = await registerForPushNotificationsAsync();
           if (pushToken) {
-            await apiService.savePushToken(pushToken);
+            await apiService.savePushToken(pushToken, 'provider');
             console.log('📱 Provider push token registered:', pushToken);
           }
           setupNotificationListeners();
         } catch (pushError) {
-          console.error('Failed to register push notifications:', pushError);
+          console.error('Failed to register provider push notifications:', pushError);
           // Don't fail login if push registration fails
         }
         

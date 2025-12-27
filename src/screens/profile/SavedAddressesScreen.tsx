@@ -850,7 +850,7 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: SPACING.xxs,
+    marginBottom: SPACING.xs,
   },
   addressPhone: {
     fontSize: TYPOGRAPHY.size.sm,

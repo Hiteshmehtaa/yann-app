@@ -25,7 +25,9 @@ import type { RouteProp } from '@react-navigation/native';
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ params: { 
-    email: string; 
+    identifier?: string;  // New unified field
+    identifierType?: 'email' | 'phone';  // Type of identifier
+    email?: string;  // Legacy support
     isSignup?: boolean;
     isPartner?: boolean;
     signupData?: { name: string; phone?: string };
@@ -33,7 +35,10 @@ type Props = {
 };
 
 export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { email, isSignup, isPartner, signupData } = route.params;
+  // Support both new (identifier) and legacy (email) params
+  const identifier = route.params?.identifier || route.params?.email || '';
+  const identifierType = route.params?.identifierType || 'email';
+  const { isSignup, isPartner, signupData } = route.params;
   const [otp, setOTP] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -49,10 +54,10 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       if (isPartner) {
         // Use provider-specific login
-        await loginAsProvider(email, otp);
+        await loginAsProvider(identifier, otp);
       } else {
         // Use homeowner login
-        await login(email, otp, isSignup ? 'signup' : 'login');
+        await login(identifier, otp, isSignup ? 'signup' : 'login');
       }
       // Navigation will be handled by the auth state change
     } catch (error: any) {
@@ -66,13 +71,13 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
     setResending(true);
     try {
       if (isPartner) {
-        await sendProviderOTP(email);
+        await sendProviderOTP(identifier);
       } else if (isSignup && signupData) {
-        await apiService.sendSignupOTP(email, signupData);
+        await apiService.sendSignupOTP(identifier, signupData);
       } else {
-        await sendOTP(email);
+        await sendOTP(identifier);
       }
-      Alert.alert('Success', 'OTP has been resent to your email');
+      Alert.alert('Success', 'OTP has been resent');
       setOTP('');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to resend OTP');
@@ -113,7 +118,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.subtitle}>
               We've sent a 6-digit code to
             </Text>
-            <Text style={styles.email}>{email}</Text>
+            <Text style={styles.email}>{identifier}</Text>
           </View>
 
           {/* OTP Input */}

@@ -121,18 +121,18 @@ class ApiService {
   }
 
   // Authentication (Using existing backend endpoints)
-  async sendOTP(email: string, audience: 'homeowner' | 'provider' = 'homeowner', intent: 'login' | 'signup' = 'login'): Promise<ApiResponse> {
+  async sendOTP(identifier: string, audience: 'homeowner' | 'provider' = 'homeowner', intent: 'login' | 'signup' = 'login'): Promise<ApiResponse> {
     const response = await this.client.post('/auth/send-otp', {
-      email,
-      audience,  // Backend expects: homeowner or provider
-      intent     // Backend expects: login or signup
+      identifier,  // Can be email or phone number - backend auto-detects
+      audience,    // Backend expects: homeowner or provider
+      intent       // Backend expects: login or signup
     });
     return response.data;
   }
 
-  async sendSignupOTP(email: string, metadata: { name: string; phone?: string }): Promise<ApiResponse> {
+  async sendSignupOTP(identifier: string, metadata: { name: string; phone?: string; email?: string }): Promise<ApiResponse> {
     const response = await this.client.post('/auth/send-otp', {
-      email,
+      identifier,            // Can be email or phone number
       audience: 'homeowner',
       intent: 'signup',
       metadata               // Backend uses metadata.name for new account creation
@@ -141,18 +141,18 @@ class ApiService {
   }
 
   // Provider Login - uses different audience and returns provider data
-  async sendProviderOTP(email: string): Promise<ApiResponse> {
+  async sendProviderOTP(identifier: string): Promise<ApiResponse> {
     const response = await this.client.post('/auth/send-otp', {
-      email,
+      identifier,            // Can be email or phone number
       audience: 'provider',  // Provider login
       intent: 'login'
     });
     return response.data;
   }
 
-  async verifyProviderOTP(email: string, otp: string): Promise<AuthResponse> {
+  async verifyProviderOTP(identifier: string, otp: string): Promise<AuthResponse> {
     const response = await this.client.post('/auth/verify-otp', {
-      email,
+      identifier,  // Can be email or phone number
       otp,
       audience: 'provider'
     });
@@ -213,9 +213,9 @@ class ApiService {
     return response.data;
   }
 
-  async verifyOTP(email: string, otp: string, intent: 'login' | 'signup' = 'login'): Promise<AuthResponse> {
+  async verifyOTP(identifier: string, otp: string, intent: 'login' | 'signup' = 'login'): Promise<AuthResponse> {
     const response = await this.client.post('/auth/verify-otp', {
-      email,
+      identifier,  // Can be email or phone number
       otp,
       audience: 'homeowner',
       intent
@@ -1005,8 +1005,11 @@ class ApiService {
    * POST /api/user/push-token
    * Save push notification token for the current user
    */
-  async savePushToken(pushToken: string): Promise<ApiResponse> {
-    const response = await this.client.post('/user/push-token', { pushToken });
+  async savePushToken(pushToken: string, userType: 'homeowner' | 'provider' = 'homeowner'): Promise<ApiResponse> {
+    const response = await this.client.post('/user/push-token', {
+      pushToken,
+      userType  // Backend requires this field
+    });
     return response.data;
   }
 

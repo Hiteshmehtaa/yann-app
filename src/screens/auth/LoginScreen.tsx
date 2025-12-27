@@ -30,7 +30,7 @@ type Props = {
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { width, height, isTablet } = useResponsive();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [showEmailSent, setShowEmailSent] = useState(false);
@@ -61,25 +61,46 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     return emailRegex.test(email);
   };
 
+  const validatePhone = (phone: string): boolean => {
+    const cleaned = phone.replace(/\D/g, '');
+    // Indian mobile: 10 digits starting with 6-9, or 12 digits with 91 prefix
+    const phoneRegex = /^(91)?[6-9]\d{9}$/;
+    return phoneRegex.test(cleaned);
+  };
+
+  const detectInputType = (input: string): 'email' | 'phone' | null => {
+    if (!input) return null;
+    const trimmed = input.trim();
+    
+    if (validateEmail(trimmed)) return 'email';
+    if (validatePhone(trimmed)) return 'phone';
+    
+    return null;
+  };
+
   const handleSendOTP = async () => {
-    if (!email.trim()) {
-      showError('Please enter your email address');
+    if (!identifier.trim()) {
+      showError('Please enter your email or phone number');
       return;
     }
 
-    if (!validateEmail(email)) {
-      showError('Please enter a valid email address');
+    const inputType = detectInputType(identifier);
+    if (!inputType) {
+      showError('Please enter a valid email address or 10-digit phone number');
       return;
     }
 
     setIsLoading(true);
     try {
-      await sendOTP(email);
+      await sendOTP(identifier);
       setShowEmailSent(true);
       setTimeout(() => {
         setShowEmailSent(false);
-        navigation.navigate('VerifyOTP', { email });
-      }, 1000); // Reduced from 2000ms to 1000ms
+        navigation.navigate('VerifyOTP', { 
+          identifier,
+          identifierType: inputType 
+        });
+      }, 1000);
     } catch (error: any) {
       showError(error.message || 'Failed to send OTP');
     } finally {
@@ -109,7 +130,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               loop={false}
               style={styles.emailSentAnimation}
             />
-            <Text style={styles.emailSentText}>Email Sent!</Text>
+            <Text style={styles.emailSentText}>OTP Sent!</Text>
           </View>
         </View>
       )}
@@ -172,18 +193,22 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Form */}
             <View style={styles.form}>
-              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <Text style={styles.label}>EMAIL OR PHONE</Text>
               <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons name="mail" size={20} color={isFocused ? COLORS.primary : COLORS.textTertiary} />
+                  <Ionicons 
+                    name={detectInputType(identifier) === 'phone' ? 'call' : 'mail'} 
+                    size={20} 
+                    color={isFocused ? COLORS.primary : COLORS.textTertiary} 
+                  />
                 </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="you@example.com"
+                  placeholder="Email or phone number"
                   placeholderTextColor={COLORS.textTertiary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  keyboardType="default"
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!isLoading}
@@ -210,7 +235,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
 
               <Text style={styles.infoText}>
-                We'll send a 4-digit code to your email
+                We'll send a verification code to your email or phone
               </Text>
             </View>
 
