@@ -17,7 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/api';
 import { SERVICES } from '../../utils/constants';
-import type { Service } from '../../types';
+import type { Service, Address } from '../../types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
@@ -25,8 +25,14 @@ import { ServiceCard } from '../../components/ui/ServiceCard';
 import { SpecialOfferBanner } from '../../components/ui/SpecialOfferBanner';
 import { AnimatedCard } from '../../components/AnimatedCard';
 import { SkeletonServiceCard } from '../../components/ui/SkeletonLoader';
+import { UpdateNotificationBanner } from '../../components/ui/UpdateNotificationBanner';
+import { ErrorDisplay } from '../../components/ui/ErrorDisplay';
 import { COLORS, SPACING, LAYOUT, ANIMATIONS, RADIUS, SHADOWS } from '../../utils/theme';
 import { useResponsive } from '../../hooks/useResponsive';
+import { useWalletBalance } from '../../hooks/useWalletBalance';
+import { checkForAppUpdate, VersionInfo } from '../../utils/versionCheck';
+import { getLocationWithAddress } from '../../utils/locationService';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -108,6 +114,20 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [categories, setCategories] = useState<string[]>(['all']);
   
+  // New feature states
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [currentLocationAddress, setCurrentLocationAddress] = useState<string>('');
+  const [matchedAddress, setMatchedAddress] = useState<Address | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  
+  // Error states
+  const [error, setError] = useState<Error | null>(null);
+  const [isNetworkError, setIsNetworkError] = useState(false);
+  
+  // Wallet balance hook
+  const { balance: walletBalance, isLoading: isLoadingWallet } = useWalletBalance();
+  
   // Header Animation
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerTranslateY = scrollY.interpolate({
@@ -125,6 +145,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   // ... (keep fetch functions SAME) ...
   const fetchServices = async () => {
     try {
+      setError(null);
+      setIsNetworkError(false);
       const response = await apiService.getAllServices();
       const servicesList = response.data || [];
       if (servicesList.length > 0) {
@@ -154,10 +176,22 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         setServices(SERVICES);
         setFilteredServices(SERVICES);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching services:', err);
-      setServices(SERVICES);
-      setFilteredServices(SERVICES);
+      
+      // Check if it's a network error
+      const isNetwork = 
+        err.message?.toLowerCase().includes('network') ||
+        err.message?.toLowerCase().includes('connection') ||
+        err.message?.toLowerCase().includes('internet') ||
+        err.code === 'NETWORK_ERROR' ||
+        !navigator.onLine;
+      
+      setError(err);
+      setIsNetworkError(isNetwork);
+      // Don't show any services when there's an error
+      setServices([]);
+      setFilteredServices([]);
     }
   };
 
@@ -187,13 +221,51 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     if (hasFetchedInitial) return;
     Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-    Promise.all([fetchServices(), fetchPartnerCounts()]).then(() => setHasFetchedInitial(true));
+    Promise.all([
+      fetchServices(), 
+      fetchPartnerCounts(),
+      checkVersion(),
+      fetchLocationAndAddress()
+    ]).then(() => setHasFetchedInitial(true));
   }, [hasFetchedInitial]);
+  
+  // Check for app updates
+  const checkVersion = async () => {
+    try {
+      const info = await checkForAppUpdate();
+      setVersionInfo(info);
+      setShowUpdateBanner(info.shouldShowNotification);
+    } catch (error) {
+      console.error('Error checking version:', error);
+    }
+  };
+  
+  // Fetch location and match with saved addresses
+  const fetchLocationAndAddress = async () => {
+    try {
+      setIsLoadingLocation(true);
+      const result = await getLocationWithAddress(user?.addressBook || []);
+      
+      if (result.matchedAddress) {
+        setMatchedAddress(result.matchedAddress);
+        setCurrentLocationAddress('');
+      } else if (result.currentAddress) {
+        setCurrentLocationAddress(result.currentAddress.fullAddress);
+        setMatchedAddress(null);
+      }
+    } catch (error) {
+      console.error('Error fetching location:', error);
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
     fetchServices();
     fetchPartnerCounts();
+    checkVersion();
+    fetchLocationAndAddress();
   }, []);
 
   // Sort services: Active (has providers) -> Popular -> Others
@@ -341,70 +413,126 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     </>
   );
 
-  const Header = () => {
-    // Get primary address or first available address
-    const primaryAddress = user?.addressBook?.find(addr => addr.isPrimary) || user?.addressBook?.[0];
-    
-    // Full address for display
-    const fullAddress = primaryAddress?.fullAddress || 'Add your delivery address';
-
-    return (
-      <Animated.View 
-        style={[
-          styles.headerContainer, 
-          { 
-            paddingTop: insets.top + SPACING.sm,
-            backgroundColor: '#1E3A8A', // Deep blue background
-            opacity: headerOpacity, 
-            transform: [{ translateY: headerTranslateY }] 
-          }
-        ]}
-      >
-        <View style={styles.headerContent}>
-          {/* Left Section - Home dropdown and address */}
-          <View style={styles.leftSection}>
-            <TouchableOpacity 
-              style={styles.homeDropdown}
-              onPress={() => navigation.navigate('SavedAddresses')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="home" size={18} color="#FFFFFF" />
-              <Text style={styles.homeText}>Home</Text>
-              <Ionicons name="chevron-down" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.fullAddressText} numberOfLines={1}>
-              {fullAddress}
-            </Text>
-          </View>
-
-          {/* Right Section - Profile */}
-          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Profile')}>
-            {user?.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.profileImage} />
-            ) : (
-              <View style={styles.profileInitial}>
-                <Text style={styles.profileInitialText}>{user?.name?.charAt(0) || 'U'}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-    );
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Translucent Status Bar for Content to flow under */}
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <Header />
+      {/* Update Notification Banner - Only this stays fixed */}
+      {showUpdateBanner && versionInfo && (
+        <UpdateNotificationBanner
+          currentVersion={versionInfo.currentVersion}
+          latestVersion={versionInfo.latestVersion || ''}
+          onDismiss={() => setShowUpdateBanner(false)}
+        />
+      )}
 
-      <Animated.FlatList
+      {/* Show error state with only header + animation */}
+      {error ? (
+        <View style={{ flex: 1 }}>
+          {/* Top Bar */}
+          <View style={{ paddingTop: insets.top }}>
+            <View style={styles.topBar}>
+              {/* Left - Location */}
+              <TouchableOpacity 
+                style={styles.locationButton}
+                onPress={() => navigation.navigate('SavedAddresses')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="home" size={20} color={colors.text} />
+                <View style={styles.locationInfo}>
+                  <View style={styles.locationRow}>
+                    <Text style={[styles.locationLabel, { color: colors.text }]}>
+                      {matchedAddress ? matchedAddress.label : currentLocationAddress ? 'Current Location' : 
+                       (user?.addressBook?.find(addr => addr.isPrimary) || user?.addressBook?.[0])?.label || 'Home'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                  </View>
+                  <Text style={[styles.locationAddress, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {isLoadingLocation ? 'Loading...' : 
+                     matchedAddress ? matchedAddress.fullAddress :
+                     currentLocationAddress ? currentLocationAddress :
+                     (user?.addressBook?.find(addr => addr.isPrimary) || user?.addressBook?.[0])?.fullAddress || 'Add your delivery address'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Right - Actions */}
+              <View style={styles.actionsContainer}>
+                {/* Wallet */}
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
+                  onPress={() => navigation.navigate('Wallet')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="wallet-outline" size={22} color={colors.text} />
+                  {!isLoadingWallet && walletBalance > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {walletBalance >= 1000 ? `${(walletBalance/1000).toFixed(1)}k` : Math.floor(walletBalance)}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {/* Notification Bell */}
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
+                  onPress={() => {
+                    if (versionInfo?.updateAvailable) {
+                      setShowUpdateBanner(true);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="notifications-outline" size={22} color={colors.text} />
+                  {versionInfo?.updateAvailable && (
+                    <View style={styles.notificationBadge} />
+                  )}
+                </TouchableOpacity>
+
+                {/* Profile */}
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('Profile')}
+                  activeOpacity={0.7}
+                >
+                  {user?.avatar ? (
+                    <Image source={{ uri: user.avatar }} style={[styles.avatar, { borderColor: colors.border }]} />
+                  ) : (
+                    <View style={[styles.avatarPlaceholder, { backgroundColor: colors.cardBg }]}>
+                      <Text style={[styles.avatarText, { color: colors.primary }]}>
+                        {user?.name?.charAt(0) || 'U'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Divider Line */}
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          </View>
+
+          {/* Error Animation */}
+          <ErrorDisplay 
+            error={error}
+            isNetworkError={isNetworkError}
+            onRetry={() => {
+              setError(null);
+              setIsNetworkError(false);
+              fetchServices();
+              fetchPartnerCounts();
+            }}
+          />
+        </View>
+      ) : (
+        /* Normal content with FlatList */
+        <Animated.FlatList
         data={!hasFetchedInitial ? [] : filteredServices}
         renderItem={renderGridItem}
         keyExtractor={item => item.id.toString()}
         numColumns={3}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingTop: insets.top }]}
         columnWrapperStyle={!hasFetchedInitial ? undefined : styles.gridRow}
         showsVerticalScrollIndicator={false}
         // Performance optimizations
@@ -415,6 +543,89 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         windowSize={5}
         ListHeaderComponent={
           <>
+            {/* Top Bar - Location, Wallet, Notifications, Profile (no background) */}
+            <View style={styles.topBar}>
+              {/* Left - Location */}
+              <TouchableOpacity 
+                style={styles.locationButton}
+                onPress={() => navigation.navigate('SavedAddresses')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="home" size={20} color={colors.text} />
+                <View style={styles.locationInfo}>
+                  <View style={styles.locationRow}>
+                    <Text style={[styles.locationLabel, { color: colors.text }]}>
+                      {matchedAddress ? matchedAddress.label : currentLocationAddress ? 'Current Location' : 
+                       (user?.addressBook?.find(addr => addr.isPrimary) || user?.addressBook?.[0])?.label || 'Home'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                  </View>
+                  <Text style={[styles.locationAddress, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {isLoadingLocation ? 'Loading...' : 
+                     matchedAddress ? matchedAddress.fullAddress :
+                     currentLocationAddress ? currentLocationAddress :
+                     (user?.addressBook?.find(addr => addr.isPrimary) || user?.addressBook?.[0])?.fullAddress || 'Add your delivery address'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Right - Actions */}
+              <View style={styles.actionsContainer}>
+                {/* Wallet */}
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
+                  onPress={() => navigation.navigate('Wallet')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="wallet-outline" size={22} color={colors.text} />
+                  {!isLoadingWallet && walletBalance > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {walletBalance >= 1000 ? `${(walletBalance/1000).toFixed(1)}k` : Math.floor(walletBalance)}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {/* Notification Bell */}
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
+                  onPress={() => {
+                    if (versionInfo?.updateAvailable) {
+                      setShowUpdateBanner(true);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="notifications-outline" size={22} color={colors.text} />
+                  {versionInfo?.updateAvailable && (
+                    <View style={styles.notificationBadge} />
+                  )}
+                </TouchableOpacity>
+
+                {/* Profile */}
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('Profile')}
+                  activeOpacity={0.7}
+                >
+                  {user?.avatar ? (
+                    <Image source={{ uri: user.avatar }} style={[styles.avatar, { borderColor: colors.border }]} />
+                  ) : (
+                    <View style={[styles.avatarPlaceholder, { backgroundColor: colors.cardBg }]}>
+                      <Text style={[styles.avatarText, { color: colors.primary }]}>
+                        {user?.name?.charAt(0) || 'U'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Divider Line */}
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            
+            
+            {/* Search Section */}
             <View style={styles.searchSection}>
                 <Text style={[styles.headlineText, { color: colors.text }]}>What are you looking for?</Text>
                 <SearchBar
@@ -434,14 +645,15 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                             style={[
                               styles.categoryPill, 
                               { backgroundColor: colors.cardBg, borderColor: colors.border },
-                              selectedCategory === cat && styles.categoryPillActive
+                              selectedCategory === cat && { backgroundColor: colors.primary, borderColor: colors.primary }
                             ]}
                             onPress={() => setSelectedCategory(cat)}
+                            activeOpacity={0.7}
                         >
                             <Text style={[
                               styles.categoryText, 
                               { color: colors.text },
-                              selectedCategory === cat && styles.categoryTextActive
+                              selectedCategory === cat && { color: '#FFFFFF', fontWeight: '700' }
                             ]}>
                                 {cat.charAt(0).toUpperCase() + cat.slice(1)}
                             </Text>
@@ -481,6 +693,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
       />
+      )}
     </View>
   );
 };
@@ -490,61 +703,104 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  headerContainer: {
-    paddingHorizontal: LAYOUT.screenPadding,
-    paddingBottom: SPACING.lg,
-    backgroundColor: '#1E3A8A', // Deep blue background
-    zIndex: 10,
-  },
-  headerContent: {
+  // Top Bar Styles (no background)
+  topBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: LAYOUT.screenPadding,
+    paddingVertical: SPACING.md,
+    gap: 12,
   },
-  leftSection: {
+  // Location (left side)
+  locationButton: {
     flex: 1,
-    marginRight: 12,
-  },
-  homeDropdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: 10,
   },
-  homeText: {
-    color: '#FFFFFF',
-    fontSize: 18,
+  locationInfo: {
+    flex: 1,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  locationLabel: {
+    fontSize: 15,
     fontWeight: '700',
   },
-  fullAddressText: {
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 13,
-    lineHeight: 18,
+  locationAddress: {
+    fontSize: 11,
+    lineHeight: 14,
   },
-  profileButton: {
-    padding: 4,
+  // Actions (right side)
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  profileInitial: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    position: 'relative',
   },
-  profileInitialText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E3A8A',
+  // Wallet badge (green)
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    minWidth: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  badgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  // Notification badge (red dot)
+  notificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  // Profile avatar
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  avatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  // Divider line
+  divider: {
+    height: 1,
+    marginHorizontal: LAYOUT.screenPadding,
+    marginBottom: SPACING.md,
   },
   listContent: {
     paddingBottom: 100,
@@ -566,27 +822,22 @@ const styles = StyleSheet.create({
     // Custom overrides if needed for the component
   },
   categorySection: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
   categoryScroll: {
     paddingHorizontal: LAYOUT.screenPadding,
-    gap: 12,
+    gap: 10,
   },
   categoryPill: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
   categoryPillActive: {
-    backgroundColor: COLORS.primary, // Changed to Primary Blue
+    backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
   categoryText: {
@@ -603,9 +854,10 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: COLORS.text,
+    letterSpacing: -0.3,
   },
   // Grid Styles
   servicesGrid: {

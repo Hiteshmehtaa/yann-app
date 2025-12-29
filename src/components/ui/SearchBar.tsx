@@ -44,29 +44,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    marginHorizontal: LAYOUT.screenPadding,
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.lg,
-    paddingHorizontal: SPACING.md,
-    height: 52, // Fixed height for consistent look
-    borderRadius: RADIUS.medium,
-    borderWidth: 1,
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 0,
+    paddingHorizontal: SPACING.lg,
+    height: 56, // Larger height for premium feel
+    borderRadius: 16, // More rounded
+    borderWidth: 1.5,
     borderColor: '#F0F0F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   searchIcon: {
-    marginRight: SPACING.sm,
-    opacity: 0.5,
+    marginRight: SPACING.md,
+    opacity: 0.6,
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16, // Slightly larger text
     color: COLORS.text,
     padding: 0,
     height: '100%',
+    fontWeight: '500',
   },
 });
