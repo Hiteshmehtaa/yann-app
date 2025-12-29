@@ -374,7 +374,7 @@ export const WalletScreen = ({ navigation }: any) => {
 
               <View style={styles.cardFooter}>
                 <View style={styles.cardUserInfo}>
-                  <Text style={styles.cardUserValues}>YANN PREMIUM</Text>
+                  <Text style={styles.cardUserValues}>YANN WALLET </Text>
                   <Text style={styles.cardUserLabel}>•••• 8832</Text>
                 </View>
                 {/* Top Up button removed as requested */}

@@ -8,6 +8,8 @@ export interface User {
   phone?: string;
   avatar?: string;
   role?: 'homeowner' | 'provider';
+  isVerified?: boolean;
+  aadhaarVerified?: boolean;
   preferences?: string[];
   savedProviders?: string[];
   addressBook?: Address[];

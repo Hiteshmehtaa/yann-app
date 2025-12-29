@@ -140,7 +140,7 @@ export const calculateDistance = (
 export const findMatchingAddress = (
     currentLocation: LocationCoordinates,
     savedAddresses: Address[],
-    thresholdMeters: number = 100
+    thresholdMeters: number = 200 // Increased from 100 to 200
 ): Address | null => {
     if (!savedAddresses || savedAddresses.length === 0) {
         return null;
@@ -159,10 +159,18 @@ export const findMatchingAddress = (
             longitude: address.longitude,
         });
 
+        console.log(`Checking address: ${address.label}, Distance: ${distance.toFixed(1)}m`);
+
         if (distance < closestDistance && distance <= thresholdMeters) {
             closestDistance = distance;
             closestAddress = address;
         }
+    }
+
+    if (closestAddress) {
+        console.log(`📍 Matched address: ${closestAddress.label} (${closestDistance.toFixed(1)}m away)`);
+    } else {
+        console.log('❌ No saved address matches current location');
     }
 
     return closestAddress;

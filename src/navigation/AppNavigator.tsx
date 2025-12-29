@@ -4,6 +4,7 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS } from '../utils/theme';
 
@@ -322,6 +323,24 @@ function ProviderTabNavigator() {
   );
 }
 
+const linking = {
+  prefixes: [Linking.createURL('/'), 'yann://'],
+  config: {
+    screens: {
+      MainTabs: {
+        screens: {
+          Profile: 'verification-success',
+        },
+      },
+      ProviderTabs: {
+        screens: {
+          ProviderProfile: 'verification-success',
+        },
+      },
+    },
+  },
+};
+
 export function AppNavigator() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
@@ -332,7 +351,7 @@ export function AppNavigator() {
   const isProvider = user?.role === 'provider';
 
   return (
-    <NavigationContainer theme={PremiumTheme}>
+    <NavigationContainer theme={PremiumTheme} linking={linking as any}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

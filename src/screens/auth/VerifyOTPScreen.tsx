@@ -149,7 +149,33 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                     (resending || isLoading) && styles.resendLinkDisabled,
                   ]}
                 >
-                  {resending ? 'Sending...' : 'Resend'}
+                  {resending ? 'Sending...' : 'Resend Code'}
+                </Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.resendText}> or </Text>
+              
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    setIsLoading(true);
+                    await apiService.requestCallOTP(identifier);
+                    Alert.alert('Call Requested', 'You will receive a call shortly with your code.');
+                  } catch (error: any) {
+                    Alert.alert('Error', error.message || 'Failed to request call');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                disabled={isLoading}
+              >
+                <Text
+                  style={[
+                    styles.resendLink,
+                    isLoading && styles.resendLinkDisabled,
+                  ]}
+                >
+                  Request a Call
                 </Text>
               </TouchableOpacity>
             </View>

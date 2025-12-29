@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -61,6 +63,25 @@ type Props = {
 export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, updateUser } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refresh user profile to check verification status
+      const refreshProfile = async () => {
+        try {
+          const response = await apiService.getProfile();
+          if (response.user) {
+            updateUser(response.user);
+          }
+        } catch (error) {
+          console.error('Error refreshing profile:', error);
+        }
+      };
+      
+      refreshProfile();
+    }, [])
+  );
+
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -98,6 +119,27 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleVerification = async () => {
+    if (user?.isVerified) {
+      Alert.alert('Verified', 'Your identity is already verified.');
+      return;
+    }
+
+    try {
+      if (!user?._id) return;
+      
+      const response = await apiService.verifyIdentity(user._id, 'provider');
+      
+      if (response.success && response.url) {
+        await WebBrowser.openBrowserAsync(response.url);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to initiate verification');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Verification failed');
+    }
   };
 
   const pickImage = async () => {
@@ -276,10 +318,28 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
                 
                 {/* Badge */}
-                <View style={styles.topBadge}>
-                  <Ionicons name="ribbon" size={12} color={THEME.colors.primary} />
-                  <Text style={styles.topBadgeText}>Top TaskKing</Text>
-                </View>
+                <TouchableOpacity 
+                  style={[
+                    styles.topBadge, 
+                    user?.isVerified && { backgroundColor: '#DCFCE7' }, 
+                    !user?.isVerified && { backgroundColor: '#FEF2F2' }
+                  ]}
+                  onPress={handleVerification}
+                  disabled={user?.isVerified}
+                >
+                  <Ionicons 
+                    name={user?.isVerified ? "shield-checkmark" : "shield-half"} 
+                    size={12} 
+                    color={user?.isVerified ? "#10B981" : "#EF4444"} 
+                  />
+                  <Text style={[
+                    styles.topBadgeText,
+                    user?.isVerified && { color: '#10B981' }, 
+                    !user?.isVerified && { color: '#EF4444' }
+                  ]}>
+                    {user?.isVerified ? 'Verified Partner' : 'Verify Identity'}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* Name and Title */}

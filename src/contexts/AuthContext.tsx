@@ -97,6 +97,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: response.user.role || 'homeowner',
           avatar: response.user.avatar || response.user.profileImage || '',
           profileImage: response.user.profileImage || response.user.avatar || '',
+          isVerified: response.user.isVerified || false,
+          aadhaarVerified: response.user.aadhaarVerified || false,
         };
         
         console.log('👤 Setting user data:', userData);
@@ -166,6 +168,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           status: response.user.status,
           avatar: response.user.avatar || response.user.profileImage || '',
           profileImage: response.user.profileImage || response.user.avatar || '',
+          isVerified: response.user.isVerified || false,
+          aadhaarVerified: response.user.aadhaarVerified || false,
         };
         
         console.log('👤 Setting provider data:', userData);

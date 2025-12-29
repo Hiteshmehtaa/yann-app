@@ -24,6 +24,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
 import { useResponsive } from '../../hooks/useResponsive';
 import { StatsCard } from '../../components/ui/StatsCard';
 import { Badge } from '../../components/ui/Badge';
@@ -194,6 +195,40 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const handleVerification = async () => {
+    console.log('Verify button pressed');
+    if (user?.isVerified) {
+      console.log('User already verified');
+      Alert.alert('Verified', 'Your identity is already verified.');
+      return;
+    }
+
+    try {
+      const userId = user?.id || user?._id;
+      console.log('Initiating verification for user:', userId);
+      if (!userId) {
+        console.error('User ID missing');
+        return;
+      }
+      
+      const response = await apiService.verifyIdentity(userId, user.role || 'homeowner');
+      console.log('Verification response:', response);
+      
+      if (response.success && response.url) {
+        console.log('Opening browser:', response.url);
+        await WebBrowser.openBrowserAsync(response.url);
+      } else {
+        console.error('Verification failed:', response.message);
+        Alert.alert('Error', response.message || 'Failed to initiate verification');
+      }
+    } catch (error: any) {
+      console.error('Verification error details:', error.response?.data || error.message);
+      // Fallback to show the raw message if available, instead of generic mask
+      const serverMsg = error.response?.data?.message || error.message;
+      Alert.alert('Error', serverMsg || 'Verification failed');
+    }
+  };
+
   const menuItems: MenuItemType[] = [
     {
       icon: 'create-outline',
@@ -213,8 +248,8 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     {
       icon: 'shield-checkmark-outline',
       title: 'Verify Aadhaar',
-      subtitle: 'Complete your KYC verification',
-      onPress: () => navigation.navigate('AadhaarVerification' as any),
+      subtitle: user?.isVerified ? 'Verified' : 'Complete your KYC verification',
+      onPress: () => handleVerification(),
     },
     {
       icon: 'wallet-outline',

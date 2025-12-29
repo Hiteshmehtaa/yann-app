@@ -58,11 +58,11 @@ class ApiService {
 
           // Debug logging for wallet endpoints
           if (__DEV__ && config.url?.includes('/wallet')) {
-            console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`, {
-              hasUserId: !!userId,
-              userId: userId ? `${userId.substring(0, 8)}...` : 'missing',
-              data: config.data
-            });
+            // console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`, {
+            //   hasUserId: !!userId,
+            //   userId: userId ? `${userId.substring(0, 8)}...` : 'missing',
+            //   data: config.data
+            // });
           }
         } catch (error) {
           // Silently fail - request will proceed without auth
@@ -157,7 +157,7 @@ class ApiService {
       audience: 'provider'
     });
 
-    console.log('🔐 Provider OTP verify raw response:', JSON.stringify(response.data, null, 2));
+    // console.log('🔐 Provider OTP verify raw response:', JSON.stringify(response.data, null, 2));
 
     // Extract provider data from response
     const rawUserData = response.data.provider || response.data.user || response.data.data?.provider;
@@ -184,7 +184,7 @@ class ApiService {
       profileImage: rawUserData.profileImage || rawUserData.avatar || '',
     };
 
-    console.log('✅ Mapped provider data:', userData);
+    // console.log('✅ Mapped provider data:', userData);
 
     // Save marker for cookie-based auth
     await storage.saveToken('cookie-based-auth-provider');
@@ -488,15 +488,15 @@ class ApiService {
    * Website uses this in My Bookings page
    */
   async getMyBookings(): Promise<ApiResponse<Booking[]>> {
-    console.log('🔵 API: Calling GET /bookings');
+    // console.log('🔵 API: Calling GET /bookings');
     const response = await this.client.get('/bookings');
 
-    console.log('📦 API: Raw response from /bookings:', JSON.stringify(response.data, null, 2));
+    // console.log('📦 API: Raw response from /bookings:', JSON.stringify(response.data, null, 2));
 
     // Website response: { success, data: bookings[], meta: { total } }
     const bookings = response.data.data || response.data.bookings || [];
 
-    console.log(`✅ API: Parsed ${bookings.length} bookings from response`);
+    // console.log(`✅ API: Parsed ${bookings.length} bookings from response`);
 
     return {
       success: true,
@@ -686,6 +686,18 @@ class ApiService {
    */
   async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
     const response = await this.client.patch('/homeowner/profile', data);
+    return response.data;
+  }
+
+  /**
+   * POST /api/verification/initiate
+   * Initiate Aadhaar verification via Meon Tech (DigiLocker)
+   */
+  async verifyIdentity(userId: string, userType: 'homeowner' | 'provider'): Promise<{ success: boolean; url: string; message?: string }> {
+    const response = await this.client.post('/verification/initiate', {
+      userId,
+      userType
+    });
     return response.data;
   }
 
