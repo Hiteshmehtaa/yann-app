@@ -65,6 +65,7 @@ import { ProviderTermsScreen } from '../screens/legal/ProviderTermsScreen';
 import { SafetyPolicyScreen } from '../screens/legal/SafetyPolicyScreen';
 
 // Navigation Types
+// Navigation Types
 type RootStackParamList = {
   RoleSelection: undefined;
   Login: undefined;
@@ -72,10 +73,10 @@ type RootStackParamList = {
   Signup: undefined;
   ProviderSignup: undefined;
   VerifyOTP: { email: string; isPartner?: boolean };
-  MainTabs: undefined;
-  ProviderTabs: undefined;
+  MainTabs: { screen?: string; params?: any } | undefined;
+  ProviderTabs: { screen?: string; params?: any } | undefined;
   ServiceDetail: { service: any };
-  BookingForm: { service: any; selectedProvider?: any };
+  BookingForm: { service: any; selectedProvider?: any; selectedAddress?: any };
   ProviderPublicProfile: { provider: any; service?: any };
   // Provider screens
   ProviderEditProfile: undefined;
@@ -83,7 +84,7 @@ type RootStackParamList = {
   ProviderEarnings: undefined;
   // Homeowner profile screens
   EditProfile: undefined;
-  SavedAddresses: undefined;
+  SavedAddresses: { fromBooking?: boolean } | undefined;
   Notifications: undefined;
   HelpSupport: undefined;
   Wallet: undefined;

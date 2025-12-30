@@ -551,13 +551,19 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
-      {/* Header */}
+      {/* Modern Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Booking Details</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Review Booking</Text>
+        <TouchableOpacity style={styles.helpButton}>
+           <Ionicons name="help-circle-outline" size={24} color={COLORS.text} />
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -576,252 +582,273 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           <Animated.View style={[{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             
-            {/* Enhanced Service Card with Gradient */}
-            <View style={styles.serviceCard}>
-              <LinearGradient
-                colors={['#E8EEFF', '#F8F9FF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.serviceGradient}
-              >
-                <View style={styles.serviceHeader}>
-                  <View style={styles.serviceIconContainer}>
-                    <Ionicons name="briefcase-outline" size={28} color={COLORS.primary} />
-                  </View>
-                  <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceName}>{service.title}</Text>
-                    <View style={styles.categoryBadge}>
-                      <Text style={styles.categoryBadgeText}>{service.category}</Text>
+            {/* Service & Provider Summary Card */}
+            <View style={styles.sectionContainer}>
+                <LinearGradient
+                  colors={['#ffffff', '#f8faff']}
+                  style={styles.mainCard}
+                >
+                  <View style={styles.serviceRow}>
+                    <View style={styles.serviceIconBadge}>
+                       <Ionicons name="briefcase" size={24} color={COLORS.primary} />
+                    </View>
+                    <View style={styles.serviceInfoCol}>
+                       <Text style={styles.serviceTitle}>{service.title}</Text>
+                       <Text style={styles.serviceCategory}>{service.category}</Text>
+                    </View>
+                    <View style={styles.priceTag}>
+                       <Text style={styles.priceTagText}>₹{basePrice}</Text>
                     </View>
                   </View>
-                </View>
-              </LinearGradient>
-              
-              {selectedProvider && (
-                <View style={styles.providerInfo}>
-                  <LinearGradient
-                    colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.providerAvatar}
-                  >
-                    <Text style={styles.providerAvatarText}>
-                      {selectedProvider.name?.charAt(0).toUpperCase()}
-                    </Text>
-                  </LinearGradient>
-                  <View style={styles.providerDetails}>
-                    <Text style={styles.providerName}>{selectedProvider.name}</Text>
-                    <View style={styles.providerRatingRow}>
-                      <Ionicons name="star" size={16} color="#FFB800" />
-                      <Text style={styles.providerRatingText}>
-                        {selectedProvider.rating?.toFixed(1) || '5.0'}
-                      </Text>
-                      <Text style={styles.providerRatingLabel}>• Professional</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
 
-            {/* Enhanced Price Summary Card */}
-            <View style={styles.priceSummaryCard}>
-              <View style={styles.priceSummaryHeader}>
-                <Ionicons name="wallet-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.sectionHeaderText}>Price Summary</Text>
-              </View>
-              <View style={styles.priceBreakdown}>
-                <View style={styles.priceItemRow}>
-                  <Text style={styles.priceItemLabel}>Service Charge</Text>
-                  <Text style={styles.priceItemValue}>₹{basePrice.toFixed(2)}</Text>
-                </View>
-                {gstAmount > 0 && (
-                  <View style={styles.priceItemRow}>
-                    <Text style={styles.priceItemLabel}>GST (18%)</Text>
-                    <Text style={styles.priceItemValue}>₹{gstAmount.toFixed(2)}</Text>
-                  </View>
-                )}
-              </View>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.totalAmountGradient}
-              >
-                <Text style={styles.priceTotalText}>Total Amount</Text>
-                <Text style={styles.priceTotalAmount}>₹{totalPrice.toFixed(2)}</Text>
-              </LinearGradient>
-              {basePrice === 0 && (
-                <View style={styles.priceNote}>
-                  <Ionicons name="information-circle-outline" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.priceNoteText}>
-                    Final price will be confirmed by provider
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Section 1: Address Details */}
-            <View style={styles.formSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="location-outline" size={22} color={COLORS.primary} />
-                <Text style={styles.sectionHeaderText}>Service Location</Text>
-              </View>
-
-              <SavedAddressCard
-                selectedAddress={selectedAddress as any}
-                onSelectAddress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
-                onChangeAddress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
-                error={formErrors.address}
-              />
-
-              {/* Map Picker Button */}
-              <TouchableOpacity
-                style={styles.mapButton}
-                onPress={() => setShowMapPicker(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="map-outline" size={20} color={COLORS.primary} />
-                <Text style={styles.mapButtonText}>Pick location on map</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Section 2: Date & Time */}
-            <View style={styles.formSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
-                <Text style={styles.sectionHeaderText}>Schedule Service</Text>
-              </View>
-
-              <View style={styles.dateTimeContainer}>
-                <View style={styles.inputHalf}>
-                  <PremiumDateTimePicker
-                    label="Select Date"
-                    value={bookingDate}
-                    onChange={setBookingDate}
-                    mode="date"
-                    error={formErrors.date}
-                    minimumDate={new Date()}
-                  />
-                </View>
-                <View style={styles.inputHalf}>
-                  <PremiumDateTimePicker
-                    label={isDriverService ? 'Start Time' : 'Time'}
-                    value={bookingTime}
-                    onChange={setBookingTime}
-                    mode="time"
-                    error={formErrors.time}
-                  />
-                </View>
-              </View>
-
-              {isDriverService && (
-                <PremiumDateTimePicker
-                  label="End Time"
-                  value={endTime}
-                  onChange={setEndTime}
-                  mode="time"
-                  error={formErrors.endTime}
-                  placeholder="Select end time"
-                />
-              )}
-            </View>
-
-            {/* Section 3: Payment Method */}
-            <View style={styles.formSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="card-outline" size={22} color={COLORS.primary} />
-                <Text style={styles.sectionHeaderText}>Payment Method</Text>
-              </View>
-
-              <View style={styles.paymentOptions}>
-                {PAYMENT_METHODS.map((method) => (
-                  <TouchableOpacity
-                    key={method.id}
-                    style={[
-                      styles.paymentOption,
-                      formData.paymentMethod === method.id && styles.paymentOptionSelected,
-                    ]}
-                    onPress={() => {
-                      setFormData({ ...formData, paymentMethod: method.id });
-                      // Removed dummy modal trigger for card/upi
-                      if (method.id === 'upi' || method.id === 'card') {
-                        setSelectedPaymentMethod(method.id);
-                        // setShowPaymentModal(true); // Disable dummy modal
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.paymentOptionLeft}>
-                      <View style={styles.paymentIconWrapper}>
-                        <Ionicons
-                          name={method.icon as any}
-                          size={22}
-                          color={formData.paymentMethod === method.id ? COLORS.primary : COLORS.textSecondary}
-                        />
+                  {selectedProvider && (
+                    <>
+                      <View style={styles.divider} />
+                      <View style={styles.providerRow}>
+                         <View style={styles.providerAvatarContainer}>
+                            <Text style={styles.providerAvatarInitials}>
+                              {selectedProvider.name?.charAt(0).toUpperCase()}
+                            </Text>
+                         </View>
+                         <View style={{ flex: 1 }}>
+                            <Text style={styles.providerLabel}>Service by</Text>
+                            <Text style={styles.providerNameText}>{selectedProvider.name}</Text>
+                         </View>
+                         <View style={styles.ratingContainer}>
+                            <Ionicons name="star" size={14} color="#F59E0B" />
+                            <Text style={styles.ratingText}>{selectedProvider.rating?.toFixed(1) || '5.0'}</Text>
+                         </View>
                       </View>
-                      <Text style={[
-                        styles.paymentOptionText,
-                        formData.paymentMethod === method.id && styles.paymentOptionTextSelected
-                      ]}>
-                        {method.label}
-                      </Text>
-                    </View>
-                    <View style={[
-                      styles.radioButton,
-                      formData.paymentMethod === method.id && styles.radioButtonSelected
-                    ]}>
-                      {formData.paymentMethod === method.id && (
-                        <View style={styles.radioButtonInner} />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Additional Notes */}
-              <FloatingLabelInput
-                label="Additional Notes (Optional)"
-                value={formData.notes}
-                onChangeText={(text) => setFormData({ ...formData, notes: text })}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                leftIcon="document-text-outline"
-                containerStyle={{ marginTop: SPACING.lg }}
-              />
+                    </>
+                  )}
+                </LinearGradient>
             </View>
+
+            {/* Address Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Location</Text>
+              <View style={styles.sectionCard}>
+                 {selectedAddress ? (
+                   <View>
+                     <SavedAddressCard
+                        selectedAddress={selectedAddress as any}
+                        onSelectAddress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
+                        onChangeAddress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
+                        error={formErrors.address}
+                        containerStyle={{ marginBottom: 0, padding: 0, borderWidth: 0, elevation: 0 }}
+                     />
+                     <TouchableOpacity
+                        style={styles.mapTrigger}
+                        onPress={() => setShowMapPicker(true)}
+                        activeOpacity={0.7}
+                     >
+                        <LinearGradient
+                           colors={['#F0F7FF', '#E6F0FF']}
+                           style={styles.mapTriggerGradient}
+                           start={{ x: 0, y: 0 }}
+                           end={{ x: 1, y: 0 }}
+                        >
+                           <Ionicons name="map" size={18} color={COLORS.primary} />
+                           <Text style={styles.mapTriggerText}>Adjust Pin Location</Text>
+                        </LinearGradient>
+                     </TouchableOpacity>
+                   </View>
+                 ) : (
+                   <View style={{ alignItems: 'center', paddingVertical: SPACING.md }}>
+                      <TouchableOpacity 
+                        style={styles.addAddressBtn}
+                        onPress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
+                        activeOpacity={0.7}
+                      >
+                         <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+                         <Text style={styles.addAddressText}>Add Address</Text>
+                      </TouchableOpacity>
+                      
+                      <View style={styles.orDivider}>
+                         <View style={styles.dividerLine} />
+                      </View>
+
+                      <TouchableOpacity 
+                        style={styles.selectMapBtn}
+                        onPress={() => setShowMapPicker(true)}
+                        activeOpacity={0.7}
+                      >
+                         <Ionicons name="map-outline" size={20} color={COLORS.textSecondary} />
+                         <Text style={styles.selectMapText}>Select on Map</Text>
+                      </TouchableOpacity>
+                      {formErrors.address && <Text style={{ color: COLORS.error, fontSize: 12, marginTop: 8 }}>{formErrors.address}</Text>}
+                   </View>
+                 )}
+              </View>
+            </View>
+
+            {/* Schedule Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Date & Time</Text>
+              <View style={styles.sectionCard}>
+                 <View style={styles.dateTimeContainer}>
+                    <View style={styles.inputHalf}>
+                        <PremiumDateTimePicker
+                          label="Date"
+                          value={bookingDate}
+                          onChange={setBookingDate}
+                          mode="date"
+                          error={formErrors.date}
+                          minimumDate={new Date()}
+                        />
+                    </View>
+                    <View style={styles.inputHalf}>
+                        <PremiumDateTimePicker
+                          label={isDriverService ? 'Start Time' : 'Time'}
+                          value={bookingTime}
+                          onChange={setBookingTime}
+                          mode="time"
+                          error={formErrors.time}
+                        />
+                    </View>
+                 </View>
+                 
+                 {isDriverService && (
+                    <View style={{ marginTop: SPACING.md }}>
+                        <PremiumDateTimePicker
+                          label="End Time"
+                          value={endTime}
+                          onChange={setEndTime}
+                          mode="time"
+                          error={formErrors.endTime}
+                          placeholder="Select end time"
+                        />
+                    </View>
+                  )}
+              </View>
+            </View>
+
+            {/* Payment Method */}
+            <View style={styles.sectionContainer}>
+               <Text style={styles.sectionTitle}>Payment Method</Text>
+               <View style={styles.paymentMethodsGrid}>
+                  {PAYMENT_METHODS.map((method) => {
+                     const isSelected = formData.paymentMethod === method.id;
+                     return (
+                        <TouchableOpacity
+                           key={method.id}
+                           style={[
+                              styles.paymentCard,
+                              isSelected && styles.paymentCardSelected
+                           ]}
+                           onPress={() => {
+                              setFormData({ ...formData, paymentMethod: method.id });
+                              if (method.id === 'upi' || method.id === 'card') {
+                                setSelectedPaymentMethod(method.id);
+                              }
+                           }}
+                           activeOpacity={0.8}
+                        >
+                           <View style={[
+                              styles.paymentIconCircle,
+                              isSelected && { backgroundColor: COLORS.primary }
+                           ]}>
+                              <Ionicons 
+                                name={method.icon as any} 
+                                size={20} 
+                                color={isSelected ? '#fff' : COLORS.textSecondary} 
+                              />
+                           </View>
+                           <Text style={[
+                              styles.paymentMethodLabel,
+                              isSelected && { color: COLORS.primary, fontWeight: '700' }
+                           ]}>{method.label}</Text>
+                           
+                           {isSelected && (
+                              <View style={styles.checkBadge}>
+                                <Ionicons name="checkmark" size={12} color="#fff" />
+                              </View>
+                           )}
+                        </TouchableOpacity>
+                     );
+                  })}
+               </View>
+            </View>
+
+            {/* Additional Notes */}
+            <View style={styles.sectionContainer}>
+               <View style={styles.sectionCard}>
+                  <FloatingLabelInput
+                    label="Add instructions for provider..."
+                    value={formData.notes}
+                    onChangeText={(text) => setFormData({ ...formData, notes: text })}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    leftIcon="create-outline"
+                    containerStyle={{ marginTop: 0, borderWidth: 0, backgroundColor: '#F9FAFB' }}
+                  />
+               </View>
+            </View>
+
+            {/* Billing Summary */}
+            <View style={[styles.sectionContainer, { marginBottom: SPACING.xl }]}>
+              <View style={styles.billCard}>
+                 <Text style={styles.billHeader}>Bill Details</Text>
+                 
+                 <View style={styles.billRow}>
+                    <Text style={styles.billLabel}>Item Total</Text>
+                    <Text style={styles.billValue}>₹{basePrice.toFixed(2)}</Text>
+                 </View>
+                 
+                 {gstAmount > 0 && (
+                    <View style={styles.billRow}>
+                       <Text style={styles.billLabel}>Taxes & Fee</Text>
+                       <Text style={styles.billValue}>₹{gstAmount.toFixed(2)}</Text>
+                    </View>
+                 )}
+                 
+                 <View style={styles.billDivider} />
+                 
+                 <View style={styles.billRowTotal}>
+                    <Text style={styles.billTotalLabel}>To Pay</Text>
+                    <Text style={styles.billTotalValue}>₹{totalPrice.toFixed(2)}</Text>
+                 </View>
+              </View>
+            </View>
+
           </Animated.View>
         </ScrollView>
 
-        {/* Bottom CTA Button */}
-        <View style={styles.bottomCTA}>
-          <AnimatedButton
-            style={[styles.confirmButton, (!selectedAddress || !bookingDate || !bookingTime) && styles.confirmButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={!selectedAddress || !bookingDate || !bookingTime || isLoading}
-          >
-            {isLoading ? (
-              <LoadingSpinner visible={true} />
-            ) : (
-              <>
-                <Text style={styles.confirmButtonText}>Confirm Booking</Text>
-                <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
-              </>
-            )}
-          </AnimatedButton>
+        {/* Floating Bottom Bar */}
+        <View style={styles.floatingFooter}>
+          <View style={styles.footerContent}>
+            <AnimatedButton
+              style={[
+                styles.bookButton, 
+                (!selectedAddress || !bookingDate || !bookingTime) && styles.bookButtonDisabled
+              ]}
+              onPress={handleSubmit}
+              disabled={isLoading || !selectedAddress || !bookingDate || !bookingTime}
+            >
+              <Text style={styles.bookButtonText}>Book Appointment</Text>
+              <View style={styles.pricePill}>
+                 <Text style={styles.pricePillText}>₹{totalPrice.toFixed(0)}</Text>
+              </View>
+            </AnimatedButton>
+          </View>
         </View>
+
       </KeyboardAvoidingView>
 
-      {/* Map Location Picker Modal */}
+      {/* Map Modal */}
       <MapLocationPicker
         visible={showMapPicker}
-        onClose={() => setShowMapPicker(false)}
-        onSelectLocation={(location) => {
-          // Handle map location selection
-          console.log('📍 Selected location:', location);
+        onSelectLocation={(locationInfo) => {
+          setSelectedAddress({
+            ...selectedAddress!,
+            ...locationInfo,
+            latitude: locationInfo.latitude,
+            longitude: locationInfo.longitude,
+          });
           setShowMapPicker(false);
         }}
+        onClose={() => setShowMapPicker(false)}
         initialLocation={
           selectedAddress?.latitude && selectedAddress?.longitude
             ? {
@@ -832,17 +859,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       />
 
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
-
+      {/* Success Modal */}
       <BookingSuccessModal
         visible={showSuccess}
-        title="Booking Confirmed!"
-        serviceName={service?.title}
-        message="We'll notify you once a provider accepts your booking."
-        onClose={() => setShowSuccess(false)}
         onAnimationComplete={handleAnimationComplete}
-        autoCloseDuration={5000}
       />
+      
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
 
       {/* Payment Modal */}
       <Modal
@@ -952,369 +975,363 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA', // Professional light gray
+    backgroundColor: '#F4F6F9',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: 'transparent', // Seamless
-    zIndex: 10,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    justifyContent: 'space-between',
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.sm,
+    padding: SPACING.sm,
+    marginLeft: -SPACING.sm,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1C1E',
+    color: COLORS.text,
   },
-  headerSpacer: {
-    width: 44,
+  helpButton: {
+    padding: SPACING.sm,
+    marginRight: -SPACING.sm,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: SPACING.lg,
-    paddingBottom: 160,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: SPACING.md,
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-  },
-  serviceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.xlarge,
+  sectionContainer: {
     marginBottom: SPACING.xl,
-    overflow: 'hidden',
-    ...SHADOWS.md,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
   },
-  serviceGradient: {
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
-  serviceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  serviceIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-    ...SHADOWS.sm,
-  },
-  serviceInfo: {
-    flex: 1,
-  },
-  serviceName: {
-    fontSize: 20,
-    fontWeight: '800', // Heavy weight
-    color: '#1A1C1E',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)', 
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  categoryBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  // Ticket Divider
-  ticketDivider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    width: '100%',
-    marginVertical: SPACING.md,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 1,
-  },
-  providerInfo: {
-    backgroundColor: '#FFFFFF',
-    padding: SPACING.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  providerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-    ...SHADOWS.sm,
-  },
-  providerAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  providerDetails: {
-    flex: 1,
-  },
-  providerName: {
+  sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1C1E',
-    marginBottom: 4,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+    marginLeft: SPACING.xs,
   },
-  providerRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  providerRatingText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1C1E',
-    marginLeft: 4,
-    marginRight: 6,
-  },
-  providerRatingLabel: {
-    fontSize: 13,
-    color: COLORS.textTertiary,
-  },
-  // Summary Section
-  priceSummaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.large,
+  mainCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.xlarge,
     padding: SPACING.lg,
-    marginBottom: SPACING.xl,
     ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: '#EBF0FF',
   },
-  priceSummaryHeader: {
+  serviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    paddingBottom: SPACING.md,
   },
-  priceBreakdown: {
-    paddingHorizontal: SPACING.lg,
+  serviceIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.large,
+    backgroundColor: '#F0F7FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
   },
-  sectionHeaderText: {
+  serviceInfoCol: {
+    flex: 1,
+  },
+  serviceTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
-    marginLeft: SPACING.sm,
+    marginBottom: 4,
   },
-  priceItemRow: {
+  serviceCategory: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    backgroundColor: '#F3F4F6',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  priceTag: {
+    backgroundColor: '#FFF8E1',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.medium,
+  },
+  priceTagText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#D97706',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: SPACING.md,
+  },
+  providerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
   },
-  priceItemLabel: {
+  providerAvatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  providerAvatarInitials: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  providerLabel: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+  },
+  providerNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B45309',
+    marginLeft: 4,
+  },
+  sectionCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    ...SHADOWS.sm,
+  },
+  mapTrigger: {
+    marginTop: SPACING.md,
+  },
+  mapTriggerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.medium,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  mapTriggerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginLeft: 8,
+  },
+  addAddressBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: SPACING.md,
+  },
+  addAddressText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  orDivider: {
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: SPACING.sm,
+  },
+  dividerLine: {
+    width: 40,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  selectMapBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectMapText: {
     fontSize: 14,
     color: COLORS.textSecondary,
     fontWeight: '500',
   },
-  priceItemValue: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  totalAmountGradient: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.lg,
-    marginTop: SPACING.md,
-  },
-  priceTotalText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
-  priceTotalAmount: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  priceNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: '#F0F4FF',
-  },
-  priceNoteText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    fontStyle: 'italic',
-    marginLeft: SPACING.xs,
-    flex: 1,
-  },
-  formSection: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.sm,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  mapButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F5F7FA',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: RADIUS.medium,
-    marginTop: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  mapButtonText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginLeft: SPACING.sm,
-  },
   dateTimeContainer: {
     flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.sm,
+    marginHorizontal: -SPACING.xs,
   },
   inputHalf: {
     flex: 1,
-    minWidth: 0,
-    maxWidth: '48%',
+    paddingHorizontal: SPACING.xs,
   },
-  paymentOptions: {
-    gap: SPACING.sm,
-  },
-  paymentOption: {
+  paymentMethodsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
+    flexWrap: 'wrap',
+    gap: SPACING.md,
   },
-  paymentOptionSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}08`,
-  },
-  paymentOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  paymentCard: {
     flex: 1,
+    minWidth: '45%',
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    borderWidth: 1.5,
+    borderColor: '#F1F1F1',
+    alignItems: 'center',
+    position: 'relative',
   },
-  paymentIconWrapper: {
+  paymentCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#F5F9FF',
+  },
+  paymentIconCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
-  paymentOptionText: {
-    fontSize: 15,
+  paymentMethodLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  paymentOptionTextSelected: {
     color: COLORS.text,
-    fontWeight: '700',
   },
-  radioButton: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioButtonSelected: {
-    borderColor: COLORS.primary,
-  },
-  radioButtonInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.primary,
-  },
-  bottomCTA: {
+  checkBadge: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    ...SHADOWS.lg,
-  },
-  confirmButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.medium,
-    gap: SPACING.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  confirmButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+  billCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.xl,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  confirmButtonText: {
+  billHeader: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.text,
+    marginBottom: SPACING.lg,
   },
-  // Decorative background
-  backgroundPattern: {
+  billRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  billLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  billValue: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  billDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: SPACING.md,
+    borderStyle: 'dashed',
+    borderRadius: 1,
+  },
+  billRowTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SPACING.xs,
+  },
+  billTotalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  billTotalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  floatingFooter: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    zIndex: 0,
+    backgroundColor: COLORS.white,
+    padding: SPACING.lg,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    paddingBottom: Platform.OS === 'ios' ? 34 : SPACING.lg,
+    ...SHADOWS.md,
   },
-  patternCircle: {
-    position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+  footerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  footerPriceCol: {
+    flex: 0.4,
+  },
+  footerPriceLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  footerPriceValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  viewDetailsText: {
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  bookButton: {
+    flex: 1,
+    borderRadius: RADIUS.medium,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: SPACING.lg,
+    backgroundColor: COLORS.primary,
+  },
+  pricePill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.medium,
+  },
+  pricePillText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  bookButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  bookButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
   // Payment Modal Styles
   modalOverlay: {
