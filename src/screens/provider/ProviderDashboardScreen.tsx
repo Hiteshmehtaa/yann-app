@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 // ============================================
@@ -74,6 +75,7 @@ interface MenuItem {
 
 export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -187,10 +189,16 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.userNameWhite}>{user?.name || 'Partner'}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.notificationBtnWhite} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={styles.notificationBtnWhite} 
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('NotificationsList')}
+          >
             <Ionicons name="notifications-outline" size={24} color="#FFF" />
-            {(dashboardData?.stats?.acceptedBookings || 0) > 0 && (
-              <View style={styles.notificationDotWhite} />
+            {unreadCount > 0 && (
+              <View style={styles.notificationDotWhite}>
+                 {/* Optional: Add text count if dot is large enough, or just keep dot for provider dashboard style */}
+              </View>
             )}
           </TouchableOpacity>
         </View>

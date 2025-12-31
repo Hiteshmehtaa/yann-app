@@ -20,6 +20,9 @@ import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 import { EmptyState } from '../../components/EmptyState';
+import { OTPInputModal } from '../../components/OTPInputModal';
+import { JobTimer } from '../../components/JobTimer';
+import { OvertimeBreakdown } from '../../components/OvertimeBreakdown';
 
 interface ProviderBooking {
   id: string;
@@ -52,6 +55,19 @@ export const ProviderBookingsScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
+  
+  // OTP Modal State
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [otpModalTitle, setOtpModalTitle] = useState('');
+  const [otpModalSubtitle, setOtpModalSubtitle] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
+  const [currentJobSessionId, setCurrentJobSessionId] = useState<string | null>(null);
+  const [otpAction, setOtpAction] = useState<'start' | 'end' | null>(null);
+  
+  // Job Session State
+  const [jobSessions, setJobSessions] = useState<{ [bookingId: string]: any }>({});
 
   useEffect(() => {
     fetchBookings();
@@ -137,6 +153,20 @@ export const ProviderBookingsScreen = () => {
         const allBookings = [...pendingRequests, ...acceptedBookings];
         
         setBookings(allBookings);
+        
+        // Populate job sessions state from backend data for persistent timer
+        const sessionsMap: { [key: string]: any } = {};
+        acceptedBookings.forEach((b: any) => {
+          if (b.jobSession) {
+            sessionsMap[b.id] = b.jobSession;
+          }
+        });
+        
+        if (Object.keys(sessionsMap).length > 0) {
+          setJobSessions(prev => ({ ...prev, ...sessionsMap }));
+          console.log(`⏱️ Restored ${Object.keys(sessionsMap).length} active job sessions`);
+        }
+
         console.log(`✅ Loaded ${allBookings.length} total bookings (${pendingRequests.length} pending, ${acceptedBookings.length} accepted)`);
         
         // Debug: Log first booking details
@@ -325,6 +355,157 @@ export const ProviderBookingsScreen = () => {
     }
   };
 
+
+
+  // OTP Handlers
+  const handleStartJob = async (bookingId: string) => {
+    try {
+      const providerId = user?._id || user?.id;
+      if (!providerId) {
+        setError('Provider ID not found');
+        return;
+      }
+
+      // Generate start OTP
+      const response = await apiService.generateStartOTP(bookingId, providerId);
+      
+      if (response.success && response.data) {
+        setCurrentBookingId(bookingId);
+        setCurrentJobSessionId(response.data.jobSessionId);
+        setOtpAction('start');
+        setOtpModalTitle('Start Job Verification');
+        setOtpModalSubtitle(`Enter the OTP provided by ${response.data.customerName}`);
+        setOtpModalVisible(true);
+        setOtpError(null);
+        
+        console.log(`🔐 Start OTP generated for booking ${bookingId}`);
+      }
+    } catch (err: any) {
+      console.error(' Error generating start OTP:', err);
+      Alert.alert('Error', err.message || 'Failed to generate OTP');
+    }
+  };
+
+  const handleEndJob = async (bookingId: string) => {
+    try {
+      const providerId = user?._id || user?.id;
+      if (!providerId) {
+        setError('Provider ID not found');
+        return;
+      }
+
+      // Get job session ID from booking
+      const jobSession = jobSessions[bookingId];
+      if (!jobSession || !jobSession._id) {
+        Alert.alert('Error', 'Job session not found. Please start the job first.');
+        return;
+      }
+
+      // Generate end OTP
+      const response = await apiService.generateEndOTP(jobSession._id, providerId);
+      
+      if (response.success && response.data) {
+        setCurrentBookingId(bookingId);
+        setCurrentJobSessionId(jobSession._id);
+        setOtpAction('end');
+        setOtpModalTitle('Complete Job Verification');
+        setOtpModalSubtitle('Enter the completion OTP provided by the customer');
+        setOtpModalVisible(true);
+        setOtpError(null);
+        
+        console.log(`🔐 End OTP generated for booking ${bookingId}`);
+      }
+    } catch (err: any) {
+      console.error(' Error generating end OTP:', err);
+      Alert.alert('Error', err.message || 'Failed to generate OTP');
+    }
+  };
+
+  const handleOTPSubmit = async (otp: string) => {
+    if (!currentJobSessionId || !currentBookingId || !otpAction) {
+      setOtpError('Invalid session');
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpError(null);
+
+    try {
+      const providerId = user?._id || user?.id;
+      if (!providerId) {
+        throw new Error('Provider ID not found');
+      }
+
+      if (otpAction === 'start') {
+        // Verify start OTP
+        const response = await apiService.verifyStartOTP(currentJobSessionId, otp, providerId);
+        
+        if (response.success && response.data) {
+          console.log(`✅ Job started successfully for booking ${currentBookingId}`);
+          
+          // Store job session data
+          setJobSessions(prev => ({
+            ...prev,
+            [currentBookingId]: {
+              _id: currentJobSessionId,
+              startTime: response.data?.startTime || new Date().toISOString(),
+              expectedDuration: response.data?.expectedDuration || 480,
+              status: response.data?.status || 'in_progress'
+            }
+          }));
+          
+          // Close modal and refresh bookings
+          setOtpModalVisible(false);
+          fetchBookings();
+          
+          Alert.alert('Success', 'Job started successfully! Timer is now running.');
+        }
+      } else if (otpAction === 'end') {
+        // Verify end OTP
+        const response = await apiService.verifyEndOTP(currentJobSessionId, otp, providerId);
+        
+        if (response.success && response.data) {
+          console.log(`✅ Job completed successfully for booking ${currentBookingId}`);
+          
+          // Clear job session
+          setJobSessions(prev => {
+            const newSessions = { ...prev };
+            delete newSessions[currentBookingId];
+            return newSessions;
+          });
+          
+          // Close modal and refresh bookings
+          setOtpModalVisible(false);
+          fetchBookings();
+          
+          // Show completion message with overtime info if applicable
+          let message = 'Job completed successfully!';
+          if (response.data.overtimeDuration > 0) {
+            message += `\n\nOvertime: ${Math.floor(response.data.overtimeDuration / 60)}h ${response.data.overtimeDuration % 60}m`;
+            message += `\nOvertime Charge: ₹${response.data.overtimeCharge}`;
+          }
+          
+          Alert.alert('Success', message);
+        }
+      }
+    } catch (err: any) {
+      console.error(' Error verifying OTP:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Invalid OTP. Please try again.';
+      setOtpError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleCloseOTPModal = () => {
+    setOtpModalVisible(false);
+    setOtpError(null);
+    setCurrentBookingId(null);
+    setCurrentJobSessionId(null);
+    setOtpAction(null);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return '#FF8A3D';
@@ -471,7 +652,7 @@ export const ProviderBookingsScreen = () => {
         {booking.status === 'accepted' && (
           <TouchableOpacity
             style={styles.startButton}
-            onPress={() => handleStatusChange(booking.id, 'in_progress')}
+            onPress={() => handleStartJob(booking.id)}
             activeOpacity={0.7}
           >
             <LinearGradient
@@ -487,21 +668,48 @@ export const ProviderBookingsScreen = () => {
         )}
 
         {booking.status === 'in_progress' && (
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={() => handleStatusChange(booking.id, 'completed')}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={['#4CAF50', '#2E7D32']}
-              style={styles.gradientButton}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+          <>
+            {/* Job Timer */}
+            {jobSessions[booking.id] && (
+              <View style={styles.timerContainer}>
+                <JobTimer
+                  startTime={new Date(jobSessions[booking.id].startTime)}
+                  expectedDuration={jobSessions[booking.id].expectedDuration}
+                />
+              </View>
+            )}
+            
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={() => handleEndJob(booking.id)}
+              activeOpacity={0.7}
             >
-              <Ionicons name="checkmark-done-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.startButtonText}>Mark Complete</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={['#4CAF50', '#2E7D32']}
+                style={styles.gradientButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="checkmark-done-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.startButtonText}>Complete Job</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* Overtime Breakdown for Completed Jobs */}
+        {booking.status === 'completed' && jobSessions[booking.id] && jobSessions[booking.id].overtimeDuration > 0 && (
+          <View style={styles.overtimeContainer}>
+            <OvertimeBreakdown
+              duration={jobSessions[booking.id].duration || 0}
+              expectedDuration={jobSessions[booking.id].expectedDuration || 480}
+              overtimeDuration={jobSessions[booking.id].overtimeDuration || 0}
+              baseHourlyRate={jobSessions[booking.id].baseHourlyRate || 0}
+              overtimeRate={jobSessions[booking.id].overtimeRate || 0}
+              overtimeCharge={jobSessions[booking.id].overtimeCharge || 0}
+              totalCharge={jobSessions[booking.id].totalCharge || booking.amount}
+            />
+          </View>
         )}
       </View>
     );
@@ -625,6 +833,18 @@ export const ProviderBookingsScreen = () => {
         )}
       </ScrollView>
       </View>
+
+      
+      {/* OTP Input Modal */}
+      <OTPInputModal
+        visible={otpModalVisible}
+        onClose={handleCloseOTPModal}
+        onSubmit={handleOTPSubmit}
+        title={otpModalTitle}
+        subtitle={otpModalSubtitle}
+        isLoading={otpLoading}
+        error={otpError}
+      />
     </SafeAreaView>
   );
 };
@@ -989,7 +1209,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  startButton: {
+  overtimeContainer: {
+    marginTop: SPACING.md,
+  },
+    timerContainer: {
+    marginBottom: SPACING.md,
+  },
+    startButton: {
     marginTop: SPACING.sm,
     borderRadius: RADIUS.medium,
     overflow: 'hidden',
@@ -1023,3 +1249,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+
+
+

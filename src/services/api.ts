@@ -834,6 +834,43 @@ class ApiService {
   // UPLOAD ENDPOINTS
   // ====================================================================
 
+  // ====================================================================
+  // NOTIFICATION ENDPOINTS
+  // ====================================================================
+
+  /**
+   * GET /api/notifications
+   * Get notifications for the authenticated user
+   */
+  async getNotifications(userId: string): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await this.client.get('/notifications', {
+        params: { userId }
+      });
+
+      // Response: { success, notifications: [], meta: {} }
+      const notifications = response.data.notifications || [];
+
+      return {
+        success: true,
+        message: 'Notifications loaded',
+        data: notifications,
+        meta: response.data.meta
+      };
+    } catch (error: any) {
+      console.log('Notification fetch failed:', error?.message || '');
+      return {
+        success: false,
+        message: 'Failed to load notifications',
+        data: [],
+      };
+    }
+  }
+
+  // ====================================================================
+  // UPLOAD ENDPOINTS
+  // ====================================================================
+
   async uploadAvatar(base64Image: string): Promise<ApiResponse> {
     console.log('🔐 Uploading avatar with credentials...');
     const response = await this.client.post('/profile/avatar', {
@@ -1078,6 +1115,97 @@ class ApiService {
     const response = await this.client.get('/aadhaar/status');
     return response.data;
   }
+
+
+  // ====================================================================
+  // JOB SESSION OTP ENDPOINTS
+  // ====================================================================
+
+  /**
+   * POST /api/job/start-otp
+   * Generate start OTP for customer when provider clicks "Start Job"
+   */
+  async generateStartOTP(bookingId: string, providerId: string): Promise<ApiResponse<{
+    jobSessionId: string;
+    otp: string;
+    expiresIn: number;
+    customerName: string;
+    customerPhone: string;
+  }>> {
+    const response = await this.client.post('/job/start-otp', {
+      bookingId,
+      providerId
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /api/job/verify-start
+   * Verify start OTP entered by provider and start timer
+   */
+  async verifyStartOTP(jobSessionId: string, otp: string, providerId: string): Promise<ApiResponse<{
+    startTime: string;
+    expectedDuration: number;
+    status: string;
+  }>> {
+    const response = await this.client.post('/job/verify-start', {
+      jobSessionId,
+      otp,
+      providerId
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /api/job/end-otp
+   * Generate end OTP for customer when provider clicks "End Job"
+   */
+  async generateEndOTP(jobSessionId: string, providerId: string): Promise<ApiResponse<{
+    otp: string;
+    expiresIn: number;
+    currentDuration: number;
+    expectedDuration: number;
+  }>> {
+    const response = await this.client.post('/job/end-otp', {
+      jobSessionId,
+      providerId
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /api/job/verify-end
+   * Verify end OTP, calculate duration and overtime, process payment
+   */
+  async verifyEndOTP(jobSessionId: string, otp: string, providerId: string): Promise<ApiResponse<{
+    endTime: string;
+    duration: number;
+    expectedDuration: number;
+    overtimeDuration: number;
+    overtimeCharge: number;
+    totalCharge: number;
+    status: string;
+  }>> {
+    const response = await this.client.post('/job/verify-end', {
+      jobSessionId,
+      otp,
+      providerId
+    });
+    return response.data;
+  }
+
+  /**
+   * GET /api/bookings/[id]
+   * Get job session details for a booking
+   */
+  async getJobSession(bookingId: string): Promise<ApiResponse<{
+    jobSession: any;
+    booking: Booking;
+  }>> {
+    const response = await this.client.get(/bookings/);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();
+

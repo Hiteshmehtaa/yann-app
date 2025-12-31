@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/api';
 import { SERVICES } from '../../utils/constants';
@@ -101,6 +102,7 @@ const EmptyState = () => {
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
+  const { unreadCount } = useNotifications();
   const { width, isTablet } = useResponsive();
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -478,16 +480,16 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 {/* Notification Bell */}
                 <TouchableOpacity 
                   style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
-                  onPress={() => {
-                    if (versionInfo?.updateAvailable) {
-                      setShowUpdateBanner(true);
-                    }
-                  }}
+                  onPress={() => navigation.navigate('NotificationsList')}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="notifications-outline" size={22} color={colors.text} />
-                  {versionInfo?.updateAvailable && (
-                    <View style={styles.notificationBadge} />
+                  {(versionInfo?.updateAvailable || unreadCount > 0) && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : '!'}
+                      </Text>
+                    </View>
                   )}
                 </TouchableOpacity>
 
@@ -590,16 +592,16 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 {/* Notification Bell */}
                 <TouchableOpacity 
                   style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
-                  onPress={() => {
-                    if (versionInfo?.updateAvailable) {
-                      setShowUpdateBanner(true);
-                    }
-                  }}
+                  onPress={() => navigation.navigate('NotificationsList')}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="notifications-outline" size={22} color={colors.text} />
-                  {versionInfo?.updateAvailable && (
-                    <View style={styles.notificationBadge} />
+                  {(versionInfo?.updateAvailable || unreadCount > 0) && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : '!'}
+                      </Text>
+                    </View>
                   )}
                 </TouchableOpacity>
 

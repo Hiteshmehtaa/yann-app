@@ -43,7 +43,7 @@ type Props = {
 };
 
 export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [showEmailSent, setShowEmailSent] = useState(false);
@@ -69,30 +69,42 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
     ]).start();
   }, []);
 
-  const validateEmail = (email: string): boolean => {
+  const validateInput = (input: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    const phoneRegex = /^[0-9]{10}$/; // 10 digit phone number
+    return emailRegex.test(input) || phoneRegex.test(input);
+  };
+
+  const getInputType = (input: string): 'email' | 'phone' | 'unknown' => {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input)) return 'email';
+    if (/^[0-9]+$/.test(input)) return 'phone';
+    return 'unknown';
   };
 
   const handleSendOTP = async () => {
-    if (!email.trim()) {
-      showError('Please enter your email address');
+    const trimmedIdentifier = identifier.trim();
+    if (!trimmedIdentifier) {
+      showError('Please enter your email or phone number');
       return;
     }
 
-    if (!validateEmail(email)) {
-      showError('Please enter a valid email address');
+    if (!validateInput(trimmedIdentifier)) {
+      showError('Please enter a valid email or 10-digit phone number');
       return;
     }
 
     setIsLoading(true);
     try {
       // Use provider-specific OTP endpoint
-      await sendProviderOTP(email);
+      await sendProviderOTP(trimmedIdentifier);
       setShowEmailSent(true);
       setTimeout(() => {
         setShowEmailSent(false);
-        navigation.navigate('VerifyOTP', { email, isPartner: true });
+        navigation.navigate('VerifyOTP', { 
+          identifier: trimmedIdentifier, 
+          isPartner: true,
+          identifierType: getInputType(trimmedIdentifier) === 'email' ? 'email' : 'phone'
+        });
       }, 2000);
     } catch (error: any) {
       showError(error.message || 'Failed to send OTP. Make sure you are registered as a partner.');
@@ -100,6 +112,8 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
       setIsLoading(false);
     }
   };
+
+  const inputType = getInputType(identifier);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -156,19 +170,23 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
             </View>
 
-            {/* Email Input */}
+            {/* Input Form */}
             <View style={styles.form}>
-              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <Text style={styles.label}>EMAIL OR PHONE NUMBER</Text>
               <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons name="mail" size={20} color={isFocused ? THEME.primary : THEME.textMuted} />
+                  <Ionicons 
+                    name={inputType === 'phone' ? "call" : "mail"} 
+                    size={20} 
+                    color={isFocused ? THEME.primary : THEME.textMuted} 
+                  />
                 </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="you@example.com"
+                  placeholder="Email or Phone Number"
                   placeholderTextColor={THEME.textSubtle}
-                  value={email}
-                  onChangeText={setEmail}
+                  value={identifier}
+                  onChangeText={setIdentifier}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -199,7 +217,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
 
               <Text style={styles.infoText}>
-                We'll send a verification code to your email
+                We'll send a verification code to your email or phone
               </Text>
             </View>
 
@@ -221,7 +239,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
         onHide={hideToast}
       />
 
-      {/* Email Sent Animation Overlay */}
+      {/* OTP Sent Animation Overlay */}
       {showEmailSent && (
         <View style={styles.emailSentOverlay}>
           <View style={styles.emailSentContainer}>
@@ -231,7 +249,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
               loop={false}
               style={styles.emailSentAnimation}
             />
-            <Text style={styles.emailSentText}>Email Sent!</Text>
+            <Text style={styles.emailSentText}>Code Sent!</Text>
           </View>
         </View>
       )}

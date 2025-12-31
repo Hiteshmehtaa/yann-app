@@ -45,6 +45,7 @@ import { WalletScreen } from '../screens/WalletScreen';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { SavedAddressesScreen } from '../screens/profile/SavedAddressesScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
+import { NotificationsListScreen } from '../screens/profile/NotificationsListScreen';
 import { HelpSupportScreen } from '../screens/profile/HelpSupportScreen';
 import { FavoritesScreen } from '../screens/profile/FavoritesScreen';
 import { ChatScreen } from '../screens/profile/ChatScreen';
@@ -86,6 +87,7 @@ type RootStackParamList = {
   EditProfile: undefined;
   SavedAddresses: { fromBooking?: boolean } | undefined;
   Notifications: undefined;
+  NotificationsList: undefined;
   HelpSupport: undefined;
   Wallet: undefined;
   // Legal screens
@@ -373,6 +375,7 @@ export function AppNavigator() {
                 <Stack.Screen name="Wallet" component={WalletScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="NotificationsList" component={NotificationsListScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Terms" component={TermsConditionsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Privacy" component={PrivacyPolicyScreen as any} options={screenTransitionConfig} />
@@ -391,6 +394,7 @@ export function AppNavigator() {
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Wallet" component={WalletScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="NotificationsList" component={NotificationsListScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Terms" component={TermsConditionsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Privacy" component={PrivacyPolicyScreen as any} options={screenTransitionConfig} />
