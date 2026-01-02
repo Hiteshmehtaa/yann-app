@@ -110,21 +110,12 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderBookingCard = ({ item }: { item: Booking }) => {
     const formattedDate = item.bookingDate
-      ? format(new Date(item.bookingDate), 'MMM dd, yyyy')
+      ? format(new Date(item.bookingDate), 'EEE, MMM dd')
       : 'N/A';
 
     // Get provider name from booking data
-    const providerName = (item as any).provider?.name || (item as any).providerName || 'Service Provider';
-
-    // Get status color for left border
-    const getStatusBorderColor = () => {
-      const status = item.status.toLowerCase();
-      if (status === 'confirmed' || status === 'active') return COLORS.success;
-      if (status === 'completed') return COLORS.primary;
-      if (status === 'pending') return COLORS.warning;
-      if (status === 'cancelled') return COLORS.error;
-      return COLORS.textTertiary;
-    };
+    const providerName = (item as any).provider?.name || (item as any).providerName || 'Provider';
+    const providerInitial = providerName.charAt(0).toUpperCase();
 
     // Check if booking is upcoming (within next 24 hours)
     const isUpcoming = item.bookingDate && item.bookingTime
@@ -136,80 +127,93 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         })()
       : false;
 
+    const hasOtp = ((item as any).jobSession?.startOTP || (item as any).jobSession?.endOTP);
+    const otpType = ((item as any).jobSession?.endOTP) ? 'end' : 'start';
+    const otpValue = ((item as any).jobSession?.endOTP) || ((item as any).jobSession?.startOTP);
+
     return (
       <TouchableOpacity
-        style={[
-            styles.card, 
-            { 
-                backgroundColor: colors.cardBg,
-                borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                borderWidth: 1,
-            }
-        ]}
+        style={[styles.card, { backgroundColor: colors.cardBg }]}
         onPress={() => navigation.navigate('BookingDetail', { booking: item })}
-        activeOpacity={0.7}
+        activeOpacity={0.9}
       >
-        {/* Gradient Status Indicator */}
-        <LinearGradient
-          colors={STATUS_GRADIENTS[item.status.toLowerCase()] || ['#9CA3AF', '#6B7280']}
-          style={styles.statusIndicator}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        />
-        
-        <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardHeaderLeft}>
-              <Text style={[styles.serviceName, { color: colors.text }]}>{item.serviceName}</Text>
-              <LinearGradient
-                colors={STATUS_GRADIENTS[item.status.toLowerCase()] || ['#9CA3AF', '#6B7280']}
-                style={styles.statusBadgeGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.statusTextWhite}>
-                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                </Text>
-              </LinearGradient>
+        <View style={styles.cardMain}>
+            {/* Header: Service Name & Price */}
+            <View style={styles.cardHeader}>
+                <View style={styles.serviceIconFrame}>
+                    <Ionicons name="briefcase" size={20} color={COLORS.primary} />
+                </View>
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                    <Text style={[styles.serviceName, { color: colors.text }]}>{item.serviceName}</Text>
+                    <Text style={styles.serviceCategoryText}>{item.serviceCategory}</Text>
+                </View>
+                <Text style={styles.priceValue}>₹{item.totalPrice}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={ICON_SIZES.medium} color={colors.textTertiary} />
-          </View>
 
-        <View style={styles.cardBody}>
-          {/* Provider Info */}
-          <View style={[styles.providerRow, { borderBottomColor: colors.divider }]}>
-            <Ionicons name="person-outline" size={ICON_SIZES.medium} color={colors.primary} />
-            <Text style={[styles.providerName, { color: colors.text }]}>{providerName}</Text>
-          </View>
+            {/* Divider */}
+            <View style={[styles.dashedDivider, { borderColor: colors.divider }]} />
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Ionicons name="calendar-outline" size={ICON_SIZES.medium} color={colors.textSecondary} />
-              <Text style={[styles.infoValue, { color: colors.textSecondary }]}>{formattedDate}</Text>
+            {/* Info Grid */}
+            <View style={styles.infoGrid}>
+                <View style={styles.infoCol}>
+                    <View style={styles.infoRow}>
+                        <Ionicons name="calendar-clear-outline" size={14} color={COLORS.textSecondary} />
+                        <Text style={styles.infoText}>{formattedDate}</Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                        <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+                        <Text style={styles.infoText}>{item.bookingTime}</Text>
+                    </View>
+                </View>
+
+                {/* Status Badge */}
+                 <View style={[styles.miniStatusBadge, { backgroundColor: STATUS_COLORS[item.status] + '15' }]}>
+                    <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[item.status] }]} />
+                    <Text style={[styles.miniStatusText, { color: STATUS_COLORS[item.status] }]}>
+                        {item.status.toUpperCase()}
+                    </Text>
+                </View>
             </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="time-outline" size={ICON_SIZES.medium} color={colors.textSecondary} />
-              <Text style={[styles.infoValue, { color: colors.textSecondary }]}>{item.bookingTime}</Text>
+
+             {/* Provider Info (Compact) */}
+             <View style={styles.providerCompact}>
+                <View style={[styles.providerAvatarSmall, { backgroundColor: COLORS.primary + '20' }]}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.primary }}>{providerInitial}</Text>
+                </View>
+                <Text style={[styles.providerNameSmall, { color: colors.textSecondary }]}>Service by {providerName}</Text>
             </View>
-          </View>
-          
-          {/* Countdown Timer for Upcoming Bookings */}
-          {isUpcoming && (
-            <View style={[styles.countdownContainer, { backgroundColor: colors.primary + '10' }]}>
-              <Ionicons name="timer-outline" size={16} color={colors.primary} />
-              <CountdownTimer
-                targetDate={new Date(`${item.bookingDate}T${item.bookingTime}`)}
-                style={{ ...styles.countdownText, color: colors.primary }}
-              />
-            </View>
-          )}
-          
-          <View style={[styles.priceRow, { borderTopColor: colors.divider }]}>
-            <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>Total</Text>
-            <Text style={[styles.priceValue, { color: colors.primary }]}>₹{item.totalPrice}</Text>
-          </View>
         </View>
-        </View>
+
+        {/* Action / OTP Footer */}
+        {hasOtp ? (
+            <View style={styles.otpFooter}>
+                <View style={styles.ticketRips}>
+                    {Array.from({ length: 15 }).map((_, i) => (
+                        <View key={i} style={[styles.ripDot, { backgroundColor: colors.background }]} />
+                    ))}
+                </View>
+                <View style={[styles.otpStub, { backgroundColor: otpType === 'end' ? '#ECFDF5' : '#EFF6FF' }]}>
+                    <View>
+                        <Text style={[styles.otpLabel, { color: otpType === 'end' ? '#059669' : '#1D4ED8' }]}>
+                            {otpType === 'end' ? 'COMPLETION CODE' : 'START CODE'}
+                        </Text>
+                        <Text style={styles.otpSublabel}>Share with provider</Text>
+                    </View>
+                    <Text style={[styles.otpCode, { color: otpType === 'end' ? '#059669' : '#1D4ED8' }]}>
+                        {otpValue}
+                    </Text>
+                </View>
+            </View>
+        ) : isUpcoming ? (
+             <View style={[styles.countdownFooter, { backgroundColor: COLORS.primary + '08' }]}>
+                <Ionicons name="timer-outline" size={14} color={COLORS.primary} />
+                <Text style={styles.countdownLabel}>Starting in: </Text>
+                <CountdownTimer
+                    targetDate={new Date(`${item.bookingDate}T${item.bookingTime}`)}
+                    style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}
+                />
+            </View>
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -563,5 +567,138 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFF',
     letterSpacing: 0.3,
+  },
+  // New Booking Card Styles
+  cardMain: {
+    padding: SPACING.md,
+  },
+  serviceIconFrame: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serviceCategoryText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  dashedDivider: {
+    height: 1,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.divider,
+    borderRadius: 1,
+    marginBottom: SPACING.md,
+    opacity: 0.5,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  infoCol: {
+    gap: 8,
+  },
+  infoText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  miniStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  miniStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  providerCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  providerAvatarSmall: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  providerNameSmall: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  
+  // OTP Stub Styles
+  otpFooter: {
+    marginTop: 0,
+    backgroundColor: 'transparent',
+  },
+  ticketRips: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    height: 4,
+    overflow: 'hidden',
+    zIndex: 1,
+  },
+  ripDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: -4, // half hidden
+  },
+  otpStub: {
+    padding: SPACING.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomLeftRadius: RADIUS.large,
+    borderBottomRightRadius: RADIUS.large,
+  },
+  otpLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  otpSublabel: {
+    fontSize: 10,
+    color: COLORS.textTertiary,
+  },
+  otpCode: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 2,
+  },
+  
+  // Countdown Footer
+  countdownFooter: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'center',
+     padding: SPACING.sm,
+     gap: 6,
+     borderTopWidth: 1,
+     borderTopColor: 'rgba(0,0,0,0.03)',
+  },
+  countdownLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
   },
 });

@@ -98,21 +98,32 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
     try {
       const response = await apiService.getProviderEarnings(selectedPeriod);
-      if (response.success && response.data) {
-        setEarningsData(response.data);
+      console.log('Earnings response:', response);
+      
+      if (response.success && response.earnings) {
+        const data = response.earnings;
+        setEarningsData({
+          totalEarnings: data.totalEarnings || 0,
+          completedBookings: data.bookingsCount || data.completedBookings || 0,
+          averagePerBooking: data.averageEarning || 0,
+          transactions: (data.recentTransactions || []).map((t: any) => ({
+            id: t.id || Math.random().toString(),
+            service: t.serviceName || 'Service',
+            customer: t.customerName || 'Customer',
+            amount: t.amount || 0,
+            date: t.date ? new Date(t.date).toLocaleDateString() : 'Recent',
+            status: t.status || 'completed'
+          })),
+        });
       }
     } catch (error) {
-      console.log('Using default earnings data');
-      // Use mock data for demo
+      console.error('Error fetching earnings:', error);
+      // Fallback only if error
       setEarningsData({
-        totalEarnings: 15000,
-        completedBookings: 12,
-        averagePerBooking: 1250,
-        transactions: [
-          { id: '1', service: 'House Cleaning', customer: 'John Doe', amount: 1500, date: '2024-01-15', status: 'completed' },
-          { id: '2', service: 'Maid Service', customer: 'Jane Smith', amount: 800, date: '2024-01-14', status: 'completed' },
-          { id: '3', service: 'Deep Cleaning', customer: 'Mike Wilson', amount: 2000, date: '2024-01-12', status: 'completed' },
-        ],
+        totalEarnings: 0,
+        completedBookings: 0,
+        averagePerBooking: 0,
+        transactions: [],
       });
     } finally {
       setIsLoading(false);

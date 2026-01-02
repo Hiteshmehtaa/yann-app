@@ -183,6 +183,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 autoPlay
                 loop
                 style={styles.welcomeAnimation}
+                resizeMode="contain"
               />
               
               <Text style={styles.title}>Welcome{'\n'}Back</Text>
@@ -336,8 +337,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   welcomeAnimation: {
-    width: 180,
-    height: 180,
+    width: 300,
+    height: 220,
     marginVertical: 10,
   },
   title: {

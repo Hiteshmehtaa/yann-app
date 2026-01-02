@@ -1,4 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
 import { getErrorMessage } from '../utils/errorMessages';
@@ -111,6 +113,9 @@ class ApiService {
           console.log('🔐 Session expired');
         } else if (status === 500) {
           console.error('🚨 Server error');
+          if (error.response?.data) {
+            console.error('🔥 Server Error Details:', JSON.stringify(error.response.data, null, 2));
+          }
         }
 
         // Enhance error with user-friendly message
@@ -250,6 +255,19 @@ class ApiService {
     };
   }
 
+
+
+  /**
+    * GET /api/notifications
+    * Fetch notifications for user
+    */
+  async getNotifications(userId: string): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/notifications', {
+      params: { userId }
+    });
+    return response.data;
+  }
+
   async logout(): Promise<void> {
     try {
       await this.client.post('/auth/logout');
@@ -257,6 +275,18 @@ class ApiService {
       console.log('Logout error (non-critical):', error?.message || '');
       // Silently handle - local cleanup will happen anyway
     }
+  }
+
+  async markNotificationsRead(notificationIds: string[]): Promise<ApiResponse> {
+    const userStr = await AsyncStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const userId = user?.id || user?._id;
+
+    const response = await this.client.post('/notifications/mark-read', {
+      notificationIds,
+      userId
+    });
+    return response.data;
   }
 
   async registerAsProvider(providerData: any): Promise<ApiResponse> {
@@ -808,7 +838,7 @@ class ApiService {
    */
   async getProviderEarnings(period?: 'week' | 'month' | 'year'): Promise<ApiResponse<any>> {
     const params = period ? { period } : {};
-    const response = await this.client.get('/provider/earnings', { params });
+    const response = await this.client.get('/provider/earning', { params });
     return response.data;
   }
 
@@ -872,7 +902,7 @@ class ApiService {
   // ====================================================================
 
   async uploadAvatar(base64Image: string): Promise<ApiResponse> {
-    console.log('🔐 Uploading avatar with credentials...');
+    console.log('🔐 Uploading avatar...');
     const response = await this.client.post('/profile/avatar', {
       image: base64Image // Backend expects { image: "data:image/jpeg;base64,..." }
     }, {

@@ -16,7 +16,7 @@ export const EmptyStateAnimation: React.FC<EmptyStateAnimationProps> = ({
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
       <LottieView
-        source={require('../../../assets/lottie/empty.json')}
+        source={require('../../../assets/lottie/empty cart.json')}
         autoPlay
         loop
         style={{ width: '100%', height: '100%' }}

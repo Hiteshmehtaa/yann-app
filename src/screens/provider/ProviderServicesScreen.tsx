@@ -117,6 +117,21 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
         rate: userRates[service.title || service.name] || service.price || 0,
       }));
 
+      // Add any user services that are missing from backend response (hidden/legacy services)
+      const mappedTitles = mappedServices.map(s => s.title);
+      userServices.forEach(serviceTitle => {
+         if (!mappedTitles.includes(serviceTitle)) {
+             mappedServices.push({
+                 id: Math.random(), // Temporary ID since it's not in catalog
+                 title: serviceTitle,
+                 icon: '🔧', // Default icon for unknown services
+                 isActive: true, // It's in user.services, so it's active
+                 rate: userRates[serviceTitle] || 0,
+                 isPending: false
+             });
+         }
+      });
+
       setServices(mappedServices);
     } catch (err) {
       console.error('Failed to load services from API, using fallback', err);

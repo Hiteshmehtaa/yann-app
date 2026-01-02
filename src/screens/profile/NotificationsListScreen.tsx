@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 import { EmptyState } from '../../components/EmptyState';
@@ -20,8 +21,9 @@ import { useNotifications, AppNotification } from '../../contexts/NotificationCo
 // ... imports remain ... 
 
 export const NotificationsListScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { notifications, markAsRead, refreshNotifications } = useNotifications();
+  const { user } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const onRefresh = async () => {
@@ -37,9 +39,29 @@ export const NotificationsListScreen = () => {
     Alert.alert('Copied!', 'OTP copied to clipboard');
   };
 
-  /* 
-     Logic handled by NotificationContext 
-  */
+  const handleNotificationPress = (notification: AppNotification) => {
+    // 1. Mark as read
+    if (!notification.read) {
+        markAsRead(notification.id);
+    }
+
+    // 2. Navigate based on type
+    const isBookingNotification = [
+        'booking_accepted', 
+        'booking_rejected', 
+        'booking_completed',
+        'otp_start', 
+        'otp_end'
+    ].includes(notification.type) || !!notification.bookingId;
+
+    if (isBookingNotification) {
+        if (user?.role === 'provider') {
+            navigation.navigate('ProviderTabs', { screen: 'ProviderBookings' });
+        } else {
+            navigation.navigate('MainTabs', { screen: 'BookingsList' });
+        }
+    }
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -92,22 +114,36 @@ export const NotificationsListScreen = () => {
     const colors = getNotificationColor(notification.type);
     const icon = getNotificationIcon(notification.type);
 
+    const isRead = notification.read;
+    const bgColor = isRead ? COLORS.background : COLORS.white; // Light gray for read, White for unread
+    
     return (
       <TouchableOpacity
         key={notification.id}
-        style={[styles.notificationCard, !notification.read && styles.unreadCard]}
-        onPress={() => markAsRead(notification.id)}
+        style={[
+            styles.notificationCard, 
+            { backgroundColor: bgColor },
+            !isRead && styles.unreadCardBorder // Add border/shadow distinction
+        ]}
+        onPress={() => handleNotificationPress(notification)}
         activeOpacity={0.7}
       >
         <View style={styles.notificationContent}>
-          <LinearGradient
-            colors={colors}
-            style={styles.iconContainer}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name={icon as any} size={24} color={COLORS.white} />
-          </LinearGradient>
+          <View style={[styles.iconContainer, { backgroundColor: isRead ? 'rgba(0,0,0,0.05)' : undefined }]}>
+             {/* If read, show simple icon. If unread, show gradient icon */}
+             {isRead ? (
+                 <Ionicons name={icon as any} size={24} color={COLORS.textSecondary} />
+             ) : (
+                <LinearGradient
+                    colors={colors}
+                    style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                >
+                    <Ionicons name={icon as any} size={24} color={COLORS.white} />
+                </LinearGradient>
+             )}
+          </View>
+          
+          {/* ... rest of content */}
 
           <View style={styles.textContainer}>
             <View style={styles.headerRow}>
@@ -329,5 +365,10 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+  },
+  unreadCardBorder: {
+    ...SHADOWS.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
 });

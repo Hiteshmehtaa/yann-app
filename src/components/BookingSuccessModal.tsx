@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#1F2937', // Explicit dark color
     textAlign: 'center',
     marginBottom: SPACING.sm,
   },
@@ -181,24 +181,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: SPACING.md,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: '#EEF2FF', // Explicit light blue
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.medium,
   },
   serviceNameLabel: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: '#4B5563', // Explicit dark gray
     marginRight: SPACING.xs,
   },
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: '#2563EB', // Explicit blue
   },
   message: {
     fontSize: 15,
-    color: COLORS.textSecondary,
+    color: '#6B7280', // Explicit gray
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: SPACING.lg,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.success + '10',
+    backgroundColor: '#ECFDF5', // Explicit light green
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.full,
@@ -215,12 +215,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.success,
+    backgroundColor: '#059669', // Explicit green
     marginRight: SPACING.xs,
   },
   statusText: {
     fontSize: 13,
-    color: COLORS.success,
+    color: '#059669', // Explicit green
     fontWeight: '600',
   },
 });

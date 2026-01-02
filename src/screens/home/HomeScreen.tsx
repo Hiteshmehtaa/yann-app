@@ -418,7 +418,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Translucent Status Bar for Content to flow under */}
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       
       {/* Update Notification Banner - Only this stays fixed */}
       {showUpdateBanner && versionInfo && (

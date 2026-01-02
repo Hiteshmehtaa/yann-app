@@ -101,7 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           aadhaarVerified: response.user.aadhaarVerified || false,
         };
         
-        console.log('👤 Setting user data:', userData);
+        console.log('👤 Setting user data:', { ...userData, avatar: '[BASE64_IMAGE]', profileImage: '[BASE64_IMAGE]' });
         
         // Use the actual JWT token from response for mobile auth
         const actualToken = response.token || 'cookie-based-auth';
@@ -172,7 +172,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           aadhaarVerified: response.user.aadhaarVerified || false,
         };
         
-        console.log('👤 Setting provider data:', userData);
+        console.log('👤 Setting provider data:', { ...userData, avatar: '[BASE64_IMAGE]', profileImage: '[BASE64_IMAGE]' });
         
         // Use the actual JWT token from response for mobile auth
         const actualToken = response.token || 'cookie-based-auth-provider';

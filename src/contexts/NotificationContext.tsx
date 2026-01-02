@@ -36,6 +36,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   useEffect(() => {
     if (user) {
       loadNotifications();
+
+      // Active polling every 15 seconds to ensure OTP delivery even if push fails
+      const intervalId = setInterval(() => {
+        console.log('🔄 Polling for new notifications...');
+        loadNotifications();
+      }, 15000);
+
+      return () => clearInterval(intervalId);
     } else {
       setNotifications([]);
     }
@@ -82,7 +90,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       if (!user) return;
       
       // 1. Try to fetch from backend first (Single Source of Truth)
-      const response = await apiService.getNotifications(user.id);
+      const response = await apiService.getNotifications(user.id || '');
       
       if (response.success && response.data && response.data.length > 0) {
           const serverNotifications = response.data;
@@ -130,11 +138,20 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   const markAsRead = async (id: string) => {
+    // 1. Optimistic Update (Immediate UI change)
     const updated = notifications.map(n => 
       n.id === id ? { ...n, read: true } : n
     );
     setNotifications(updated);
     await saveNotifications(updated);
+    
+    // 2. Persist to Backend
+    try {
+        await apiService.markNotificationsRead([id]);
+    } catch (error) {
+        console.error('Failed to mark notification as read on server:', error);
+        // Optional: Revert optimistic update if critical, but usually fine to ignore
+    }
   };
 
   const markAllAsRead = async () => {

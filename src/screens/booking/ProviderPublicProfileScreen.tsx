@@ -9,13 +9,17 @@ import {
   Animated,
   Image,
   Dimensions,
+  Linking,
+  Share,
+  Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import { COLORS, RADIUS, SHADOWS } from '../../utils/theme';
+import { COLORS, SHADOWS, SPACING } from '../../utils/theme';
 import { Service, ServiceProvider } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -25,37 +29,24 @@ type Props = {
   route: RouteProp<{ params: { provider: ServiceProvider; service?: Service } }, 'params'>;
 };
 
-// Mock data similar to the screenshot if real data is missing
-const MOCK_DATA = {
-  // Badge removed as per request
-  type: 'INDIVIDUAL',
-  specialty: 'ASSEMBLY',
-  avgTime: '1 hour',
-  about: 'As a professional assembler, I possess the necessary skills and experience to assemble furniture and equipment for clients. My expertise includes reading and interpreting assembly instructions, using power tools and hand tools, and ensuring that the finished product is sturdy and safe.',
-  distance: '2.5 km',
-};
-
 export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route }) => {
   const { provider: initialProvider } = route.params;
   const [provider, setProvider] = useState<ServiceProvider>(initialProvider);
   const scrollY = useRef(new Animated.Value(0)).current;
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    // Fetch latest provider details (for bio, rates, etc.)
     const fetchProviderDetails = async () => {
       try {
-        const response = await apiService.getProviderById(initialProvider._id);
+        const response = await apiService.getProviderById((initialProvider as any).id || initialProvider._id);
         if (response.success && response.data) {
            const newData = response.data;
            setProvider(prev => ({
              ...prev,
              ...newData,
-             // Ensure access to nested fields if backend structure differs slightly
              serviceRates: newData.serviceRates || prev.serviceRates,
-             // Prefer fetched profile image
              profileImage: newData.profileImage || newData.avatar || prev.profileImage,
-             // Map bio/about
              bio: newData.bio || newData.about || prev.bio,
            }));
         }
@@ -63,308 +54,263 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
         console.log('Error fetching provider details:', error);
       }
     };
-
     fetchProviderDetails();
-  }, [initialProvider._id]);
+  }, [initialProvider]);
 
-  // Animations
-  const HEADER_HEIGHT_MAX = 180;
-  const HEADER_HEIGHT_MIN = 100;
-  const AVATAR_SIZE_MAX = 100;
-  const AVATAR_SIZE_MIN = 60;
-
+  // Animation Values
+  const HEADER_HEIGHT_MAX = 280;
+  const HEADER_HEIGHT_MIN = 100 + insets.top;
+  
   const headerHeight = scrollY.interpolate({
-    inputRange: [0, 100],
+    inputRange: [0, HEADER_HEIGHT_MAX - HEADER_HEIGHT_MIN],
     outputRange: [HEADER_HEIGHT_MAX, HEADER_HEIGHT_MIN],
     extrapolate: 'clamp',
   });
 
-  const avatarSize = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [AVATAR_SIZE_MAX, AVATAR_SIZE_MIN],
+  const headerTitleOpacity = scrollY.interpolate({
+    inputRange: [HEADER_HEIGHT_MAX - HEADER_HEIGHT_MIN - 40, HEADER_HEIGHT_MAX - HEADER_HEIGHT_MIN],
+    outputRange: [0, 1],
     extrapolate: 'clamp',
   });
 
-  // Avatar's center should sit exactly on the boundary: avatarTop = headerHeight - avatarSize / 2
-  const avatarTop = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [
-      HEADER_HEIGHT_MAX - AVATAR_SIZE_MAX / 2,  // 180 - 50 = 130
-      HEADER_HEIGHT_MIN - AVATAR_SIZE_MIN / 2,  // 100 - 30 = 70
-    ],
-    extrapolate: 'clamp',
-  });
-  
-  const titleOpacity = scrollY.interpolate({
-    inputRange: [0, 80, 100],
-    outputRange: [0, 0, 1],
+  const imageOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT_MAX - HEADER_HEIGHT_MIN],
+    outputRange: [1, 0],
     extrapolate: 'clamp',
   });
 
-  const renderStars = (rating: number) => {
-    return (
-      <View style={styles.ratingContainer}>
-        <Ionicons name="star" size={16} color="#FFB800" />
-        <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-      </View>
-    );
+  const avatarScale = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT_MAX - HEADER_HEIGHT_MIN],
+    outputRange: [1, 0.6],
+    extrapolate: 'clamp',
+  });
+
+  const avatarTranslateY = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT_MAX - HEADER_HEIGHT_MIN],
+    outputRange: [0, -40],
+    extrapolate: 'clamp',
+  });
+
+  const handleShare = async () => {
+      try {
+          await Share.share({
+              message: `Check out ${provider.name} on Yann! Professional ${provider.services?.[0] || 'service provider'}.`,
+          });
+      } catch (error) {
+          console.log(error);
+      }
+  };
+
+  const getPriceDisplay = () => {
+      let price = 0;
+      if (route.params.service && provider.serviceRates) {
+        if (Array.isArray(provider.serviceRates)) {
+            const rate = provider.serviceRates.find(r => r.serviceName === route.params.service?.title);
+            if (rate) price = rate.price;
+        } else {
+            price = (provider.serviceRates as any)[route.params.service.title] || 0;
+        }
+      }
+      
+      if (!price && provider.serviceRates) {
+         if (Array.isArray(provider.serviceRates)) {
+             price = provider.serviceRates[0]?.price || 0;
+         } else {
+             price = (Object.values(provider.serviceRates)[0] as number) || 0;
+         }
+      }
+
+      if (!price && (provider as any).priceForService) {
+        price = (provider as any).priceForService;
+      }
+
+      return price > 0 ? `₹${price}/hr` : 'Contact for price';
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#2E59F3" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Blue Header Background */}
-      <Animated.View style={[styles.blueHeader, { height: headerHeight }]}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.navBar}>
-            <TouchableOpacity 
-              style={styles.iconButton} 
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="chevron-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-            
-            <Animated.Text style={[styles.headerTitle, { opacity: titleOpacity }]}>
-              {provider.name}
-            </Animated.Text>
-            
-            <Text style={[styles.headerTitleStatic, { opacity: 0 }]}>Provider Profile</Text> 
-            {/* Invisible static title for layout if needed, but absolute positioning is used mostly */}
-
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => setIsBookmarked(!isBookmarked)}
-            >
-              <Ionicons 
-                name={isBookmarked ? "bookmark" : "bookmark-outline"} 
-                size={22} 
-                color="#FFF" 
-              />
-            </TouchableOpacity>
-          </View>
-          
-          <Animated.Text style={[styles.bigHeaderTitle, { opacity: scrollY.interpolate({ inputRange: [0, 60], outputRange: [1, 0] }) }]}>
-             Provider Profile
-          </Animated.Text>
-        </SafeAreaView>
-      </Animated.View>
-
-      {/* Absolute positioned avatar that overlaps header and content */}
-      <Animated.View 
-        style={[
-          styles.avatarContainerAbsolute,
-          { 
-            top: avatarTop,
-            width: avatarSize,
-            height: avatarSize,
-          }
-        ]}
-      >
-        {provider.profileImage ? (
-          <Animated.Image 
-            source={{ uri: provider.profileImage }} 
-            style={[
-              styles.avatar,
-              { 
-                width: avatarSize,
-                height: avatarSize,
-                borderRadius: Animated.divide(avatarSize, 2),
-              }
-            ]}
+      {/* Animated Header */}
+      <Animated.View style={[styles.headerContainer, { height: headerHeight }]}>
+          {provider.profileImage ? (
+             <Animated.Image 
+                source={{ uri: provider.profileImage }}
+                style={[styles.headerImage, { opacity: imageOpacity }]}
+                blurRadius={20}
+             />
+          ) : (
+             <Animated.View style={[styles.headerImage, { backgroundColor: '#2E59F3', opacity: imageOpacity }]} />
+          )}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.2)', 'rgba(255,255,255,1)']}
+            style={StyleSheet.absoluteFill}
           />
-        ) : (
-          <Animated.View 
-            style={[
-              styles.avatar, 
-              styles.avatarPlaceholder,
-              { 
-                width: avatarSize,
-                height: avatarSize,
-                borderRadius: Animated.divide(avatarSize, 2),
-              }
-            ]}
-          >
-            <Text style={styles.avatarPlaceholderText}>
-              {provider.name?.charAt(0).toUpperCase() || 'P'}
-            </Text>
-          </Animated.View>
-        )}
+          
+          {/* Header Actions */}
+          <View style={[styles.headerActions, { paddingTop: insets.top + 10 }]}>
+             <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+                <Ionicons name="arrow-back" size={24} color="#fff" />
+             </TouchableOpacity>
+             
+             <Animated.Text style={[styles.headerTitleText, { opacity: headerTitleOpacity }]}>
+                 {provider.name}
+             </Animated.Text>
+
+             <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity style={styles.iconButton} onPress={handleShare}>
+                    <Ionicons name="share-social-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.iconButton} onPress={() => setIsBookmarked(!isBookmarked)}>
+                    <Ionicons name={isBookmarked ? "heart" : "heart-outline"} size={22} color={isBookmarked ? "#EF4444" : "#fff"} />
+                </TouchableOpacity>
+             </View>
+          </View>
       </Animated.View>
 
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
+         showsVerticalScrollIndicator={false}
+         contentContainerStyle={{ paddingTop: HEADER_HEIGHT_MAX - 70, paddingBottom: 120 }}
+         onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+         )}
+         scrollEventThrottle={16}
       >
-        <View style={styles.placeholderHeader} />
-        
-        <View style={styles.profileContent}>
-          {/* Avatar space - empty to prevent content overlap */}
-          <View style={styles.avatarSpacer} />
-
-          {/* Name & Type */}
-          <Text style={styles.name}>{provider.name}</Text>
-          <View style={styles.typeContainer}>
-            <Text style={styles.typeText}>{provider.type || 'INDIVIDUAL'}</Text>
-            <View style={styles.dot} />
-            <Text style={styles.specialtyText}>
-              {provider.services?.[0]?.toUpperCase() || 
-               ((provider as any).specialty?.toUpperCase()) || 
-               'GENERAL'}
-             </Text>
-          </View>
-
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="star" size={20} color="#FFB800" />
-                <Text style={styles.statValue}>{provider.rating ? provider.rating.toFixed(1) : 'New'}</Text>
-              </View>
-              <Text style={styles.statLabel}>rating</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.statItem}>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="checkbox" size={20} color="#6B9EFF" />
-                <Text style={styles.statValue}>{provider.totalReviews || 0}</Text>
-              </View>
-              <Text style={styles.statLabel}>tasks done</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.statItem}>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="time" size={20} color="#6B9EFF" />
-                <Text style={styles.statValue}>{(provider as any).avgTime || '1 hour'}</Text>
-              </View>
-              <Text style={styles.statLabel}>avg. job time</Text>
-            </View>
-          </View>
-
-          <View style={styles.horizontalLine} />
-
-          {/* About Tasker */}
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>About Tasker</Text>
-            <Text style={styles.aboutText} numberOfLines={3}>
-              {provider.bio || (provider as any).about || 'No description available.'}
-              <Text style={styles.viewMore}> View More</Text>
-            </Text>
-          </View>
-
-          {/* Details */}
-          <View style={styles.detailsContainer}>
-            <View style={styles.detailRow}>
-              <View style={styles.detailLeft}>
-                <Ionicons name="cash-outline" size={20} color="#2E59F3" />
-                <Text style={styles.detailLabel}>Cost</Text>
-              </View>
-              <Text style={styles.detailValue}>
-               {/* Use effective hourly rate based on selected service or first available rate */}
-               {(() => {
-                  let price = 0;
-                  // Try to find rate for the specific service passed in params
-                  if (route.params.service && provider.serviceRates) {
-                    if (Array.isArray(provider.serviceRates)) {
-                      const rate = provider.serviceRates.find(r => r.serviceName === route.params.service?.title);
-                      if (rate) price = rate.price;
-                    } else {
-                       price = (provider.serviceRates as any)[route.params.service.title] || 0;
+          {/* Profile Card */}
+          <View style={styles.profileCard}>
+              <Animated.View 
+                 style={[
+                    styles.avatarContainer, 
+                    { 
+                        transform: [
+                            { scale: avatarScale },
+                            { translateY: avatarTranslateY }
+                        ] 
                     }
-                  }
-                  
-                  // Fallback to first available rate
-                  if (!price && provider.serviceRates) {
-                     if (Array.isArray(provider.serviceRates)) {
-                        price = provider.serviceRates[0]?.price || 0;
-                     } else {
-                        // Safe cast as we know values are numbers in the Record
-                        price = (Object.values(provider.serviceRates)[0] as number) || 0;
-                     }
-                  }
-                  
-                  // If still 0 and we have a priceForService (from list view), use that
-                  if (!price && (provider as any).priceForService) {
-                    price = (provider as any).priceForService;
-                  }
+                 ]}
+              >
+                 {provider.profileImage ? (
+                    <Image 
+                        source={{ uri: provider.profileImage }} 
+                        style={styles.avatar} 
+                    />
+                 ) : (
+                    <View style={[styles.avatar, { backgroundColor: '#FFD700', alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ fontSize: 40, fontWeight: '700', color: '#FFF' }}>
+                            {provider.name?.charAt(0).toUpperCase() || 'P'}
+                        </Text>
+                    </View>
+                 )}
+                 <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                 </View>
+              </Animated.View>
 
-                  return price > 0 ? `₹${price}/hour` : 'Contact for price';
-               })()}
-              </Text>
-            </View>
-          </View>
-           
-          <View style={styles.horizontalLine} />
+              <View style={styles.infoCenter}>
+                  <Text style={styles.name}>{provider.name}</Text>
+                  <Text style={styles.specialty}>{provider.services?.[0] || 'Professional Tasker'}</Text>
+                  
+                  <View style={styles.badgesRow}>
+                      <View style={styles.pillBadge}>
+                         <Ionicons name="time-outline" size={14} color="#4B5563" />
+                         <Text style={styles.pillText}>{(provider as any).avgTime || '1 hr msg time'}</Text>
+                      </View>
+                      <View style={styles.pillBadge}>
+                         <Ionicons name="location-outline" size={14} color="#4B5563" />
+                         <Text style={styles.pillText}>{(provider as any).distance || '2.5 km away'}</Text>
+                      </View>
+                  </View>
+              </View>
 
-          {/* Reviews Preview */}
-          <View style={styles.section}>
-            <View style={styles.reviewsHeader}>
-               <Text style={styles.sectionHeader}>Reviews</Text>
-               <TouchableOpacity style={styles.arrowButton}>
-                 <Ionicons name="arrow-forward" size={20} color={COLORS.textSecondary} />
-               </TouchableOpacity>
-            </View>
-            <View style={styles.ratingSummary}>
-              <Ionicons name="star" size={18} color="#FFB800" />
-              <Text style={styles.ratingSummaryText}>
-                <Text style={styles.boldRating}>{provider.rating}</Text>/5 ({provider.totalReviews} reviews)
-              </Text>
-            </View>
-            
-            {/* Mock Review Item */}
-            <View style={styles.reviewItem}>
-               <View style={styles.reviewerInfo}>
-                  <Image source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} style={styles.reviewerAvatar} />
-                  <Text style={styles.reviewerName}>Wilson Donin</Text>
-                  <View style={{flex:1}} />
-                  <Ionicons name="star" size={14} color="#FFB800" />
-                  <Text style={styles.reviewRating}>5.0</Text>
-               </View>
-               <Text style={styles.reviewComment} numberOfLines={2}>
-                 Great work! He arrived on time and finished the job quickly. very professional...
-               </Text>
-            </View>
+              {/* Stats Grid */}
+              <View style={styles.statsGrid}>
+                  <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{provider.rating ? provider.rating.toFixed(1) : 'New'}</Text>
+                      <Text style={styles.statLabel}>Rating</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{provider.totalReviews || 0}</Text>
+                      <Text style={styles.statLabel}>Reviews</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                      <Text style={styles.statValue}>100%</Text>
+                      <Text style={styles.statLabel}>Reliable</Text>
+                  </View>
+              </View>
           </View>
-          
-          <View style={{ height: 100 }} />
-        </View>
+
+          {/* About Section */}
+          <View style={styles.contentSection}>
+              <Text style={styles.sectionTitle}>About Me</Text>
+              <Text style={styles.bodyText} numberOfLines={8}>
+                 {provider.bio || (provider as any).about || 'I am a dedicated professional committed to delivering high-quality work. With years of experience in my field, I ensure customer satisfaction and reliable service.'}
+              </Text>
+          </View>
+
+          {/* Reviews Section */}
+          <View style={styles.contentSection}>
+              <View style={styles.sectionHeaderRow}>
+                 <Text style={styles.sectionTitle}>Recent Reviews</Text>
+                 <TouchableOpacity>
+                     <Text style={styles.linkText}>See All</Text>
+                 </TouchableOpacity>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, paddingHorizontal: 20 }}>
+                  {[1, 2].map((_, i) => (
+                      <View key={i} style={styles.reviewCard}>
+                          <View style={styles.reviewHeader}>
+                             <Image source={{ uri: `https://randomuser.me/api/portraits/men/${32+i}.jpg` }} style={styles.reviewerImg} />
+                             <View>
+                                 <Text style={styles.reviewerName}>Client Name</Text>
+                                 <View style={{flexDirection:'row'}}>
+                                     {[...Array(5)].map((_,j) => (
+                                         <Ionicons key={j} name="star" size={12} color="#F59E0B" />
+                                     ))}
+                                 </View>
+                             </View>
+                          </View>
+                          <Text style={styles.reviewText} numberOfLines={3}>
+                             Excellent service! Arrived exactly on time and did a fantastic job. Would definitely hire again for future projects.
+                          </Text>
+                      </View>
+                  ))}
+              </ScrollView>
+          </View>
+
       </ScrollView>
 
-      {/* Bottom Bar */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity 
-          style={styles.chatButton}
-          onPress={() => {
-            // Navigate to MainTabs > Chat (nested navigation)
-            (navigation as any).navigate('MainTabs', { screen: 'Chat' });
-          }}
-        >
-          <Ionicons name="chatbubble-ellipses" size={24} color="#2E59F3" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.hireButton}
-          onPress={() => {
-             // Go back with selected provider to book
-             // Or navigate directly to booking form
-             if (route.params.service) {
-                 navigation.navigate('BookingForm', {
-                     service: route.params.service,
-                     selectedProvider: provider
-                 });
-             } else {
-                 // Fallback or just go back
-                 navigation.goBack();
-             }
-          }}
-        >
-          <Text style={styles.hireButtonText}>Hire Now</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFF" />
-        </TouchableOpacity>
+      {/* Sticky Footer */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+          <View style={styles.priceContainer}>
+              <Text style={styles.priceLabel}>Starting from</Text>
+              <Text style={styles.priceValue}>{getPriceDisplay()}</Text>
+          </View>
+
+          <View style={styles.actionButtons}>
+              <TouchableOpacity style={styles.chatBtn} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Chat' })}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={24} color={COLORS.primary} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                 style={styles.bookBtn}
+                 onPress={() => {
+                     if (route.params.service) {
+                         navigation.navigate('BookingForm', {
+                             service: route.params.service,
+                             selectedProvider: provider
+                         });
+                     } else {
+                         navigation.goBack();
+                     }
+                 }}
+              >
+                  <Text style={styles.bookBtnText}>Hire Now</Text>
+              </TouchableOpacity>
+          </View>
       </View>
     </View>
   );
@@ -373,346 +319,243 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
-  blueHeader: {
+  headerContainer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#2E59F3',
-    zIndex: 0,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    top: 0, left: 0, right: 0,
+    overflow: 'hidden',
+    zIndex: 10,
+    backgroundColor: '#eee',
   },
-  headerSafeArea: {
-    flex: 1,
+  headerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  navBar: {
+  headerActions: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    zIndex: 20,
+  },
+  headerTitleText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 40, height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center', justifyContent: 'center',
+    // backdropFilter not supported in RN usually
   },
-  headerTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: '600',
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    zIndex: -1,
+  
+  // Profile Content
+  profileCard: {
+      marginTop: Platform.OS === 'ios' ? 0 : 20,
+      backgroundColor: '#fff',
+      marginHorizontal: 16,
+      borderRadius: 24,
+      padding: 16,
+      paddingTop: 60,
+      alignItems: 'center',
+      ...SHADOWS.md,
+      marginBottom: 24,
   },
-  headerTitleStatic: {
-    color: 'transparent',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  bigHeaderTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
-  placeholderHeader: {
-    height: 140, // Space for the fixed header
-  },
-  profileContent: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  avatarContainerAbsolute: {
-    position: 'absolute',
-    left: width / 2 - 50, // Center horizontally (50 = half of max avatar size)
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    elevation: 1000,
-  },
-  avatarSpacer: {
-    height: 116, // Space for avatar: AVATAR_SIZE_MAX + marginBottom = 100 + 16 = 116
-    width: '100%',
+  avatarContainer: {
+     position: 'absolute',
+     top: -50,
+     alignSelf: 'center',
+     ...SHADOWS.md,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
-    borderColor: '#FFF',
+     width: 100,
+     height: 100,
+     borderRadius: 50,
+     borderWidth: 4,
+     borderColor: '#fff',
   },
-  avatarPlaceholder: {
-    backgroundColor: '#FFD700',
-    justifyContent: 'center',
-    alignItems: 'center',
+  verifiedBadge: {
+     position: 'absolute',
+     bottom: 0, right: 0,
+     backgroundColor: '#fff',
+     borderRadius: 12,
   },
-  avatarPlaceholderText: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  badgeContainer: {
-    position: 'absolute',
-    bottom: -10,
-    backgroundColor: '#FFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    gap: 4,
-  },
-  badgeText: {
-    color: '#2E59F3',
-    fontWeight: '700',
-    fontSize: 12,
+  infoCenter: {
+     alignItems: 'center',
+     marginBottom: 20,
   },
   name: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-    textAlign: 'center',
+     fontSize: 22,
+     fontWeight: '800',
+     color: '#111827',
+     marginBottom: 4,
   },
-  typeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
+  specialty: {
+     fontSize: 14,
+     color: COLORS.primary,
+     fontWeight: '600',
+     marginBottom: 12,
+     textTransform: 'uppercase',
+     letterSpacing: 0.5,
   },
-  typeText: {
-    color: '#2E59F3',
-    fontWeight: '600',
-    fontSize: 13,
-    letterSpacing: 0.5,
+  badgesRow: {
+     flexDirection: 'row',
+     gap: 8,
   },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D1D5DB',
-    marginHorizontal: 8,
+  pillBadge: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     backgroundColor: '#F3F4F6',
+     paddingHorizontal: 12,
+     paddingVertical: 6,
+     borderRadius: 20,
+     gap: 6,
   },
-  specialtyText: {
-    color: '#2E59F3',
-    fontWeight: '600',
-    fontSize: 13,
-    letterSpacing: 0.5,
+  pillText: {
+     fontSize: 12,
+     color: '#4B5563',
+     fontWeight: '500',
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 10,
-    marginBottom: 24,
+  statsGrid: {
+     flexDirection: 'row',
+     width: '100%',
+     borderTopWidth: 1,
+     borderTopColor: '#F3F4F6',
+     paddingTop: 20,
   },
   statItem: {
-    alignItems: 'center',
-    flex: 1,
+     flex: 1,
+     alignItems: 'center',
   },
-  statValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
+  statDivider: {
+     width: 1,
+     height: 30,
+     backgroundColor: '#E5E7EB',
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+     fontSize: 18,
+     fontWeight: '700',
+     color: '#111827',
   },
   statLabel: {
-    fontSize: 13,
-    color: '#6B7280',
+     fontSize: 12,
+     color: '#6B7280',
+     marginTop: 2,
   },
-  divider: {
-    width: 1,
-    height: '80%',
-    backgroundColor: '#E5E7EB',
-    alignSelf: 'center',
+
+  // Content Sections
+  contentSection: {
+      paddingHorizontal: 20,
+      marginBottom: 32,
   },
-  horizontalLine: {
-    width: '100%',
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginBottom: 24,
+  sectionHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
   },
-  section: {
-    width: '100%',
-    marginBottom: 24,
+  sectionTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#111827',
+      marginBottom: 8,
   },
-  sectionHeader: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 12,
+  linkText: {
+      fontSize: 14,
+      color: COLORS.primary,
+      fontWeight: '600',
   },
-  aboutText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#4B5563',
+  bodyText: {
+      fontSize: 15,
+      lineHeight: 24,
+      color: '#4B5563',
   },
-  viewMore: {
-    color: '#2E59F3',
-    fontWeight: '600',
+
+  // Review Card
+  reviewCard: {
+      width: 280,
+      backgroundColor: '#fff',
+      padding: 16,
+      borderRadius: 16,
+      marginRight: 16,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
   },
-  detailsContainer: {
-    width: '100%',
-    marginBottom: 24,
+  reviewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+      gap: 12,
   },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  detailLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  detailLabel: {
-    fontSize: 16,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  detailValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  reviewsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  arrowButton: {
-    padding: 4,
-  },
-  ratingSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 16,
-  },
-  ratingSummaryText: {
-    fontSize: 15,
-    color: '#6B7280',
-  },
-  boldRating: {
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  reviewItem: {
-    padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-  },
-  reviewerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 10,
-  },
-  reviewerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#D1D5DB',
+  reviewerImg: {
+      width: 40, height: 40,
+      borderRadius: 20,
+      backgroundColor: '#E5E7EB',
   },
   reviewerName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#111827',
   },
-  reviewRating: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginLeft: 4,
+  reviewText: {
+      fontSize: 13,
+      color: '#4B5563',
+      lineHeight: 20,
   },
-  reviewComment: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#4B5563',
-    fontStyle: 'italic',
+
+  // Footer
+  footer: {
+      position: 'absolute',
+      bottom: 0, left: 0, right: 0,
+      backgroundColor: '#fff',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 20,
+      borderTopWidth: 1,
+      borderTopColor: '#F3F4F6',
+      ...SHADOWS.lg,
   },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+  priceContainer: {
+     flex: 1,
   },
-  chatButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#FFF',
-    borderWidth: 1.5,
-    borderColor: '#2E59F3',
-    justifyContent: 'center',
-    alignItems: 'center',
+  priceLabel: {
+     fontSize: 12,
+     color: '#6B7280',
   },
-  hireButton: {
-    flex: 1,
-    height: 52,
-    backgroundColor: '#2E59F3', // App primary color
-    borderRadius: 26,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#2E59F3',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  priceValue: {
+     fontSize: 20,
+     fontWeight: '800',
+     color: COLORS.primary,
   },
-  hireButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  actionButtons: {
+     flexDirection: 'row',
+     gap: 12,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  chatBtn: {
+     width: 50, height: 50,
+     borderRadius: 16,
+     borderWidth: 1,
+     borderColor: '#E5E7EB',
+     alignItems: 'center', justifyContent: 'center',
   },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFB800',
+  bookBtn: {
+     backgroundColor: COLORS.primary,
+     height: 50,
+     paddingHorizontal: 32,
+     borderRadius: 16,
+     alignItems: 'center', justifyContent: 'center',
+     ...SHADOWS.md,
+  },
+  bookBtnText: {
+     color: '#fff',
+     fontSize: 16,
+     fontWeight: '700',
   },
 });
