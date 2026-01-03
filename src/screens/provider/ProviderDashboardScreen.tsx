@@ -26,16 +26,18 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // ============================================
 const THEME = {
   colors: {
-    background: '#F7F8FA',
+    primary: '#0A84FF', // iOS Blue
+    secondary: '#5E5CE6', // iOS Indigo
+    accent: '#FF9F0A', // iOS Orange
+    background: '#F2F2F7', // iOS Light Gray Background
     card: '#FFFFFF',
-    primary: '#2E59F3',
-    text: '#1A1C1E',
-    textSecondary: '#6B7280',
-    textTertiary: '#9CA3AF',
-    border: '#E5E7EB',
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
+    text: '#000000',
+    textSecondary: '#8E8E93',
+    textTertiary: '#C7C7CC',
+    border: '#E5E5EA', // iOS Separator
+    success: '#34C759', // iOS Green
+    warning: '#FFCC00', // iOS Yellow
+    error: '#FF3B30', // iOS Red
   },
   spacing: {
     xs: 8,
@@ -46,17 +48,17 @@ const THEME = {
     xxl: 32,
   },
   radius: {
-    sm: 12,
-    md: 16,
+    sm: 10,
+    md: 14,
     lg: 20,
     xl: 24,
   },
   shadow: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
 };
 
@@ -95,7 +97,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 400,
+      duration: 600,
       useNativeDriver: true,
     }).start();
   }, [user]);
@@ -169,22 +171,22 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#667eea" />
+      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
 
       {/* Premium Gradient Header */}
       <LinearGradient
-        colors={['#2563EB', '#1E40AF']} // Blue-600 -> Blue-800 (App Theme)
+        colors={[THEME.colors.primary, THEME.colors.secondary]}
+        style={styles.headerGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.gradientHeader, { borderBottomLeftRadius: 30, borderBottomRightRadius: 30 }]}
       >
-        <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <View style={styles.avatarRing}>
+        <View style={styles.headerTop}>
+          <View style={styles.userInfo}>
+            <View style={styles.avatarContainerWhite}>
               {user?.avatar || user?.profileImage ? (
-                <Image source={{ uri: user.avatar || user.profileImage }} style={styles.avatarImage} />
+                <Image source={{ uri: user.avatar || user.profileImage }} style={styles.avatar} />
               ) : (
-                <Text style={styles.avatarText}>
+                <Text style={styles.avatarTextPrimary}>
                   {user?.name?.charAt(0).toUpperCase() || 'P'}
                 </Text>
               )}
@@ -254,7 +256,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 onPress={item.onPress}
               >
                 <LinearGradient
-                  colors={index === 0 ? ['#4338CA', '#3730A3'] : index === 1 ? ['#0D9488', '#14B8A6'] : index === 2 ? ['#EA580C', '#F97316'] : ['#2563EB', '#3B82F6']}
+                  colors={index === 0 ? ['#0A84FF', '#007AFF'] : index === 1 ? ['#34C759', '#30D158'] : index === 2 ? ['#FF9F0A', '#FF9500'] : ['#5E5CE6', '#5856D6']}
                   style={styles.actionCardGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -685,6 +687,13 @@ const styles = StyleSheet.create({
     borderLeftColor: THEME.colors.warning,
     ...THEME.shadow,
   },
+  headerGradient: {
+    paddingBottom: 40,
+    paddingHorizontal: THEME.spacing.lg,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...THEME.shadow,
+  },
   tipsIcon: {
     width: 36,
     height: 36,
@@ -714,37 +723,43 @@ const styles = StyleSheet.create({
     paddingBottom: THEME.spacing.xl,
     paddingHorizontal: THEME.spacing.lg,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.spacing.lg,
+    marginBottom: 24,
   },
-  avatarRing: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
+  userInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: THEME.spacing.sm,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
+    gap: 12,
   },
-  avatarImage: {
+  avatarContainerWhite: {
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
+  avatarTextPrimary: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
   greetingWhite: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
     marginBottom: 2,
   },
   userNameWhite: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   notificationBtnWhite: {
     width: 44,
@@ -753,11 +768,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   notificationDotWhite: {
     position: 'absolute',
     top: 10,
-    right: 10,
+    right: 12,
     width: 8,
     height: 8,
     borderRadius: 4,

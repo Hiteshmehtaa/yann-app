@@ -257,16 +257,7 @@ class ApiService {
 
 
 
-  /**
-    * GET /api/notifications
-    * Fetch notifications for user
-    */
-  async getNotifications(userId: string): Promise<ApiResponse<any[]>> {
-    const response = await this.client.get('/notifications', {
-      params: { userId }
-    });
-    return response.data;
-  }
+
 
   async logout(): Promise<void> {
     try {
@@ -1227,6 +1218,17 @@ class ApiService {
   }
 
   /**
+   * POST /api/auth/request-call-otp
+   * Request OTP via phone call
+   */
+  async requestCallOTP(identifier: string): Promise<ApiResponse> {
+    const response = await this.client.post('/auth/request-call-otp', {
+      identifier
+    });
+    return response.data;
+  }
+
+  /**
    * GET /api/bookings/[id]
    * Get job session details for a booking
    */
@@ -1234,7 +1236,7 @@ class ApiService {
     jobSession: any;
     booking: Booking;
   }>> {
-    const response = await this.client.get(/bookings/);
+    const response = await this.client.get(`/bookings/${bookingId}`); // Fixed regex error
     return response.data;
   }
 }

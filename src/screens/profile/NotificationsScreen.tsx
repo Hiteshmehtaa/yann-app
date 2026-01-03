@@ -8,7 +8,9 @@ import {
   StatusBar,
   Animated,
   Switch,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -53,178 +55,195 @@ export const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+        <View style={{ width: 40 }} />
+      </SafeAreaView>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
           {/* Push Notifications Section */}
-          <View style={styles.section}>
+          <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>PUSH NOTIFICATIONS</Text>
-            <View style={styles.settingsList}>
-              {settings.slice(0, 4).map((setting, index) => (
-                <View 
-                  key={setting.id} 
-                  style={[
-                    styles.settingItem,
-                    index === 3 && styles.settingItemLast
-                  ]}
-                >
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingTitle}>{setting.title}</Text>
-                    <Text style={styles.settingDescription}>{setting.description}</Text>
-                  </View>
-                  <Switch
-                    value={setting.enabled}
-                    onValueChange={() => toggleSetting(setting.id)}
-                    trackColor={{ false: COLORS.border, true: `${COLORS.primary}50` }}
-                    thumbColor={setting.enabled ? COLORS.primary : '#f4f3f4'}
-                  />
+          </View>
+          <View style={styles.card}>
+            {settings.slice(0, 4).map((setting, index) => (
+              <View
+                key={setting.id}
+                style={[
+                  styles.settingItem,
+                  index === 3 && styles.settingItemLast
+                ]}
+              >
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>{setting.title}</Text>
+                  <Text style={styles.settingDescription}>{setting.description}</Text>
                 </View>
-              ))}
-            </View>
+                <Switch
+                  value={setting.enabled}
+                  onValueChange={() => toggleSetting(setting.id)}
+                  trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
+                  thumbColor={setting.enabled ? '#4F46E5' : '#F1F5F9'}
+                />
+              </View>
+            ))}
           </View>
 
           {/* Communication Preferences */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>COMMUNICATION PREFERENCES</Text>
-            <View style={styles.settingsList}>
-              {settings.slice(4).map((setting, index) => (
-                <View 
-                  key={setting.id} 
-                  style={[
-                    styles.settingItem,
-                    index === 1 && styles.settingItemLast
-                  ]}
-                >
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingTitle}>{setting.title}</Text>
-                    <Text style={styles.settingDescription}>{setting.description}</Text>
-                  </View>
-                  <Switch
-                    value={setting.enabled}
-                    onValueChange={() => toggleSetting(setting.id)}
-                    trackColor={{ false: COLORS.border, true: `${COLORS.primary}50` }}
-                    thumbColor={setting.enabled ? COLORS.primary : '#f4f3f4'}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>COMMUNICATION CHANNELS</Text>
+          </View>
+          <View style={styles.card}>
+            {settings.slice(4).map((setting, index) => (
+              <View
+                key={setting.id}
+                style={[
+                  styles.settingItem,
+                  index === 1 && styles.settingItemLast
+                ]}
+              >
+                <View style={styles.settingIcon}>
+                  <Ionicons
+                    name={setting.id === 'sms' ? 'chatbubble-outline' : 'mail-outline'}
+                    size={20}
+                    color={COLORS.primary}
                   />
                 </View>
-              ))}
-            </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>{setting.title}</Text>
+                  <Text style={styles.settingDescription}>{setting.description}</Text>
+                </View>
+                <Switch
+                  value={setting.enabled}
+                  onValueChange={() => toggleSetting(setting.id)}
+                  trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
+                  thumbColor={setting.enabled ? '#4F46E5' : '#F1F5F9'}
+                />
+              </View>
+            ))}
           </View>
 
           {/* Info Card */}
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="information-circle" size={20} color="#6366F1" />
             <Text style={styles.infoText}>
-              You can change these preferences at any time. Some notifications like security alerts cannot be disabled.
+              Security alerts and booking confirmations will always be sent regardless of your preferences.
             </Text>
           </View>
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: COLORS.background,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.cardBg,
-    justifyContent: 'center',
+    borderRadius: 20,
     alignItems: 'center',
-    ...SHADOWS.sm,
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: COLORS.text,
   },
-  headerSpacer: {
-    width: 40,
-  },
+
   content: {
-    padding: SPACING.lg,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  section: {
-    marginBottom: SPACING.xl,
+
+  sectionHeader: {
+    marginBottom: 10,
+    marginLeft: 4,
+    marginTop: 10,
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.size.xs,
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textSecondary,
-    letterSpacing: 0.5,
-    marginBottom: SPACING.md,
+    color: '#64748B',
+    letterSpacing: 1,
   },
-  settingsList: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 24,
     ...SHADOWS.sm,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.05,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   settingItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: '#F1F5F9',
   },
   settingItemLast: {
     borderBottomWidth: 0,
   },
+  settingIcon: {
+    width: 36, height: 36,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: 12,
+  },
   settingInfo: {
     flex: 1,
-    marginRight: SPACING.md,
+    marginRight: 12,
   },
   settingTitle: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#0F172A',
     marginBottom: 2,
   },
   settingDescription: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: '#64748B',
     lineHeight: 18,
   },
+
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: `${COLORS.primary}10`,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
-    gap: SPACING.sm,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
   },
   infoText: {
     flex: 1,
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: '#4338CA',
     lineHeight: 18,
+    fontWeight: '500',
   },
 });

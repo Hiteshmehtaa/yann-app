@@ -184,6 +184,7 @@ export interface ApiResponse<T = any> {
     serviceName?: string;
   };
   service?: Service;
+  earnings?: any; // For provider earnings screen
   // Payment specific fields
   orderId?: string;
   keyId?: string;

@@ -41,11 +41,26 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [providers, setProviders] = useState<ServiceProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
 
   // Animations
   const scrollY = useRef(new Animated.Value(0)).current;
   const tabAnim = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(1)).current;
+
+  // Track scroll for status bar
+  useEffect(() => {
+    const listener = scrollY.addListener(({ value }) => {
+      const shouldBeVisible = value > HERO_HEIGHT - 100; // Match header opacity trigger
+      if (shouldBeVisible !== isHeaderVisible) {
+        setIsHeaderVisible(shouldBeVisible);
+      }
+    });
+
+    return () => {
+      scrollY.removeListener(listener);
+    };
+  }, [isHeaderVisible, scrollY]);
 
   // Tab Switch Handler
   const switchTab = (tab: string, index: number) => {
@@ -164,6 +179,11 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <Image
           source={getServiceIconImage(service.title)}
           style={styles.heroImage}
+        />
+        {/* Top Gradient for Status Bar Visibility */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.7)', 'transparent']}
+          style={styles.topGradient}
         />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.6)']}
@@ -319,7 +339,11 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle={isHeaderVisible && !isDark ? "dark-content" : "light-content"}
+        backgroundColor="transparent"
+        translucent
+      />
 
       {renderHero()}
       {renderHeader()}
@@ -329,7 +353,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          { useNativeDriver: false } // Change to false because we need the listener
         )}
         scrollEventThrottle={16}
       >
@@ -499,6 +523,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '50%',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100, // Sufficient for status bar visibility
+    zIndex: 1,
   },
   heroContent: {
     position: 'absolute',

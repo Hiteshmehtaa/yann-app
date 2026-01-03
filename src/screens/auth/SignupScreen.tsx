@@ -50,22 +50,22 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Error', 'Please enter your name');
       return;
     }
-    
+
     // Check if at least one identifier (email or phone) is provided
     const hasEmail = formData.email.trim().length > 0;
     const hasPhone = formData.phone.trim().length > 0;
-    
+
     if (!hasEmail && !hasPhone) {
       Alert.alert('Error', 'Please enter your email address or phone number');
       return;
     }
-    
+
     // Validate email if provided
     if (hasEmail && !validateEmail(formData.email)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    
+
     // Validate phone if provided
     if (hasPhone && !validatePhone(formData.phone)) {
       Alert.alert('Error', 'Please enter a valid 10-digit phone number');
@@ -82,14 +82,14 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
       const metadata: any = { name: formData.name.trim() };
       if (hasEmail) metadata.email = formData.email.trim();
       if (hasPhone) metadata.phone = formData.phone.trim();
-      
+
       await apiService.sendSignupOTP(primaryIdentifier, metadata);
-      
+
       const otpDestination = identifierType === 'email' ? 'email' : 'phone number';
       Alert.alert('Success', `OTP sent to your ${otpDestination}!`, [
         {
           text: 'OK',
-          onPress: () => navigation.navigate('VerifyOTP', { 
+          onPress: () => navigation.navigate('VerifyOTP', {
             identifier: primaryIdentifier,
             identifierType,
             isSignup: true,
@@ -116,7 +116,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
+
       {/* Background pattern */}
       <View style={styles.bgPattern}>
         <View style={styles.patternCircle1} />
@@ -127,7 +127,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -135,7 +135,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           alwaysBounceVertical={true}
         >
           {/* Back Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
@@ -145,8 +145,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../../public/Logo.jpg')} 
+              <Image
+                source={require('../../../public/Logo.jpg')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -167,10 +167,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
                 focusedField === 'name' && styles.inputFocused
               ]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons 
-                    name="person" 
-                    size={20} 
-                    color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary} 
+                  <Ionicons
+                    name="person"
+                    size={20}
+                    color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary}
                   />
                 </View>
                 <TextInput
@@ -194,10 +194,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
                 focusedField === 'email' && styles.inputFocused
               ]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons 
-                    name="mail" 
-                    size={20} 
-                    color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary} 
+                  <Ionicons
+                    name="mail"
+                    size={20}
+                    color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary}
                   />
                 </View>
                 <TextInput
@@ -223,10 +223,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
                 focusedField === 'phone' && styles.inputFocused
               ]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons 
-                    name="call" 
-                    size={20} 
-                    color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary} 
+                  <Ionicons
+                    name="call"
+                    size={20}
+                    color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary}
                   />
                 </View>
                 <TextInput
@@ -246,7 +246,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Helpful message */}
             <View style={styles.hintContainer}>
-              <Ionicons name="information-circle-outline" size={16} color={COLORS.accentBlue} />
+              <Ionicons name="information-circle-outline" size={16} color={COLORS.info} />
               <Text style={styles.hintText}>
                 Provide at least one: email or phone number. Both can be used for sign in.
               </Text>
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   hintText: {
     flex: 1,
     fontSize: 12,
-    color: COLORS.accentBlue,
+    color: COLORS.info,
     lineHeight: 18,
   },
 });

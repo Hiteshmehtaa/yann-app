@@ -90,15 +90,15 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
     try {
       // Fetch services from backend API
       const response = await apiService.getAllServices();
-      
+
       let backendServices = response.data || [];
       if (backendServices.length === 0) {
         backendServices = SERVICES;
       }
-      
+
       const userServices = user?.services || [];
       const userRates: Record<string, number> = {};
-      
+
       // Build service rates map from user.serviceRates if available
       if (user?.serviceRates && Array.isArray(user.serviceRates)) {
         for (const rate of user.serviceRates) {
@@ -107,9 +107,9 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           }
         }
       }
-      
+
       // Map backend services to our ServiceItem format
-      const mappedServices = backendServices.map((service: any) => ({
+      const mappedServices: ServiceItem[] = backendServices.map((service: any) => ({
         id: service._id || service.id || Math.random(),
         title: service.title || service.name,
         icon: service.icon || '✨',
@@ -120,16 +120,16 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       // Add any user services that are missing from backend response (hidden/legacy services)
       const mappedTitles = mappedServices.map(s => s.title);
       userServices.forEach(serviceTitle => {
-         if (!mappedTitles.includes(serviceTitle)) {
-             mappedServices.push({
-                 id: Math.random(), // Temporary ID since it's not in catalog
-                 title: serviceTitle,
-                 icon: '🔧', // Default icon for unknown services
-                 isActive: true, // It's in user.services, so it's active
-                 rate: userRates[serviceTitle] || 0,
-                 isPending: false
-             });
-         }
+        if (!mappedTitles.includes(serviceTitle)) {
+          mappedServices.push({
+            id: Math.random(), // Temporary ID since it's not in catalog
+            title: serviceTitle,
+            icon: '🔧', // Default icon for unknown services
+            isActive: true, // It's in user.services, so it's active
+            rate: userRates[serviceTitle] || 0,
+            isPending: false
+          });
+        }
       });
 
       setServices(mappedServices);
@@ -143,7 +143,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           if (rate.serviceName && rate.price) userRates[rate.serviceName] = rate.price;
         });
       }
-      
+
       const mappedServices = SERVICES.map((service) => ({
         id: service.id,
         title: service.title,
@@ -297,7 +297,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
@@ -321,8 +321,8 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.sectionTitle}>Active Services</Text>
               <View style={styles.serviceList}>
                 {activeServices.map((service, index) => (
-                  <View 
-                    key={service.id} 
+                  <View
+                    key={service.id}
                     style={[
                       styles.serviceCard,
                       index === activeServices.length - 1 && styles.serviceCardLast
@@ -357,8 +357,8 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
             <View style={styles.serviceList}>
               {availableServices.map((service, index) => (
-                <View 
-                  key={service.id} 
+                <View
+                  key={service.id}
                   style={[
                     styles.serviceCard,
                     index === availableServices.length - 1 && styles.serviceCardLast
@@ -399,7 +399,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Set Price for {selectedService.title}</Text>
             <Text style={styles.modalSubtitle}>Enter your hourly rate for this service</Text>
-            
+
             <View style={styles.priceInputContainer}>
               <Text style={styles.currencySymbol}>₹</Text>
               <TextInput
@@ -414,7 +414,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => {
                   setShowPriceModal(false);
@@ -424,8 +424,8 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={async () => {
                   const price = parseInt(priceInput);

@@ -31,7 +31,7 @@ export const NotificationsListScreen = () => {
     await refreshNotifications();
     setIsRefreshing(false);
   };
-  
+
   // No local useEffect for listeners needed as context handles it
 
   const copyOTP = (otp: string) => {
@@ -42,24 +42,24 @@ export const NotificationsListScreen = () => {
   const handleNotificationPress = (notification: AppNotification) => {
     // 1. Mark as read
     if (!notification.read) {
-        markAsRead(notification.id);
+      markAsRead(notification.id);
     }
 
     // 2. Navigate based on type
     const isBookingNotification = [
-        'booking_accepted', 
-        'booking_rejected', 
-        'booking_completed',
-        'otp_start', 
-        'otp_end'
+      'booking_accepted',
+      'booking_rejected',
+      'booking_completed',
+      'otp_start',
+      'otp_end'
     ].includes(notification.type) || !!notification.bookingId;
 
     if (isBookingNotification) {
-        if (user?.role === 'provider') {
-            navigation.navigate('ProviderTabs', { screen: 'ProviderBookings' });
-        } else {
-            navigation.navigate('MainTabs', { screen: 'BookingsList' });
-        }
+      if (user?.role === 'provider') {
+        navigation.navigate('ProviderTabs', { screen: 'ProviderBookings' });
+      } else {
+        navigation.navigate('MainTabs', { screen: 'BookingsList' });
+      }
     }
   };
 
@@ -116,33 +116,33 @@ export const NotificationsListScreen = () => {
 
     const isRead = notification.read;
     const bgColor = isRead ? COLORS.background : COLORS.white; // Light gray for read, White for unread
-    
+
     return (
       <TouchableOpacity
         key={notification.id}
         style={[
-            styles.notificationCard, 
-            { backgroundColor: bgColor },
-            !isRead && styles.unreadCardBorder // Add border/shadow distinction
+          styles.notificationCard,
+          { backgroundColor: bgColor },
+          !isRead && styles.unreadCardBorder // Add border/shadow distinction
         ]}
         onPress={() => handleNotificationPress(notification)}
         activeOpacity={0.7}
       >
         <View style={styles.notificationContent}>
           <View style={[styles.iconContainer, { backgroundColor: isRead ? 'rgba(0,0,0,0.05)' : undefined }]}>
-             {/* If read, show simple icon. If unread, show gradient icon */}
-             {isRead ? (
-                 <Ionicons name={icon as any} size={24} color={COLORS.textSecondary} />
-             ) : (
-                <LinearGradient
-                    colors={colors}
-                    style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
-                >
-                    <Ionicons name={icon as any} size={24} color={COLORS.white} />
-                </LinearGradient>
-             )}
+            {/* If read, show simple icon. If unread, show gradient icon */}
+            {isRead ? (
+              <Ionicons name={icon as any} size={24} color={COLORS.textSecondary} />
+            ) : (
+              <LinearGradient
+                colors={colors}
+                style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+              >
+                <Ionicons name={icon as any} size={24} color={COLORS.white} />
+              </LinearGradient>
+            )}
           </View>
-          
+
           {/* ... rest of content */}
 
           <View style={styles.textContainer}>
@@ -189,6 +189,7 @@ export const NotificationsListScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -237,23 +238,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.background,
   },
+
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.bold,
+    fontSize: 18,
+    fontWeight: '700',
     color: COLORS.text,
   },
   headerSpacer: {

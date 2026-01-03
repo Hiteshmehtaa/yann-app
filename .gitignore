@@ -12,6 +12,7 @@ build/
 node_modules/
 Yann_app/
 Yann app/
+Yann-Website/
 # Expo
 .expo/
 dist/
