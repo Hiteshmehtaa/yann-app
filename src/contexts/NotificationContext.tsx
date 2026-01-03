@@ -55,7 +55,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     const subscription = Notifications.addNotificationReceivedListener(notification => {
       const data = notification.request.content.data;
-      
+
       // Filter notifications: Only accept if recipientId matches current user or if generic (no recipientId)
       const recipientId = data.recipientId;
       if (recipientId && user && recipientId !== user.id) {
@@ -88,31 +88,47 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const loadNotifications = async () => {
     try {
       if (!user) return;
-      
+
       // 1. Try to fetch from backend first (Single Source of Truth)
       const response = await apiService.getNotifications(user.id || '');
-      
+
       if (response.success && response.data && response.data.length > 0) {
-          const serverNotifications = response.data;
-          console.log(`🔔 Loaded ${serverNotifications.length} notifications from backend`);
-          
-          // Map backend notifications to AppNotification format
-          const mappedNotifications: AppNotification[] = serverNotifications.map(n => ({
-              id: n.id,
-              type: n.type as AppNotification['type'],
-              title: n.title,
-              message: n.message,
-              bookingId: n.data?.bookingId,
-              otp: n.data?.otp,
-              timestamp: n.timestamp,
-              read: n.read || false 
+        const serverNotifications = response.data;
+        console.log(`🔔 Loaded ${serverNotifications.length} notifications from backend`);
+
+        // Map backend notifications to AppNotification format
+        const mappedNotifications: AppNotification[] = serverNotifications.map(n => ({
+          id: n.id,
+          type: n.type as AppNotification['type'],
+          title: n.title,
+          message: n.message,
+          bookingId: n.data?.bookingId,
+          otp: n.data?.otp,
+          timestamp: n.timestamp,
+          read: n.read || false
+        }));
+
+
+        setNotifications(prevNotifications => {
+          // Create a map of currently read notifications to preserve local optimistic updates
+          const localReadMap = new Map();
+          prevNotifications.forEach(n => {
+            if (n.read) localReadMap.set(n.id, true);
+          });
+
+          // Merge: If backend says unread but local says read, keep local 'read'.
+          // If backend says read, it becomes read.
+          const mergedNotifications = mappedNotifications.map(n => ({
+            ...n,
+            read: n.read || localReadMap.has(n.id)
           }));
-          
-          setNotifications(mappedNotifications);
-          saveNotifications(mappedNotifications); // Cache locally
-          return;
+
+          saveNotifications(mergedNotifications); // Cache locally
+          return mergedNotifications;
+        });
+        return;
       }
-      
+
       // 2. Fallback to local storage if backend empty or failed
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -139,18 +155,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const markAsRead = async (id: string) => {
     // 1. Optimistic Update (Immediate UI change)
-    const updated = notifications.map(n => 
+    const updated = notifications.map(n =>
       n.id === id ? { ...n, read: true } : n
     );
     setNotifications(updated);
     await saveNotifications(updated);
-    
+
     // 2. Persist to Backend
     try {
-        await apiService.markNotificationsRead([id]);
+      await apiService.markNotificationsRead([id]);
     } catch (error) {
-        console.error('Failed to mark notification as read on server:', error);
-        // Optional: Revert optimistic update if critical, but usually fine to ignore
+      console.error('Failed to mark notification as read on server:', error);
+      // Optional: Revert optimistic update if critical, but usually fine to ignore
     }
   };
 
@@ -168,14 +184,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <NotificationContext.Provider 
-      value={{ 
-        notifications, 
-        unreadCount, 
-        markAsRead, 
-        markAllAsRead, 
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllAsRead,
         clearAll,
-        refreshNotifications: loadNotifications 
+        refreshNotifications: loadNotifications
       }}
     >
       {children}

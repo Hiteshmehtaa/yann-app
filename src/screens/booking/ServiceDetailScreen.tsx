@@ -35,7 +35,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service } = route.params;
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  
+
   // State
   const [activeTab, setActiveTab] = useState('providers'); // providers | details | reviews
   const [providers, setProviders] = useState<ServiceProvider[]>([]);
@@ -46,7 +46,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const scrollY = useRef(new Animated.Value(0)).current;
   const tabAnim = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(1)).current;
-  
+
   // Tab Switch Handler
   const switchTab = (tab: string, index: number) => {
     setActiveTab(tab);
@@ -107,7 +107,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [service.title]);
 
   // Derived Values
-  const startPrice = providers.length > 0 
+  const startPrice = providers.length > 0
     ? Math.min(...providers.map(p => p.priceForService || 0))
     : service.price;
 
@@ -125,10 +125,10 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           <View style={[styles.headerBorder, { backgroundColor: colors.divider }]} />
         </Animated.View>
-        
+
         <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={[styles.roundButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)' }]} 
+          <TouchableOpacity
+            style={[styles.roundButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)' }]}
             onPress={() => navigation.goBack()}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -152,7 +152,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       outputRange: [2, 1, 1],
       extrapolate: 'clamp',
     });
-    
+
     const translateY = scrollY.interpolate({
       inputRange: [-HERO_HEIGHT, 0, HERO_HEIGHT],
       outputRange: [-HERO_HEIGHT / 2, 0, HERO_HEIGHT * 0.5],
@@ -161,9 +161,9 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     return (
       <Animated.View style={[styles.heroContainer, { transform: [{ translateY }, { scale }] }]}>
-        <Image 
-          source={getServiceIconImage(service.title)} 
-          style={styles.heroImage} 
+        <Image
+          source={getServiceIconImage(service.title)}
+          style={styles.heroImage}
         />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.6)']}
@@ -225,21 +225,21 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     return (
       <View style={[styles.tabsContainer, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
         {/* Animated Background Indicator */}
-        <Animated.View style={[styles.activeTabIndicator, { 
-            width: tabWidth,
-            transform: [{ translateX }],
-            backgroundColor: colors.cardBg,
-            shadowColor: colors.text
+        <Animated.View style={[styles.activeTabIndicator, {
+          width: tabWidth,
+          transform: [{ translateX }],
+          backgroundColor: colors.cardBg,
+          shadowColor: colors.text
         }]} />
-        
+
         {['providers', 'details', 'reviews'].map((tab, index) => (
-          <TouchableOpacity 
-            key={tab} 
+          <TouchableOpacity
+            key={tab}
             style={styles.tabItem}
             onPress={() => switchTab(tab, index)}
           >
             <Text style={[
-              styles.tabText, 
+              styles.tabText,
               { color: colors.textTertiary },
               activeTab === tab && { color: colors.text, fontWeight: '700' }
             ]}>
@@ -252,18 +252,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const renderProvider = (item: any, index: number) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       key={item._id}
       style={[
-        styles.providerCard, 
-        { 
-            backgroundColor: colors.cardBg, 
-            borderColor: 'transparent',
-            shadowColor: colors.text
+        styles.providerCard,
+        {
+          backgroundColor: colors.cardBg,
+          borderColor: 'transparent',
+          shadowColor: colors.text
         },
-        selectedProvider?._id === item._id && { 
-            borderColor: colors.primary, 
-            backgroundColor: isDark ? colors.primary + '10' : '#F5F9FF' 
+        selectedProvider?._id === item._id && {
+          borderColor: colors.primary,
+          backgroundColor: isDark ? colors.primary + '10' : '#F5F9FF'
         }
       ]}
       onPress={() => setSelectedProvider(item)}
@@ -271,7 +271,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     >
       <View style={styles.providerHeader}>
         {item.profileImage ? (
-          <Image 
+          <Image
             source={{ uri: item.profileImage }}
             style={styles.providerAvatar}
           />
@@ -300,14 +300,14 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={[styles.priceUnit, { color: colors.textTertiary }]}>/hr</Text>
         </View>
       </View>
-      
+
       {/* Selection Checkmark */}
       <View style={[
         styles.radioButton,
         { borderColor: isDark ? colors.border : '#E0E0E0' },
-        selectedProvider?._id === item._id && { 
-            borderColor: colors.primary, 
-            backgroundColor: colors.primary 
+        selectedProvider?._id === item._id && {
+          borderColor: colors.primary,
+          backgroundColor: colors.primary
         }
       ]}>
         {selectedProvider?._id === item._id && (
@@ -320,7 +320,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
+
       {renderHero()}
       {renderHeader()}
 
@@ -340,7 +340,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           {renderQuickStats()}
-          
+
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Description</Text>
             <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
@@ -353,47 +353,47 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Animated.View style={[styles.contentArea, { opacity: contentFade, transform: [{ translateY: contentFade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }]}>
             {activeTab === 'providers' && (
               <View style={{ gap: 16 }}>
-                 {isLoading ? (
-                   <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading professionals...</Text>
-                 ) : providers.length === 0 ? (
-                   <View style={styles.emptyState}>
-                     <Ionicons name="search" size={32} color={colors.textTertiary} />
-                     <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No providers currently available.</Text>
-                   </View>
-                 ) : (
-                   providers.map((p, i) => renderProvider(p, i))
-                 )}
+                {isLoading ? (
+                  <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading professionals...</Text>
+                ) : providers.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="search" size={32} color={colors.textTertiary} />
+                    <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No providers currently available.</Text>
+                  </View>
+                ) : (
+                  providers.map((p, i) => renderProvider(p, i))
+                )}
               </View>
             )}
 
             {activeTab === 'details' && (
-               <View style={styles.detailsList}>
-                 {['Professional Equipment', 'Safety Protocols', 'Insured Service', 'Satisfaction Guarantee'].map((feat, i) => (
-                   <View key={i} style={[styles.detailRow, { backgroundColor: colors.cardBg }]}>
-                     <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                     <Text style={[styles.detailText, { color: colors.text }]}>{feat}</Text>
-                   </View>
-                 ))}
-               </View>
+              <View style={styles.detailsList}>
+                {['Professional Equipment', 'Safety Protocols', 'Insured Service', 'Satisfaction Guarantee'].map((feat, i) => (
+                  <View key={i} style={[styles.detailRow, { backgroundColor: colors.cardBg }]}>
+                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                    <Text style={[styles.detailText, { color: colors.text }]}>{feat}</Text>
+                  </View>
+                ))}
+              </View>
             )}
 
             {activeTab === 'reviews' && (
-               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll}>
-                  {[1, 2, 3].map((i) => (
-                    <View key={i} style={[styles.reviewCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-                       <View style={styles.reviewHeader}>
-                         <View style={[styles.reviewAvatar, { backgroundColor: isDark ? colors.border : '#E0E0E0' }]}>
-                            <Text style={[styles.reviewInitial, { color: colors.textSecondary }]}>U{i}</Text>
-                         </View>
-                         <View>
-                           <Text style={[styles.reviewerName, { color: colors.text }]}>User {i}</Text>
-                           <View style={{flexDirection:'row'}}><Ionicons name="star" size={12} color="#FFD700"/><Text style={{fontSize:12, color: colors.text}}> 5.0</Text></View>
-                         </View>
-                       </View>
-                       <Text style={[styles.reviewBody, { color: colors.textSecondary }]}>"Amazing service! The professional was on time and did a great job."</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll}>
+                {[1, 2, 3].map((i) => (
+                  <View key={i} style={[styles.reviewCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+                    <View style={styles.reviewHeader}>
+                      <View style={[styles.reviewAvatar, { backgroundColor: isDark ? colors.border : '#E0E0E0' }]}>
+                        <Text style={[styles.reviewInitial, { color: colors.textSecondary }]}>U{i}</Text>
+                      </View>
+                      <View>
+                        <Text style={[styles.reviewerName, { color: colors.text }]}>User {i}</Text>
+                        <View style={{ flexDirection: 'row' }}><Ionicons name="star" size={12} color="#FFD700" /><Text style={{ fontSize: 12, color: colors.text }}> 5.0</Text></View>
+                      </View>
                     </View>
-                  ))}
-               </ScrollView>
+                    <Text style={[styles.reviewBody, { color: colors.textSecondary }]}>"Amazing service! The professional was on time and did a great job."</Text>
+                  </View>
+                ))}
+              </ScrollView>
             )}
           </Animated.View>
 
@@ -408,7 +408,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {selectedProvider ? `₹${selectedProvider.priceForService}` : `From ₹${startPrice}`}
           </Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.bookBtn, { backgroundColor: colors.primary }, (!selectedProvider && providers.length > 1) && styles.bookBtnDisabled]}
           onPress={() => {
             if (providers.length > 1 && !selectedProvider) return;
@@ -417,7 +417,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               console.warn('No valid provider to view');
               return;
             }
-            navigation.navigate('ProviderPublicProfile', { 
+            navigation.navigate('ProviderPublicProfile', {
               provider: providerToView,
               service: service
             });
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  
+
   // Hero
   heroContainer: {
     position: 'absolute',
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   activeTabIndicator: {
     position: 'absolute',
     top: 4,
-    left: 0, 
+    left: 0,
     height: 40,
     backgroundColor: '#FFF',
     borderRadius: 12,
@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '700',
   },
-  
+
   contentArea: {
     minHeight: 200,
   },
@@ -744,7 +744,8 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   priceTag: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'baseline',
     justifyContent: 'center',
     marginRight: 12,
   },

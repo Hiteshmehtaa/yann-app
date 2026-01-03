@@ -782,7 +782,9 @@ class ApiService {
       if (providerId) params.providerId = providerId;
       if (email) params.email = email;
 
+      // console.log('📡 Calling /provider/requests with params:', params);
       const response = await this.client.get('/provider/requests', { params });
+      // console.log('📡 /provider/requests response:', response.data);
 
       // Return the complete dashboard data structure
       return response.data;

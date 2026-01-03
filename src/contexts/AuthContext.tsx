@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (savedToken && savedUser) {
         setToken(savedToken);
         setUser(savedUser);
-        
+
         // Optionally refresh user data from server
         try {
           const response = await apiService.getProfile();
@@ -83,9 +83,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (identifier: string, otp: string, intent: 'login' | 'signup' = 'login'): Promise<void> => {
     try {
       const response = await apiService.verifyOTP(identifier, otp, intent);
-      
-      console.log('🔐 Processing login response:', response);
-      
+
+      // console.log('🔐 Processing login response:', response);
+
       // The new API returns homeowner data directly in response
       if (response.user) {
         // Map response user data to User type
@@ -100,20 +100,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           isVerified: response.user.isVerified || false,
           aadhaarVerified: response.user.aadhaarVerified || false,
         };
-        
-        console.log('👤 Setting user data:', { ...userData, avatar: '[BASE64_IMAGE]', profileImage: '[BASE64_IMAGE]' });
-        
+
+        // console.log('👤 Setting user data:', { ...userData, avatar: '[BASE64_IMAGE]', profileImage: '[BASE64_IMAGE]' });
+
         // Use the actual JWT token from response for mobile auth
         const actualToken = response.token || 'cookie-based-auth';
-        
+
         // Save to storage first
         await storage.saveToken(actualToken);
         await storage.saveUserData(userData);
-        
+
         // Then update state (this triggers navigation)
         setToken(actualToken);
         setUser(userData);
-        
+
         // Register for push notifications after successful login
         try {
           const pushToken = await registerForPushNotificationsAsync();
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error('Failed to register push notifications:', pushError);
           // Don't fail login if push registration fails
         }
-        
+
         console.log('✅ Login successful, auth state updated');
       } else {
         throw new Error('No user data in response');
@@ -153,9 +153,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginAsProvider = async (identifier: string, otp: string): Promise<void> => {
     try {
       const response = await apiService.verifyProviderOTP(identifier, otp);
-      
-      console.log('🔐 Processing provider login response:', response);
-      
+
+      // console.log('🔐 Processing provider login response:', response);
+
       if (response.user) {
         const userData: User = {
           id: response.user.id,
@@ -171,18 +171,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           isVerified: response.user.isVerified || false,
           aadhaarVerified: response.user.aadhaarVerified || false,
         };
-        
-        console.log('👤 Setting provider data:', { ...userData, avatar: '[BASE64_IMAGE]', profileImage: '[BASE64_IMAGE]' });
-        
+
+        // console.log('👤 Setting provider data:', { ...userData, avatar: '[BASE64_IMAGE]', profileImage: '[BASE64_IMAGE]' });
+
         // Use the actual JWT token from response for mobile auth
         const actualToken = response.token || 'cookie-based-auth-provider';
-        
+
         await storage.saveToken(actualToken);
         await storage.saveUserData(userData);
-        
+
         setToken(actualToken);
         setUser(userData);
-        
+
         // Register for push notifications after successful provider login
         try {
           const pushToken = await registerForPushNotificationsAsync();
@@ -195,7 +195,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error('Failed to register provider push notifications:', pushError);
           // Don't fail login if push registration fails
         }
-        
+
         console.log('✅ Provider login successful');
       } else {
         throw new Error('No provider data in response');

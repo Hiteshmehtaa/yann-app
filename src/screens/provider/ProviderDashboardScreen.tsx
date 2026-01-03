@@ -90,18 +90,22 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    if (user?.email) {
+      fetchDashboardData();
+    }
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 400,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [user]);
 
   const fetchDashboardData = async () => {
     try {
+      // console.log('🔍 Fetching dashboard for user email:', user?.email);
       const response = await apiService.getProviderRequests(undefined, user?.email) as any;
       if (response.success) {
+        // console.log('📊 Dashboard Data:', JSON.stringify(response, null, 2));
         setDashboardData({
           provider: response.provider || response.data?.provider,
           stats: response.stats || response.data?.stats,
@@ -109,8 +113,9 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
           acceptedBookings: response.acceptedBookings || response.data?.acceptedBookings || [],
         });
       }
-    } catch (err) {
-      console.error('Error fetching dashboard:', err);
+    } catch (err: any) {
+      console.error('❌ Error fetching dashboard:', err);
+      console.error('Error details:', err?.response?.data || err?.message);
       setDashboardData({
         provider: { name: user?.name, rating: 0, totalReviews: 0 },
         stats: { totalEarnings: 0, pendingRequests: 0, completedBookings: 0, acceptedBookings: 0 },
@@ -165,7 +170,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#667eea" />
-      
+
       {/* Premium Gradient Header */}
       <LinearGradient
         colors={['#2563EB', '#1E40AF']} // Blue-600 -> Blue-800 (App Theme)
@@ -189,15 +194,15 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.userNameWhite}>{user?.name || 'Partner'}</Text>
             </View>
           </View>
-          <TouchableOpacity 
-            style={styles.notificationBtnWhite} 
+          <TouchableOpacity
+            style={styles.notificationBtnWhite}
             activeOpacity={0.7}
             onPress={() => navigation.navigate('NotificationsList')}
           >
             <Ionicons name="notifications-outline" size={24} color="#FFF" />
             {unreadCount > 0 && (
               <View style={styles.notificationDotWhite}>
-                 {/* Optional: Add text count if dot is large enough, or just keep dot for provider dashboard style */}
+                {/* Optional: Add text count if dot is large enough, or just keep dot for provider dashboard style */}
               </View>
             )}
           </TouchableOpacity>
@@ -225,9 +230,9 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             colors={[THEME.colors.primary]}
             tintColor={THEME.colors.primary}
           />
@@ -236,20 +241,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-          
-          {/* Status Card */}
-          <View style={styles.statusCard}>
-            <View style={styles.statusRow}>
-              <View style={styles.roleBadge}>
-                <Ionicons name="shield-checkmark" size={16} color="#667eea" />
-                <Text style={styles.roleTextNew}>{getRoleDisplay()}</Text>
-              </View>
-              <View style={[styles.statusBadgeNew, { backgroundColor: accountStatus.color + '20' }]}>
-                <View style={[styles.statusDot, { backgroundColor: accountStatus.color }]} />
-                <Text style={[styles.statusTextNew, { color: accountStatus.color }]}>{accountStatus.text}</Text>
-              </View>
-            </View>
-          </View>
+
 
           {/* Action Cards Grid */}
           <Text style={styles.sectionTitleNew}>Quick Actions</Text>
@@ -280,54 +272,18 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
             ))}
           </View>
 
-          {/* Quick Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.menuList}>
-              {menuItems.map((item, index) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.menuItem,
-                    index === menuItems.length - 1 && styles.menuItemLast
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={item.onPress}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <View style={styles.menuIconContainer}>
-                      <Ionicons name={item.icon} size={22} color={THEME.colors.primary} />
-                    </View>
-                    <View style={styles.menuItemInfo}>
-                      <Text style={styles.menuItemTitle}>{item.title}</Text>
-                      <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.menuItemRight}>
-                    {item.badge && item.badge > 0 ? (
-                      <View style={styles.menuBadge}>
-                        <Text style={styles.menuBadgeText}>{item.badge}</Text>
-                      </View>
-                    ) : null}
-                    <Ionicons name="chevron-forward" size={20} color={THEME.colors.textTertiary} />
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Recent Bookings */}
+          {/* Recent Bookings - MOVED HERE */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Bookings</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('ProviderBookings')}
               >
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
-            
+
             {recentBookings.length > 0 ? (
               <View style={styles.bookingsList}>
                 {recentBookings.map((booking: any, index: number) => (

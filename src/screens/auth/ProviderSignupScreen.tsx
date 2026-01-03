@@ -108,7 +108,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [dynamicServiceCategories, setDynamicServiceCategories] = useState(SERVICE_CATEGORIES);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -131,11 +131,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setIsLoadingServices(true);
       const response = await apiService.getAllServices();
-      
+
       if (response.data && response.data.length > 0) {
         // Group services by category
         const categoriesMap: Record<string, string[]> = {};
-        
+
         for (const service of response.data) {
           const category = service.category || 'other';
           if (!categoriesMap[category]) {
@@ -143,7 +143,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           }
           categoriesMap[category].push(service.title);
         }
-        
+
         // Build category structure
         const newCategories = Object.keys(categoriesMap).map((catKey) => ({
           id: catKey,
@@ -151,7 +151,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           icon: getCategoryIcon(catKey),
           services: categoriesMap[catKey],
         }));
-        
+
         setDynamicServiceCategories(newCategories as any);
       }
     } catch (error) {
@@ -191,12 +191,12 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       const services = prev.services.includes(service)
         ? prev.services.filter(s => s !== service)
         : [...prev.services, service];
-      
+
       const serviceRates = services.map(s => {
         const existing = prev.serviceRates.find(r => r.serviceName === s);
         return existing || { serviceName: s, price: '' };
       });
-      
+
       return { ...prev, services, serviceRates };
     });
   };
@@ -275,7 +275,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Error', 'Please select at least one service');
       return;
     }
-    
+
     // Check if all selected services have prices
     const servicesWithoutPrice = formData.services.filter(
       service => !formData.serviceRates.some(r => r.serviceName === service && r.price)
@@ -291,7 +291,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       // Extract categories from selected services
       const selectedCategories: string[] = [];
       for (const category of SERVICE_CATEGORIES) {
-        const hasServiceInCategory = formData.services.some(service => 
+        const hasServiceInCategory = formData.services.some(service =>
           category.services.includes(service)
         );
         if (hasServiceInCategory) {
@@ -315,7 +315,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       };
 
       await apiService.registerProvider(payload);
-      
+
       Alert.alert(
         'Success! 🎉',
         'Your provider account has been created and is pending approval.',
@@ -361,7 +361,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Basic Info</Text>
       <Text style={styles.stepSubtitle}>Tell us about yourself</Text>
-      
+
       <View style={styles.inputGroup}>
         <Text style={styles.label}>FULL NAME</Text>
         <View style={[
@@ -369,10 +369,10 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           focusedField === 'name' && styles.inputFocused
         ]}>
           <View style={styles.inputIcon}>
-            <Ionicons 
-              name="person" 
-              size={20} 
-              color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary} 
+            <Ionicons
+              name="person"
+              size={20}
+              color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary}
             />
           </View>
           <TextInput
@@ -395,11 +395,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           styles.inputContainer,
           focusedField === 'phone' && styles.inputFocused
         ]}>
-           <View style={styles.inputIcon}>
-            <Ionicons 
-              name="call" 
-              size={20} 
-              color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary} 
+          <View style={styles.inputIcon}>
+            <Ionicons
+              name="call"
+              size={20}
+              color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary}
             />
           </View>
           <TextInput
@@ -423,11 +423,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           styles.inputContainer,
           focusedField === 'email' && styles.inputFocused
         ]}>
-           <View style={styles.inputIcon}>
-            <Ionicons 
-              name="mail" 
-              size={20} 
-              color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary} 
+          <View style={styles.inputIcon}>
+            <Ionicons
+              name="mail"
+              size={20}
+              color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary}
             />
           </View>
           <TextInput
@@ -452,11 +452,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           styles.inputContainer,
           focusedField === 'experience' && styles.inputFocused
         ]}>
-           <View style={styles.inputIcon}>
-            <Ionicons 
-              name="briefcase" 
-              size={20} 
-              color={focusedField === 'experience' ? COLORS.primary : COLORS.textTertiary} 
+          <View style={styles.inputIcon}>
+            <Ionicons
+              name="briefcase"
+              size={20}
+              color={focusedField === 'experience' ? COLORS.primary : COLORS.textTertiary}
             />
           </View>
           <TextInput
@@ -479,7 +479,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Services</Text>
       <Text style={styles.stepSubtitle}>Select services you can provide</Text>
-      
+
       {isLoadingServices ? (
         <LoadingSpinner visible={true} />
       ) : (
@@ -520,7 +520,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           ))}
         </>
       )}
-      
+
       <View style={styles.selectedCount}>
         <Text style={styles.selectedCountText}>
           {formData.services.length} service{formData.services.length === 1 ? '' : 's'} selected
@@ -533,7 +533,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Pricing</Text>
       <Text style={styles.stepSubtitle}>Set your rates for selected services</Text>
-      
+
       {formData.serviceRates.map(rate => (
         <View key={rate.serviceName} style={styles.priceInputGroup}>
           <Text style={styles.priceLabel}>{rate.serviceName}</Text>
@@ -558,13 +558,13 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Availability</Text>
       <Text style={styles.stepSubtitle}>Set your working hours</Text>
-      
+
       <View style={styles.row}>
         <View style={[styles.inputGroup, styles.halfWidth]}>
           <Text style={styles.label}>START TIME</Text>
           <View style={styles.inputContainer}>
             <View style={styles.inputIcon}>
-                <Ionicons name="time" size={20} color={COLORS.textTertiary} />
+              <Ionicons name="time" size={20} color={COLORS.textTertiary} />
             </View>
             <TextInput
               style={styles.input}
@@ -579,8 +579,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         <View style={[styles.inputGroup, styles.halfWidth]}>
           <Text style={styles.label}>END TIME</Text>
           <View style={styles.inputContainer}>
-             <View style={styles.inputIcon}>
-                <Ionicons name="time" size={20} color={COLORS.textTertiary} />
+            <View style={styles.inputIcon}>
+              <Ionicons name="time" size={20} color={COLORS.textTertiary} />
             </View>
             <TextInput
               style={styles.input}
@@ -612,18 +612,27 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
+
       {/* Background pattern */}
       <View style={styles.bgPattern}>
         <View style={styles.patternCircle1} />
         <View style={styles.patternCircle2} />
       </View>
 
+      {/* Back Button */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={handleBack}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+      </TouchableOpacity>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces={true}
@@ -632,8 +641,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../../public/Logo.jpg')} 
+              <Image
+                source={require('../../../public/Logo.jpg')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -648,7 +657,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           {renderStepIndicator()}
 
           {currentStep === 1 && renderStep1()}
-          
+
           {/* Partner Sign-in Link - Below form */}
           {currentStep === 1 && (
             <View style={styles.partnerCtaContainer}>
@@ -663,7 +672,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           )}
-          
+
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
           {currentStep === 4 && renderStep4()}
@@ -679,11 +688,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
               activeOpacity={0.8}
             >
               <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
+                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.buttonGradient}
+              >
                 <Text style={styles.buttonText}>CONTINUE</Text>
                 <Ionicons name="arrow-forward" size={18} color="#FFF" />
               </LinearGradient>
@@ -695,12 +704,12 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
               disabled={isLoading}
               activeOpacity={0.8}
             >
-               <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.buttonGradient}
+              >
                 <Text style={styles.buttonText}>COMPLETE REGISTRATION</Text>
                 <Ionicons name="checkmark" size={18} color="#FFF" />
               </LinearGradient>
@@ -750,13 +759,26 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 120, // Space for bottom bar
   },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 50,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.sm,
+  },
   header: {
     alignItems: 'center',
     marginTop: 24,
     marginBottom: 40,
   },
   logoContainer: {
-    width: 64, 
+    width: 64,
     height: 64,
     borderRadius: 18,
     backgroundColor: COLORS.white,

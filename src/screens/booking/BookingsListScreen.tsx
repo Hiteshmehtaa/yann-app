@@ -64,7 +64,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     if (showLoader) setIsLoading(true);
     try {
       const response = await apiService.getMyBookings();
-      
+
       if (response.success && response.data) {
         // Map response to ensure consistent format
         const mappedBookings = response.data.map((booking: any) => ({
@@ -72,7 +72,11 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           _id: booking._id || booking.id,
           id: booking.id || booking._id,
         }));
-        setBookings(mappedBookings);
+
+        // Deduplicate locally to prevent UI key errors
+        const uniqueBookings = Array.from(new Map(mappedBookings.map((b: any) => [b._id, b])).values());
+
+        setBookings(uniqueBookings as Booking[]);
       } else {
         setBookings([]);
       }
@@ -120,11 +124,11 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     // Check if booking is upcoming (within next 24 hours)
     const isUpcoming = item.bookingDate && item.bookingTime
       ? (() => {
-          const bookingDateTime = new Date(`${item.bookingDate}T${item.bookingTime}`);
-          const now = new Date();
-          const diff = bookingDateTime.getTime() - now.getTime();
-          return diff > 0 && diff < 24 * 60 * 60 * 1000;
-        })()
+        const bookingDateTime = new Date(`${item.bookingDate}T${item.bookingTime}`);
+        const now = new Date();
+        const diff = bookingDateTime.getTime() - now.getTime();
+        return diff > 0 && diff < 24 * 60 * 60 * 1000;
+      })()
       : false;
 
     const hasOtp = ((item as any).jobSession?.startOTP || (item as any).jobSession?.endOTP);
@@ -138,81 +142,81 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         activeOpacity={0.9}
       >
         <View style={styles.cardMain}>
-            {/* Header: Service Name & Price */}
-            <View style={styles.cardHeader}>
-                <View style={styles.serviceIconFrame}>
-                    <Ionicons name="briefcase" size={20} color={COLORS.primary} />
-                </View>
-                <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                    <Text style={[styles.serviceName, { color: colors.text }]}>{item.serviceName}</Text>
-                    <Text style={styles.serviceCategoryText}>{item.serviceCategory}</Text>
-                </View>
-                <Text style={styles.priceValue}>₹{item.totalPrice}</Text>
+          {/* Header: Service Name & Price */}
+          <View style={styles.cardHeader}>
+            <View style={styles.serviceIconFrame}>
+              <Ionicons name="briefcase" size={20} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1, paddingHorizontal: 10 }}>
+              <Text style={[styles.serviceName, { color: colors.text }]}>{item.serviceName}</Text>
+              <Text style={styles.serviceCategoryText}>{item.serviceCategory}</Text>
+            </View>
+            <Text style={styles.priceValue}>₹{item.totalPrice}</Text>
+          </View>
+
+          {/* Divider */}
+          <View style={[styles.dashedDivider, { borderColor: colors.divider }]} />
+
+          {/* Info Grid */}
+          <View style={styles.infoGrid}>
+            <View style={styles.infoCol}>
+              <View style={styles.infoRow}>
+                <Ionicons name="calendar-clear-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.infoText}>{formattedDate}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.infoText}>{item.bookingTime}</Text>
+              </View>
             </View>
 
-            {/* Divider */}
-            <View style={[styles.dashedDivider, { borderColor: colors.divider }]} />
-
-            {/* Info Grid */}
-            <View style={styles.infoGrid}>
-                <View style={styles.infoCol}>
-                    <View style={styles.infoRow}>
-                        <Ionicons name="calendar-clear-outline" size={14} color={COLORS.textSecondary} />
-                        <Text style={styles.infoText}>{formattedDate}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                        <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
-                        <Text style={styles.infoText}>{item.bookingTime}</Text>
-                    </View>
-                </View>
-
-                {/* Status Badge */}
-                 <View style={[styles.miniStatusBadge, { backgroundColor: STATUS_COLORS[item.status] + '15' }]}>
-                    <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[item.status] }]} />
-                    <Text style={[styles.miniStatusText, { color: STATUS_COLORS[item.status] }]}>
-                        {item.status.toUpperCase()}
-                    </Text>
-                </View>
+            {/* Status Badge */}
+            <View style={[styles.miniStatusBadge, { backgroundColor: STATUS_COLORS[item.status] + '15' }]}>
+              <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[item.status] }]} />
+              <Text style={[styles.miniStatusText, { color: STATUS_COLORS[item.status] }]}>
+                {item.status.toUpperCase()}
+              </Text>
             </View>
+          </View>
 
-             {/* Provider Info (Compact) */}
-             <View style={styles.providerCompact}>
-                <View style={[styles.providerAvatarSmall, { backgroundColor: COLORS.primary + '20' }]}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.primary }}>{providerInitial}</Text>
-                </View>
-                <Text style={[styles.providerNameSmall, { color: colors.textSecondary }]}>Service by {providerName}</Text>
+          {/* Provider Info (Compact) */}
+          <View style={styles.providerCompact}>
+            <View style={[styles.providerAvatarSmall, { backgroundColor: COLORS.primary + '20' }]}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.primary }}>{providerInitial}</Text>
             </View>
+            <Text style={[styles.providerNameSmall, { color: colors.textSecondary }]}>Service by {providerName}</Text>
+          </View>
         </View>
 
         {/* Action / OTP Footer */}
         {hasOtp ? (
-            <View style={styles.otpFooter}>
-                <View style={styles.ticketRips}>
-                    {Array.from({ length: 15 }).map((_, i) => (
-                        <View key={i} style={[styles.ripDot, { backgroundColor: colors.background }]} />
-                    ))}
-                </View>
-                <View style={[styles.otpStub, { backgroundColor: otpType === 'end' ? '#ECFDF5' : '#EFF6FF' }]}>
-                    <View>
-                        <Text style={[styles.otpLabel, { color: otpType === 'end' ? '#059669' : '#1D4ED8' }]}>
-                            {otpType === 'end' ? 'COMPLETION CODE' : 'START CODE'}
-                        </Text>
-                        <Text style={styles.otpSublabel}>Share with provider</Text>
-                    </View>
-                    <Text style={[styles.otpCode, { color: otpType === 'end' ? '#059669' : '#1D4ED8' }]}>
-                        {otpValue}
-                    </Text>
-                </View>
+          <View style={styles.otpFooter}>
+            <View style={styles.ticketRips}>
+              {Array.from({ length: 15 }).map((_, i) => (
+                <View key={i} style={[styles.ripDot, { backgroundColor: colors.background }]} />
+              ))}
             </View>
+            <View style={[styles.otpStub, { backgroundColor: otpType === 'end' ? '#ECFDF5' : '#EFF6FF' }]}>
+              <View>
+                <Text style={[styles.otpLabel, { color: otpType === 'end' ? '#059669' : '#1D4ED8' }]}>
+                  {otpType === 'end' ? 'COMPLETION CODE' : 'START CODE'}
+                </Text>
+                <Text style={styles.otpSublabel}>Share with provider</Text>
+              </View>
+              <Text style={[styles.otpCode, { color: otpType === 'end' ? '#059669' : '#1D4ED8' }]}>
+                {otpValue}
+              </Text>
+            </View>
+          </View>
         ) : isUpcoming ? (
-             <View style={[styles.countdownFooter, { backgroundColor: COLORS.primary + '08' }]}>
-                <Ionicons name="timer-outline" size={14} color={COLORS.primary} />
-                <Text style={styles.countdownLabel}>Starting in: </Text>
-                <CountdownTimer
-                    targetDate={new Date(`${item.bookingDate}T${item.bookingTime}`)}
-                    style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}
-                />
-            </View>
+          <View style={[styles.countdownFooter, { backgroundColor: COLORS.primary + '08' }]}>
+            <Ionicons name="timer-outline" size={14} color={COLORS.primary} />
+            <Text style={styles.countdownLabel}>Starting in: </Text>
+            <CountdownTimer
+              targetDate={new Date(`${item.bookingDate}T${item.bookingTime}`)}
+              style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}
+            />
+          </View>
         ) : null}
       </TouchableOpacity>
     );
@@ -257,9 +261,9 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </View>
     ); // EmptyState needs to handle its own theme inside or be passed colors? EmptyState component usually uses internal styles. Assuming it needs updates if it's external.
-       // Actually EmptyState is likely a component using theme internally if updated, or accepts props.
-       // Looking at imports: import { EmptyState } from '../../components/EmptyState';
-       // We should check that component too.
+    // Actually EmptyState is likely a component using theme internally if updated, or accepts props.
+    // Looking at imports: import { EmptyState } from '../../components/EmptyState';
+    // We should check that component too.
   };
 
   if (isLoading) {
@@ -273,12 +277,12 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   // Filter bookings based on active tab (exclude rejected bookings)
   const filteredBookings = bookings.filter((booking) => {
     const status = booking.status.toLowerCase();
-    
+
     // Never show rejected bookings to members
     if (status === 'rejected') {
       return false;
     }
-    
+
     if (activeTab === 'ongoing') {
       return status === 'pending' || status === 'accepted' || status === 'confirmed' || status === 'active' || status === 'in_progress';
     } else if (activeTab === 'completed') {
@@ -292,10 +296,10 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
+
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -306,14 +310,14 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Tab Bar */}
-      <TabBar 
+      <TabBar
         tabs={TABS}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
 
       <LoadingSpinner visible={isLoading} />
-      
+
       {!isLoading && (
         <FlatList
           data={filteredBookings}
@@ -642,7 +646,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
   },
-  
+
   // OTP Stub Styles
   otpFooter: {
     marginTop: 0,
@@ -686,16 +690,16 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     letterSpacing: 2,
   },
-  
+
   // Countdown Footer
   countdownFooter: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     justifyContent: 'center',
-     padding: SPACING.sm,
-     gap: 6,
-     borderTopWidth: 1,
-     borderTopColor: 'rgba(0,0,0,0.03)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.sm,
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.03)',
   },
   countdownLabel: {
     fontSize: 12,

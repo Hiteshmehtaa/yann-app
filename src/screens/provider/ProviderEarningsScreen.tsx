@@ -99,9 +99,11 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const response = await apiService.getProviderEarnings(selectedPeriod);
       console.log('Earnings response:', response);
-      
-      if (response.success && response.earnings) {
-        const data = response.earnings;
+
+      if (response.success) {
+        // Handle both response structures (standard .data or direct .earnings)
+        const data = response.data || response.earnings || {};
+
         setEarningsData({
           totalEarnings: data.totalEarnings || 0,
           completedBookings: data.bookingsCount || data.completedBookings || 0,
@@ -157,7 +159,7 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
@@ -228,7 +230,7 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
           {/* Recent Transactions */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            
+
             {earningsData.transactions.length > 0 ? (
               <View style={styles.transactionList}>
                 {earningsData.transactions.map((txn, index) => (

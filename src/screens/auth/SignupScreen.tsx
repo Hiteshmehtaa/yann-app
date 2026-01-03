@@ -50,34 +50,53 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Error', 'Please enter your name');
       return;
     }
-    if (!formData.email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+    
+    // Check if at least one identifier (email or phone) is provided
+    const hasEmail = formData.email.trim().length > 0;
+    const hasPhone = formData.phone.trim().length > 0;
+    
+    if (!hasEmail && !hasPhone) {
+      Alert.alert('Error', 'Please enter your email address or phone number');
       return;
     }
-    if (!validateEmail(formData.email)) {
+    
+    // Validate email if provided
+    if (hasEmail && !validateEmail(formData.email)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    if (formData.phone.trim() && !validatePhone(formData.phone)) {
+    
+    // Validate phone if provided
+    if (hasPhone && !validatePhone(formData.phone)) {
       Alert.alert('Error', 'Please enter a valid 10-digit phone number');
       return;
     }
 
+    // Determine primary identifier for sending OTP
+    const primaryIdentifier = hasEmail ? formData.email.trim() : formData.phone.trim();
+    const identifierType = hasEmail ? 'email' : 'phone';
+
     setIsLoading(true);
     try {
-      await apiService.sendSignupOTP(formData.email, {
-        name: formData.name.trim(),
-        phone: formData.phone.trim(),
-      });
-      Alert.alert('Success', 'OTP sent to your email!', [
+      // Build metadata with both email and phone
+      const metadata: any = { name: formData.name.trim() };
+      if (hasEmail) metadata.email = formData.email.trim();
+      if (hasPhone) metadata.phone = formData.phone.trim();
+      
+      await apiService.sendSignupOTP(primaryIdentifier, metadata);
+      
+      const otpDestination = identifierType === 'email' ? 'email' : 'phone number';
+      Alert.alert('Success', `OTP sent to your ${otpDestination}!`, [
         {
           text: 'OK',
           onPress: () => navigation.navigate('VerifyOTP', { 
-            email: formData.email,
+            identifier: primaryIdentifier,
+            identifierType,
             isSignup: true,
             signupData: {
               name: formData.name.trim(),
-              phone: formData.phone.trim(),
+              email: formData.email.trim() || undefined,
+              phone: formData.phone.trim() || undefined,
             }
           }),
         },
@@ -169,7 +188,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <Text style={styles.label}>EMAIL ADDRESS (OPTIONAL IF PHONE PROVIDED)</Text>
               <View style={[
                 styles.inputContainer,
                 focusedField === 'email' && styles.inputFocused
@@ -198,7 +217,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>PHONE (OPTIONAL)</Text>
+              <Text style={styles.label}>PHONE NUMBER (OPTIONAL IF EMAIL PROVIDED)</Text>
               <View style={[
                 styles.inputContainer,
                 focusedField === 'phone' && styles.inputFocused
@@ -212,7 +231,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your phone number"
+                  placeholder="Enter your 10-digit phone"
                   placeholderTextColor={COLORS.textTertiary}
                   value={formData.phone}
                   onChangeText={(value) => updateField('phone', value)}
@@ -223,6 +242,14 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
                   onBlur={() => setFocusedField(null)}
                 />
               </View>
+            </View>
+
+            {/* Helpful message */}
+            <View style={styles.hintContainer}>
+              <Ionicons name="information-circle-outline" size={16} color={COLORS.accentBlue} />
+              <Text style={styles.hintText}>
+                Provide at least one: email or phone number. Both can be used for sign in.
+              </Text>
             </View>
 
             <TouchableOpacity
@@ -452,5 +479,20 @@ const styles = StyleSheet.create({
   footerLink: {
     color: COLORS.primary,
     fontWeight: '600',
+  },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F4FD',
+    padding: 12,
+    borderRadius: RADIUS.small,
+    marginBottom: 12,
+    gap: 8,
+  },
+  hintText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.accentBlue,
+    lineHeight: 18,
   },
 });
