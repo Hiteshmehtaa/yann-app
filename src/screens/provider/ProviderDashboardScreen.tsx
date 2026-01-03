@@ -8,8 +8,8 @@ import {
   Animated,
   RefreshControl,
   StatusBar,
-  Platform,
   Image,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,61 +19,44 @@ import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LineChart } from 'react-native-chart-kit';
+
+const { width } = Dimensions.get('window');
 
 // ============================================
-// 🎨 PREMIUM DESIGN SYSTEM (Urban Company/Airbnb Style)
-// Clean, Minimal, No Gradients
+// 💎 LUMINARY GRAPH CARD AESTHETIC
+// Theme-Consistent, Interactive, Data-Viz
 // ============================================
 const THEME = {
   colors: {
-    primary: '#0A84FF', // iOS Blue
-    secondary: '#5E5CE6', // iOS Indigo
-    accent: '#FF9F0A', // iOS Orange
-    background: '#F2F2F7', // iOS Light Gray Background
-    card: '#FFFFFF',
-    text: '#000000',
-    textSecondary: '#8E8E93',
-    textTertiary: '#C7C7CC',
-    border: '#E5E5EA', // iOS Separator
-    success: '#34C759', // iOS Green
-    warning: '#FFCC00', // iOS Yellow
-    error: '#FF3B30', // iOS Red
+    background: '#F8FAFC', // Slate 50
+    surface: '#FFFFFF',
+    textPrimary: '#0F172A', // Slate 900
+    textSecondary: '#64748B', // Slate 500
+    primary: '#6366F1', // Indigo 500
+    primaryGradient: ['#0F172A', '#1E1B4B', '#4338CA', '#6366F1'], // Deep Black to Indigo (4-stop for depth)
+    success: '#10B981',
+    warning: '#F59E0B',
+    error: '#EF4444',
   },
   spacing: {
-    xs: 8,
-    sm: 12,
+    sm: 8,
     md: 16,
-    lg: 20,
-    xl: 24,
-    xxl: 32,
+    lg: 24,
+    xl: 32,
   },
   radius: {
-    sm: 10,
-    md: 14,
+    md: 12,
     lg: 20,
-    xl: 24,
-  },
-  shadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
+    xl: 28,
+  }
 };
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-interface MenuItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  onPress: () => void;
-  badge?: number;
-}
+type GraphType = 'earnings' | 'ratings' | 'bookings';
 
 export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
@@ -81,33 +64,95 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
+  const [selectedGraph, setSelectedGraph] = useState<GraphType>('earnings');
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const tabAnim = useRef(new Animated.Value(0)).current;
+  const contentFade = useRef(new Animated.Value(1)).current;
 
-  const getRoleDisplay = () => user?.role === 'provider' ? 'Partner' : 'Member';
+  const handleGraphChange = (type: GraphType, index: number) => {
+    setSelectedGraph(type);
+    Animated.parallel([
+      Animated.spring(tabAnim, {
+        toValue: index,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 150,
+      }),
+      Animated.sequence([
+        Animated.timing(contentFade, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentFade, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        })
+      ])
+    ]).start();
+  };
 
-  const getAccountStatus = () => {
-    if (user?.status === 'active') return { text: 'Active', color: THEME.colors.success };
-    if (user?.status === 'pending') return { text: 'Pending Approval', color: THEME.colors.warning };
-    return { text: 'Inactive', color: THEME.colors.textTertiary };
+  // Mock data for graphs since API only returns totals
+  // Graph Data
+  // Checks dashboardData first (automatic updates), otherwise defaults to flat/plane.
+  const defaultLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const defaultData = [0, 0, 0, 0, 0, 0, 0];
+
+  const CHART_DATA = {
+    earnings: {
+      labels: dashboardData?.stats?.earningsHistory?.labels || defaultLabels,
+      datasets: [{ data: dashboardData?.stats?.earningsHistory?.data || defaultData }]
+    },
+    ratings: {
+      labels: dashboardData?.stats?.ratingsHistory?.labels || defaultLabels,
+      datasets: [{ data: dashboardData?.stats?.ratingsHistory?.data || defaultData }]
+    },
+    bookings: {
+      labels: dashboardData?.stats?.bookingsHistory?.labels || defaultLabels,
+      datasets: [{ data: dashboardData?.stats?.bookingsHistory?.data || defaultData }]
+    }
   };
 
   useEffect(() => {
-    if (user?.email) {
-      fetchDashboardData();
+    if (!isLoading) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
     }
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    } else {
+      setIsLoading(false);
+    }
   }, [user]);
 
   const fetchDashboardData = async () => {
     try {
-      // console.log('🔍 Fetching dashboard for user email:', user?.email);
-      const response = await apiService.getProviderRequests(undefined, user?.email) as any;
+      // Extract provider ID with fallback
+      const providerId = user?.id || user?._id;
+      const email = user?.email;
+
+      if (!providerId && !email) {
+        console.warn('⚠️ No provider ID or email available');
+        setDashboardData({
+          provider: { name: user?.name || 'Provider', rating: 0, totalReviews: 0 },
+          stats: { totalEarnings: 0, pendingRequests: 0, completedBookings: 0, acceptedBookings: 0 },
+          pendingRequests: [],
+          acceptedBookings: [],
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await apiService.getProviderRequests(providerId, email) as any;
       if (response.success) {
-        // console.log('📊 Dashboard Data:', JSON.stringify(response, null, 2));
         setDashboardData({
           provider: response.provider || response.data?.provider,
           stats: response.stats || response.data?.stats,
@@ -117,7 +162,6 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
       }
     } catch (err: any) {
       console.error('❌ Error fetching dashboard:', err);
-      console.error('Error details:', err?.response?.data || err?.message);
       setDashboardData({
         provider: { name: user?.name, rating: 0, totalReviews: 0 },
         stats: { totalEarnings: 0, pendingRequests: 0, completedBookings: 0, acceptedBookings: 0 },
@@ -135,218 +179,224 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
     fetchDashboardData();
   };
 
-  const statsData = [
-    { id: '1', label: 'Earnings', value: `₹${(dashboardData?.stats?.totalEarnings ?? 0).toLocaleString()}`, icon: 'wallet-outline' as const },
-    { id: '2', label: 'Completed', value: `${dashboardData?.stats?.completedBookings ?? 0}`, icon: 'checkmark-circle-outline' as const },
-    { id: '3', label: 'Active', value: `${dashboardData?.stats?.acceptedBookings ?? 0}`, icon: 'time-outline' as const },
-    { id: '4', label: 'Rating', value: `${(dashboardData?.provider?.rating ?? 0).toFixed(1)}`, icon: 'star-outline' as const },
-  ];
+  const getGraphValue = () => {
+    if (selectedGraph === 'earnings') return `₹${(dashboardData?.stats?.totalEarnings ?? 0).toLocaleString()}`;
+    if (selectedGraph === 'ratings') return (dashboardData?.provider?.rating ?? 0).toFixed(1);
+    if (selectedGraph === 'bookings') return dashboardData?.stats?.completedBookings ?? 0;
+    return '0';
+  };
 
-  const menuItems: MenuItem[] = [
-    { id: 'services', title: 'My Services', subtitle: `${user?.services?.length || 0} active services`, icon: 'briefcase-outline', onPress: () => navigation.navigate('ProviderServices') },
-    { id: 'bookings', title: 'Bookings', subtitle: 'Manage your bookings', icon: 'calendar-outline', onPress: () => navigation.navigate('ProviderBookings'), badge: dashboardData?.stats?.acceptedBookings || 0 },
-    { id: 'earnings', title: 'Earnings', subtitle: 'View your earnings', icon: 'wallet-outline', onPress: () => navigation.navigate('ProviderEarnings') },
-    { id: 'profile', title: 'Profile', subtitle: 'Edit your details', icon: 'person-outline', onPress: () => navigation.navigate('ProviderProfile') },
-  ];
-
-  const recentBookings = dashboardData?.acceptedBookings?.slice(0, 3).map((req: any) => ({
-    id: req.id || req._id,
-    service: req.serviceName,
-    customer: req.customerName,
-    date: req.formattedDate || new Date(req.bookingDate).toLocaleDateString(),
-    amount: `₹${req.totalPrice}`,
-    status: 'active',
-  })) || [];
+  const getGraphLabel = () => {
+    if (selectedGraph === 'earnings') return 'Total Profit';
+    if (selectedGraph === 'ratings') return 'Average Rating';
+    if (selectedGraph === 'bookings') return 'Jobs Completed';
+    return '';
+  };
 
   if (isLoading) {
     return (
-      <SafeAreaView edges={['top']} style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={THEME.colors.background} />
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="dark-content" />
         <LoadingSpinner visible={true} />
-      </SafeAreaView>
+      </View>
     );
   }
 
-  const accountStatus = getAccountStatus();
-
   return (
-    <SafeAreaView edges={['top']} style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
-      {/* Premium Gradient Header */}
-      <LinearGradient
-        colors={[THEME.colors.primary, THEME.colors.secondary]}
-        style={styles.headerGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.headerTop}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainerWhite}>
-              {user?.avatar || user?.profileImage ? (
-                <Image source={{ uri: user.avatar || user.profileImage }} style={styles.avatar} />
-              ) : (
-                <Text style={styles.avatarTextPrimary}>
-                  {user?.name?.charAt(0).toUpperCase() || 'P'}
-                </Text>
-              )}
-            </View>
-            <View style={styles.headerInfo}>
-              <Text style={styles.greetingWhite}>Welcome back,</Text>
-              <Text style={styles.userNameWhite}>{user?.name || 'Partner'}</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.notificationBtnWhite}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('NotificationsList')}
-          >
-            <Ionicons name="notifications-outline" size={24} color="#FFF" />
-            {unreadCount > 0 && (
-              <View style={styles.notificationDotWhite}>
-                {/* Optional: Add text count if dot is large enough, or just keep dot for provider dashboard style */}
-              </View>
-            )}
+      {/* 1. Clean White Header */}
+      <SafeAreaView edges={['top']} style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.navigate('ProviderProfile')}>
+            <Image
+              source={{ uri: user?.avatar || 'https://ui-avatars.com/api/?name=User&background=random' }}
+              style={styles.avatar}
+            />
           </TouchableOpacity>
-        </View>
-
-        {/* Quick Stats in Header */}
-        <View style={styles.headerStats}>
-          <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}>₹{(dashboardData?.stats?.totalEarnings ?? 0).toLocaleString()}</Text>
-            <Text style={styles.headerStatLabel}>Total Earnings</Text>
-          </View>
-          <View style={styles.headerStatDivider} />
-          <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}>{dashboardData?.stats?.completedBookings ?? 0}</Text>
-            <Text style={styles.headerStatLabel}>Completed</Text>
-          </View>
-          <View style={styles.headerStatDivider} />
-          <View style={styles.headerStatItem}>
-            <Text style={styles.headerStatValue}>{(dashboardData?.provider?.rating ?? 0).toFixed(1)} ★</Text>
-            <Text style={styles.headerStatLabel}>Rating</Text>
+          <View>
+            <Text style={styles.welcomeSub}>Welcome Back!</Text>
+            <Text style={styles.welcomeName}>{user?.name?.split(' ')[0] || 'Partner'}</Text>
           </View>
         </View>
-      </LinearGradient>
+        <TouchableOpacity
+          style={styles.notifBtn}
+          onPress={() => navigation.navigate('NotificationsList')}
+        >
+          <Ionicons name="notifications-outline" size={24} color={THEME.colors.textPrimary} />
+          {unreadCount > 0 && <View style={styles.redDot} />}
+        </TouchableOpacity>
+      </SafeAreaView>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[THEME.colors.primary]}
-            tintColor={THEME.colors.primary}
-          />
-        }
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
 
+          {/* 2. The Graph Card (Brand Colors) */}
+          <LinearGradient
+            colors={THEME.colors.primaryGradient} // Midnight -> Indigo
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.graphCard}
+          >
+            {/* Card Header: Value & Selector */}
+            <View style={styles.cardHeader}>
+              <View>
+                <Text style={styles.cardLabel}>{getGraphLabel()}</Text>
+                <Text style={styles.cardValue}>{getGraphValue()}</Text>
+                <View style={styles.growthBadge}>
+                  <Ionicons name="trending-up" size={12} color="#FFFFFF" />
+                  <Text style={styles.growthText}>+15% from last week</Text>
+                </View>
+              </View>
 
-          {/* Action Cards Grid */}
-          <Text style={styles.sectionTitleNew}>Quick Actions</Text>
-          <View style={styles.actionCardsGrid}>
-            {menuItems.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.actionCard}
-                activeOpacity={0.8}
-                onPress={item.onPress}
-              >
-                <LinearGradient
-                  colors={index === 0 ? ['#0A84FF', '#007AFF'] : index === 1 ? ['#34C759', '#30D158'] : index === 2 ? ['#FF9F0A', '#FF9500'] : ['#5E5CE6', '#5856D6']}
-                  style={styles.actionCardGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Ionicons name={item.icon} size={28} color="#FFF" />
-                  {item.badge && item.badge > 0 && (
-                    <View style={styles.actionBadge}>
-                      <Text style={styles.actionBadgeText}>{item.badge}</Text>
-                    </View>
-                  )}
-                </LinearGradient>
-                <Text style={styles.actionCardTitle}>{item.title}</Text>
-                <Text style={styles.actionCardSubtitle}>{item.subtitle}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Recent Bookings - MOVED HERE */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Bookings</Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('ProviderBookings')}
-              >
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-
-            {recentBookings.length > 0 ? (
-              <View style={styles.bookingsList}>
-                {recentBookings.map((booking: any, index: number) => (
+              {/* Visual Tab Indicator (Dots) */}
+              <View style={styles.tabDots}>
+                {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type) => (
                   <TouchableOpacity
-                    key={booking.id}
+                    key={type}
                     style={[
-                      styles.bookingCard,
-                      index === recentBookings.length - 1 && styles.bookingCardLast
+                      styles.dotBtn,
+                      selectedGraph === type && styles.dotActive
                     ]}
-                    activeOpacity={0.7}
-                    onPress={() => navigation.navigate('ProviderBookings')}
-                  >
-                    <View style={styles.bookingInfo}>
-                      <Text style={styles.bookingService}>{booking.service}</Text>
-                      <Text style={styles.bookingCustomer}>{booking.customer}</Text>
-                      <View style={styles.bookingMeta}>
-                        <Ionicons name="calendar-outline" size={14} color={THEME.colors.textTertiary} />
-                        <Text style={styles.bookingDate}>{booking.date}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.bookingRight}>
-                      <Text style={styles.bookingAmount}>{booking.amount}</Text>
-                      <View style={styles.activeBadge}>
-                        <Text style={styles.activeText}>ACTIVE</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                    onPress={() => handleGraphChange(type, ['earnings', 'ratings', 'bookings'].indexOf(type))}
+                  />
                 ))}
               </View>
+            </View>
+
+            {/* Chart with Sliding Animation */}
+            <Animated.View
+              style={{
+                opacity: contentFade,
+                alignItems: 'center',
+                transform: [{
+                  translateX: tabAnim.interpolate({
+                    inputRange: [0, 1, 2],
+                    outputRange: [0, 0, 0], // Keep centered, just fade
+                  })
+                }]
+              }}
+            >
+              <LineChart
+                data={CHART_DATA[selectedGraph]}
+                width={width - 80}
+                height={160}
+                yAxisLabel=""
+                yAxisSuffix=""
+                withInnerLines={false}
+                withOuterLines={false}
+                withVerticalLabels={false}
+                withHorizontalLabels={false}
+                withDots={true}
+                withShadow={true}
+                fromZero={true}
+                chartConfig={{
+                  backgroundColor: 'transparent',
+                  backgroundGradientFrom: 'transparent',
+                  backgroundGradientTo: 'transparent',
+                  backgroundGradientFromOpacity: 0,
+                  backgroundGradientToOpacity: 0,
+                  fillShadowGradientFrom: '#FFFFFF',
+                  fillShadowGradientTo: '#FFFFFF',
+                  fillShadowGradientFromOpacity: 0.6,
+                  fillShadowGradientToOpacity: 0.05,
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.8})`,
+                  style: { borderRadius: 20 },
+                  propsForDots: {
+                    r: "6",
+                    strokeWidth: "3",
+                    stroke: "#1E1B4B",
+                    fill: "#FFFFFF"
+                  },
+                  propsForBackgroundLines: {
+                    strokeWidth: 0,
+                  }
+                }}
+                bezier
+                style={styles.chart}
+              />
+            </Animated.View>
+
+            {/* Tab Buttons (Text) at bottom of card */}
+            <View style={styles.textTabs}>
+              {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  onPress={() => handleGraphChange(type, ['earnings', 'ratings', 'bookings'].indexOf(type))}
+                  style={[styles.textTabBtn, selectedGraph === type && styles.textTabActive]}
+                >
+                  <Text style={[styles.textTabLabel, selectedGraph === type && styles.textTabLabelActive]}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </LinearGradient>
+
+
+          {/* 3. Recent Bookings List */}
+          <View style={styles.listHeader}>
+            <Text style={styles.sectionTitle}>Recent Bookings</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ProviderBookings')}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.bookingsList}>
+            {(dashboardData?.acceptedBookings?.slice(0, 5) || []).length > 0 ? (
+              (dashboardData?.acceptedBookings?.slice(0, 5) || []).map((item: any, index: number) => {
+                const colors = [
+                  { bg: '#EEF2FF', icon: '#6366F1' }, // Indigo
+                  { bg: '#ECFDF5', icon: '#10B981' }, // Emerald
+                  { bg: '#FFF7ED', icon: '#F97316' }, // Orange
+                  { bg: '#FDF4FF', icon: '#D946EF' }, // Fuchsia
+                  { bg: '#F0F9FF', icon: '#0EA5E9' }, // Sky
+                ];
+                const colorTheme = colors[index % colors.length];
+
+                return (
+                  <TouchableOpacity
+                    key={item.id || item._id}
+                    style={[styles.bookingRow, { borderLeftColor: colorTheme.icon, borderLeftWidth: 4 }]}
+                    onPress={() => navigation.navigate('ProviderBookings')}
+                  >
+                    <View style={[styles.bookingIconCircle, { backgroundColor: colorTheme.bg }]}>
+                      <Ionicons name="calendar-outline" size={20} color={colorTheme.icon} />
+                    </View>
+                    <View style={styles.bookingDetails}>
+                      <Text style={styles.bookingService}>{item.serviceName || 'Service'}</Text>
+                      <Text style={styles.bookingCustomer}>{item.customerName || 'Customer'}</Text>
+                    </View>
+                    <View style={styles.bookingMeta}>
+                      <Text style={styles.bookingPrice}>₹{item.totalPrice || 0}</Text>
+                      <Text style={styles.bookingTime}>
+                        {new Date(item.bookingDate || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
             ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color={THEME.colors.textTertiary} />
-                <Text style={styles.emptyTitle}>No pending bookings</Text>
-                <Text style={styles.emptySubtitle}>New booking requests will appear here</Text>
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>No recent bookings</Text>
               </View>
             )}
           </View>
 
-          {/* Tips Card */}
-          <View style={styles.tipsCard}>
-            <View style={styles.tipsIcon}>
-              <Ionicons name="bulb-outline" size={20} color={THEME.colors.warning} />
-            </View>
-            <View style={styles.tipsContent}>
-              <Text style={styles.tipsTitle}>Pro Tip</Text>
-              <Text style={styles.tipsText}>
-                Complete your profile and add more services to attract more customers.
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ height: 100 }} />
+          <View style={{ height: 40 }} />
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
-// ============================================
-// 📐 STYLES - Clean, Premium, Minimal (NO GRADIENTS)
-// ============================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -356,15 +406,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: THEME.spacing.md,
-    fontSize: 15,
-    color: THEME.colors.textSecondary,
-  },
-  content: {
-    paddingHorizontal: THEME.spacing.lg,
-    paddingTop: THEME.spacing.md,
+    backgroundColor: THEME.colors.background,
   },
 
   // Header
@@ -372,49 +414,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.spacing.lg,
+    paddingHorizontal: THEME.spacing.lg,
+    paddingBottom: THEME.spacing.md,
+    backgroundColor: THEME.colors.background,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: THEME.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: THEME.spacing.sm,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  headerInfo: {
-    justifyContent: 'center',
-  },
-  greeting: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
-    marginBottom: 2,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: THEME.colors.text,
-  },
-  notificationBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: THEME.colors.card,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  welcomeSub: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    marginBottom: 2,
+  },
+  welcomeName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  notifBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    ...THEME.shadow,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  notificationDot: {
+  redDot: {
     position: 'absolute',
     top: 10,
     right: 10,
@@ -422,485 +458,254 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: THEME.colors.error,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 
-  // Profile Card
-  profileCard: {
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    padding: THEME.spacing.md,
-    marginBottom: THEME.spacing.lg,
-    ...THEME.shadow,
+  content: {
+    padding: THEME.spacing.lg,
   },
-  profileRow: {
+
+  // Graph Card
+  graphCard: {
+    borderRadius: THEME.radius.xl,
+    padding: THEME.spacing.lg,
+    minHeight: 300,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
+    marginBottom: THEME.spacing.xl,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: THEME.spacing.md,
   },
-  roleBadge: {
+  cardLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  cardValue: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  growthBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${THEME.colors.primary}10`,
-    paddingHorizontal: THEME.spacing.sm,
-    paddingVertical: 6,
-    borderRadius: THEME.radius.sm,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    gap: 4,
   },
-  roleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: THEME.colors.primary,
-    marginLeft: 6,
+  growthText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
-  statusBadge: {
+  tabDots: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 6,
+    paddingTop: 8,
   },
-  statusDot: {
+  dotBtn: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 6,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
-  statusText: {
+  dotActive: {
+    backgroundColor: '#FFF',
+    width: 20, // expanding dot
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+    paddingRight: 0,
+    paddingLeft: 0,
+  },
+  textTabs: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 8,
+  },
+  textTabBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  textTabActive: {
+    backgroundColor: '#FFF',
+  },
+  textTabLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  textTabLabelActive: {
+    color: '#312E81',
+  },
+
+  // Grid
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: THEME.spacing.xl,
+  },
+  gridItem: {
+    width: (width - 48 - 16) / 2, // 2 columns
+    backgroundColor: '#FFF',
+    borderRadius: THEME.radius.lg,
+    padding: 16,
+    height: 140,
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridLabel: {
     fontSize: 13,
+    color: THEME.colors.textSecondary,
+    marginBottom: 4,
+  },
+  gridValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    marginBottom: 4,
+  },
+  gridDate: {
+    fontSize: 11,
     color: THEME.colors.textSecondary,
   },
 
-  // Stats Grid
-  statsGrid: {
+  // Recent Btn
+  recentBtn: {
+    backgroundColor: THEME.colors.primary,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: THEME.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: THEME.radius.lg,
+    gap: 8,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  recentBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+
+  // List Styles
+  listHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16, // More breathing room
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 20, // Larger
+    fontWeight: '800', // Bolder
+    color: '#0F172A', // Darkest Slate
+    letterSpacing: -0.5,
+  },
+  seeAll: {
+    color: THEME.colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  bookingsList: {
+    gap: 16, // More spacing between cards
     marginBottom: THEME.spacing.xl,
   },
-  statCard: {
-    width: '48%',
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    padding: THEME.spacing.md,
+  bookingRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    ...THEME.shadow,
+    padding: 18, // More internal padding
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20, // Softer corners
+    // No Border - Modern Shadow Only
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  statIconContainer: {
+  bookingIconCircle: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: `${THEME.colors.primary}10`,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: THEME.spacing.sm,
+    marginRight: 14,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: THEME.colors.text,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
-  },
-
-  // Section
-  section: {
-    marginBottom: THEME.spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: THEME.spacing.md,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginBottom: THEME.spacing.md,
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: THEME.colors.primary,
-  },
-
-  // Menu List
-  menuList: {
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    ...THEME.shadow,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: THEME.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
-  },
-  menuItemLast: {
-    borderBottomWidth: 0,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: `${THEME.colors.primary}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: THEME.spacing.sm,
-  },
-  menuItemInfo: {
-    flex: 1,
-  },
-  menuItemTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: THEME.colors.text,
-    marginBottom: 2,
-  },
-  menuItemSubtitle: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
-  },
-  menuItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuBadge: {
-    backgroundColor: THEME.colors.error,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginRight: 8,
-  },
-  menuBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
-  // Bookings List
-  bookingsList: {
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    ...THEME.shadow,
-  },
-  bookingCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: THEME.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.colors.border,
-  },
-  bookingCardLast: {
-    borderBottomWidth: 0,
-  },
-  bookingInfo: {
+  bookingDetails: {
     flex: 1,
   },
   bookingService: {
     fontSize: 15,
-    fontWeight: '500',
-    color: THEME.colors.text,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
     marginBottom: 2,
   },
   bookingCustomer: {
-    fontSize: 14,
+    fontSize: 13,
     color: THEME.colors.textSecondary,
-    marginBottom: 4,
   },
   bookingMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  bookingDate: {
-    fontSize: 13,
-    color: THEME.colors.textTertiary,
-    marginLeft: 4,
-  },
-  bookingRight: {
     alignItems: 'flex-end',
+    gap: 4,
   },
-  bookingAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginBottom: 4,
-  },
-  pendingBadge: {
-    backgroundColor: `${THEME.colors.warning}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  pendingText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.warning,
-  },
-  activeBadge: {
-    backgroundColor: `${THEME.colors.success}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  activeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.success,
-  },
-
-  // Empty State
-  emptyState: {
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    padding: THEME.spacing.xxl,
-    alignItems: 'center',
-    ...THEME.shadow,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: THEME.colors.text,
-    marginTop: THEME.spacing.md,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: THEME.colors.textSecondary,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-
-  // Tips Card
-  tipsCard: {
-    flexDirection: 'row',
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    padding: THEME.spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: THEME.colors.warning,
-    ...THEME.shadow,
-  },
-  headerGradient: {
-    paddingBottom: 40,
-    paddingHorizontal: THEME.spacing.lg,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    ...THEME.shadow,
-  },
-  tipsIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: `${THEME.colors.warning}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: THEME.spacing.sm,
-  },
-  tipsContent: {
-    flex: 1,
-  },
-  tipsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginBottom: 2,
-  },
-  tipsText: {
-    fontSize: 13,
-    color: THEME.colors.textSecondary,
-    lineHeight: 18,
-  },
-  // New gradient header styles
-  gradientHeader: {
-    paddingTop: THEME.spacing.md,
-    paddingBottom: THEME.spacing.xl,
-    paddingHorizontal: THEME.spacing.lg,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatarContainerWhite: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  avatarTextPrimary: {
-    fontSize: 20,
+  bookingPrice: {
+    fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: THEME.colors.textPrimary,
   },
-
-  greetingWhite: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 2,
-  },
-  userNameWhite: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  notificationBtnWhite: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  notificationDotWhite: {
-    position: 'absolute',
-    top: 10,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FCD34D',
-  },
-  headerStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    paddingVertical: THEME.spacing.md,
-    paddingHorizontal: THEME.spacing.sm,
-  },
-  headerStatItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  headerStatValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFF',
-    marginBottom: 2,
-  },
-  headerStatLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '500',
-  },
-  headerStatDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: THEME.spacing.lg,
-    paddingTop: THEME.spacing.lg,
-    paddingBottom: 100,
-  },
-  statusCard: {
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    padding: THEME.spacing.md,
-    marginBottom: THEME.spacing.lg,
-    ...THEME.shadow,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  roleTextNew: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#667eea',
-    marginLeft: 6,
-  },
-  statusBadgeNew: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusTextNew: {
+  bookingTime: {
     fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  sectionTitleNew: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginBottom: THEME.spacing.md,
-  },
-  actionCardsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: THEME.spacing.sm,
-    marginBottom: THEME.spacing.xl,
-  },
-  actionCard: {
-    width: '48%',
-    backgroundColor: THEME.colors.card,
-    borderRadius: THEME.radius.lg,
-    padding: THEME.spacing.md,
-    alignItems: 'center',
-    ...THEME.shadow,
-  },
-  actionCardGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: THEME.spacing.sm,
-    position: 'relative',
-  },
-  actionBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  actionBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  actionCardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: THEME.colors.text,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  actionCardSubtitle: {
-    fontSize: 11,
     color: THEME.colors.textSecondary,
-    textAlign: 'center',
+  },
+  emptyBox: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    color: THEME.colors.textSecondary,
+    fontSize: 14,
   },
 });

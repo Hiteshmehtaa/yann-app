@@ -89,8 +89,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       if (!user) return;
 
+      // Extract user ID with fallback
+      const userId = user.id || user._id;
+      if (!userId) {
+        console.warn('⚠️ No user ID available for notifications');
+        return;
+      }
+
       // 1. Try to fetch from backend first (Single Source of Truth)
-      const response = await apiService.getNotifications(user.id || '');
+      const response = await apiService.getNotifications(userId);
 
       if (response.success && response.data && response.data.length > 0) {
         const serverNotifications = response.data;
@@ -116,11 +123,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             if (n.read) localReadMap.set(n.id, true);
           });
 
-          // Merge: If backend says unread but local says read, keep local 'read'.
-          // If backend says read, it becomes read.
+          // Merge: ALWAYS prefer local read state over backend
+          // This prevents backend from reverting read notifications to unread
           const mergedNotifications = mappedNotifications.map(n => ({
             ...n,
-            read: n.read || localReadMap.has(n.id)
+            read: localReadMap.has(n.id) ? true : n.read
           }));
 
           saveNotifications(mergedNotifications); // Cache locally

@@ -35,7 +35,9 @@ export const storage = {
   // Save user data
   async saveUserData(user: any): Promise<void> {
     try {
+      // console.log('💾 Saving user data to storage:', { ... }); // Commented out
       await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+      // console.log('✅ User data saved successfully'); // Commented out
     } catch (error) {
       console.error('Error saving user data:', error);
       throw error;
@@ -46,7 +48,9 @@ export const storage = {
   async getUserData(): Promise<any | null> {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
-      return data ? JSON.parse(data) : null;
+      const parsed = data ? JSON.parse(data) : null;
+      // console.log('📂 Loaded user data from storage:', { ... }); // Commented out
+      return parsed;
     } catch (error) {
       console.error('Error getting user data:', error);
       return null;

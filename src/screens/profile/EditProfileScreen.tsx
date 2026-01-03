@@ -33,7 +33,18 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
+    bio: user?.bio || '',
   });
+
+  // Update form data when user changes (e.g., after profile refresh)
+  useEffect(() => {
+    setFormData({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      bio: user?.bio || '',
+    });
+  }, [user?.name, user?.email, user?.phone, user?.bio]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -67,10 +78,10 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       if (!result.canceled && result.assets[0]) {
         setIsSaving(true);
         const asset = result.assets[0];
-        
+
         // Get the base64 string or read from URI
         let base64Image = asset.base64;
-        
+
         if (!base64Image && asset.uri) {
           // Fallback: read file and convert to base64 if needed
           const response = await fetch(asset.uri);
@@ -100,28 +111,28 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
         // Upload as JSON with base64 image
         console.log('Uploading avatar...');
         const response = await apiService.uploadAvatar(base64Image);
-        
+
         if (response.success) {
-           // Support multiple response formats from backend
-           const data = response.data || {};
-           const newAvatarUrl = data.profileImage || data.avatar || data.url || data.image;
-           
-           if (newAvatarUrl) {
-             console.log('Avatar updated:', newAvatarUrl);
-             updateUser({
-               ...user,
-               avatar: newAvatarUrl,
-               profileImage: newAvatarUrl,
-             });
-             Alert.alert('Success', 'Profile photo updated');
-           } else {
-             // If success but no URL returned, maybe it was just a 200 OK
-             Alert.alert('Success', 'Profile photo updated');
-             // Refresh profile to get new image
-             // Note: In a real app we might want to fetch the profile again here
-           }
+          // Support multiple response formats from backend
+          const data = response.data || {};
+          const newAvatarUrl = data.profileImage || data.avatar || data.url || data.image;
+
+          if (newAvatarUrl) {
+            console.log('Avatar updated:', newAvatarUrl);
+            updateUser({
+              ...user,
+              avatar: newAvatarUrl,
+              profileImage: newAvatarUrl,
+            });
+            Alert.alert('Success', 'Profile photo updated');
+          } else {
+            // If success but no URL returned, maybe it was just a 200 OK
+            Alert.alert('Success', 'Profile photo updated');
+            // Refresh profile to get new image
+            // Note: In a real app we might want to fetch the profile again here
+          }
         } else {
-           Alert.alert('Error', response.message || 'Failed to upload image');
+          Alert.alert('Error', response.message || 'Failed to upload image');
         }
       }
     } catch (error) {
@@ -138,16 +149,50 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    // Validate bio length for providers
+    if (user?.role === 'provider' && formData.bio && formData.bio.length > 300) {
+      Alert.alert('Error', 'Bio must be 300 characters or less');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      await apiService.updateProfile({
-        name: formData.name,
-        phone: formData.phone,
-      });
-      updateUser({ ...user, name: formData.name, phone: formData.phone });
+      if (user?.role === 'provider') {
+        // Use provider-specific update endpoint
+        const updateData = {
+          name: formData.name,
+          phone: formData.phone,
+          bio: formData.bio,
+        };
+        console.log('📤 Updating provider profile with:', updateData);
+        const response = await apiService.updateProviderProfile(updateData);
+        console.log('✅ Provider profile update response:', response);
+
+        // Update local user data
+        updateUser({ ...user, name: formData.name, phone: formData.phone, bio: formData.bio });
+
+        // Refresh profile from backend to ensure we have the latest data
+        try {
+          const profileResponse = await apiService.getProfile('provider');
+          if (profileResponse.user) {
+            console.log('🔄 Refreshed profile from backend:', profileResponse.user);
+            updateUser(profileResponse.user);
+          }
+        } catch (refreshError) {
+          console.warn('Could not refresh profile, using local data');
+        }
+      } else {
+        // Use homeowner update endpoint
+        await apiService.updateProfile({
+          name: formData.name,
+          phone: formData.phone,
+        });
+        updateUser({ ...user, name: formData.name, phone: formData.phone });
+      }
       Alert.alert('Success', 'Profile updated successfully');
       navigation.goBack();
     } catch (error: any) {
+      console.error('❌ Profile update error:', error);
       Alert.alert('Error', error.response?.data?.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
@@ -170,7 +215,7 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
       </View>
       <LoadingSpinner visible={isSaving} />
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
@@ -179,14 +224,14 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.avatarSection}>
             <View style={styles.avatar}>
               {user?.avatar ? (
-                 <Image 
-                   source={{ uri: user.avatar }} 
-                   style={{ width: 100, height: 100, borderRadius: 50 }} 
-                 />
+                <Image
+                  source={{ uri: user.avatar }}
+                  style={{ width: 100, height: 100, borderRadius: 50 }}
+                />
               ) : (
-                 <Text style={styles.avatarText}>
-                   {user?.name?.charAt(0).toUpperCase() || 'U'}
-                 </Text>
+                <Text style={styles.avatarText}>
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </Text>
               )}
             </View>
             <TouchableOpacity style={styles.changePhotoButton} onPress={pickImage}>
@@ -228,6 +273,35 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
                 keyboardType="phone-pad"
               />
             </View>
+
+            {/* Bio field - only for providers */}
+            {user?.role === 'provider' && (
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.inputLabel}>About / Bio</Text>
+                  <Text style={styles.charCount}>
+                    {formData.bio.length}/300
+                  </Text>
+                </View>
+                <TextInput
+                  style={[styles.input, styles.bioInput]}
+                  value={formData.bio}
+                  onChangeText={(value) => updateField('bio', value)}
+                  placeholder="Tell customers about yourself and your services..."
+                  placeholderTextColor={COLORS.textTertiary}
+                  multiline
+                  numberOfLines={4}
+                  maxLength={300}
+                  textAlignVertical="top"
+                  editable={true}
+                  selectTextOnFocus={true}
+                  contextMenuHidden={false}
+                />
+                <Text style={styles.inputHint}>
+                  This will be displayed on your public profile
+                </Text>
+              </View>
+            )}
           </View>
         </Animated.View>
       </ScrollView>
@@ -344,5 +418,20 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.textTertiary,
     marginTop: SPACING.xs,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  charCount: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  bioInput: {
+    minHeight: 100,
+    paddingTop: SPACING.md,
   },
 });

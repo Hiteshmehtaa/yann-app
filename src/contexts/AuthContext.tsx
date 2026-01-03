@@ -34,24 +34,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const savedToken = await storage.getToken();
       const savedUser = await storage.getUserData();
 
+      console.log('🔍 Checking auth status:', {
+        hasToken: !!savedToken,
+        hasUser: !!savedUser,
+        userId: savedUser?.id,
+        user_id: savedUser?._id,
+        userEmail: savedUser?.email,
+        userRole: savedUser?.role
+      });
+
       if (savedToken && savedUser) {
         setToken(savedToken);
         setUser(savedUser);
 
-        // Optionally refresh user data from server
-        try {
-          const response = await apiService.getProfile();
-          if (response.user) {
-            setUser(response.user);
-            await storage.saveUserData(response.user);
+        // Only refresh from server if we have valid cached data with at least an ID
+        const hasValidData = savedUser.id || savedUser._id || savedUser.email;
+
+        if (hasValidData) {
+          // Optionally refresh user data from server
+          try {
+            const role = savedUser.role || 'homeowner';
+            const response = await apiService.getProfile(role);
+            if (response.user) {
+              // Validate response has critical fields before saving
+              const hasValidResponse = response.user.id || response.user._id || response.user.email || response.user.name;
+              if (hasValidResponse) {
+                setUser(response.user);
+                await storage.saveUserData(response.user);
+              } else {
+                console.warn('⚠️ Received invalid user data from server, keeping cached data');
+              }
+            }
+          } catch (error: any) {
+            // Cookie-based auth may fail on mobile if session expired
+            // This is expected behavior - we continue with cached data
+            if (error.response?.status !== 401) {
+              console.log('Could not refresh user data:', error);
+            }
+            // Keep using cached data
           }
-        } catch (error: any) {
-          // Cookie-based auth may fail on mobile if session expired
-          // This is expected behavior - we continue with cached data
-          if (error.response?.status !== 401) {
-            console.log('Could not refresh user data:', error);
-          }
-          // Keep using cached data
+        } else {
+          console.warn('⚠️ Cached user data is corrupted, please log in again');
+          // Clear corrupted data
+          await storage.clearAll();
+          setUser(null);
+          setToken(null);
         }
       }
     } catch (error) {
@@ -154,11 +181,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await apiService.verifyProviderOTP(identifier, otp);
 
-      // console.log('🔐 Processing provider login response:', response);
+      console.log('🔐 Processing provider login response:', {
+        hasUser: !!response.user,
+        userId: response.user?.id,
+        user_id: response.user?._id,
+        email: response.user?.email
+      });
 
       if (response.user) {
         const userData: User = {
-          id: response.user.id,
+          id: response.user.id || response.user._id,
           _id: response.user._id || response.user.id,
           name: response.user.name,
           email: response.user.email,
@@ -172,7 +204,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           aadhaarVerified: response.user.aadhaarVerified || false,
         };
 
-        // console.log('👤 Setting provider data:', { ...userData, avatar: '[BASE64_IMAGE]', profileImage: '[BASE64_IMAGE]' });
+        console.log('👤 Setting provider data:', {
+          id: userData.id,
+          _id: userData._id,
+          email: userData.email,
+          name: userData.name
+        });
 
         // Use the actual JWT token from response for mobile auth
         const actualToken = response.token || 'cookie-based-auth-provider';

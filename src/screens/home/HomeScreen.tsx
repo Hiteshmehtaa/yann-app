@@ -536,7 +536,6 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholder="Search for services..."
-                  style={styles.searchBar}
                 />
               </View>
 

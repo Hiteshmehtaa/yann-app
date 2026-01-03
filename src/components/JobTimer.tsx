@@ -25,18 +25,25 @@ export const JobTimer: React.FC<JobTimerProps> = ({
   style
 }) => {
   const { colors } = useTheme();
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isOvertime, setIsOvertime] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    // Calculate initial elapsed time
+    const now = new Date();
+    const initialElapsedMs = now.getTime() - new Date(startTime).getTime();
+    const initialElapsedSeconds = Math.floor(initialElapsedMs / 1000);
+    setElapsedSeconds(initialElapsedSeconds);
+
+    // Update every second
     const interval = setInterval(() => {
-      const now = new Date();
-      const elapsedMs = now.getTime() - new Date(startTime).getTime();
-      const elapsedMinutes = Math.floor(elapsedMs / (1000 * 60));
-      
-      setElapsed(elapsedMinutes);
-      setIsOvertime(elapsedMinutes > expectedDuration);
+      setElapsedSeconds(prev => {
+        const newElapsed = prev + 1;
+        const elapsedMinutes = Math.floor(newElapsed / 60);
+        setIsOvertime(elapsedMinutes > expectedDuration);
+        return newElapsed;
+      });
     }, 1000);
 
     // Pulse animation for the "Active" indicator
@@ -58,23 +65,24 @@ export const JobTimer: React.FC<JobTimerProps> = ({
     return () => clearInterval(interval);
   }, [startTime, expectedDuration]);
 
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const secs = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000) % 60;
-    
+  const formatTime = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
     return {
       hours: hours.toString().padStart(2, '0'),
-      minutes: mins.toString().padStart(2, '0'),
-      seconds: secs.toString().padStart(2, '0')
+      minutes: minutes.toString().padStart(2, '0'),
+      seconds: seconds.toString().padStart(2, '0')
     };
   };
 
-  const time = formatTime(elapsed);
+  const time = formatTime(elapsedSeconds);
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
   const expectedHours = Math.floor(expectedDuration / 60);
   const expectedMins = expectedDuration % 60;
   const overtimeMinutes = Math.max(0, elapsed - expectedDuration);
-  
+
   // Calculate progress percentage (capped at 100%)
   const progressPercent = Math.min(100, (elapsed / expectedDuration) * 100);
 
@@ -88,16 +96,16 @@ export const JobTimer: React.FC<JobTimerProps> = ({
       >
         {/* Header Section */}
         <View style={styles.headerRow}>
-            <View style={styles.liveBadge}>
-                <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
-                <Text style={styles.liveText}>LIVE JOB</Text>
+          <View style={styles.liveBadge}>
+            <Animated.View style={[styles.pulseDot, { opacity: pulseAnim }]} />
+            <Text style={styles.liveText}>LIVE JOB</Text>
+          </View>
+          {isOvertime && (
+            <View style={styles.overtimeBadge}>
+              <Ionicons name="warning" size={12} color="#FFF" />
+              <Text style={styles.overtimeBadgeText}>OVERTIME</Text>
             </View>
-            {isOvertime && (
-                <View style={styles.overtimeBadge}>
-                    <Ionicons name="warning" size={12} color="#FFF" />
-                    <Text style={styles.overtimeBadgeText}>OVERTIME</Text>
-                </View>
-            )}
+          )}
         </View>
 
         {/* Main Timer Display */}
@@ -112,18 +120,18 @@ export const JobTimer: React.FC<JobTimerProps> = ({
 
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
-            <View style={styles.progressBarBg}>
-                <View 
-                    style={[
-                        styles.progressBarFill, 
-                        { width: `${progressPercent}%`, backgroundColor: isOvertime ? '#FECACA' : '#60A5FA' }
-                    ]} 
-                />
-            </View>
-            <View style={styles.progressLabels}>
-                <Text style={styles.progressText}>Started {new Date(startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
-                <Text style={styles.progressText}>Exp: {expectedHours}h {expectedMins}m</Text>
-            </View>
+          <View style={styles.progressBarBg}>
+            <View
+              style={[
+                styles.progressBarFill,
+                { width: `${progressPercent}%`, backgroundColor: isOvertime ? '#FECACA' : '#60A5FA' }
+              ]}
+            />
+          </View>
+          <View style={styles.progressLabels}>
+            <Text style={styles.progressText}>Started {new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            <Text style={styles.progressText}>Exp: {expectedHours}h {expectedMins}m</Text>
+          </View>
         </View>
 
         {/* Overtime Details */}

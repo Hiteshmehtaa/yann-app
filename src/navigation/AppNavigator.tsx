@@ -35,8 +35,9 @@ import { HomeScreen } from '../screens/home/HomeScreen';
 
 // Booking Screens
 import { ServiceDetailScreen } from '../screens/booking/ServiceDetailScreen';
-import { BookingFormScreen } from '../screens/booking/BookingFormScreen';
 import { BookingsListScreen } from '../screens/booking/BookingsListScreen';
+import { BookingDetailScreen } from '../screens/booking/BookingDetailScreen';
+import { BookingFormScreen } from '../screens/booking/BookingFormScreen';
 import { ProviderPublicProfileScreen } from '../screens/booking/ProviderPublicProfileScreen';
 
 // Profile Screens
@@ -56,6 +57,7 @@ import { ProviderBookingsScreen } from '../screens/provider/ProviderBookingsScre
 import { ProviderProfileScreen } from '../screens/provider/ProviderProfileScreen';
 import { ProviderServicesScreen } from '../screens/provider/ProviderServicesScreen';
 import { ProviderEarningsScreen } from '../screens/provider/ProviderEarningsScreen';
+import { ProviderChatScreen } from '../screens/provider/ProviderChatScreen';
 import { AadhaarVerificationScreen } from '../screens/auth/AadhaarVerificationScreen';
 
 // Legal Screens
@@ -65,7 +67,6 @@ import { RefundPolicyScreen } from '../screens/legal/RefundPolicyScreen';
 import { ProviderTermsScreen } from '../screens/legal/ProviderTermsScreen';
 import { SafetyPolicyScreen } from '../screens/legal/SafetyPolicyScreen';
 
-// Navigation Types
 // Navigation Types
 type RootStackParamList = {
   RoleSelection: undefined;
@@ -129,10 +130,10 @@ const Tab = createBottomTabNavigator();
 
 // Custom tab bar icon
 const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => (
-  <Ionicons 
-    name={name as any} 
-    size={24} 
-    color={focused ? THEME.accent : THEME.textMuted} 
+  <Ionicons
+    name={name as any}
+    size={24}
+    color={focused ? THEME.accent : THEME.textMuted}
   />
 );
 
@@ -290,8 +291,8 @@ function ProviderTabNavigator() {
         name="ProviderDashboard"
         component={ProviderDashboardScreen}
         options={{
-          tabBarIcon: renderDashboardIcon,
-          tabBarLabel: 'DASHBOARD',
+          tabBarIcon: renderHomeIcon, // Using Home icon for Dashboard as requested (Home)
+          tabBarLabel: 'HOME',
           headerShown: false,
         }}
       />
@@ -306,7 +307,7 @@ function ProviderTabNavigator() {
       />
       <Tab.Screen
         name="ProviderChat"
-        component={ChatScreen}
+        component={ProviderChatScreen}
         options={{
           tabBarLabel: 'CHAT',
           tabBarIcon: renderChatIcon,
@@ -314,8 +315,17 @@ function ProviderTabNavigator() {
         }}
       />
       <Tab.Screen
+        name="ProviderEarnings"
+        component={ProviderEarningsScreen}
+        options={{
+          tabBarLabel: 'EARNINGS',
+          tabBarIcon: renderEarningsIcon,
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
         name="ProviderProfile"
-        component={ProfileScreen}
+        component={ProviderProfileScreen}
         options={{
           tabBarIcon: renderProfileIcon,
           tabBarLabel: 'PROFILE',
@@ -368,7 +378,7 @@ export function AppNavigator() {
             {isProvider ? (
               <>
                 <Stack.Screen name="ProviderTabs" component={ProviderTabNavigator} options={fadeTransitionConfig} />
-                <Stack.Screen name="ProviderEditProfile" component={ProviderProfileScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderEditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderServices" component={ProviderServicesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderEarnings" component={ProviderEarningsScreen as any} options={screenTransitionConfig} />
@@ -389,6 +399,8 @@ export function AppNavigator() {
                 <Stack.Screen name="MainTabs" component={TabNavigator} options={fadeTransitionConfig} />
                 <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderPublicProfile" component={ProviderPublicProfileScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="BookingsList" component={BookingsListScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="BookingDetail" component={BookingDetailScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingForm" component={BookingFormScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />

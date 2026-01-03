@@ -54,11 +54,14 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [provider, setProvider] = useState<ServiceProvider>(initialProvider);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewStats, setReviewStats] = useState<any>(null);
 
   useEffect(() => {
     const fetchProviderDetails = async () => {
       try {
         const id = (initialProvider as any).id || initialProvider._id;
+
+        // Fetch provider details
         const response = await apiService.getProviderById(id);
         if (response.success && response.data) {
           const newData = response.data;
@@ -69,18 +72,18 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             profileImage: newData.profileImage || newData.avatar || prev.profileImage,
             bio: newData.bio || newData.about || prev.bio,
           }));
+        }
 
-          // Mock reviews if none exist (since we don't have a public reviews endpoint for providers yet)
-          if (newData.reviews && newData.reviews.length > 0) {
-            setReviews(newData.reviews);
-          } else {
-            // Generate mock reviews based on rating
-            setReviews([
-              { id: 1, name: 'Priya Sharma', rating: 5, comment: 'Excellent service! Very professional and polite.', avatar: 'https://randomuser.me/api/portraits/women/44.jpg' },
-              { id: 2, name: 'Rahul Verma', rating: 4, comment: 'Good work, arrived on time.', avatar: 'https://randomuser.me/api/portraits/men/32.jpg' },
-              { id: 3, name: 'Amit Patel', rating: 5, comment: 'Highly recommended for this job.', avatar: 'https://randomuser.me/api/portraits/men/86.jpg' }
-            ]);
+        // Fetch real reviews from API
+        try {
+          const reviewsResponse = await apiService.getProviderReviews(id);
+          if (reviewsResponse.success && reviewsResponse.data) {
+            setReviews(reviewsResponse.data.reviews || []);
+            setReviewStats(reviewsResponse.data.stats || null);
           }
+        } catch (reviewError) {
+          console.log('No reviews found for provider:', reviewError);
+          setReviews([]);
         }
       } catch (error) {
         console.log('Error fetching provider details:', error);
@@ -338,52 +341,65 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             </View>
           </FadeInView>
 
-          {/* Reviews Section - Fix Horizontal Scroll */}
+          {/* Reviews Section */}
           <FadeInView delay={500} style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Client Stories ({reviews.length})</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllLink}>See All</Text>
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>
+                Client Reviews ({reviewStats?.totalReviews || reviews.length})
+              </Text>
+              {reviews.length > 3 && (
+                <TouchableOpacity>
+                  <Text style={styles.seeAllLink}>See All</Text>
+                </TouchableOpacity>
+              )}
             </View>
-            <ScrollView
-              horizontal={true}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingRight: 24 }}
-              style={{ marginHorizontal: -24, paddingLeft: 24 }}
-              nestedScrollEnabled={true}
-              keyboardShouldPersistTaps="handled"
-            >
-              {reviews.map((review, i) => (
-                <View key={review.id || i} style={styles.reviewCard}>
-                  <View style={styles.reviewHeader}>
-                    {review.avatar ? (
-                      <Image source={{ uri: review.avatar }} style={styles.reviewerAvatar} />
-                    ) : (
+            {reviews.length > 0 ? (
+              <ScrollView
+                horizontal={true}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 24 }}
+                style={{ marginHorizontal: -24, paddingLeft: 24 }}
+                nestedScrollEnabled={true}
+                keyboardShouldPersistTaps="handled"
+              >
+                {reviews.map((review, i) => (
+                  <View key={review.id || i} style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
                       <View style={styles.reviewerAvatar}>
-                        <Text style={styles.reviewerInitials}>{review.name ? review.name.charAt(0) : 'U'}</Text>
+                        <Text style={styles.reviewerInitials}>
+                          {(review.reviewerName || review.name || 'U').charAt(0)}
+                        </Text>
                       </View>
-                    )}
-                    <View style={{ marginLeft: 10 }}>
-                      <Text style={styles.reviewerName}>{review.name || 'User'}</Text>
-                      <View style={{ flexDirection: 'row' }}>
-                        {[...Array(5)].map((_, j) => (
-                          <Ionicons
-                            key={j}
-                            name={j < (review.rating || 5) ? "star" : "star-outline"}
-                            size={10}
-                            color="#FBBF24"
-                          />
-                        ))}
+                      <View style={{ marginLeft: 10, flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Text style={styles.reviewerName}>
+                            {review.reviewerName || review.name || 'User'}
+                          </Text>
+                          {review.isVerifiedPurchase && (
+                            <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                          )}
+                        </View>
+                        <View style={{ flexDirection: 'row' }}>
+                          {[...Array(5)].map((_, j) => (
+                            <Ionicons
+                              key={j}
+                              name={j < (review.rating || 5) ? "star" : "star-outline"}
+                              size={10}
+                              color="#FBBF24"
+                            />
+                          ))}
+                        </View>
                       </View>
                     </View>
+                    <Text style={styles.reviewComment} numberOfLines={3}>
+                      {review.comment || 'Great service!'}
+                    </Text>
                   </View>
-                  <Text style={styles.reviewComment} numberOfLines={3}>
-                    {review.comment || review.text || 'Excellent service! Arrived on time and was very professional. Highly recommended.'}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.noReviewsText}>No reviews yet. Be the first to review!</Text>
+            )}
           </FadeInView>
         </View>
       </ScrollView>
@@ -726,6 +742,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: '#475569',
+  },
+  noReviewsText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingVertical: 20,
+    fontStyle: 'italic',
   },
 
   // Bottom Bar - Fixed to bottom

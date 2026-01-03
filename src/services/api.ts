@@ -691,7 +691,37 @@ class ApiService {
    * Get current authenticated homeowner profile
    * Website uses this for user dashboard
    */
-  async getProfile(): Promise<{ user: User }> {
+  async getProfile(role: 'homeowner' | 'provider' = 'homeowner'): Promise<{ user: User }> {
+    if (role === 'provider') {
+      const response = await this.client.get('/provider/profile');
+
+      // Debugging logs (commented out to reduce spam)
+      // console.log('📡 Provider profile response structure:', {
+      //   hasData: !!response.data,
+      //   hasDataData: !!response.data?.data,
+      //   hasProvider: !!response.data?.provider,
+      //   hasUser: !!response.data?.user,
+      //   keys: Object.keys(response.data || {})
+      // });
+
+      // Try multiple possible response structures
+      const providerData = response.data.data || response.data.provider || response.data.user || response.data;
+
+      if (!providerData) {
+        console.error('❌ No provider data found in response');
+        throw new Error('No provider data in response');
+      }
+
+      // console.log('✅ Extracted provider data:', {
+      //   id: providerData.id || providerData._id,
+      //   email: providerData.email,
+      //   name: providerData.name
+      // });
+      console.log('✅ Provider profile loaded. Has bio:', !!providerData.bio);
+
+      return { user: { ...providerData, role: 'provider' } as User };
+    }
+
     const response = await this.client.get('/homeowner/me');
 
     // Website response: { success, homeowner: {...} }
@@ -1237,6 +1267,49 @@ class ApiService {
     booking: Booking;
   }>> {
     const response = await this.client.get(`/bookings/${bookingId}`); // Fixed regex error
+    return response.data;
+  }
+
+  // ====================================================================
+  // REVIEW ENDPOINTS
+  // ====================================================================
+
+  /**
+   * POST /api/reviews
+   * Create a review for a completed booking
+   */
+  async createReview(data: {
+    bookingId: string;
+    rating: number;
+    comment?: string;
+    photos?: string[];
+  }): Promise<ApiResponse<{ reviewId: string; rating: number; providerRating: number; providerTotalReviews: number }>> {
+    const response = await this.client.post('/reviews', data);
+    return response.data;
+  }
+
+  /**
+   * GET /api/reviews/provider/:id
+   * Get all reviews for a specific provider
+   */
+  async getProviderReviews(providerId: string): Promise<ApiResponse<{
+    reviews: any[];
+    stats: {
+      totalReviews: number;
+      averageRating: number;
+      ratingDistribution: { [key: number]: number };
+    };
+  }>> {
+    const response = await this.client.get(`/reviews/provider/${providerId}`);
+    return response.data;
+  }
+
+  /**
+   * GET /api/reviews/pending
+   * Get bookings that can be rated by the authenticated user
+   */
+  async getPendingRatings(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/reviews/pending');
     return response.data;
   }
 }
