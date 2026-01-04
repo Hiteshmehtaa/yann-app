@@ -89,9 +89,9 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           const totalSpent = bookings.reduce((sum: number, booking: any) => {
             return sum + (booking.totalPrice || booking.price || 0);
           }, 0);
-          
+
           const ratedBookings = bookings.filter((b: any) => b.rating && b.rating > 0);
-          const avgRating = ratedBookings.length > 0 
+          const avgRating = ratedBookings.length > 0
             ? ratedBookings.reduce((sum: number, b: any) => sum + b.rating, 0) / ratedBookings.length
             : 0;
 
@@ -108,9 +108,9 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           const totalEarned = bookings.reduce((sum: number, booking: any) => {
             return sum + (booking.totalPrice || booking.price || 0);
           }, 0);
-          
+
           const ratedBookings = bookings.filter((b: any) => b.rating && b.rating > 0);
-          const avgRating = ratedBookings.length > 0 
+          const avgRating = ratedBookings.length > 0
             ? ratedBookings.reduce((sum: number, b: any) => sum + b.rating, 0) / ratedBookings.length
             : 0;
 
@@ -159,7 +159,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const handleImagePick = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Please grant camera roll permissions.');
         return;
@@ -177,13 +177,22 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         setIsUploadingAvatar(true);
         const mimeType = result.assets[0].uri.endsWith('png') ? 'image/png' : 'image/jpeg';
         const base64Image = `data:${mimeType};base64,${result.assets[0].base64}`;
-        
+
         const response = await apiService.uploadAvatar(base64Image);
-        
+
         if (response.success && response.data) {
-          const newAvatar = response.data.avatar || response.data.profileImage;
-          updateUser({ avatar: newAvatar, profileImage: newAvatar });
-          Alert.alert('Success', 'Profile picture updated successfully!');
+          // Fetch fresh profile data from server to ensure avatar is persisted
+          const role = user?.role || 'homeowner';
+          const profileResponse = await apiService.getProfile(role);
+          if (profileResponse.user) {
+            updateUser(profileResponse.user);
+            Alert.alert('Success', 'Profile picture updated successfully!');
+          } else {
+            // Fallback to response data if profile fetch fails
+            const newAvatar = response.data.avatar || response.data.profileImage;
+            updateUser({ avatar: newAvatar, profileImage: newAvatar });
+            Alert.alert('Success', 'Profile picture updated successfully!');
+          }
         } else {
           throw new Error(response.message);
         }
@@ -210,10 +219,10 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         console.error('User ID missing');
         return;
       }
-      
+
       const response = await apiService.verifyIdentity(userId, user.role || 'homeowner');
       console.log('Verification response:', response);
-      
+
       if (response.success && response.url) {
         console.log('Opening browser:', response.url);
         await WebBrowser.openBrowserAsync(response.url);
@@ -290,7 +299,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Clean Professional Header */}
       <View style={[styles.cleanHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.headerIconButton}
           onPress={() => navigation.goBack()}
         >
@@ -302,7 +311,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={[
           styles.content,
           { paddingBottom: isTablet ? 140 : 120 }
@@ -315,7 +324,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           {/* Premium Profile Card */}
           <View style={[styles.profileCard, { backgroundColor: colors.cardBg }]}>
             {/* Avatar with Gradient Ring */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleImagePick}
               disabled={isUploadingAvatar}
               style={styles.avatarWrapper}
@@ -330,8 +339,8 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                   {isUploadingAvatar ? (
                     <ActivityIndicator size="large" color={colors.primary} />
                   ) : user?.avatar || user?.profileImage ? (
-                    <Image 
-                      source={{ uri: user.avatar || user.profileImage }} 
+                    <Image
+                      source={{ uri: user.avatar || user.profileImage }}
                       style={styles.avatarImage}
                     />
                   ) : (
@@ -355,7 +364,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 </LinearGradient>
               </View>
             </TouchableOpacity>
-            
+
             {/* User Info */}
             <View style={styles.profileInfo}>
               <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'User'}</Text>
@@ -400,7 +409,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                     <Ionicons name={item.icon} size={20} color={colors.primary} />
                   </View>
                   <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
-                  {item.subtitle ? <Text style={{marginLeft: 10, color: colors.textSecondary}}>{item.subtitle}</Text> : null}
+                  {item.subtitle ? <Text style={{ marginLeft: 10, color: colors.textSecondary }}>{item.subtitle}</Text> : null}
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </TouchableOpacity>

@@ -119,6 +119,9 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleImagePick = async () => {
     try {
+      console.log('📸 Starting image pick...');
+      // Alert.alert('Debug', 'Starting image pick flow'); // Uncomment if needed to verify tap
+
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Please allow access to your photos.');
@@ -133,22 +136,61 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
         base64: true,
       });
 
+      console.log('📸 Image picker result:', {
+        canceled: result.canceled,
+        hasAssets: !!result.assets,
+        hasBase64: result.assets?.[0]?.base64 ? 'yes' : 'no'
+      });
+
       if (!result.canceled && result.assets[0].base64) {
         setIsUploadingAvatar(true);
         const mimeType = result.assets[0].uri.endsWith('png') ? 'image/png' : 'image/jpeg';
         const base64Image = `data:${mimeType};base64,${result.assets[0].base64}`;
 
+        console.log('📸 Image details:', {
+          mimeType,
+          sizeKB: Math.round(base64Image.length / 1024),
+          uri: result.assets[0].uri
+        });
+
+        console.log('🔐 Calling uploadAvatar...');
         const response = await apiService.uploadAvatar(base64Image);
+        console.log('✅ Upload response success:', response.success);
 
         if (response.success && response.data) {
-          const newAvatar = response.data.avatar || response.data.profileImage;
-          updateUser({ ...user, avatar: newAvatar, profileImage: newAvatar });
-          Alert.alert('Success', 'Profile picture updated!');
+          const avatarLen = response.data.avatar ? response.data.avatar.length : 0;
+          console.log(`✅ Upload returned avatar length: ${avatarLen}`);
+
+          console.log('🔄 Fetching fresh profile...');
+          // Fetch fresh profile data from server to ensure avatar is persisted
+          const profileResponse = await apiService.getProfile('provider');
+          console.log('✅ Profile response:', {
+            hasUser: !!profileResponse.user,
+            avatarLen: profileResponse.user?.avatar ? profileResponse.user.avatar.length : 0,
+            profileImageLen: profileResponse.user?.profileImage ? profileResponse.user.profileImage.length : 0
+          });
+
+          if (profileResponse.user) {
+            updateUser(profileResponse.user);
+            Alert.alert('Success', 'Profile picture updated!');
+          } else {
+            // Fallback to response data if profile fetch fails
+            const newAvatar = response.data.avatar || response.data.profileImage;
+            updateUser({ ...user, avatar: newAvatar, profileImage: newAvatar });
+            Alert.alert('Success', 'Profile picture updated!');
+          }
         } else {
+          console.error('❌ Upload failed:', response.message);
           throw new Error(response.message);
         }
       }
     } catch (error: any) {
+      console.error('❌ Image pick error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       Alert.alert('Upload Failed', error.message || 'Failed to upload profile picture.');
     } finally {
       setIsUploadingAvatar(false);
