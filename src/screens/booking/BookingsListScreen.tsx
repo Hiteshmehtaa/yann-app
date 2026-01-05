@@ -26,6 +26,8 @@ import { EmptyStateAnimation } from '../../components/animations';
 import { EmptyState } from '../../components/EmptyState';
 import { TabBar } from '../../components/ui/TabBar';
 import { CountdownTimer } from '../../components/ui/CountdownTimer';
+import { RatingModal } from '../../components/RatingModal';
+import { Alert } from 'react-native';
 
 // Gradient presets for status
 const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
@@ -55,6 +57,39 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('ongoing');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedBookingForRating, setSelectedBookingForRating] = useState<Booking | null>(null);
+
+  const handleRateBooking = (booking: Booking) => {
+    setSelectedBookingForRating(booking);
+    setShowRatingModal(true);
+  };
+
+  const handleSubmitRating = async (rating: number, comment: string) => {
+    if (!selectedBookingForRating) return;
+
+    try {
+      await apiService.createReview({
+        bookingId: selectedBookingForRating._id,
+        rating,
+        comment,
+      });
+
+      Alert.alert('Success', 'Thank you for your feedback!');
+
+      // Update local state to mark as rated
+      setBookings(prev => prev.map(b =>
+        b._id === selectedBookingForRating._id
+          ? { ...b, hasBeenRated: true }
+          : b
+      ));
+
+      setShowRatingModal(false);
+      setSelectedBookingForRating(null);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to submit rating');
+    }
+  };
 
   /**
    * Fetch bookings from backend (like website - GET /api/bookings)
@@ -217,6 +252,25 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
               style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}
             />
           </View>
+        ) : activeTab === 'completed' && !item.hasBeenRated ? (
+          <TouchableOpacity
+            style={styles.rateButton}
+            onPress={(e) => {
+              e.stopPropagation(); // Prevent navigating to detail when clicking rate
+              handleRateBooking(item);
+            }}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#6366F1', '#4F46E5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.rateButtonGradient}
+            >
+              <Ionicons name="star" size={16} color="#FFFFFF" />
+              <Text style={styles.rateButtonText}>Rate Experience</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         ) : null}
       </TouchableOpacity>
     );
@@ -341,6 +395,18 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Rating Modal */}
+      <RatingModal
+        visible={showRatingModal}
+        onClose={() => {
+          setShowRatingModal(false);
+          setSelectedBookingForRating(null);
+        }}
+        onSubmit={handleSubmitRating}
+        providerName={(selectedBookingForRating as any)?.providerName || 'Provider'}
+        serviceName={selectedBookingForRating?.serviceName || 'Service'}
+      />
     </SafeAreaView>
   );
 };
@@ -704,5 +770,24 @@ const styles = StyleSheet.create({
   countdownLabel: {
     fontSize: 12,
     color: COLORS.textSecondary,
+  },
+  rateButton: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.md, // Add bottom margin since it's inside the card
+    borderRadius: RADIUS.medium,
+    overflow: 'hidden',
+    marginTop: SPACING.sm,
+  },
+  rateButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  rateButtonText: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

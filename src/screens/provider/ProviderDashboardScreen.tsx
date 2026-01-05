@@ -157,7 +157,8 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
           provider: response.provider || response.data?.provider,
           stats: response.stats || response.data?.stats,
           pendingRequests: response.pendingRequests || response.data?.pendingRequests || [],
-          acceptedBookings: response.acceptedBookings || response.data?.acceptedBookings || [],
+          // Deduplicate accepted bookings
+          acceptedBookings: Array.from(new Map((response.acceptedBookings || response.data?.acceptedBookings || []).map((b: any) => [b.id || b._id, b])).values()),
         });
       }
     } catch (err: any) {

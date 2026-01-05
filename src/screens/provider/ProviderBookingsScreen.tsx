@@ -57,7 +57,7 @@ export const ProviderBookingsScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
-  
+
   // Navigation Modal State
   const [navModalVisible, setNavModalVisible] = useState(false);
   const [selectedBookingForNav, setSelectedBookingForNav] = useState<ProviderBooking | null>(null);
@@ -71,7 +71,7 @@ export const ProviderBookingsScreen = () => {
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
   const [currentJobSessionId, setCurrentJobSessionId] = useState<string | null>(null);
   const [otpAction, setOtpAction] = useState<'start' | 'end' | null>(null);
-  
+
   // Job Session State
   const [jobSessions, setJobSessions] = useState<{ [bookingId: string]: any }>({});
 
@@ -88,20 +88,20 @@ export const ProviderBookingsScreen = () => {
       setError(null);
       const providerId = user?._id || user?.id;
       const email = user?.email;
-      
+
       console.log('🔍 Fetching bookings for provider:', { providerId, email, name: user?.name });
-      
+
       const response: any = await apiService.getProviderRequests(providerId, email);
-      
+
       if (response.success) {
         const formatDate = (dateStr: string) => {
           if (!dateStr || dateStr === 'N/A') return 'N/A';
           try {
             const date = new Date(dateStr);
-            return date.toLocaleDateString('en-IN', { 
-              day: '2-digit', 
-              month: '2-digit', 
-              year: 'numeric' 
+            return date.toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
             });
           } catch {
             return dateStr;
@@ -109,10 +109,10 @@ export const ProviderBookingsScreen = () => {
         };
 
         const getTimestamp = (dateStr: string, timeStr?: string) => {
-            try {
-                const date = new Date(dateStr);
-                return date.getTime();
-            } catch { return 0; }
+          try {
+            const date = new Date(dateStr);
+            return date.getTime();
+          } catch { return 0; }
         };
 
         const mapBooking = (b: any, statusOverride?: string) => ({
@@ -138,11 +138,14 @@ export const ProviderBookingsScreen = () => {
 
         const pendingRequests = (response.pendingRequests || []).map((b: any) => mapBooking(b, 'pending'));
         const acceptedBookings = (response.acceptedBookings || []).map((b: any) => mapBooking(b));
-        
+
         const allBookings = [...pendingRequests, ...acceptedBookings];
-        
-        setBookings(allBookings);
-        
+
+        // Deduplicate bookings
+        const uniqueBookings = Array.from(new Map(allBookings.map(b => [b.id, b])).values());
+
+        setBookings(uniqueBookings);
+
         // Populate job sessions
         const sessionsMap: { [key: string]: any } = {};
         acceptedBookings.forEach((b: any) => {
@@ -150,7 +153,7 @@ export const ProviderBookingsScreen = () => {
             sessionsMap[b.id] = b.jobSession;
           }
         });
-        
+
         if (Object.keys(sessionsMap).length > 0) {
           setJobSessions(prev => ({ ...prev, ...sessionsMap }));
         }
@@ -167,24 +170,24 @@ export const ProviderBookingsScreen = () => {
   };
 
   const getSortedBookings = (list: ProviderBooking[]) => {
-      return list.sort((a, b) => {
-          // Priority 1: In Progress should be at the very top
-          if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
-          if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
+    return list.sort((a, b) => {
+      // Priority 1: In Progress should be at the very top
+      if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
+      if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
 
-          // Priority 2: Accepted (Upcoming) - SOONEST FIRST
-          if (a.status === 'accepted' && b.status === 'accepted') {
-             return (a.sortableDate || 0) - (b.sortableDate || 0); // Ascending
-          }
+      // Priority 2: Accepted (Upcoming) - SOONEST FIRST
+      if (a.status === 'accepted' && b.status === 'accepted') {
+        return (a.sortableDate || 0) - (b.sortableDate || 0); // Ascending
+      }
 
-          // Priority 3: Pending - NEWEST FIRST
-          if (a.status === 'pending' && b.status === 'pending') {
-             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Descending
-          }
+      // Priority 3: Pending - NEWEST FIRST
+      if (a.status === 'pending' && b.status === 'pending') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Descending
+      }
 
-          // Priority 4: Completed/Cancelled - NEWEST FIRST
-          return (b.sortableDate || 0) - (a.sortableDate || 0);
-      });
+      // Priority 4: Completed/Cancelled - NEWEST FIRST
+      return (b.sortableDate || 0) - (a.sortableDate || 0);
+    });
   };
 
   const filterBookings = () => {
@@ -204,7 +207,7 @@ export const ProviderBookingsScreen = () => {
 
   const openLocationNavigation = (booking: ProviderBooking) => {
     const { latitude, longitude, address } = booking;
-    
+
     if (!latitude || !longitude) {
       const addressQuery = encodeURIComponent(address);
       const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${addressQuery}`;
@@ -215,52 +218,52 @@ export const ProviderBookingsScreen = () => {
     setSelectedBookingForNav(booking);
     setNavModalVisible(true);
   };
-  
+
   const handleNavigationAppSelect = async (appName: 'google' | 'uber' | 'ola' | 'rapido') => {
-      if (!selectedBookingForNav || !selectedBookingForNav.latitude || !selectedBookingForNav.longitude) return;
-      
-      const { latitude, longitude } = selectedBookingForNav;
-      
-      let url = '';
-      
-      switch (appName) {
-          case 'google':
-              url = Platform.select({
-                ios: `maps://app?daddr=${latitude},${longitude}`,
-                android: `google.navigation:q=${latitude},${longitude}`,
-              }) || '';
-              if (!url) url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
-              break;
-          case 'uber':
-              url = `uber://?action=setPickup&pickup=my_location&dropoff[latitude]=${latitude}&dropoff[longitude]=${longitude}`;
-              break;
-          case 'ola':
-               url = `ola://app/launch?lat=${latitude}&lng=${longitude}`;
-              break;
-          case 'rapido':
-              url = `rapido://destination?lat=${latitude}&lng=${longitude}`;
-              break;
+    if (!selectedBookingForNav || !selectedBookingForNav.latitude || !selectedBookingForNav.longitude) return;
+
+    const { latitude, longitude } = selectedBookingForNav;
+
+    let url = '';
+
+    switch (appName) {
+      case 'google':
+        url = Platform.select({
+          ios: `maps://app?daddr=${latitude},${longitude}`,
+          android: `google.navigation:q=${latitude},${longitude}`,
+        }) || '';
+        if (!url) url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+        break;
+      case 'uber':
+        url = `uber://?action=setPickup&pickup=my_location&dropoff[latitude]=${latitude}&dropoff[longitude]=${longitude}`;
+        break;
+      case 'ola':
+        url = `ola://app/launch?lat=${latitude}&lng=${longitude}`;
+        break;
+      case 'rapido':
+        url = `rapido://destination?lat=${latitude}&lng=${longitude}`;
+        break;
+    }
+
+    setNavModalVisible(false);
+
+    if (!url) return;
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        if (appName === 'google') {
+          await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`);
+        } else {
+          Alert.alert('App not installed', `Please install ${appName.charAt(0).toUpperCase() + appName.slice(1)} to use this feature.`);
+        }
       }
-
-      setNavModalVisible(false);
-
-      if (!url) return;
-
-      try {
-          const supported = await Linking.canOpenURL(url);
-          if (supported) {
-              await Linking.openURL(url);
-          } else {
-              if (appName === 'google') {
-                   await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`);
-              } else {
-                   Alert.alert('App not installed', `Please install ${appName.charAt(0).toUpperCase() + appName.slice(1)} to use this feature.`);
-              }
-          }
-      } catch (err) {
-          console.error("Error opening URL:", err);
-           Alert.alert('Error', 'Could not open the selected app.');
-      }
+    } catch (err) {
+      console.error("Error opening URL:", err);
+      Alert.alert('Error', 'Could not open the selected app.');
+    }
   };
 
   const handleAcceptBooking = async (bookingId: string) => {
@@ -306,7 +309,7 @@ export const ProviderBookingsScreen = () => {
         await handleRejectBooking(bookingId);
       } else {
         const response = await apiService.updateBookingStatus(
-          bookingId, 
+          bookingId,
           newStatus as 'in_progress' | 'completed' | 'cancelled',
           user?._id || user?.id
         );
@@ -474,165 +477,165 @@ export const ProviderBookingsScreen = () => {
     const isAccepted = booking.status === 'accepted';
     const displayStatus = isAccepted ? 'UPCOMING' : booking.status.toUpperCase().replace('_', ' ');
     const statusColor = getStatusColor(booking.status);
-    
+
     // Check if this is the "Next Job"
     const isNextJob = isAccepted && filteredBookings.find(b => b.status === 'accepted')?.id === booking.id;
 
     // --- STANDARD CARD DESIGN (Accepted, In Progress, Completed) ---
     return (
       <View key={booking.id} style={[styles.bookingCard, isNextJob && styles.nextJobCard]}>
-        
+
         {isNextJob && (
-            <View style={styles.nextJobBadge}>
-                <Ionicons name="flash" size={12} color="#FFF" />
-                <Text style={styles.nextJobText}>NEXT JOB</Text>
-            </View>
+          <View style={styles.nextJobBadge}>
+            <Ionicons name="flash" size={12} color="#FFF" />
+            <Text style={styles.nextJobText}>NEXT JOB</Text>
+          </View>
         )}
 
         <View style={[styles.cardHeader, isNextJob && { paddingTop: 24 }]}>
-            <View style={styles.dateContainer}>
-                <Ionicons name="calendar" size={16} color={COLORS.primary} />
-                <Text style={styles.dateText}>{booking.scheduledDate} • {booking.scheduledTime}</Text>
-            </View>
-             <View style={[styles.statusBadge, { backgroundColor: statusColor + '10' }]}>
-                <Ionicons name={getStatusIcon(booking.status) as any} size={12} color={statusColor} />
-                <Text style={[styles.statusText, { color: statusColor }]}>
-                  {displayStatus}
-                </Text>
-            </View>
+          <View style={styles.dateContainer}>
+            <Ionicons name="calendar" size={16} color={COLORS.primary} />
+            <Text style={styles.dateText}>{booking.scheduledDate} • {booking.scheduledTime}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor + '10' }]}>
+            <Ionicons name={getStatusIcon(booking.status) as any} size={12} color={statusColor} />
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {displayStatus}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.cardBody}>
-            <View style={styles.serviceSection}>
-                <Text style={styles.serviceName}>{booking.serviceName}</Text>
-                <Text style={styles.serviceCategory}>{booking.serviceCategory} Service</Text>
-            </View>
+          <View style={styles.serviceSection}>
+            <Text style={styles.serviceName}>{booking.serviceName}</Text>
+            <Text style={styles.serviceCategory}>{booking.serviceCategory} Service</Text>
+          </View>
 
-            <View style={styles.customerSection}>
-                <View style={[styles.customerAvatar, { backgroundColor: booking.customerAvatar ? 'transparent' : '#DBEAFE' }]}>
-                    {booking.customerAvatar ? (
-                        <Image 
-                            source={{ uri: booking.customerAvatar }} 
-                            style={{ width: 42, height: 42, borderRadius: 21 }} 
-                        />
-                    ) : (
-                        <Text style={styles.customerInitial}>
-                            {booking.customerName.charAt(0).toUpperCase()}
-                        </Text>
-                    )}
-                </View>
-                <View style={styles.customerInfo}>
-                    <Text style={styles.customerName}>{booking.customerName}</Text>
-                    <View style={styles.addressRow}>
-                        <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-                        <Text style={styles.addressText} numberOfLines={2}>
-                             {booking.address && booking.address !== 'N/A' ? booking.address : 'Location available in details'}
-                        </Text>
-                    </View>
-                </View>
+          <View style={styles.customerSection}>
+            <View style={[styles.customerAvatar, { backgroundColor: booking.customerAvatar ? 'transparent' : '#DBEAFE' }]}>
+              {booking.customerAvatar ? (
+                <Image
+                  source={{ uri: booking.customerAvatar }}
+                  style={{ width: 42, height: 42, borderRadius: 21 }}
+                />
+              ) : (
+                <Text style={styles.customerInitial}>
+                  {booking.customerName.charAt(0).toUpperCase()}
+                </Text>
+              )}
             </View>
-
-            <View style={styles.detailsGrid}>
-                <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Payment</Text>
-                    <Text style={styles.detailValue}>
-                        {booking.paymentMethod?.toUpperCase()}
-                        {booking.paymentStatus === 'paid' && <Text style={{color: COLORS.success}}> ✓</Text>}
-                    </Text>
-                </View>
-                <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Amount</Text>
-                    <Text style={[styles.detailValue, { color: COLORS.primary }]}>₹{booking.amount}</Text>
-                </View>
+            <View style={styles.customerInfo}>
+              <Text style={styles.customerName}>{booking.customerName}</Text>
+              <View style={styles.addressRow}>
+                <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                <Text style={styles.addressText} numberOfLines={2}>
+                  {booking.address && booking.address !== 'N/A' ? booking.address : 'Location available in details'}
+                </Text>
+              </View>
             </View>
+          </View>
 
-            {booking.notes ? (
-                <View style={styles.notesBox}>
-                    <Text style={styles.notesText}>" {booking.notes} "</Text>
-                </View>
-            ) : null}
-            
-             {booking.status === 'in_progress' && jobSessions[booking.id] && (
-               <View style={styles.timerWrapper}>
-                 <JobTimer
-                   startTime={new Date(jobSessions[booking.id].startTime)}
-                   expectedDuration={jobSessions[booking.id].expectedDuration}
-                 />
-               </View>
-             )}
-             
-             {booking.status === 'completed' && jobSessions[booking.id] && jobSessions[booking.id].overtimeDuration > 0 && (
-                <View style={{ marginTop: 12 }}>
-                    <OvertimeBreakdown
-                      duration={jobSessions[booking.id].duration || 0}
-                      expectedDuration={jobSessions[booking.id].expectedDuration || 480}
-                      overtimeDuration={jobSessions[booking.id].overtimeDuration || 0}
-                      baseHourlyRate={jobSessions[booking.id].baseHourlyRate || 0}
-                      overtimeRate={jobSessions[booking.id].overtimeRate || 0}
-                      overtimeCharge={jobSessions[booking.id].overtimeCharge || 0}
-                      totalCharge={jobSessions[booking.id].totalCharge || booking.amount}
-                    />
-                </View>
-             )}
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Payment</Text>
+              <Text style={styles.detailValue}>
+                {booking.paymentMethod?.toUpperCase()}
+                {booking.paymentStatus === 'paid' && <Text style={{ color: COLORS.success }}> ✓</Text>}
+              </Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Amount</Text>
+              <Text style={[styles.detailValue, { color: COLORS.primary }]}>₹{booking.amount}</Text>
+            </View>
+          </View>
+
+          {booking.notes ? (
+            <View style={styles.notesBox}>
+              <Text style={styles.notesText}>" {booking.notes} "</Text>
+            </View>
+          ) : null}
+
+          {booking.status === 'in_progress' && jobSessions[booking.id] && (
+            <View style={styles.timerWrapper}>
+              <JobTimer
+                startTime={new Date(jobSessions[booking.id].startTime)}
+                expectedDuration={jobSessions[booking.id].expectedDuration}
+              />
+            </View>
+          )}
+
+          {booking.status === 'completed' && jobSessions[booking.id] && jobSessions[booking.id].overtimeDuration > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <OvertimeBreakdown
+                duration={jobSessions[booking.id].duration || 0}
+                expectedDuration={jobSessions[booking.id].expectedDuration || 480}
+                overtimeDuration={jobSessions[booking.id].overtimeDuration || 0}
+                baseHourlyRate={jobSessions[booking.id].baseHourlyRate || 0}
+                overtimeRate={jobSessions[booking.id].overtimeRate || 0}
+                overtimeCharge={jobSessions[booking.id].overtimeCharge || 0}
+                totalCharge={jobSessions[booking.id].totalCharge || booking.amount}
+              />
+            </View>
+          )}
         </View>
 
         <View style={styles.cardFooter}>
-             {booking.status === 'pending' && (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                     <TouchableOpacity
-                      style={[styles.secondaryButton, { flex: 1, borderColor: '#EF4444' }]}
-                      onPress={() => handleStatusChange(booking.id, 'cancelled')}
-                    >
-                      <Text style={[styles.secondaryButtonText, { color: '#EF4444' }]}>Reject</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.primaryButton, { flex: 1, backgroundColor: COLORS.primary }]}
-                      onPress={() => handleStatusChange(booking.id, 'accepted')}
-                    >
-                      <Text style={styles.primaryButtonText}>Accept Booking</Text>
-                    </TouchableOpacity>
-                </View>
-             )}
+          {booking.status === 'pending' && (
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={[styles.secondaryButton, { flex: 1, borderColor: '#EF4444' }]}
+                onPress={() => handleStatusChange(booking.id, 'cancelled')}
+              >
+                <Text style={[styles.secondaryButtonText, { color: '#EF4444' }]}>Reject</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryButton, { flex: 1, backgroundColor: COLORS.primary }]}
+                onPress={() => handleStatusChange(booking.id, 'accepted')}
+              >
+                <Text style={styles.primaryButtonText}>Accept Booking</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-             {booking.status === 'accepted' && (
-                 <View style={{ gap: 12 }}>
+          {booking.status === 'accepted' && (
+            <View style={{ gap: 12 }}>
 
-                    <TouchableOpacity 
-                        style={styles.navigateButton}
-                        onPress={() => openLocationNavigation(booking)}
-                    >
-                        <Ionicons name="navigate" size={18} color={COLORS.primary} />
-                        <Text style={styles.navigateButtonText}>Navigate to Location</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[styles.primaryButton, { backgroundColor: '#2563EB' }]}
-                      onPress={() => handleStartJob(booking.id)}
-                    >
-                        <Ionicons name="play" size={18} color="white" />
-                        <Text style={styles.primaryButtonText}>Start Job</Text>
-                    </TouchableOpacity>
-                 </View>
-             )}
-             
-             {booking.status === 'in_progress' && (
-                 <TouchableOpacity
-                      style={[styles.primaryButton, { backgroundColor: '#059669' }]}
-                      onPress={() => handleEndJob(booking.id)}
-                    >
-                        <Ionicons name="checkmark-done" size={18} color="white" />
-                        <Text style={styles.primaryButtonText}>Complete Job</Text>
-                    </TouchableOpacity>
-             )}
-             
-             {booking.status === 'completed' && (
-                 <View style={{ alignItems: 'center', paddingBottom: 12 }}>
-                      <View style={[styles.statusBadge, { backgroundColor: '#ECFDF5' }]}>
-                        <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                        <Text style={[styles.statusText, { color: '#059669' }]}>COMPLETED</Text>
-                      </View>
-                 </View>
-             )}
+              <TouchableOpacity
+                style={styles.navigateButton}
+                onPress={() => openLocationNavigation(booking)}
+              >
+                <Ionicons name="navigate" size={18} color={COLORS.primary} />
+                <Text style={styles.navigateButtonText}>Navigate to Location</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: '#2563EB' }]}
+                onPress={() => handleStartJob(booking.id)}
+              >
+                <Ionicons name="play" size={18} color="white" />
+                <Text style={styles.primaryButtonText}>Start Job</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {booking.status === 'in_progress' && (
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: '#059669' }]}
+              onPress={() => handleEndJob(booking.id)}
+            >
+              <Ionicons name="checkmark-done" size={18} color="white" />
+              <Text style={styles.primaryButtonText}>Complete Job</Text>
+            </TouchableOpacity>
+          )}
+
+          {booking.status === 'completed' && (
+            <View style={{ alignItems: 'center', paddingBottom: 12 }}>
+              <View style={[styles.statusBadge, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                <Text style={[styles.statusText, { color: '#059669' }]}>COMPLETED</Text>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -661,10 +664,10 @@ export const ProviderBookingsScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -673,52 +676,52 @@ export const ProviderBookingsScreen = () => {
         <Text style={styles.headerTitle}>My Bookings</Text>
         <View style={styles.headerSpacer} />
       </View>
-      
-       <View style={styles.filterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {renderFilterChip('All', 'all', bookings.length)}
-            {renderFilterChip('New', 'pending', pendingCount)}
-            {renderFilterChip('Upcoming', 'accepted', acceptedCount)}
-            {renderFilterChip('Active', 'in_progress', inProgressCount)}
-            {renderFilterChip('History', 'completed', completedCount)}
-          </ScrollView>
-        </View>
+
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {renderFilterChip('All', 'all', bookings.length)}
+          {renderFilterChip('New', 'pending', pendingCount)}
+          {renderFilterChip('Upcoming', 'accepted', acceptedCount)}
+          {renderFilterChip('Active', 'in_progress', inProgressCount)}
+          {renderFilterChip('History', 'completed', completedCount)}
+        </ScrollView>
+      </View>
 
       <View style={styles.container}>
-      {error && (
-        <View style={styles.errorBanner}>
-          <Ionicons name="alert-circle" size={20} color="#DC2626" />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        bounces={true}
-        alwaysBounceVertical={true}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.primary}
-            colors={[COLORS.primary]}
-          />
-        }
-      >
-        {filteredBookings.length === 0 ? (
-          <View style={styles.emptyState}>
-            <EmptyState
-              title={activeFilter === 'all' ? 'No bookings yet' : `No ${activeFilter.replace('_', ' ')} bookings`}
-              subtitle={activeFilter === 'all' 
-                ? 'Bookings will appear here when customers request your services' 
-                : `You have no ${activeFilter.replace('_', ' ')} bookings at the moment`}
-            />
+        {error && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={20} color="#DC2626" />
+            <Text style={styles.errorText}>{error}</Text>
           </View>
-        ) : (
-          filteredBookings.map((b, i) => renderBookingCard(b, i))
         )}
-      </ScrollView>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          bounces={true}
+          alwaysBounceVertical={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.primary}
+              colors={[COLORS.primary]}
+            />
+          }
+        >
+          {filteredBookings.length === 0 ? (
+            <View style={styles.emptyState}>
+              <EmptyState
+                title={activeFilter === 'all' ? 'No bookings yet' : `No ${activeFilter.replace('_', ' ')} bookings`}
+                subtitle={activeFilter === 'all'
+                  ? 'Bookings will appear here when customers request your services'
+                  : `You have no ${activeFilter.replace('_', ' ')} bookings at the moment`}
+              />
+            </View>
+          ) : (
+            filteredBookings.map((b, i) => renderBookingCard(b, i))
+          )}
+        </ScrollView>
       </View>
 
       {/* Navigation Modal */}
@@ -728,55 +731,55 @@ export const ProviderBookingsScreen = () => {
         animationType="slide"
         onRequestClose={() => setNavModalVisible(false)}
       >
-        <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setNavModalVisible(false)}
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setNavModalVisible(false)}
         >
-            <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
-                <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Navigate to Location</Text>
-                     <TouchableOpacity onPress={() => setNavModalVisible(false)}>
-                        <Ionicons name="close" size={24} color="#6B7280" />
-                    </TouchableOpacity>
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Navigate to Location</Text>
+              <TouchableOpacity onPress={() => setNavModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>Choose an app to start navigation</Text>
+
+            <View style={styles.navOptions}>
+              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('google')}>
+                <View style={[styles.navIconBox, { backgroundColor: '#E8F5E9' }]}>
+                  <Ionicons name="map" size={24} color="#4CAF50" />
                 </View>
-                <Text style={styles.modalSubtitle}>Choose an app to start navigation</Text>
-                
-                <View style={styles.navOptions}>
-                    <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('google')}>
-                        <View style={[styles.navIconBox, { backgroundColor: '#E8F5E9' }]}>
-                             <Ionicons name="map" size={24} color="#4CAF50" />
-                        </View>
-                        <Text style={styles.navOptionText}>Google Maps</Text>
-                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
+                <Text style={styles.navOptionText}>Google Maps</Text>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('uber')}>
-                         <View style={[styles.navIconBox, { backgroundColor: '#F3F4F6' }]}>
-                             <Text style={{fontWeight: '900', fontSize: 18}}>U</Text>
-                        </View>
-                        <Text style={styles.navOptionText}>Uber</Text>
-                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('ola')}>
-                         <View style={[styles.navIconBox, { backgroundColor: '#ECFCCB' }]}>
-                             <Text style={{fontWeight: '900', fontSize: 16, color: '#65A30D'}}>Ola</Text>
-                        </View>
-                        <Text style={styles.navOptionText}>Ola</Text>
-                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('rapido')}>
-                         <View style={[styles.navIconBox, { backgroundColor: '#FEF9C3' }]}>
-                             <Text style={{fontWeight: '900', fontSize: 16, color: '#EAB308'}}>Rapido</Text>
-                        </View>
-                        <Text style={styles.navOptionText}>Rapido</Text>
-                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
+              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('uber')}>
+                <View style={[styles.navIconBox, { backgroundColor: '#F3F4F6' }]}>
+                  <Text style={{ fontWeight: '900', fontSize: 18 }}>U</Text>
                 </View>
+                <Text style={styles.navOptionText}>Uber</Text>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
 
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('ola')}>
+                <View style={[styles.navIconBox, { backgroundColor: '#ECFCCB' }]}>
+                  <Text style={{ fontWeight: '900', fontSize: 16, color: '#65A30D' }}>Ola</Text>
+                </View>
+                <Text style={styles.navOptionText}>Ola</Text>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('rapido')}>
+                <View style={[styles.navIconBox, { backgroundColor: '#FEF9C3' }]}>
+                  <Text style={{ fontWeight: '900', fontSize: 16, color: '#EAB308' }}>Rapido</Text>
+                </View>
+                <Text style={styles.navOptionText}>Rapido</Text>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -940,11 +943,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  
+
   cardBody: {
     padding: 16,
   },
-  
+
   // Service
   serviceSection: {
     marginBottom: 16,
@@ -1069,7 +1072,7 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     gap: 12,
   },
-  
+
   // Buttons
   primaryButton: {
     flexDirection: 'row',
@@ -1104,7 +1107,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  
+
   // Navigation Button
   navigateButton: {
     flexDirection: 'row',
@@ -1125,208 +1128,208 @@ const styles = StyleSheet.create({
 
   // Next Job Styles
   nextJobCard: {
-      borderColor: '#2563EB',
-      borderWidth: 2,
+    borderColor: '#2563EB',
+    borderWidth: 2,
   },
   nextJobBadge: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      backgroundColor: '#2563EB',
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderBottomRightRadius: 12,
-      zIndex: 10,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderBottomRightRadius: 12,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   nextJobText: {
-      color: '#FFF',
-      fontSize: 10,
-      fontWeight: '700',
-      letterSpacing: 0.5,
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 
   // --- PENDING CARD STYLES ---
   pendingCard: {
-      backgroundColor: '#FFF',
-      borderRadius: 16,
-      marginBottom: 20,
-      padding: 20,
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
-      ...SHADOWS.md,
-      position: 'relative',
-      overflow: 'hidden',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    marginBottom: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...SHADOWS.md,
+    position: 'relative',
+    overflow: 'hidden',
   },
   pendingBadge: {
-      position: 'absolute',
-      top: 0,
-      right: 0,
-      backgroundColor: '#F59E0B',
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderBottomLeftRadius: 12,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderBottomLeftRadius: 12,
   },
   pendingBadgeText: {
-      color: '#FFF',
-      fontSize: 10,
-      fontWeight: '800',
-      letterSpacing: 1,
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   pendingHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 20,
-      gap: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
   },
   customerAvatarSmall: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: '#FFF7ED',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   customerInitialSmall: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: '#D97706',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#D97706',
   },
   pendingCustomerName: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#111827',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
   pendingServiceName: {
-      fontSize: 13,
-      color: '#6B7280',
-      marginTop: 2,
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
   },
   pendingPriceContainer: {
-      alignItems: 'flex-end',
+    alignItems: 'flex-end',
   },
   pendingPriceLabel: {
-      fontSize: 10,
-      color: '#6B7280',
-      fontWeight: '600',
-      letterSpacing: 1,
-      marginBottom: 2,
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 2,
   },
   pendingPriceValue: {
-      fontSize: 20,
-      fontWeight: '800',
-      color: '#059669', // Green for money
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#059669', // Green for money
   },
   pendingDetails: {
-      gap: 8,
-      marginBottom: 20,
-      backgroundColor: '#F9FAFB',
-      padding: 12,
-      borderRadius: 12,
+    gap: 8,
+    marginBottom: 20,
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 12,
   },
   pendingDetailRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   pendingDetailText: {
-      fontSize: 14,
-      color: '#374151',
-      flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
   },
   pendingActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   pendingAcceptButton: {
-      flex: 2,
-      backgroundColor: '#111827', // Black/Dark for high contrast
-      paddingVertical: 14,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: 8,
-      ...SHADOWS.md,
+    flex: 2,
+    backgroundColor: '#111827', // Black/Dark for high contrast
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    ...SHADOWS.md,
   },
   pendingAcceptText: {
-      color: '#FFF',
-      fontSize: 16,
-      fontWeight: '700',
-      letterSpacing: 0.5,
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   pendingRejectButton: {
-      flex: 1,
-      paddingVertical: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
-      borderRadius: 12,
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
   },
   pendingRejectText: {
-      color: '#6B7280',
-      fontSize: 14,
-      fontWeight: '600',
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   // Modal Styles
   modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'flex-end',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-      backgroundColor: '#FFF',
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: 24,
-      paddingBottom: 40,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
   },
   modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   modalTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
   },
   modalSubtitle: {
-      fontSize: 14,
-      color: '#6B7280',
-      marginBottom: 24,
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 24,
   },
   navOptions: {
-      gap: 12,
+    gap: 12,
   },
   navOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 16,
-      backgroundColor: '#F9FAFB',
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: '#F3F4F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   navIconBox: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
   navOptionText: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#1F2937',
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
   },
 });

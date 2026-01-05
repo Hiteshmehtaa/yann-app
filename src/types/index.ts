@@ -108,6 +108,8 @@ export interface Booking {
   negotiation?: Negotiation;
   createdAt: Date;
   updatedAt: Date;
+  hasBeenRated?: boolean;
+  completedAt?: Date;
 }
 
 export interface Extra {

@@ -81,10 +81,10 @@ export const JobTimer: React.FC<JobTimerProps> = ({
   const elapsedMinutes = Math.floor(elapsedSeconds / 60);
   const expectedHours = Math.floor(expectedDuration / 60);
   const expectedMins = expectedDuration % 60;
-  const overtimeMinutes = Math.max(0, elapsed - expectedDuration);
+  const overtimeMinutes = Math.max(0, elapsedMinutes - expectedDuration);
 
   // Calculate progress percentage (capped at 100%)
-  const progressPercent = Math.min(100, (elapsed / expectedDuration) * 100);
+  const progressPercent = Math.min(100, (elapsedMinutes / expectedDuration) * 100);
 
   return (
     <View style={[styles.container, style]}>

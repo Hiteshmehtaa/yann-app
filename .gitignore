@@ -56,3 +56,7 @@ google-services.json
 GoogleService-Info.plist
 *.keystore
 dhfcghvjkbnlkm
+
+# Local SDKs and JDKs
+.jdk/
+.android-sdk/
