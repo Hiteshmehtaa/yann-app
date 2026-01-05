@@ -1,7 +1,15 @@
 import Constants from 'expo-constants';
 
 // API Configuration
-export const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl || 'https://yann-care.vercel.app/api';
+// For local development: Use your machine's IP address (find it with `ipconfig getifaddr en0` on Mac)
+// The mobile app needs your computer's IP, not localhost, to connect from the device
+const USE_LOCAL_BACKEND = true; // Set to false to use production Vercel backend
+const LOCAL_API_URL = 'http://192.168.1.10:3000/api'; // Update this IP to match your machine's IP
+const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
+
+export const API_BASE_URL = USE_LOCAL_BACKEND
+  ? LOCAL_API_URL
+  : (Constants.expoConfig?.extra?.apiUrl || PRODUCTION_API_URL);
 
 // Static Services - Yannhome Platform Categories
 export const SERVICES = [
