@@ -34,7 +34,7 @@ const THEME = {
     textPrimary: '#0F172A', // Slate 900
     textSecondary: '#64748B', // Slate 500
     primary: '#6366F1', // Indigo 500
-    primaryGradient: ['#0F172A', '#1E1B4B', '#4338CA', '#6366F1'], // Deep Black to Indigo (4-stop for depth)
+    primaryGradient: ['#0EA5E9', '#38BDF8', '#7DD3FC', '#BAE6FD'] as const, // Sky 600 -> Sky 200 (Sky Blue gradient)
     success: '#10B981',
     warning: '#F59E0B',
     error: '#EF4444',
@@ -65,13 +65,99 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [selectedGraph, setSelectedGraph] = useState<GraphType>('earnings');
+  const [tooltip, setTooltip] = useState<{ visible: boolean; value: string; label: string; x: number; y: number } | null>(null);
+  const [chartKey, setChartKey] = useState(0); // Force re-render for animation
+  const [previousDataAvg, setPreviousDataAvg] = useState(0); // Track previous data for comparison
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const tabAnim = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(1)).current;
+  const graphScaleAnim = useRef(new Animated.Value(0)).current;
+  const dotAnimations = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0)
+  ]).current;
+  const textLabelAnimations = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0)
+  ]).current;
+  const lineScaleAnim = useRef(new Animated.Value(0)).current; // For vertical line animation
+  const lineSlideAnim = useRef(new Animated.Value(0)).current; // For horizontal slide
 
   const handleGraphChange = (type: GraphType, index: number) => {
     setSelectedGraph(type);
+
+    // Force chart re-render for animation
+    setChartKey(prev => prev + 1);
+
+    // Calculate average of new data
+    const newData = CHART_DATA[type].datasets[0].data;
+    const newAvg = newData.reduce((sum: number, val: number) => sum + val, 0) / newData.length;
+
+    // Determine if data increased or decreased
+    const isIncrease = newAvg > previousDataAvg;
+    const scaleStart = isIncrease ? 0 : 1.3; // Start from bottom if increase, top if decrease
+    const scaleEnd = 1;
+
+    // Update previous average for next comparison
+    setPreviousDataAvg(newAvg);
+
+    // Animate line with vertical scaling (up or down based on data)
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(lineScaleAnim, {
+          toValue: scaleStart,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+        Animated.spring(lineScaleAnim, {
+          toValue: scaleEnd,
+          delay: 100,
+          useNativeDriver: true,
+          damping: 15,
+          stiffness: 100,
+        })
+      ]),
+      // Horizontal slide animation
+      Animated.sequence([
+        Animated.timing(lineSlideAnim, {
+          toValue: index > (selectedGraph === 'earnings' ? 0 : selectedGraph === 'ratings' ? 1 : 2) ? 50 : -50,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+        Animated.spring(lineSlideAnim, {
+          toValue: 0,
+          delay: 50,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 150,
+        })
+      ])
+    ]).start();
+
+    // Animate dots with spring effect
+    dotAnimations.forEach((anim, i) => {
+      Animated.spring(anim, {
+        toValue: i === index ? 1 : 0,
+        useNativeDriver: false,
+        damping: 15,
+        stiffness: 200,
+      }).start();
+    });
+
+    // Animate text labels with spring effect
+    textLabelAnimations.forEach((anim, i) => {
+      Animated.spring(anim, {
+        toValue: i === index ? 1 : 0,
+        useNativeDriver: false,
+        damping: 15,
+        stiffness: 200,
+      }).start();
+    });
+
+    // Animate graph content with scale + fade for smoother transition
     Animated.parallel([
       Animated.spring(tabAnim, {
         toValue: index,
@@ -80,47 +166,112 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
         stiffness: 150,
       }),
       Animated.sequence([
-        Animated.timing(contentFade, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentFade, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        })
+        Animated.parallel([
+          Animated.timing(contentFade, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(graphScaleAnim, {
+            toValue: 0.95,
+            duration: 150,
+            useNativeDriver: true,
+          })
+        ]),
+        Animated.parallel([
+          Animated.timing(contentFade, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.spring(graphScaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            damping: 12,
+            stiffness: 100,
+          })
+        ])
       ])
     ]).start();
   };
 
   // Mock data for graphs since API only returns totals
   // Graph Data
-  // Checks dashboardData first (automatic updates), otherwise defaults to flat/plane.
+  // Checks dashboardData first (automatic updates), otherwise defaults to realistic sample data.
   const defaultLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const defaultData = [0, 0, 0, 0, 0, 0, 0];
+
+  // Realistic fallback data to show graph shape properly
+  const defaultEarningsData = [120, 250, 180, 420, 350, 280, 450];
+  const defaultRatingsData = [3.5, 4.0, 3.8, 4.5, 4.2, 4.3, 4.7];
+  const defaultBookingsData = [5, 8, 6, 12, 10, 9, 14];
 
   const CHART_DATA = {
     earnings: {
       labels: dashboardData?.stats?.earningsHistory?.labels || defaultLabels,
-      datasets: [{ data: dashboardData?.stats?.earningsHistory?.data || defaultData }]
+      datasets: [{ data: dashboardData?.stats?.earningsHistory?.data || defaultEarningsData }]
     },
     ratings: {
       labels: dashboardData?.stats?.ratingsHistory?.labels || defaultLabels,
-      datasets: [{ data: dashboardData?.stats?.ratingsHistory?.data || defaultData }]
+      datasets: [{ data: dashboardData?.stats?.ratingsHistory?.data || defaultRatingsData }]
     },
     bookings: {
       labels: dashboardData?.stats?.bookingsHistory?.labels || defaultLabels,
-      datasets: [{ data: dashboardData?.stats?.bookingsHistory?.data || defaultData }]
+      datasets: [{ data: dashboardData?.stats?.bookingsHistory?.data || defaultBookingsData }]
     }
   };
 
   useEffect(() => {
     if (!isLoading) {
-      Animated.timing(fadeAnim, {
+      // Entrance animation with scale effect
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(graphScaleAnim, {
+          toValue: 1,
+          delay: 200,
+          useNativeDriver: true,
+          damping: 15,
+          stiffness: 100,
+        }),
+        // Animate line vertically on mount (always up on first load)
+        Animated.spring(lineScaleAnim, {
+          toValue: 1,
+          delay: 300,
+          useNativeDriver: true,
+          damping: 15,
+          stiffness: 100,
+        }),
+        // Initialize horizontal position
+        Animated.timing(lineSlideAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        })
+      ]).start();
+
+      // Set initial data average
+      const initialData = CHART_DATA['earnings'].datasets[0].data;
+      const initialAvg = initialData.reduce((sum: number, val: number) => sum + val, 0) / initialData.length;
+      setPreviousDataAvg(initialAvg);
+
+      // Initialize first dot and text label as active
+      Animated.spring(dotAnimations[0], {
         toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
+        delay: 400,
+        useNativeDriver: false,
+        damping: 15,
+        stiffness: 200,
+      }).start();
+
+      Animated.spring(textLabelAnimations[0], {
+        toValue: 1,
+        delay: 400,
+        useNativeDriver: false,
+        damping: 15,
+        stiffness: 200,
       }).start();
     }
   }, [isLoading]);
@@ -255,92 +406,193 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               </View>
 
-              {/* Visual Tab Indicator (Dots) */}
+              {/* Visual Tab Indicator (Dots) with Animation */}
               <View style={styles.tabDots}>
-                {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.dotBtn,
-                      selectedGraph === type && styles.dotActive
-                    ]}
-                    onPress={() => handleGraphChange(type, ['earnings', 'ratings', 'bookings'].indexOf(type))}
-                  />
-                ))}
+                {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type, idx) => {
+                  const isActive = selectedGraph === type;
+                  const dotWidth = dotAnimations[idx].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [8, 20]
+                  });
+                  const dotOpacity = dotAnimations[idx].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.3, 1]
+                  });
+
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => handleGraphChange(type, idx)}
+                      activeOpacity={0.7}
+                    >
+                      <Animated.View
+                        style={[
+                          styles.dotBtn,
+                          {
+                            width: dotWidth,
+                            opacity: dotOpacity,
+                          }
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
-            {/* Chart with Sliding Animation */}
+            {/* Chart with Smooth Fade + Scale Animation */}
             <Animated.View
               style={{
                 opacity: contentFade,
                 alignItems: 'center',
-                transform: [{
-                  translateX: tabAnim.interpolate({
-                    inputRange: [0, 1, 2],
-                    outputRange: [0, 0, 0], // Keep centered, just fade
-                  })
-                }]
+                transform: [
+                  {
+                    scale: graphScaleAnim
+                  },
+                  {
+                    translateX: tabAnim.interpolate({
+                      inputRange: [0, 1, 2],
+                      outputRange: [0, 0, 0], // Keep centered
+                    })
+                  }
+                ]
               }}
             >
-              <LineChart
-                data={CHART_DATA[selectedGraph]}
-                width={width - 80}
-                height={160}
-                yAxisLabel=""
-                yAxisSuffix=""
-                withInnerLines={false}
-                withOuterLines={false}
-                withVerticalLabels={false}
-                withHorizontalLabels={false}
-                withDots={true}
-                withShadow={true}
-                fromZero={true}
-                chartConfig={{
-                  backgroundColor: 'transparent',
-                  backgroundGradientFrom: 'transparent',
-                  backgroundGradientTo: 'transparent',
-                  backgroundGradientFromOpacity: 0,
-                  backgroundGradientToOpacity: 0,
-                  fillShadowGradientFrom: '#FFFFFF',
-                  fillShadowGradientTo: '#FFFFFF',
-                  fillShadowGradientFromOpacity: 0.6,
-                  fillShadowGradientToOpacity: 0.05,
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.8})`,
-                  style: { borderRadius: 20 },
-                  propsForDots: {
-                    r: "6",
-                    strokeWidth: "3",
-                    stroke: "#1E1B4B",
-                    fill: "#FFFFFF"
-                  },
-                  propsForBackgroundLines: {
-                    strokeWidth: 0,
-                  }
+              {/* Wrapper for vertical line scaling animation */}
+              <Animated.View
+                style={{
+                  transform: [
+                    { scaleY: lineScaleAnim },
+                    { translateX: lineSlideAnim },
+                  ],
                 }}
-                bezier
-                style={styles.chart}
-              />
+              >
+                <LineChart
+                  key={chartKey} // Force re-render for animation
+                  data={CHART_DATA[selectedGraph]}
+                  width={width - 80}
+                  height={160}
+                  yAxisLabel=""
+                  yAxisSuffix=""
+                  withInnerLines={false}
+                  withOuterLines={false}
+                  withVerticalLabels={false}
+                  withHorizontalLabels={false}
+                  withDots={true}
+                  withShadow={true}
+                  fromZero={true}
+                  segments={4}
+                  onDataPointClick={(data) => {
+                    const value = data.value;
+                    const label = CHART_DATA[selectedGraph].labels[data.index];
+                    const formattedValue = selectedGraph === 'earnings'
+                      ? `₹${value}`
+                      : selectedGraph === 'ratings'
+                        ? value.toFixed(1)
+                        : value.toString();
+
+                    // Position tooltip to the right of the dot
+                    setTooltip({
+                      visible: true,
+                      value: formattedValue,
+                      label: label,
+                      x: data.x + 15, // Position to the right of the dot
+                      y: data.y - 25, // Slightly above to center vertically
+                    });
+
+                    // Auto-hide after 2.5 seconds
+                    setTimeout(() => setTooltip(null), 2500);
+                  }}
+                  chartConfig={{
+                    backgroundColor: 'transparent',
+                    backgroundGradientFrom: 'transparent',
+                    backgroundGradientTo: 'transparent',
+                    backgroundGradientFromOpacity: 0,
+                    backgroundGradientToOpacity: 0,
+                    fillShadowGradientFrom: '#FFFFFF',
+                    fillShadowGradientTo: '#FFFFFF',
+                    fillShadowGradientFromOpacity: 0.6,
+                    fillShadowGradientToOpacity: 0.05,
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.8})`,
+                    style: { borderRadius: 20 },
+                    propsForDots: {
+                      r: "6",
+                      strokeWidth: "3",
+                      stroke: "#0EA5E9",
+                      fill: "#FFFFFF"
+                    },
+                    propsForBackgroundLines: {
+                      strokeWidth: 0,
+                    }
+                  }}
+                  bezier
+                  style={styles.chart}
+                />
+              </Animated.View>
             </Animated.View>
 
-            {/* Tab Buttons (Text) at bottom of card */}
+            {/* Tab Buttons (Text) at bottom of card with Animation */}
             <View style={styles.textTabs}>
-              {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  onPress={() => handleGraphChange(type, ['earnings', 'ratings', 'bookings'].indexOf(type))}
-                  style={[styles.textTabBtn, selectedGraph === type && styles.textTabActive]}
-                >
-                  <Text style={[styles.textTabLabel, selectedGraph === type && styles.textTabLabelActive]}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type, idx) => {
+                const scale = textLabelAnimations[idx].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 1.08]
+                });
+                const backgroundColor = textLabelAnimations[idx].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['rgba(255,255,255,0.1)', '#FFFFFF']
+                });
+
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    onPress={() => handleGraphChange(type, idx)}
+                    activeOpacity={0.7}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.textTabBtn,
+                        {
+                          backgroundColor,
+                          transform: [{ scale }]
+                        }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.textTabLabel,
+                        selectedGraph === type && styles.textTabLabelActive
+                      ]}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
+                    </Animated.View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </LinearGradient>
 
+          {/* Tooltip */}
+          {tooltip?.visible && (
+            <View
+              style={[
+                styles.tooltip,
+                {
+                  position: 'absolute',
+                  left: tooltip.x,
+                  top: tooltip.y,
+                }
+              ]}
+            >
+              <View style={styles.tooltipCard}>
+                <Text style={styles.tooltipLabel}>{tooltip.label}</Text>
+                <Text style={styles.tooltipValue}>{tooltip.value}</Text>
+                {/* Small arrow pointing left to the dot */}
+                <View style={styles.tooltipArrow} />
+              </View>
+            </View>
+          )}
 
           {/* 3. Recent Bookings List */}
           <View style={styles.listHeader}>
@@ -518,14 +770,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   dotBtn: {
-    width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-  dotActive: {
     backgroundColor: '#FFF',
-    width: 20, // expanding dot
   },
   chart: {
     marginVertical: 8,
@@ -543,10 +790,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  textTabActive: {
-    backgroundColor: '#FFF',
   },
   textTabLabel: {
     color: 'rgba(255,255,255,0.7)',
@@ -554,7 +797,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   textTabLabelActive: {
-    color: '#312E81',
+    color: '#0C4A6E', // Darker sky blue for contrast
   },
 
   // Grid
@@ -708,5 +951,49 @@ const styles = StyleSheet.create({
   emptyText: {
     color: THEME.colors.textSecondary,
     fontSize: 14,
+  },
+
+  // Tooltip Styles
+  tooltip: {
+    zIndex: 1000,
+  },
+  tooltipCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 70,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(14, 165, 233, 0.2)',
+  },
+  tooltipLabel: {
+    color: '#0EA5E9',
+    fontSize: 10,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  tooltipValue: {
+    color: '#0C4A6E',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    left: -6,
+    top: '50%',
+    marginTop: -6,
+    width: 0,
+    height: 0,
+    borderTopWidth: 6,
+    borderBottomWidth: 6,
+    borderRightWidth: 6,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderRightColor: '#FFFFFF',
   },
 });

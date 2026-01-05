@@ -28,6 +28,7 @@ import { TabBar } from '../../components/ui/TabBar';
 import { CountdownTimer } from '../../components/ui/CountdownTimer';
 import { RatingModal } from '../../components/RatingModal';
 import { Alert } from 'react-native';
+import { storage } from '../../utils/storage';
 
 // Gradient presets for status
 const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
@@ -69,6 +70,18 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     if (!selectedBookingForRating) return;
 
     try {
+      console.log('🌟 Submitting review for booking:', selectedBookingForRating._id);
+
+      // Debug: Check if we have a valid token
+      const token = await storage.getToken();
+      const userData = await storage.getUserData();
+      console.log('🔐 Auth check:', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        hasUser: !!userData,
+        userId: userData?.id || userData?._id
+      });
+
       await apiService.createReview({
         bookingId: selectedBookingForRating._id,
         rating,
@@ -87,7 +100,23 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
       setShowRatingModal(false);
       setSelectedBookingForRating(null);
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to submit rating');
+      console.error('❌ Review submission error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      let errorMessage = 'Failed to submit rating';
+
+      if (error.response?.status === 401) {
+        errorMessage = 'Your session has expired. Please log out and log in again to submit reviews.';
+        console.log('🔐 Session expired - user needs to re-login');
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      Alert.alert('Error', errorMessage);
     }
   };
 

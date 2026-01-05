@@ -243,15 +243,21 @@ class ApiService {
       addressBook: rawUserData.addressBook || []
     };
 
-    // Save a marker to indicate we're using cookie-based auth
-    await storage.saveToken('cookie-based-auth');
+    // Use actual JWT token from backend response
+    const actualToken = response.data.token;
 
-    // Return formatted response with user data
+    console.log('🔑 Received token from backend:', {
+      hasToken: !!actualToken,
+      tokenLength: actualToken?.length,
+      tokenPreview: actualToken?.substring(0, 20) + '...'
+    });
+
+    // Return formatted response with user data and actual token
     return {
       success: response.data.success,
       message: response.data.message,
       user: userData,
-      token: 'cookie-based-auth', // Marker for cookie auth
+      token: actualToken, // Use actual JWT token from backend
     };
   }
 
