@@ -32,7 +32,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   style,
 }) => {
   // Ensure color is a string and create gradient colors safely
-  const baseColor = typeof color === 'string' ? color : '#4F46E5';
+  const baseColor = typeof color === 'string' ? color : '#3B82F6';
   const gradientColors = [baseColor, `${baseColor}CC`] as const;
 
   return (

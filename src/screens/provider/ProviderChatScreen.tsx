@@ -159,11 +159,11 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     notifyButton: {
-        backgroundColor: '#6366F1',
+        backgroundColor: '#60A5FA',
         paddingVertical: 16,
         paddingHorizontal: 48,
         borderRadius: 12,
-        shadowColor: '#6366F1',
+        shadowColor: '#60A5FA',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

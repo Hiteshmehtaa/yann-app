@@ -1,15 +1,61 @@
 import Constants from 'expo-constants';
 
 // API Configuration
-// For local development: Use your machine's IP address (find it with `ipconfig getifaddr en0` on Mac)
-// The mobile app needs your computer's IP, not localhost, to connect from the device
-const USE_LOCAL_BACKEND = true; // Set to false to use production Vercel backend
+// Automatically detects if local backend is running, otherwise uses production
 const LOCAL_API_URL = 'http://192.168.1.10:3000/api'; // Update this IP to match your machine's IP
 const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
 
-export const API_BASE_URL = USE_LOCAL_BACKEND
-  ? LOCAL_API_URL
-  : (Constants.expoConfig?.extra?.apiUrl || PRODUCTION_API_URL);
+// Dynamic API URL - checks if localhost is active
+let cachedApiUrl: string | null = null;
+let lastCheckTime = 0;
+const CHECK_INTERVAL = 30000; // Re-check every 30 seconds
+
+async function detectActiveBackend(): Promise<string> {
+  const now = Date.now();
+
+  // Use cached result if recent
+  if (cachedApiUrl && (now - lastCheckTime) < CHECK_INTERVAL) {
+    return cachedApiUrl;
+  }
+
+  try {
+    // Try to reach local backend with a quick timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5 second timeout
+
+    const response = await fetch(`${LOCAL_API_URL}/services`, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok || response.status === 401 || response.status === 403) { // Server is up
+      console.log('✅ Local backend detected, using:', LOCAL_API_URL);
+      cachedApiUrl = LOCAL_API_URL;
+      lastCheckTime = now;
+      return LOCAL_API_URL;
+    }
+  } catch (error: any) {
+    // Local backend not reachable - this is expected when server is down
+    const errorMsg = error.name === 'AbortError' ? 'timeout' : error.message || 'unreachable';
+    console.log(`🌐 Local backend ${errorMsg}, using production:`, PRODUCTION_API_URL);
+  }
+
+  // Fallback to production
+  cachedApiUrl = PRODUCTION_API_URL;
+  lastCheckTime = now;
+  return PRODUCTION_API_URL;
+}
+
+// Export as a promise that resolves to the active backend URL
+export const getApiBaseUrl = detectActiveBackend;
+
+// For immediate synchronous access (defaults to production, will be updated after first check)
+export const API_BASE_URL = cachedApiUrl || PRODUCTION_API_URL;
 
 // Static Services - Yannhome Platform Categories
 export const SERVICES = [

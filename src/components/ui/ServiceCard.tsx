@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     // Modern shadow
     ...Platform.select({
       ios: {
-        shadowColor: '#6366F1',
+        shadowColor: '#60A5FA',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,

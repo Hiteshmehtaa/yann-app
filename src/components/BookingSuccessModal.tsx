@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: SPACING.md,
-    backgroundColor: '#EEF2FF', // Explicit light blue
+    backgroundColor: '#DBEAFE', // Explicit light blue
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.medium,

@@ -33,8 +33,8 @@ const THEME = {
     surface: '#FFFFFF',
     textPrimary: '#0F172A', // Slate 900
     textSecondary: '#64748B', // Slate 500
-    primary: '#6366F1', // Indigo 500
-    primaryGradient: ['#0EA5E9', '#38BDF8', '#7DD3FC', '#BAE6FD'] as const, // Sky 600 -> Sky 200 (Sky Blue gradient)
+    primary: '#60A5FA', // Indigo 500
+    primaryGradient: ['#3B82F6', '#60A5FA', '#93C5FD', '#BAE6FD'] as const, // Sky 600 -> Sky 200 (Sky Blue gradient)
     success: '#10B981',
     warning: '#F59E0B',
     error: '#EF4444',
@@ -372,13 +372,21 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.welcomeName}>{user?.name?.split(' ')[0] || 'Partner'}</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.notifBtn}
-          onPress={() => navigation.navigate('NotificationsList')}
-        >
-          <Ionicons name="notifications-outline" size={24} color={THEME.colors.textPrimary} />
-          {unreadCount > 0 && <View style={styles.redDot} />}
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.navigate('Wallet')}
+          >
+            <Ionicons name="wallet-outline" size={24} color={THEME.colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.notifBtn}
+            onPress={() => navigation.navigate('NotificationsList')}
+          >
+            <Ionicons name="notifications-outline" size={24} color={THEME.colors.textPrimary} />
+            {unreadCount > 0 && <View style={styles.redDot} />}
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
 
       <ScrollView
@@ -520,7 +528,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     propsForDots: {
                       r: "6",
                       strokeWidth: "3",
-                      stroke: "#0EA5E9",
+                      stroke: "#3B82F6",
                       fill: "#FFFFFF"
                     },
                     propsForBackgroundLines: {
@@ -606,11 +614,11 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
             {(dashboardData?.acceptedBookings?.slice(0, 5) || []).length > 0 ? (
               (dashboardData?.acceptedBookings?.slice(0, 5) || []).map((item: any, index: number) => {
                 const colors = [
-                  { bg: '#EEF2FF', icon: '#6366F1' }, // Indigo
+                  { bg: '#DBEAFE', icon: '#60A5FA' }, // Indigo
                   { bg: '#ECFDF5', icon: '#10B981' }, // Emerald
                   { bg: '#FFF7ED', icon: '#F97316' }, // Orange
                   { bg: '#FDF4FF', icon: '#D946EF' }, // Fuchsia
-                  { bg: '#F0F9FF', icon: '#0EA5E9' }, // Sky
+                  { bg: '#DBEAFE', icon: '#3B82F6' }, // Sky
                 ];
                 const colorTheme = colors[index % colors.length];
 
@@ -724,7 +732,7 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius.xl,
     padding: THEME.spacing.lg,
     minHeight: 300,
-    shadowColor: '#6366F1',
+    shadowColor: '#60A5FA',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
     shadowRadius: 20,
@@ -854,7 +862,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: THEME.radius.lg,
     gap: 8,
-    shadowColor: '#6366F1',
+    shadowColor: '#60A5FA',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -907,7 +915,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -972,7 +980,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(14, 165, 233, 0.2)',
   },
   tooltipLabel: {
-    color: '#0EA5E9',
+    color: '#3B82F6',
     fontSize: 10,
     fontWeight: '600',
     marginBottom: 2,

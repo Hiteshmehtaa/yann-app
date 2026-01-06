@@ -12,10 +12,10 @@
 // ============================================
 
 const lightColors = {
-  primary: '#2E59F3',          // Primary Blue
-  primaryLight: '#E8EEFF',     // Light blue background for icons
-  primaryGradientStart: '#2E59F3',  // Gradient start
-  primaryGradientEnd: '#4362FF',    // Gradient end
+  primary: '#3B82F6',          // Blue 500 - Vibrant True Blue
+  primaryLight: '#DBEAFE',     // Blue 100 - Light background
+  primaryGradientStart: '#3B82F6',  // Blue gradient start
+  primaryGradientEnd: '#2563EB',    // Blue 600 gradient end
   accentOrange: '#FF8A3D',     // Accent Orange
   accentYellow: '#F7C948',     // Accent Yellow
   background: '#F8F9FA',       // Background Light (softer gray)
@@ -29,7 +29,7 @@ const lightColors = {
   success: '#27C07D',          // Success Green
   error: '#E63946',            // Error Red
   warning: '#F7C948',          // Warning Yellow (same as accent)
-  info: '#2E59F3',             // Info Blue (same as primary)
+  info: '#3B82F6',             // Info Blue (same as primary)
   overlay: 'rgba(0, 0, 0, 0.5)',
   gradientOverlay: 'rgba(26, 28, 30, 0.6)',
   white: '#FFFFFF',
@@ -40,11 +40,11 @@ const lightColors = {
 };
 
 const darkColors = {
-  // Primary colors - More vibrant for dark mode
-  primary: '#6366F1',             // Indigo - more vibrant
-  primaryLight: '#1E1B4B',        // Deep indigo background
-  primaryGradientStart: '#667eea',
-  primaryGradientEnd: '#764ba2',
+  // Primary colors - Vibrant Blue for dark mode
+  primary: '#60A5FA',             // Blue 400 - brighter for dark mode
+  primaryLight: '#1E3A8A',        // Blue 900 - deep background
+  primaryGradientStart: '#60A5FA',
+  primaryGradientEnd: '#3B82F6',
 
   // Accent colors - Neon-like for futuristic feel
   accentOrange: '#F97316',

@@ -25,7 +25,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 // Reusing global theme constants or defining similar ones matching Member Profile
 const COLORS = {
-  primary: '#6366F1', // Indigo
+  primary: '#60A5FA', // Indigo
   background: '#F8FAFC',
   cardBg: '#FFFFFF',
   text: '#0F172A',
@@ -238,6 +238,12 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
       onPress: () => navigation.navigate('Notifications'), // Redirecting to Notifs as placeholder or actual settings
     },
     {
+      icon: 'wallet-outline',
+      title: 'Yann Wallet',
+      subtitle: 'Manage your earnings & payments',
+      onPress: () => navigation.navigate('Wallet'),
+    },
+    {
       icon: 'help-circle-outline',
       title: 'Help Center',
       subtitle: 'FAQs & Support',
@@ -275,7 +281,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.avatarContainer}
             >
               <LinearGradient
-                colors={['#6366F1', '#818CF8']}
+                colors={['#60A5FA', '#93C5FD']}
                 style={styles.avatarGradient}
               >
                 <View style={styles.avatarInner}>
@@ -487,7 +493,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,

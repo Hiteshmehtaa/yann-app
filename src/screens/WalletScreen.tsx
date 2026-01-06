@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.sm,
   },
   mainAddButtonText: {
-    color: '#4338CA', // Indigo Primary
+    color: '#2563EB', // Indigo Primary
     fontWeight: '700',
     fontSize: 15,
   },

@@ -482,7 +482,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           ListHeaderComponent={
             <>
               {/* Premium Header - Removed TopBar */}
-              <View style={[styles.topBar, { marginTop: insets.top }]}>
+              <View style={styles.topBar}>
                 <TouchableOpacity
                   style={styles.locationButton}
                   onPress={() => navigation.navigate('SavedAddresses')}
@@ -508,6 +508,13 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                   >
                     <Ionicons name="notifications-outline" size={24} color={colors.text} />
                     {(versionInfo?.updateAvailable || unreadCount > 0) && <View style={styles.notificationBadge} />}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
+                    onPress={() => navigation.navigate('Wallet')}
+                  >
+                    <Ionicons name="wallet-outline" size={22} color={colors.text} />
                   </TouchableOpacity>
 
                   <TouchableOpacity

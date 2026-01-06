@@ -169,7 +169,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
         ) : (
           <Animated.View style={[styles.headerImage, { opacity: imageOpacity }]}>
             <LinearGradient
-              colors={['#4F46E5', '#1E293B']}
+              colors={['#3B82F6', '#1E293B']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -429,7 +429,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             }}
           >
             <LinearGradient
-              colors={['#4F46E5', '#4338CA']}
+              colors={['#3B82F6', '#2563EB']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFill}
@@ -571,14 +571,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#DBEAFE',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   verifiedText: {
     fontSize: 12,
-    color: '#0284C7',
+    color: '#2563EB',
     fontWeight: '600',
   },
   ratingBadge: {
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   statIconBg: {
     width: 40, height: 40,
     borderRadius: 20,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 8,
   },
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
   rateIconContainer: {
     width: 48, height: 48,
     borderRadius: 16,
-    backgroundColor: '#EEF2FF', // Tinted blue
+    backgroundColor: '#DBEAFE', // Tinted blue
     alignItems: 'center', justifyContent: 'center',
     marginRight: 16,
     borderWidth: 1,

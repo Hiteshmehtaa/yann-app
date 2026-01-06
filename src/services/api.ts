@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { API_BASE_URL } from '../utils/constants';
+import { getApiBaseUrl } from '../utils/constants';
 import { storage } from '../utils/storage';
 import { getErrorMessage } from '../utils/errorMessages';
 import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service, ServiceProviderListItem, ServiceCount, ProviderDashboardData, Address } from '../types';
@@ -27,10 +27,11 @@ import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service
  */
 class ApiService {
   private readonly client: AxiosInstance;
+  private baseUrlUpdateInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.client = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: 'https://yann-care.vercel.app/api', // Initial default
       timeout: 30000, // Increased for Vercel cold starts
       headers: {
         'Content-Type': 'application/json',
@@ -38,6 +39,9 @@ class ApiService {
       },
       withCredentials: true, // Enable cookies for session-based auth (same as website)
     });
+
+    // Initialize with dynamic backend detection
+    this.initializeBackend();
 
 
     // Request interceptor - add JWT token for mobile auth
@@ -123,6 +127,36 @@ class ApiService {
         throw error;
       }
     );
+  }
+
+  /**
+   * Initialize backend URL detection
+   * Checks if local backend is available, otherwise uses production
+   */
+  private async initializeBackend(): Promise<void> {
+    try {
+      const detectedUrl = await getApiBaseUrl();
+      this.client.defaults.baseURL = detectedUrl;
+      console.log('🔗 API initialized with:', detectedUrl);
+
+      // Periodically re-check backend availability (every 30 seconds)
+      this.baseUrlUpdateInterval = setInterval(async () => {
+        try {
+          const updatedUrl = await getApiBaseUrl();
+          if (this.client.defaults.baseURL !== updatedUrl) {
+            this.client.defaults.baseURL = updatedUrl;
+            console.log('🔄 Backend URL updated to:', updatedUrl);
+          }
+        } catch (error) {
+          // Silently fail - keep using current URL
+          console.log('⚠️ Backend re-check failed, keeping current URL');
+        }
+      }, 30000);
+    } catch (error) {
+      console.error('❌ Failed to detect backend, using production:', error);
+      this.client.defaults.baseURL = 'https://yann-care.vercel.app/api';
+      console.log('🔗 API initialized with production fallback');
+    }
   }
 
   // Authentication (Using existing backend endpoints)

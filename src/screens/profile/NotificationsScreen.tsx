@@ -89,8 +89,8 @@ export const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                 <Switch
                   value={setting.enabled}
                   onValueChange={() => toggleSetting(setting.id)}
-                  trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
-                  thumbColor={setting.enabled ? '#4F46E5' : '#F1F5F9'}
+                  trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
+                  thumbColor={setting.enabled ? '#3B82F6' : '#F1F5F9'}
                 />
               </View>
             ))}
@@ -123,8 +123,8 @@ export const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                 <Switch
                   value={setting.enabled}
                   onValueChange={() => toggleSetting(setting.id)}
-                  trackColor={{ false: '#CBD5E1', true: '#818CF8' }}
-                  thumbColor={setting.enabled ? '#4F46E5' : '#F1F5F9'}
+                  trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
+                  thumbColor={setting.enabled ? '#3B82F6' : '#F1F5F9'}
                 />
               </View>
             ))}
@@ -132,7 +132,7 @@ export const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Info Card */}
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle" size={20} color="#6366F1" />
+            <Ionicons name="information-circle" size={20} color="#60A5FA" />
             <Text style={styles.infoText}>
               Security alerts and booking confirmations will always be sent regardless of your preferences.
             </Text>
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   settingIcon: {
     width: 36, height: 36,
     borderRadius: 12,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     alignItems: 'center', justifyContent: 'center',
     marginRight: 12,
   },
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
 
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     borderRadius: 16,
     padding: 16,
     gap: 12,
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#4338CA',
+    color: '#2563EB',
     lineHeight: 18,
     fontWeight: '500',
   },

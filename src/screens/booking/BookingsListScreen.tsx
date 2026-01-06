@@ -291,7 +291,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#6366F1', '#4F46E5']}
+              colors={['#60A5FA', '#3B82F6']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.rateButtonGradient}

@@ -7,7 +7,7 @@ interface IconProps {
 }
 
 // Driver / Car Service Icon
-export const DriverIcon: React.FC<IconProps> = ({ size = 48, color = '#4F46E5' }) => (
+export const DriverIcon: React.FC<IconProps> = ({ size = 48, color = '#3B82F6' }) => (
   <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
     <Path
       d="M39 19L36 13H12L9 19M39 19H9M39 19V33C39 34.1046 38.1046 35 37 35H35M9 19V33C9 34.1046 9.89543 35 11 35H13M35 35C35 36.6569 33.6569 38 32 38C30.3431 38 29 36.6569 29 35M35 35C35 33.3431 33.6569 32 32 32C30.3431 32 29 33.3431 29 35M13 35C13 36.6569 14.3431 38 16 38C17.6569 38 19 36.6569 19 35M13 35C13 33.3431 14.3431 32 16 32C17.6569 32 19 33.3431 19 35M29 35H19"
@@ -286,7 +286,7 @@ export const PainterIcon: React.FC<IconProps> = ({ size = 48, color = '#F59E0B' 
 );
 
 // Office / Professional Icon
-export const OfficeIcon: React.FC<IconProps> = ({ size = 48, color = '#6366F1' }) => (
+export const OfficeIcon: React.FC<IconProps> = ({ size = 48, color = '#60A5FA' }) => (
   <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
     <Rect x="14" y="12" width="20" height="24" rx="2" fill={color} opacity="0.2" />
     <Rect x="14" y="12" width="20" height="24" rx="2" stroke={color} strokeWidth="2.5" />

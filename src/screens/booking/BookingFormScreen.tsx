@@ -413,7 +413,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.cardHighlight} />
               <View style={styles.serviceRow}>
                 <View style={styles.serviceIconContainer}>
-                  <Ionicons name="briefcase-outline" size={26} color="#4F46E5" />
+                  <Ionicons name="briefcase-outline" size={26} color="#3B82F6" />
                 </View>
                 <View style={styles.serviceInfo}>
                   <Text style={styles.serviceName}>{service.title}</Text>
@@ -433,7 +433,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                       style={styles.providerAvatar}
                     />
                   ) : (
-                    <View style={[styles.providerAvatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#6366F1' }]}>
+                    <View style={[styles.providerAvatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#60A5FA' }]}>
                       <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
                         {provider.name?.charAt(0) || 'E'}
                       </Text>
@@ -472,7 +472,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
                 <View style={styles.locationHeaderRow}>
                   <View style={styles.locationIconContainer}>
-                    <Ionicons name="map" size={24} color="#4F46E5" />
+                    <Ionicons name="map" size={24} color="#3B82F6" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.locationTitle}>Service Location</Text>
@@ -601,7 +601,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                       }}
                     >
                       <LinearGradient
-                        colors={isSelected ? ['#4F46E5', '#4338CA'] : ['#F8FAFC', '#F8FAFC']}
+                        colors={isSelected ? ['#3B82F6', '#2563EB'] : ['#F8FAFC', '#F8FAFC']}
                         style={StyleSheet.absoluteFill}
                       />
                       <View style={styles.paymentContent}>
@@ -616,7 +616,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                       </View>
                       {isSelected && (
                         <View style={styles.checkmarkBadge}>
-                          <Ionicons name="checkmark" size={12} color="#4F46E5" />
+                          <Ionicons name="checkmark" size={12} color="#3B82F6" />
                         </View>
                       )}
                     </TouchableOpacity>
@@ -696,7 +696,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Gradient only if active */}
             {bookingDate && bookingTime && (
               <LinearGradient
-                colors={['#4F46E5', '#4338CA']}
+                colors={['#3B82F6', '#2563EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -832,7 +832,7 @@ const styles = StyleSheet.create({
   cardHighlight: {
     position: 'absolute',
     top: 0, left: 0, right: 0, height: 4,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#3B82F6',
     zIndex: 10,
   },
 
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
   addressTag: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
   addressTagText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#3B82F6',
     textTransform: 'uppercase',
   },
   changeButton: {
@@ -938,8 +938,8 @@ const styles = StyleSheet.create({
     marginRight: 10, // Replaces gap
   },
   dateCardSelected: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
     ...SHADOWS.md,
   },
   dateDay: {
@@ -976,8 +976,8 @@ const styles = StyleSheet.create({
     marginBottom: 10, // Replaces gap
   },
   timeChipSelected: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
   },
   timeText: {
     fontSize: 14,
@@ -995,7 +995,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 16,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -1119,7 +1119,7 @@ const styles = StyleSheet.create({
   totalAmountReceipt: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#4F46E5',
+    color: '#3B82F6',
   },
   summaryLabel: {
     fontSize: 14,
@@ -1191,7 +1191,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   paymentOptionSelected: {
-    borderColor: '#4F46E5',
+    borderColor: '#3B82F6',
     ...SHADOWS.md,
   },
   paymentContent: {
