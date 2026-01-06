@@ -249,7 +249,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     } else {
-      navigation.goBack();
+      // Navigate back to RoleSelection screen when on step 1
+      navigation.navigate('RoleSelection');
     }
   };
 

@@ -11,7 +11,8 @@ import {
   Dimensions,
   Share,
   Platform,
-  Linking
+  Linking,
+  Alert
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -151,9 +152,11 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     if (provider.phone) Linking.openURL(`tel:${provider.phone}`);
   };
 
-  // Stats Calculations
-  const totalBookings = provider.totalReviews ? provider.totalReviews + 12 : 12; // Mock base if 0
-  const estimatedHours = Math.floor(totalBookings * 2.5); // Estimate 2.5 hrs per booking
+  // Stats Calculations - Start from actual data (0 if no bookings)
+  const totalBookings = provider.totalReviews || 0;
+  const estimatedHours = totalBookings > 0 ? Math.floor(totalBookings * 2.5) : 0; // Estimate 2.5 hrs per booking
+  const responseTime = (provider as any).averageResponseTime || '< 1 hr';
+  const experience = provider.experience || 0;
 
   return (
     <View style={styles.container}>
@@ -267,25 +270,35 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             </View>
 
             <View style={{ flex: 1, marginTop: 12 }}>
-              <Text style={styles.providerName}>{provider.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Text style={styles.providerName}>{provider.name}</Text>
+                {(provider as any).isVerified && (
+                  <TouchableOpacity
+                    onPress={() => Alert.alert('Verified Provider', 'This provider has been verified by YANN', [{ text: 'OK' }])}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  </TouchableOpacity>
+                )}
+              </View>
               <Text style={styles.providerService}>
                 {route.params.service?.title || provider.services?.[0] || 'Service Provider'}
               </Text>
 
               <View style={styles.verificationRow}>
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={14} color={COLORS.primary} />
-                  <Text style={styles.verifiedText}>Verified Pro</Text>
-                </View>
                 <View style={styles.ratingBadge}>
                   <Ionicons name="star" size={12} color="#F59E0B" />
                   <Text style={styles.ratingText}>{provider.rating ? provider.rating.toFixed(1) : 'New'}</Text>
+                </View>
+                <View style={styles.experienceBadge}>
+                  <Ionicons name="briefcase" size={12} color="#10B981" />
+                  <Text style={styles.experienceText}>{experience > 0 ? `${experience} yr${experience !== 1 ? 's' : ''}` : 'New'}</Text>
                 </View>
               </View>
             </View>
           </FadeInView>
 
-          {/* Stats Grid - With Icons */}
+          {/* Stats Grid - 3 Stats Horizontal */}
           <FadeInView delay={200} style={styles.section}>
             <View style={styles.statsCard}>
               <View style={styles.statItem}>
@@ -300,16 +313,16 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                 <View style={styles.statIconBg}>
                   <Ionicons name="time-outline" size={20} color={COLORS.primary} />
                 </View>
-                <Text style={styles.statValue}>{estimatedHours}+</Text>
+                <Text style={styles.statValue}>{estimatedHours > 0 ? `${estimatedHours}+` : '0'}</Text>
                 <Text style={styles.statLabel}>Hours</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <View style={styles.statIconBg}>
-                  <Ionicons name="trophy-outline" size={20} color={COLORS.primary} />
+                  <Ionicons name="flash-outline" size={20} color={COLORS.primary} />
                 </View>
-                <Text style={styles.statValue}>100%</Text>
-                <Text style={styles.statLabel}>Success</Text>
+                <Text style={styles.statValue}>{responseTime}</Text>
+                <Text style={styles.statLabel}>Response</Text>
               </View>
             </View>
           </FadeInView>
@@ -595,13 +608,27 @@ const styles = StyleSheet.create({
     color: '#D97706',
     fontWeight: '700',
   },
+  experienceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  experienceText: {
+    fontSize: 12,
+    color: '#059669',
+    fontWeight: '600',
+  },
 
   // Stats Card
   statsCard: {
     flexDirection: 'row',
     backgroundColor: '#F8FAFC',
     borderRadius: 20,
-    padding: 20, // Increased padding
+    padding: 20,
     borderWidth: 1,
     borderColor: '#F1F5F9',
     justifyContent: 'space-between',
@@ -612,10 +639,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statIconBg: {
-    width: 40, height: 40,
+    width: 40,
+    height: 40,
     borderRadius: 20,
     backgroundColor: '#DBEAFE',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
   statValue: {
@@ -629,7 +658,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statDivider: {
-    width: 1, height: 40,
+    width: 1,
+    height: 40,
     backgroundColor: '#E2E8F0',
   },
 
@@ -751,52 +781,74 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Bottom Bar - Fixed to bottom
+  // Bottom Bar - Fixed to bottom with enhanced styling
   bottomBar: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    zIndex: 999,
+    ...SHADOWS.lg,
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    zIndex: 999, // Ensure it sits on top
   },
   bottomContent: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
+    alignItems: 'center',
   },
   chatButton: {
-    width: 50, height: 50,
-    borderRadius: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     backgroundColor: '#F8FAFC',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
+    ...SHADOWS.sm,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.1,
   },
   callButton: {
-    width: 50, height: 50,
-    borderRadius: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     backgroundColor: '#F8FAFC',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
+    ...SHADOWS.sm,
+    shadowColor: '#64748B',
+    shadowOpacity: 0.1,
   },
   bookButton: {
     flex: 1,
-    height: 50,
-    borderRadius: 16,
+    height: 56,
+    borderRadius: 18,
     flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
     overflow: 'hidden',
     ...SHADOWS.md,
     shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 6,
   },
   bookButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: 0.3,
   },
 });
