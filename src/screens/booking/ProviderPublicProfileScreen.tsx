@@ -56,6 +56,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewStats, setReviewStats] = useState<any>(null);
+  const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false);
 
   useEffect(() => {
     const fetchProviderDetails = async () => {
@@ -273,12 +274,20 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <Text style={styles.providerName}>{provider.name}</Text>
                 {(provider as any).isVerified && (
-                  <TouchableOpacity
-                    onPress={() => Alert.alert('Verified Provider', 'This provider has been verified by YANN', [{ text: 'OK' }])}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                  </TouchableOpacity>
+                  <View>
+                    <TouchableOpacity
+                      onPress={() => setShowVerifiedTooltip(!showVerifiedTooltip)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    </TouchableOpacity>
+                    {showVerifiedTooltip && (
+                      <View style={styles.tooltip}>
+                        <View style={styles.tooltipArrow} />
+                        <Text style={styles.tooltipText}>Verified Provider</Text>
+                      </View>
+                    )}
+                  </View>
                 )}
               </View>
               <Text style={styles.providerService}>
@@ -620,6 +629,44 @@ const styles = StyleSheet.create({
   experienceText: {
     fontSize: 12,
     color: '#059669',
+    fontWeight: '600',
+  },
+  tooltip: {
+    position: 'absolute',
+    top: -50,
+    left: '50%',
+    transform: [{ translateX: -50 }],
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    minWidth: 130,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    bottom: -6,
+    left: '50%',
+    marginLeft: -6,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#fff',
+  },
+  tooltipText: {
+    fontSize: 12,
+    color: COLORS.text,
     fontWeight: '600',
   },
 
