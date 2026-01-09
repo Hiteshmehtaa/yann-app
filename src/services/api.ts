@@ -1352,6 +1352,33 @@ class ApiService {
     const response = await this.client.get('/reviews/pending');
     return response.data;
   }
+
+  /**
+   * GET /api/favorites
+   * Get user's favorite providers
+   */
+  async getFavorites(): Promise<ApiResponse<ServiceProvider[]>> {
+    const response = await this.client.get('/favorites');
+    return response.data;
+  }
+
+  /**
+   * POST /api/favorites
+   * Add provider to favorites
+   */
+  async addToFavorites(providerId: string): Promise<ApiResponse<ServiceProvider[]>> {
+    const response = await this.client.post('/favorites', { providerId });
+    return response.data;
+  }
+
+  /**
+   * DELETE /api/favorites/[providerId]
+   * Remove provider from favorites
+   */
+  async removeFromFavorites(providerId: string): Promise<ApiResponse<ServiceProvider[]>> {
+    const response = await this.client.delete(`/favorites/${providerId}`);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

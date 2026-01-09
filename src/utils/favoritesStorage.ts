@@ -1,11 +1,12 @@
 /**
- * Favorites Storage Utility
+ * Favorites Storage Utility with Backend Sync
  * 
- * Manages liked/favorited providers
+ * Manages liked/favorited providers with backend synchronization
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ServiceProvider } from '../types';
+import { apiService } from '../services/api';
 
 const FAVORITES_KEY = '@yann_favorites';
 
@@ -23,9 +24,46 @@ export interface FavoriteProvider {
 }
 
 /**
- * Get all favorite providers
+ * Get all favorite providers (from backend with local fallback)
  */
 export async function getFavorites(): Promise<FavoriteProvider[]> {
+    try {
+        // Try to fetch from backend first
+        const response = await apiService.getFavorites();
+
+        if (response.success && response.data) {
+            // Map backend data to FavoriteProvider format
+            const favorites: FavoriteProvider[] = response.data.map((provider: any) => ({
+                id: provider.id || provider._id,
+                _id: provider._id,
+                name: provider.name,
+                profileImage: provider.profileImage || provider.avatar,
+                avatar: provider.avatar || provider.profileImage,
+                rating: provider.rating,
+                services: provider.services,
+                experience: provider.experience,
+                totalReviews: provider.totalReviews,
+                addedAt: new Date().toISOString(),
+            }));
+
+            // Cache locally
+            await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+            return favorites;
+        }
+
+        // Fallback to local storage
+        return await getLocalFavorites();
+    } catch (error) {
+        console.error('Error getting favorites from backend:', error);
+        // Fallback to local storage
+        return await getLocalFavorites();
+    }
+}
+
+/**
+ * Get favorites from local storage only
+ */
+async function getLocalFavorites(): Promise<FavoriteProvider[]> {
     try {
         const favoritesJson = await AsyncStorage.getItem(FAVORITES_KEY);
         if (!favoritesJson) return [];
@@ -33,67 +71,124 @@ export async function getFavorites(): Promise<FavoriteProvider[]> {
         const favorites = JSON.parse(favoritesJson);
         return Array.isArray(favorites) ? favorites : [];
     } catch (error) {
-        console.error('Error getting favorites:', error);
+        console.error('Error getting local favorites:', error);
         return [];
     }
 }
 
 /**
- * Add provider to favorites
+ * Add provider to favorites (synced with backend)
  */
 export async function addToFavorites(provider: ServiceProvider): Promise<boolean> {
     try {
-        const favorites = await getFavorites();
-
         const providerId = (provider as any).id || provider._id;
 
-        // Check if already favorited
-        const exists = favorites.some(fav =>
-            fav.id === providerId || fav._id === providerId
-        );
+        // Add to backend
+        const response = await apiService.addToFavorites(providerId);
 
-        if (exists) {
-            return true; // Already favorited
+        if (response.success) {
+            // Update local cache
+            const favorites = await getLocalFavorites();
+
+            const exists = favorites.some(fav =>
+                fav.id === providerId || fav._id === providerId
+            );
+
+            if (!exists) {
+                const favoriteProvider: FavoriteProvider = {
+                    id: providerId,
+                    _id: provider._id,
+                    name: provider.name,
+                    profileImage: provider.profileImage || (provider as any).avatar,
+                    avatar: (provider as any).avatar || provider.profileImage,
+                    rating: provider.rating,
+                    services: provider.services,
+                    experience: provider.experience,
+                    totalReviews: provider.totalReviews,
+                    addedAt: new Date().toISOString(),
+                };
+
+                const updatedFavorites = [favoriteProvider, ...favorites];
+                await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
+            }
+
+            return true;
         }
 
-        const favoriteProvider: FavoriteProvider = {
-            id: providerId,
-            _id: provider._id,
-            name: provider.name,
-            profileImage: provider.profileImage || (provider as any).avatar,
-            avatar: (provider as any).avatar || provider.profileImage,
-            rating: provider.rating,
-            services: provider.services,
-            experience: provider.experience,
-            totalReviews: provider.totalReviews,
-            addedAt: new Date().toISOString(),
-        };
-
-        const updatedFavorites = [favoriteProvider, ...favorites];
-        await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
-
-        return true;
+        return false;
     } catch (error) {
         console.error('Error adding to favorites:', error);
-        return false;
+
+        // Fallback to local-only storage
+        try {
+            const favorites = await getLocalFavorites();
+            const providerId = (provider as any).id || provider._id;
+
+            const exists = favorites.some(fav =>
+                fav.id === providerId || fav._id === providerId
+            );
+
+            if (exists) return true;
+
+            const favoriteProvider: FavoriteProvider = {
+                id: providerId,
+                _id: provider._id,
+                name: provider.name,
+                profileImage: provider.profileImage || (provider as any).avatar,
+                avatar: (provider as any).avatar || provider.profileImage,
+                rating: provider.rating,
+                services: provider.services,
+                experience: provider.experience,
+                totalReviews: provider.totalReviews,
+                addedAt: new Date().toISOString(),
+            };
+
+            const updatedFavorites = [favoriteProvider, ...favorites];
+            await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
+            return true;
+        } catch (localError) {
+            console.error('Error with local fallback:', localError);
+            return false;
+        }
     }
 }
 
 /**
- * Remove provider from favorites
+ * Remove provider from favorites (synced with backend)
  */
 export async function removeFromFavorites(providerId: string): Promise<boolean> {
     try {
-        const favorites = await getFavorites();
-        const updatedFavorites = favorites.filter(
-            fav => fav.id !== providerId && fav._id !== providerId
-        );
+        // Remove from backend
+        const response = await apiService.removeFromFavorites(providerId);
 
-        await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
-        return true;
+        if (response.success) {
+            // Update local cache
+            const favorites = await getLocalFavorites();
+            const updatedFavorites = favorites.filter(
+                fav => fav.id !== providerId && fav._id !== providerId
+            );
+
+            await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
+            return true;
+        }
+
+        return false;
     } catch (error) {
         console.error('Error removing from favorites:', error);
-        return false;
+
+        // Fallback to local-only removal
+        try {
+            const favorites = await getLocalFavorites();
+            const updatedFavorites = favorites.filter(
+                fav => fav.id !== providerId && fav._id !== providerId
+            );
+
+            await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
+            return true;
+        } catch (localError) {
+            console.error('Error with local fallback:', localError);
+            return false;
+        }
     }
 }
 
