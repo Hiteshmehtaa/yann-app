@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yanncare.mobile"
+      "bundleIdentifier": "com.yanncare.mobile",
+      "associatedDomains": [
+        "applinks:yann.app",
+        "applinks:www.yann.app"
+      ]
     },
     "android": {
       "package": "com.yanncare.mobile",
