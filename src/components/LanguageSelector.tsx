@@ -8,7 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export const LanguageSelector: React.FC = () => {
+interface LanguageSelectorProps {
+    onLanguageChange?: () => void;
+}
+
+export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ onLanguageChange }) => {
     const { i18n } = useTranslation();
     const [selectedLanguage, setSelectedLanguage] = useState(i18n.language);
 
@@ -23,7 +27,15 @@ export const LanguageSelector: React.FC = () => {
             Alert.alert(
                 'Language Changed',
                 `App language changed to ${languages.find(l => l.code === selectedLanguage)?.nativeName}`,
-                [{ text: 'OK' }]
+                [{
+                    text: 'OK',
+                    onPress: () => {
+                        // Navigate back to force re-render
+                        if (onLanguageChange) {
+                            setTimeout(() => onLanguageChange(), 100);
+                        }
+                    }
+                }]
             );
         }
     };

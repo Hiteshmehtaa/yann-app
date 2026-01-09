@@ -19,7 +19,7 @@ export const LanguageSettingsScreen: React.FC<Props> = ({ navigation }) => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-            <LanguageSelector />
+            <LanguageSelector onLanguageChange={() => navigation.goBack()} />
         </SafeAreaView>
     );
 };
