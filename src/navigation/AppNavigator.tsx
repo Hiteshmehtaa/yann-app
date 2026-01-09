@@ -50,6 +50,7 @@ import { NotificationsListScreen } from '../screens/profile/NotificationsListScr
 import { HelpSupportScreen } from '../screens/profile/HelpSupportScreen';
 import { FavoritesScreen } from '../screens/profile/FavoritesScreen';
 import { ChatScreen } from '../screens/profile/ChatScreen';
+import { LanguageSettingsScreen } from '../screens/settings/LanguageSettingsScreen';
 
 // Provider Screens
 import { ProviderDashboardScreen } from '../screens/provider/ProviderDashboardScreen';
@@ -98,6 +99,7 @@ type RootStackParamList = {
   ProviderTerms: undefined;
   SafetyPolicy: undefined;
   AadhaarVerification: undefined;
+  LanguageSettings: undefined;
 };
 
 // Premium Apple-like Theme - Using new design system
@@ -393,6 +395,7 @@ export function AppNavigator() {
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
               </>
             ) : (
               <>
@@ -414,6 +417,7 @@ export function AppNavigator() {
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
               </>
             )}
           </>

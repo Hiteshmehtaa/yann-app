@@ -285,6 +285,12 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       onPress: () => navigation.navigate('Notifications'),
     },
     {
+      icon: 'language-outline',
+      title: 'Language',
+      subtitle: '',
+      onPress: () => navigation.navigate('LanguageSettings'),
+    },
+    {
       icon: 'help-circle-outline',
       title: 'Help Center',
       subtitle: '',
