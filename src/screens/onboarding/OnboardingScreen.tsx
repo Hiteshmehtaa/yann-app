@@ -33,19 +33,19 @@ interface OnboardingSlide {
 const slides: OnboardingSlide[] = [
     {
         id: '1',
-        animation: require('../../../assets/lottie/Service-Search.json'),
+        animation: require('../../../assets/lottie/Campers-Welcome.json'),
         titleKey: 'onboarding.slide1.title',
         descriptionKey: 'onboarding.slide1.description',
     },
     {
         id: '2',
-        animation: require('../../../assets/lottie/Booking.json'),
+        animation: require('../../../assets/lottie/Email-Sent.json'),
         titleKey: 'onboarding.slide2.title',
         descriptionKey: 'onboarding.slide2.description',
     },
     {
         id: '3',
-        animation: require('../../../assets/lottie/Payment.json'),
+        animation: require('../../../assets/lottie/Success.json'),
         titleKey: 'onboarding.slide3.title',
         descriptionKey: 'onboarding.slide3.description',
     },
