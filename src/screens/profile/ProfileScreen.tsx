@@ -28,6 +28,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useResponsive } from '../../hooks/useResponsive';
 import { StatsCard } from '../../components/ui/StatsCard';
 import { Badge } from '../../components/ui/Badge';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -41,6 +42,7 @@ type MenuItemType = {
 };
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   const { user, logout, updateUser } = useAuth();
   const { colors, toggleTheme, isDark } = useTheme();
   const { isTablet } = useResponsive();
@@ -241,7 +243,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const menuItems: MenuItemType[] = [
     {
       icon: 'create-outline',
-      title: 'Edit Profile',
+      title: t('profile.editProfile'),
       subtitle: '',
       onPress: () => {
         if (user?.role === 'provider') navigation.navigate('ProviderEditProfile');
@@ -250,49 +252,49 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     },
     {
       icon: 'location-outline',
-      title: 'Manage Address',
+      title: t('profile.manageAddress'),
       subtitle: '',
       onPress: () => navigation.navigate('SavedAddresses'),
     },
     {
       icon: 'shield-checkmark-outline',
-      title: 'Verify Aadhaar',
-      subtitle: user?.isVerified ? 'Verified' : 'Complete your KYC verification',
+      title: t('profile.verifyAadhaar'),
+      subtitle: user?.isVerified ? t('profile.verified') : t('profile.notVerified'),
       onPress: () => handleVerification(),
     },
     {
       icon: 'wallet-outline',
-      title: 'Yann Wallet',
+      title: t('profile.wallet'),
       subtitle: '',
       onPress: () => navigation.navigate('Wallet'),
     },
     {
       icon: 'card-outline',
-      title: 'Payment Methods',
+      title: t('profile.paymentMethods'),
       subtitle: '',
       onPress: () => setShowComingSoon(true),
     },
     {
       icon: 'calendar-outline',
-      title: 'My Booking',
+      title: t('bookings.myBookings'),
       subtitle: '',
       onPress: () => navigation.navigate('BookingsList'),
     },
     {
       icon: 'settings-outline',
-      title: 'Settings',
+      title: t('profile.settings'),
       subtitle: '',
       onPress: () => navigation.navigate('Notifications'),
     },
     {
       icon: 'language-outline',
-      title: 'Language',
+      title: t('profile.language'),
       subtitle: '',
       onPress: () => navigation.navigate('LanguageSettings'),
     },
     {
       icon: 'help-circle-outline',
-      title: 'Help Center',
+      title: t('profile.helpCenter'),
       subtitle: '',
       onPress: () => navigation.navigate('HelpSupport'),
     },
@@ -311,7 +313,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.cleanHeaderTitle, { color: colors.text }]}>Profile</Text>
+        <Text style={[styles.cleanHeaderTitle, { color: colors.text }]}>{t('profile.profile')}</Text>
         <TouchableOpacity style={styles.headerIconButton}>
           <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -425,7 +427,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           {/* Logout Button */}
           <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.cardBg }]} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={[styles.logoutButtonText, { color: colors.error }]}>Logout</Text>
+            <Text style={[styles.logoutButtonText, { color: colors.error }]}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
