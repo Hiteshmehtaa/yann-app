@@ -15,7 +15,13 @@
         "error": "Error",
         "success": "Success",
         "tryAgain": "Try Again",
-        "loadMore": "Load More"
+        "loadMore": "Load More",
+        "back": "Back",
+        "next": "Next",
+        "done": "Done",
+        "yes": "Yes",
+        "no": "No",
+        "ok": "OK"
     },
     "auth": {
         "login": "Login",
@@ -27,26 +33,69 @@
         "forgotPassword": "Forgot Password?",
         "sendOTP": "Send OTP",
         "verifyOTP": "Verify OTP",
-        "enterOTP": "Enter OTP"
+        "enterOTP": "Enter OTP",
+        "welcomeBack": "Welcome Back",
+        "createAccount": "Create Account",
+        "selectRole": "Select Your Role",
+        "member": "Member",
+        "partner": "Partner"
     },
     "home": {
         "welcome": "Welcome to YANN",
         "findServices": "Find Services",
         "popularServices": "Popular Services",
-        "topProviders": "Top Providers"
+        "topProviders": "Top Providers",
+        "searchServices": "Search for services...",
+        "viewAll": "View All",
+        "nearYou": "Near You"
     },
     "bookings": {
         "myBookings": "My Bookings",
         "bookingDetails": "Booking Details",
         "createBooking": "Create Booking",
         "cancelBooking": "Cancel Booking",
+        "bookNow": "Book Now",
+        "viewDetails": "View Details",
         "status": {
             "pending": "Pending",
             "confirmed": "Confirmed",
             "inProgress": "In Progress",
             "completed": "Completed",
             "cancelled": "Cancelled"
-        }
+        },
+        "noBookings": "No bookings yet",
+        "bookingId": "Booking ID",
+        "service": "Service",
+        "provider": "Provider",
+        "date": "Date",
+        "time": "Time",
+        "price": "Price",
+        "address": "Address"
+    },
+    "profile": {
+        "profile": "Profile",
+        "editProfile": "Edit Profile",
+        "myProfile": "My Profile",
+        "personalInfo": "Personal Information",
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "address": "Address",
+        "manageAddress": "Manage Address",
+        "savedAddresses": "Saved Addresses",
+        "addNewAddress": "Add New Address",
+        "wallet": "Yann Wallet",
+        "balance": "Balance",
+        "paymentMethods": "Payment Methods",
+        "settings": "Settings",
+        "language": "Language",
+        "helpCenter": "Help Center",
+        "termsConditions": "Terms & Conditions",
+        "privacyPolicy": "Privacy Policy",
+        "logout": "Logout",
+        "verifyAadhaar": "Verify Aadhaar",
+        "verified": "Verified",
+        "notVerified": "Not Verified"
     },
     "provider": {
         "dashboard": "Dashboard",
@@ -54,10 +103,25 @@
         "analytics": "Analytics",
         "profile": "Profile",
         "services": "Services",
+        "myServices": "My Services",
+        "addService": "Add Service",
         "totalEarnings": "Total Earnings",
         "completedJobs": "Completed Jobs",
         "rating": "Rating",
-        "reviews": "Reviews"
+        "reviews": "Reviews",
+        "activeBookings": "Active Bookings",
+        "pendingRequests": "Pending Requests",
+        "recentBookings": "Recent Bookings",
+        "viewAll": "View All",
+        "quickActions": "Quick Actions"
+    },
+    "navigation": {
+        "home": "HOME",
+        "bookings": "BOOKINGS",
+        "favorites": "FAVORITES",
+        "chat": "CHAT",
+        "profile": "PROFILE",
+        "earnings": "EARNINGS"
     },
     "errors": {
         "networkError": "No internet connection",
@@ -67,7 +131,8 @@
         "notFound": "Resource not found",
         "unauthorized": "You are not authorized",
         "rateLimited": "Too many requests. Please wait",
-        "paymentFailed": "Payment failed. Please try again"
+        "paymentFailed": "Payment failed. Please try again",
+        "somethingWrong": "Something went wrong"
     },
     "onboarding": {
         "slide1": {
@@ -82,5 +147,25 @@
             "title": "Secure Payments",
             "description": "Pay safely with multiple payment options and wallet support"
         }
+    },
+    "services": {
+        "allServices": "All Services",
+        "serviceDetails": "Service Details",
+        "selectService": "Select Service",
+        "bookService": "Book Service",
+        "serviceProvider": "Service Provider",
+        "aboutService": "About Service",
+        "pricing": "Pricing",
+        "availability": "Availability"
+    },
+    "wallet": {
+        "wallet": "Wallet",
+        "balance": "Balance",
+        "addMoney": "Add Money",
+        "transactions": "Transactions",
+        "recentTransactions": "Recent Transactions",
+        "noTransactions": "No transactions yet",
+        "credit": "Credit",
+        "debit": "Debit"
     }
 }

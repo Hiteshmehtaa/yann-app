@@ -15,7 +15,13 @@
         "error": "त्रुटि",
         "success": "सफलता",
         "tryAgain": "पुनः प्रयास करें",
-        "loadMore": "और लोड करें"
+        "loadMore": "और लोड करें",
+        "back": "वापस",
+        "next": "अगला",
+        "done": "पूर्ण",
+        "yes": "हाँ",
+        "no": "नहीं",
+        "ok": "ठीक है"
     },
     "auth": {
         "login": "लॉगिन",
@@ -27,26 +33,69 @@
         "forgotPassword": "पासवर्ड भूल गए?",
         "sendOTP": "OTP भेजें",
         "verifyOTP": "OTP सत्यापित करें",
-        "enterOTP": "OTP दर्ज करें"
+        "enterOTP": "OTP दर्ज करें",
+        "welcomeBack": "वापसी पर स्वागत है",
+        "createAccount": "खाता बनाएं",
+        "selectRole": "अपनी भूमिका चुनें",
+        "member": "सदस्य",
+        "partner": "साझेदार"
     },
     "home": {
         "welcome": "YANN में आपका स्वागत है",
         "findServices": "सेवाएं खोजें",
         "popularServices": "लोकप्रिय सेवाएं",
-        "topProviders": "शीर्ष प्रदाता"
+        "topProviders": "शीर्ष प्रदाता",
+        "searchServices": "सेवाओं की खोज करें...",
+        "viewAll": "सभी देखें",
+        "nearYou": "आपके पास"
     },
     "bookings": {
         "myBookings": "मेरी बुकिंग",
         "bookingDetails": "बुकिंग विवरण",
         "createBooking": "बुकिंग बनाएं",
         "cancelBooking": "बुकिंग रद्द करें",
+        "bookNow": "अभी बुक करें",
+        "viewDetails": "विवरण देखें",
         "status": {
             "pending": "लंबित",
             "confirmed": "पुष्टि की गई",
             "inProgress": "प्रगति में",
             "completed": "पूर्ण",
             "cancelled": "रद्द"
-        }
+        },
+        "noBookings": "अभी तक कोई बुकिंग नहीं",
+        "bookingId": "बुकिंग आईडी",
+        "service": "सेवा",
+        "provider": "प्रदाता",
+        "date": "तारीख",
+        "time": "समय",
+        "price": "मूल्य",
+        "address": "पता"
+    },
+    "profile": {
+        "profile": "प्रोफ़ाइल",
+        "editProfile": "प्रोफ़ाइल संपादित करें",
+        "myProfile": "मेरी प्रोफ़ाइल",
+        "personalInfo": "व्यक्तिगत जानकारी",
+        "name": "नाम",
+        "email": "ईमेल",
+        "phone": "फ़ोन",
+        "address": "पता",
+        "manageAddress": "पता प्रबंधित करें",
+        "savedAddresses": "सहेजे गए पते",
+        "addNewAddress": "नया पता जोड़ें",
+        "wallet": "यान वॉलेट",
+        "balance": "शेष राशि",
+        "paymentMethods": "भुगतान के तरीके",
+        "settings": "सेटिंग्स",
+        "language": "भाषा",
+        "helpCenter": "सहायता केंद्र",
+        "termsConditions": "नियम और शर्तें",
+        "privacyPolicy": "गोपनीयता नीति",
+        "logout": "लॉगआउट",
+        "verifyAadhaar": "आधार सत्यापित करें",
+        "verified": "सत्यापित",
+        "notVerified": "सत्यापित नहीं"
     },
     "provider": {
         "dashboard": "डैशबोर्ड",
@@ -54,10 +103,25 @@
         "analytics": "विश्लेषण",
         "profile": "प्रोफ़ाइल",
         "services": "सेवाएं",
+        "myServices": "मेरी सेवाएं",
+        "addService": "सेवा जोड़ें",
         "totalEarnings": "कुल कमाई",
         "completedJobs": "पूर्ण कार्य",
         "rating": "रेटिंग",
-        "reviews": "समीक्षाएं"
+        "reviews": "समीक्षाएं",
+        "activeBookings": "सक्रिय बुकिंग",
+        "pendingRequests": "लंबित अनुरोध",
+        "recentBookings": "हाल की बुकिंग",
+        "viewAll": "सभी देखें",
+        "quickActions": "त्वरित क्रियाएं"
+    },
+    "navigation": {
+        "home": "होम",
+        "bookings": "बुकिंग",
+        "favorites": "पसंदीदा",
+        "chat": "चैट",
+        "profile": "प्रोफ़ाइल",
+        "earnings": "कमाई"
     },
     "errors": {
         "networkError": "इंटरनेट कनेक्शन नहीं है",
@@ -67,7 +131,8 @@
         "notFound": "संसाधन नहीं मिला",
         "unauthorized": "आप अधिकृत नहीं हैं",
         "rateLimited": "बहुत सारे अनुरोध। कृपया प्रतीक्षा करें",
-        "paymentFailed": "भुगतान विफल रहा। कृपया पुनः प्रयास करें"
+        "paymentFailed": "भुगतान विफल रहा। कृपया पुनः प्रयास करें",
+        "somethingWrong": "कुछ गलत हो गया"
     },
     "onboarding": {
         "slide1": {
@@ -82,5 +147,25 @@
             "title": "सुरक्षित भुगतान",
             "description": "कई भुगतान विकल्पों और वॉलेट समर्थन के साथ सुरक्षित रूप से भुगतान करें"
         }
+    },
+    "services": {
+        "allServices": "सभी सेवाएं",
+        "serviceDetails": "सेवा विवरण",
+        "selectService": "सेवा चुनें",
+        "bookService": "सेवा बुक करें",
+        "serviceProvider": "सेवा प्रदाता",
+        "aboutService": "सेवा के बारे में",
+        "pricing": "मूल्य निर्धारण",
+        "availability": "उपलब्धता"
+    },
+    "wallet": {
+        "wallet": "वॉलेट",
+        "balance": "शेष राशि",
+        "addMoney": "पैसे जोड़ें",
+        "transactions": "लेनदेन",
+        "recentTransactions": "हाल के लेनदेन",
+        "noTransactions": "अभी तक कोई लेनदेन नहीं",
+        "credit": "क्रेडिट",
+        "debit": "डेबिट"
     }
 }
