@@ -23,6 +23,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { COLORS, SHADOWS, SPACING } from '../../utils/theme';
 import { Service, ServiceProvider } from '../../types';
+import { shareProviderProfile } from '../../utils/shareUtils';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT_EXPANDED = height * 0.45; // 45% of screen for parallax
@@ -143,10 +144,19 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        message: `Check out ${provider.name} on Yann! Professional ${provider.services?.[0] || 'service provider'}.`,
+      const providerId = (provider as any).id || provider._id || '';
+      const success = await shareProviderProfile({
+        providerId,
+        providerName: provider.name,
+        rating: provider.rating,
+        services: provider.services || [],
       });
-    } catch (error) { }
+      if (success) {
+        Alert.alert('Success', 'Profile shared successfully!');
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+    }
   };
 
   const handleCall = () => {
