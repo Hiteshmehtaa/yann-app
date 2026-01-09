@@ -1,0 +1,86 @@
+{
+    "common": {
+        "continue": "Continue",
+        "skip": "Skip",
+        "getStarted": "Get Started",
+        "search": "Search",
+        "filter": "Filter",
+        "apply": "Apply",
+        "reset": "Reset",
+        "cancel": "Cancel",
+        "save": "Save",
+        "delete": "Delete",
+        "edit": "Edit",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "tryAgain": "Try Again",
+        "loadMore": "Load More"
+    },
+    "auth": {
+        "login": "Login",
+        "signup": "Sign Up",
+        "logout": "Logout",
+        "email": "Email",
+        "phone": "Phone Number",
+        "password": "Password",
+        "forgotPassword": "Forgot Password?",
+        "sendOTP": "Send OTP",
+        "verifyOTP": "Verify OTP",
+        "enterOTP": "Enter OTP"
+    },
+    "home": {
+        "welcome": "Welcome to YANN",
+        "findServices": "Find Services",
+        "popularServices": "Popular Services",
+        "topProviders": "Top Providers"
+    },
+    "bookings": {
+        "myBookings": "My Bookings",
+        "bookingDetails": "Booking Details",
+        "createBooking": "Create Booking",
+        "cancelBooking": "Cancel Booking",
+        "status": {
+            "pending": "Pending",
+            "confirmed": "Confirmed",
+            "inProgress": "In Progress",
+            "completed": "Completed",
+            "cancelled": "Cancelled"
+        }
+    },
+    "provider": {
+        "dashboard": "Dashboard",
+        "earnings": "Earnings",
+        "analytics": "Analytics",
+        "profile": "Profile",
+        "services": "Services",
+        "totalEarnings": "Total Earnings",
+        "completedJobs": "Completed Jobs",
+        "rating": "Rating",
+        "reviews": "Reviews"
+    },
+    "errors": {
+        "networkError": "No internet connection",
+        "serverError": "Server error occurred",
+        "sessionExpired": "Session expired. Please login again",
+        "invalidInput": "Invalid input. Please check your data",
+        "notFound": "Resource not found",
+        "unauthorized": "You are not authorized",
+        "rateLimited": "Too many requests. Please wait",
+        "paymentFailed": "Payment failed. Please try again"
+    },
+    "onboarding": {
+        "slide1": {
+            "title": "Find Trusted Service Providers",
+            "description": "Connect with verified professionals for all your home service needs"
+        },
+        "slide2": {
+            "title": "Book Services Instantly",
+            "description": "Easy booking with transparent pricing and real-time tracking"
+        },
+        "slide3": {
+            "title": "Secure Payments",
+            "description": "Pay safely with multiple payment options and wallet support"
+        }
+    }
+}
