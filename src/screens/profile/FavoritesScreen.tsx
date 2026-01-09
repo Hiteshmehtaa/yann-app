@@ -1,4 +1,10 @@
-import React, { useState } from 'react';
+/**
+ * Favorites Screen
+ * 
+ * Shows all liked/favorited providers
+ */
+
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,159 +12,163 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
+  RefreshControl,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../../utils/theme';
-import { TabBar } from '../../components/ui/TabBar';
+import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme';
+import { getFavorites, removeFromFavorites, FavoriteProvider } from '../../utils/favoritesStorage';
+import { EmptyState } from '../../components/EmptyState';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-interface FavoriteService {
-  id: string;
-  title: string;
-  provider: string;
-  rating: number;
-  price: string;
-  image: any;
-}
-
-const TABS = [
-  { key: 'all', label: 'All' },
-  { key: 'cleaning', label: 'Cleaning' },
-  { key: 'repairing', label: 'Repairing' },
-  { key: 'plumbing', label: 'Plumbing' },
-];
-
-// Sample favorite services data
-const FAVORITE_SERVICES: FavoriteService[] = [
-  {
-    id: '1',
-    title: 'Home Cleaning',
-    provider: 'Robert Kelvin',
-    rating: 4.5,
-    price: '$1,600',
-    image: require('../../../assets/service-icons/cleaning.png'),
-  },
-  {
-    id: '2',
-    title: 'AC Repair',
-    provider: 'John Mike',
-    rating: 4.5,
-    price: '$500',
-    image: require('../../../assets/service-icons/repair.png'),
-  },
-  {
-    id: '3',
-    title: 'Kitchen Cleaning',
-    provider: 'Sarah Wilson',
-    rating: 4.2,
-    price: '$1,900',
-    image: require('../../../assets/service-icons/cleaning.png'),
-  },
-  {
-    id: '4',
-    title: 'Home Cleaning',
-    provider: 'Mike Johnson',
-    rating: 3.2,
-    price: '$1,400',
-    image: require('../../../assets/service-icons/cleaning.png'),
-  },
-];
-
 export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('all');
-  const [favorites, setFavorites] = useState(FAVORITE_SERVICES);
+  const { colors, isDark } = useTheme();
+  const [favorites, setFavorites] = useState<FavoriteProvider[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => prev.filter((item) => item.id !== id));
+  const loadFavorites = async () => {
+    const favs = await getFavorites();
+    setFavorites(favs);
   };
 
-  const renderServiceCard = ({ item }: { item: FavoriteService }) => (
-    <TouchableOpacity
-      style={styles.serviceCard}
-      activeOpacity={0.7}
-      onPress={() => {
-        // Navigate to service detail
-        console.log('Navigate to service:', item.id);
-      }}
-    >
-      {/* Service Image */}
-      <View style={styles.imageContainer}>
-        <Image source={item.image} style={styles.serviceImage} resizeMode="cover" />
-      </View>
+  useFocusEffect(
+    useCallback(() => {
+      loadFavorites();
+    }, [])
+  );
 
-      {/* Service Info */}
-      <View style={styles.serviceInfo}>
-        <Text style={styles.serviceTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.providerName} numberOfLines={1}>
-          {item.provider}
-        </Text>
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await loadFavorites();
+    setIsRefreshing(false);
+  }, []);
 
-        {/* Rating and Price Row */}
-        <View style={styles.bottomRow}>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={14} color={COLORS.warning} />
-            <Text style={styles.ratingText}>{item.rating}</Text>
-          </View>
-          <Text style={styles.priceText}>{item.price}/hour</Text>
-        </View>
-      </View>
+  const handleRemoveFavorite = async (providerId: string) => {
+    await removeFromFavorites(providerId);
+    await loadFavorites();
+  };
 
-      {/* Favorite Button */}
+  const handleProviderPress = (provider: FavoriteProvider) => {
+    navigation.navigate('ProviderPublicProfile', { provider });
+  };
+
+  const renderProviderCard = ({ item }: { item: FavoriteProvider }) => {
+    const providerImage = item.profileImage || item.avatar;
+    const providerInitial = item.name.charAt(0).toUpperCase();
+
+    return (
       <TouchableOpacity
-        style={styles.favoriteButton}
-        onPress={() => toggleFavorite(item.id)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={[styles.card, { backgroundColor: colors.cardBg }]}
+        onPress={() => handleProviderPress(item)}
+        activeOpacity={0.7}
       >
-        <Ionicons name="heart" size={20} color="#FF4757" />
+        <View style={styles.cardContent}>
+          {/* Avatar */}
+          <View style={styles.avatarContainer}>
+            {providerImage ? (
+              <Image source={{ uri: providerImage }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>{providerInitial}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Info */}
+          <View style={styles.providerInfo}>
+            <Text style={[styles.providerName, { color: colors.text }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+
+            {item.services && item.services.length > 0 && (
+              <Text style={[styles.providerService, { color: colors.textSecondary }]} numberOfLines={1}>
+                {item.services[0]}
+              </Text>
+            )}
+
+            <View style={styles.statsRow}>
+              {item.rating && (
+                <View style={styles.ratingBadge}>
+                  <Ionicons name="star" size={12} color="#F59E0B" />
+                  <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                </View>
+              )}
+
+              {item.experience && item.experience > 0 && (
+                <View style={styles.experienceBadge}>
+                  <Ionicons name="briefcase" size={12} color="#10B981" />
+                  <Text style={styles.experienceText}>{item.experience} yr{item.experience !== 1 ? 's' : ''}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Remove Button */}
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={() => handleRemoveFavorite(item.id || item._id || '')}
+          >
+            <Ionicons name="heart" size={24} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
-    </TouchableOpacity>
+    );
+  };
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <EmptyState
+        title="No Favorites Yet"
+        subtitle="Tap the heart icon on provider profiles to add them to your favorites"
+      />
+    </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+      <View style={[styles.header, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Favourite</Text>
-        <View style={styles.headerRight} />
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Favorites</Text>
+        <View style={styles.headerRight}>
+          {favorites.length > 0 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{favorites.length}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
-      {/* Tab Bar */}
-      <TabBar tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
-
-      {/* Services List */}
+      {/* List */}
       <FlatList
         data={favorites}
-        renderItem={renderServiceCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        numColumns={2}
-        columnWrapperStyle={styles.columnWrapper}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="heart-outline" size={64} color={COLORS.textTertiary} />
-            <Text style={styles.emptyTitle}>No Favorites Yet</Text>
-            <Text style={styles.emptyText}>
-              Add services to favorites to see them here
-            </Text>
-          </View>
+        renderItem={renderProviderCard}
+        keyExtractor={(item) => item.id || item._id || ''}
+        contentContainerStyle={[
+          styles.listContent,
+          favorites.length === 0 && styles.listContentEmpty,
+        ]}
+        ListEmptyComponent={renderEmpty}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
         }
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );
@@ -167,7 +177,6 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -175,9 +184,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
   },
   backButton: {
     width: 40,
@@ -185,107 +192,115 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  headerRight: {
-    width: 40,
-  },
   headerTitle: {
     fontSize: TYPOGRAPHY.size.xl,
     fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.text,
+  },
+  headerRight: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  countBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  countText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   listContent: {
-    padding: SPACING.md,
+    padding: SPACING.lg,
     paddingBottom: 100,
   },
-  columnWrapper: {
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
+  listContentEmpty: {
+    flexGrow: 1,
   },
-  serviceCard: {
-    width: '48%',
-    backgroundColor: COLORS.white,
+  card: {
     borderRadius: RADIUS.large,
-    overflow: 'hidden',
-    ...SHADOWS.sm,
-  },
-  imageContainer: {
-    width: '100%',
-    height: 140,
-    backgroundColor: COLORS.gray100,
-    position: 'relative',
-  },
-  serviceImage: {
-    width: '100%',
-    height: '100%',
-  },
-  favoriteButton: {
-    position: 'absolute',
-    bottom: SPACING.sm,
-    right: SPACING.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
     ...SHADOWS.md,
   },
-  serviceInfo: {
-    padding: SPACING.md,
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  serviceTitle: {
-    fontSize: 14,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    color: COLORS.text,
-    marginBottom: 2,
+  avatarContainer: {
+    marginRight: SPACING.md,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  avatarPlaceholder: {
+    backgroundColor: COLORS.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  providerInfo: {
+    flex: 1,
   },
   providerName: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weight.bold,
+    marginBottom: 4,
   },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
+  providerService: {
+    fontSize: TYPOGRAPHY.size.sm,
+    marginBottom: 8,
   },
-  ratingContainer: {
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    backgroundColor: COLORS.gray100,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
+    gap: 4,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   ratingText: {
-    fontSize: 11,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D97706',
   },
-  priceText: {
-    fontSize: 13,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.text,
+  experienceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  experienceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  removeButton: {
+    padding: 8,
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: SPACING.xxxl,
-    paddingTop: 80,
-  },
-  emptyTitle: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.text,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.sm,
-  },
-  emptyText: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
   },
 });

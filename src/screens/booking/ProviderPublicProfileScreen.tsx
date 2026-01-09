@@ -24,6 +24,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { COLORS, SHADOWS, SPACING } from '../../utils/theme';
 import { Service, ServiceProvider } from '../../types';
 import { shareProviderProfile } from '../../utils/shareUtils';
+import { toggleFavorite, isFavorited } from '../../utils/favoritesStorage';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT_EXPANDED = height * 0.45; // 45% of screen for parallax
@@ -93,6 +94,14 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
       }
     };
     fetchProviderDetails();
+
+    // Check if provider is favorited
+    const checkFavoriteStatus = async () => {
+      const providerId = (initialProvider as any).id || initialProvider._id;
+      const favorited = await isFavorited(providerId);
+      setIsBookmarked(favorited);
+    };
+    checkFavoriteStatus();
   }, [initialProvider]);
 
   // -- Animations --
@@ -161,6 +170,19 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 
   const handleCall = () => {
     if (provider.phone) Linking.openURL(`tel:${provider.phone}`);
+  };
+
+  const handleToggleFavorite = async () => {
+    const success = await toggleFavorite(provider);
+    if (success) {
+      setIsBookmarked(!isBookmarked);
+      Alert.alert(
+        isBookmarked ? 'Removed from Favorites' : 'Added to Favorites',
+        isBookmarked
+          ? `${provider.name} removed from your favorites`
+          : `${provider.name} added to your favorites`
+      );
+    }
   };
 
   // Stats Calculations - Start from actual data (0 if no bookings)
@@ -244,7 +266,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
               <Ionicons name="share-social-outline" size={22} color="#1E293B" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => setIsBookmarked(!isBookmarked)}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleToggleFavorite}>
               <Ionicons name={isBookmarked ? "heart" : "heart-outline"} size={22} color={isBookmarked ? "#EF4444" : "#1E293B"} />
             </TouchableOpacity>
           </View>
