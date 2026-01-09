@@ -37,7 +37,29 @@
         "googleMaps": {
           "apiKey": "AIzaSyDuWW76Kch_KG5n9vxNwSq3GfJCSSZuBOg"
         }
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "yann.app",
+              "pathPrefix": "/provider"
+            },
+            {
+              "scheme": "https",
+              "host": "www.yann.app",
+              "pathPrefix": "/provider"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
