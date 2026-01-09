@@ -22,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
+import { shareProviderProfile } from '../../utils/shareUtils';
 
 // Reusing global theme constants or defining similar ones matching Member Profile
 const COLORS = {
@@ -261,8 +262,21 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={async () => {
+            const success = await shareProviderProfile({
+              providerId: user?.id || user?._id || '',
+              providerName: user?.name || 'Provider',
+              rating: user?.rating,
+              services: user?.services || [],
+            });
+            if (success) {
+              Alert.alert('Success', 'Profile shared successfully!');
+            }
+          }}
+        >
+          <Ionicons name="share-outline" size={24} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 

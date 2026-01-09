@@ -1,0 +1,29 @@
+{
+    "expo": {
+        "scheme": "yann",
+        "android": {
+            "intentFilters": [
+                {
+                    "action": "VIEW",
+                    "autoVerify": true,
+                    "data": [
+                        {
+                            "scheme": "https",
+                            "host": "yann.app",
+                            "pathPrefix": "/provider"
+                        },
+                        {
+                            "scheme": "https",
+                            "host": "www.yann.app",
+                            "pathPrefix": "/provider"
+                        }
+                    ],
+                    "category": [
+                        "BROWSABLE",
+                        "DEFAULT"
+                    ]
+                }
+            ]
+        }
+    }
+}

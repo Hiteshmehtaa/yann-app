@@ -339,12 +339,17 @@ function ProviderTabNavigator() {
 }
 
 const linking = {
-  prefixes: [Linking.createURL('/'), 'yann://'],
+  prefixes: [Linking.createURL('/'), 'yann://', 'https://yann.app', 'https://www.yann.app'],
   config: {
     screens: {
       MainTabs: {
         screens: {
           Profile: 'verification-success',
+          Home: {
+            screens: {
+              ProviderPublicProfile: 'provider/:providerId',
+            },
+          },
         },
       },
       ProviderTabs: {
@@ -352,6 +357,7 @@ const linking = {
           ProviderProfile: 'verification-success',
         },
       },
+      ProviderPublicProfile: 'provider/:providerId',
     },
   },
 };
