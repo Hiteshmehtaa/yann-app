@@ -11,66 +11,40 @@ import { View, StyleSheet, Dimensions, Animated, Easing, Pressable } from 'react
 import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
-    },
-{
-    id: 'meditating-mechanic',
-        source: require('../../../assets/lottie/Meditating Mechanic.json'),
-            title: 'Expert Mechanics',
-                subtitle: 'Quick Fixes Anywhere',
-    },
-{
-    id: 'puja-thali',
-        source: require('../../../assets/lottie/puja ki thali.json'),
-            title: 'Pujari Services',
-                subtitle: 'Divine Rituals at Home',
-    },
-{
-    id: 'taxi-booking',
-        source: require('../../../assets/lottie/taxi booking.json'),
-            title: 'Instant Rides',
-                subtitle: 'Book Taxis in Minutes',
-                    colorFilters: [
-                        {
-                            keypath: 'BG',
-                            color: '#FFFFFF',
-                        },
-                        {
-                            keypath: 'BG_SHAPES',
-                            color: '#FFFFFF',
-                        },
-                        {
-                            keypath: 'BG_shape_*',
-                            color: '#FFFFFF',
-                        },
-                    ],
-    },
-{
-    id: 'plumber',
-        source: require('../../../assets/lottie/Plumbers.json'),
-            title: 'Expert Plumbers',
-                subtitle: 'Fixing Leaks Instantly',
-    },
-{
-    id: 'sweeping-floor',
-        source: require('../../../assets/lottie/Sweeping Floor.json'),
-            title: 'Home Cleaning',
-                subtitle: 'Sparkling Clean Floors',
-    },
-{
-    id: 'car-cleaning',
+const HEIGHT = 240;
+const TRANSITION_DURATION = 1200; // Slower, more cinematic transition
+const DISPLAY_DURATION = 6000;
+
+// Curated list of high-quality animations
+const HERO_ANIMATIONS = [
+    {
+        id: 'car-cleaning',
         source: require('../../../assets/lottie/Car Cleaning.json'),
-            title: 'Car Cleaning',
-                subtitle: 'Professional Car Wash',
+        scale: 1.1, // Slight zoom for impact
     },
-{
-    id: 'wallet-payment',
-        source: require('../../../assets/lottie/Payment Success.json'),
-            title: 'Secure Payments',
-                subtitle: 'Pay via Yann Wallet',
+    {
+        id: 'sweeping-floor',
+        source: require('../../../assets/lottie/Sweeping Floor.json'),
+        scale: 1.0,
+    },
+    {
+        // Taxi booking has a white BG, so we handle it gracefully
+        id: 'taxi-booking',
+        source: require('../../../assets/lottie/taxi booking.json'),
+        scale: 1.05,
+        colorFilters: [
+            { keypath: 'BG', color: '#FFFFFF' },
+            { keypath: 'BG_SHAPES', color: '#FFFFFF' },
+            { keypath: 'BG_shape_*', color: '#FFFFFF' },
+        ],
+    },
+    {
+        id: 'driving-car',
+        source: require('../../../assets/lottie/Driving Car.json'),
+        scale: 1.0,
     },
 ];
 
-// Shuffle array function
 const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -82,131 +56,165 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 export const RotatingLottieBanner: React.FC = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [animations, setAnimations] = useState(LOTTIE_ANIMATIONS);
-    const fadeAnim = useRef(new Animated.Value(1)).current;
-    const lottieRef = useRef<LottieView>(null);
+    const [animations, setAnimations] = useState(HERO_ANIMATIONS);
 
-    // Shuffle animations on mount
+    // Animation values for the cross-dissolve effect
+    const transitionAnim = useRef(new Animated.Value(0)).current;
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const pressAnim = useRef(new Animated.Value(1)).current;
+
+    // Refs for Lottie instances
+    const currentLottieRef = useRef<LottieView>(null);
+
+    // Initialize
     useEffect(() => {
-        setAnimations(shuffleArray(LOTTIE_ANIMATIONS));
+        setAnimations(shuffleArray(HERO_ANIMATIONS));
     }, []);
 
-    // Rotate animations every 8 seconds (longer duration for taxi booking)
+    // Visual Loop Logic
     useEffect(() => {
         const interval = setInterval(() => {
-            // Fade out
-            Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 400,
-                useNativeDriver: true,
-            }).start(() => {
-                // Change animation
-                setCurrentIndex((prev) => (prev + 1) % animations.length);
-
-                // Fade in
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 400,
-                    useNativeDriver: true,
-                }).start();
-            });
-        }, 8000); // Changed to 8 seconds for longer playback
+            runTransition();
+        }, DISPLAY_DURATION);
 
         return () => clearInterval(interval);
-    }, [animations.length]);
+    }, [currentIndex, animations]);
 
-    // Restart animation when index changes
-    useEffect(() => {
-        lottieRef.current?.play();
-    }, [currentIndex]);
+    const runTransition = () => {
+        // 1. Reset transition state
+        transitionAnim.setValue(0);
+
+        // 2. Start the cinematic transition
+        Animated.parallel([
+            // Fade Cross-Dissolve: 0 -> 1 (Show next, Hide current)
+            Animated.timing(transitionAnim, {
+                toValue: 1,
+                duration: TRANSITION_DURATION,
+                easing: Easing.bezier(0.4, 0.0, 0.2, 1), // Standard Material/Apple ease
+                useNativeDriver: true,
+            }),
+            // Breath Effect: Slight scale out during transition
+            Animated.sequence([
+                Animated.timing(scaleAnim, {
+                    toValue: 0.98,
+                    duration: TRANSITION_DURATION / 2,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scaleAnim, {
+                    toValue: 1,
+                    duration: TRANSITION_DURATION / 2,
+                    useNativeDriver: true,
+                }),
+            ]),
+        ]).start(() => {
+            // 3. Commit the state change
+            setCurrentIndex((prev) => (prev + 1) % animations.length);
+            transitionAnim.setValue(0); // Reset for next time (current becomes visible immediately as it is now "index")
+        });
+    };
+
+    // Touch Interaction
+    const handlePressIn = () => {
+        Animated.spring(pressAnim, {
+            toValue: 0.96,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
+    };
+
+    const handlePressOut = () => {
+        Animated.spring(pressAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 20,
+            bounciness: 4,
+        }).start();
+    };
 
     const currentItem = animations[currentIndex];
+    // Calculate next item for the "incoming" layer
+    const nextItem = animations[(currentIndex + 1) % animations.length];
 
     return (
-        <View style={styles.container}>
-            <Animated.View style={[styles.contentContainer, { opacity: fadeAnim }]}>
-                {/* White background layer */}
-                <View style={styles.whiteBackground} />
+        <View style={styles.wrapper}>
+            <Pressable
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                activeOpacity={1}
+                style={styles.touchable}
+            >
+                <Animated.View style={[
+                    styles.container,
+                    { transform: [{ scale: pressAnim }, { scale: scaleAnim }] }
+                ]}>
 
-                {/* Animation */}
-                <View style={styles.lottieWrapper}>
-                    <LottieView
-                        ref={lottieRef}
-                        source={currentItem.source}
-                        autoPlay
-                        loop
-                        style={styles.lottie}
-                        resizeMode="contain"
-                        colorFilters={currentItem.colorFilters}
-                    />
-                </View>
+                    {/* Layer 1: The "Next" Animation (Bottom/Incoming) */}
+                    {/* We position absolute so it sits behind or blends */}
+                    <Animated.View
+                        style={[
+                            styles.layer,
+                            {
+                                opacity: transitionAnim, // Fades IN
+                                zIndex: 2, // Becomes top
+                            }
+                        ]}
+                    >
+                        <LottieView
+                            key={`next-${nextItem?.id}`} // Key forces remount/reset
+                            source={nextItem?.source}
+                            autoPlay
+                            loop
+                            style={styles.lottie}
+                            resizeMode="contain"
+                            colorFilters={nextItem?.colorFilters}
+                        />
+                    </Animated.View>
 
-                {/* Text Overlay */}
-                <View style={styles.textOverlay}>
-                    <Text style={styles.title}>{currentItem.title}</Text>
-                    <Text style={styles.subtitle}>{currentItem.subtitle}</Text>
-                </View>
-            </Animated.View>
+                    {/* Layer 2: The "Current" Animation (Top/Outgoing) */}
+                    <Animated.View
+                        style={[
+                            styles.layer,
+                            {
+                                opacity: transitionAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [1, 0] // Fades OUT
+                                }),
+                                zIndex: 1,
+                            }
+                        ]}
+                    >
+                        <LottieView
+                            ref={currentLottieRef}
+                            key={`current-${currentItem?.id}`}
+                            source={currentItem?.source}
+                            autoPlay
+                            loop
+                            style={styles.lottie}
+                            resizeMode="contain"
+                            colorFilters={currentItem?.colorFilters}
+                        />
+                    </Animated.View>
+
+                    {/* Ambient Glow / Premium Shadow (Static behind) */}
+                    <View style={styles.ambientGlow} />
+
+                </Animated.View>
+            </Pressable>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        width: width - 40,
-        height: 200, // Increased height for better text spacing
-        marginHorizontal: 20,
-        marginBottom: 24,
-        borderRadius: 20,
-        backgroundColor: '#FFFFFF',
-        // Premium Soft Colored Shadow
-        shadowColor: '#4F46E5', // Indigo shadow
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    contentContainer: {
-        flex: 1,
-        overflow: 'hidden',
-        borderRadius: 20,
-    },
-    whiteBackground: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#FFFFFF',
-        zIndex: -1,
-    },
-    lottieWrapper: {
-        flex: 1,
-        width: '100%',
-        height: '100%',
-        position: 'absolute',
-    },
-    lottie: {
-        width: '100%',
-        height: '100%',
-    },
-    textOverlay: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 20,
-        paddingTop: 40, // More space for gradient effect if added later
-        justifyContent: 'flex-end',
-        // Subtle gradient background for text readability if needed, for now keeping it clean
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#1E293B',
-        marginBottom: 4,
-        letterSpacing: -0.5,
-    },
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+},
     subtitle: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#64748B',
-        letterSpacing: 0.2,
-    },
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+    letterSpacing: 0.2,
+},
 });
