@@ -141,7 +141,6 @@ export const RotatingLottieBanner: React.FC = () => {
             <Pressable
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
-                activeOpacity={1}
                 style={styles.touchable}
             >
                 <Animated.View style={[
