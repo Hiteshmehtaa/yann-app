@@ -13,7 +13,7 @@ import LottieView from 'lottie-react-native';
 const { width } = Dimensions.get('window');
 const HEIGHT = 240;
 const TRANSITION_DURATION = 1200; // Slower, more cinematic transition
-const DISPLAY_DURATION = 6000;
+const DISPLAY_DURATION = 9000;
 
 // Curated list of high-quality animations
 const HERO_ANIMATIONS = [
