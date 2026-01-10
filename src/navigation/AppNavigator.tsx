@@ -102,6 +102,7 @@ type RootStackParamList = {
   LanguageSettings: undefined;
   BookingsList: undefined;
   BookingDetail: { booking: any };
+  Favorites: undefined;
 };
 
 // Premium Apple-like Theme - Using new design system
@@ -226,7 +227,7 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Favorites"
-        component={ComingSoonScreen}
+        component={FavoritesScreen}
         options={{
           tabBarLabel: 'FAVORITES',
           tabBarIcon: renderFavoritesIcon,
@@ -426,6 +427,7 @@ export function AppNavigator() {
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Favorites" component={FavoritesScreen as any} options={screenTransitionConfig} />
               </>
             )}
           </>
