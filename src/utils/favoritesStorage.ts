@@ -28,34 +28,50 @@ export interface FavoriteProvider {
  */
 export async function getFavorites(): Promise<FavoriteProvider[]> {
     try {
-        // Try to fetch from backend first
-        const response = await apiService.getFavorites();
+        // 1. Get local favorites first (fastest, and truth source for offline)
+        const localFavorites = await getLocalFavorites();
 
-        if (response.success && response.data) {
-            // Map backend data to FavoriteProvider format
-            const favorites: FavoriteProvider[] = response.data.map((provider: any) => ({
-                id: provider.id || provider._id,
-                _id: provider._id,
-                name: provider.name,
-                profileImage: provider.profileImage || provider.avatar,
-                avatar: provider.avatar || provider.profileImage,
-                rating: provider.rating,
-                services: provider.services,
-                experience: provider.experience,
-                totalReviews: provider.totalReviews,
-                addedAt: new Date().toISOString(),
-            }));
-
-            // Cache locally
-            await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-            return favorites;
+        // 2. Try to fetch from backend
+        let serverFavorites: FavoriteProvider[] = [];
+        try {
+            const response = await apiService.getFavorites();
+            if (response.success && response.data) {
+                // Map backend data to FavoriteProvider format
+                serverFavorites = response.data.map((provider: any) => ({
+                    id: provider.id || provider._id,
+                    _id: provider._id,
+                    name: provider.name,
+                    profileImage: provider.profileImage || provider.avatar,
+                    avatar: provider.avatar || provider.profileImage,
+                    rating: provider.rating,
+                    services: provider.services,
+                    experience: provider.experience,
+                    totalReviews: provider.totalReviews,
+                    addedAt: new Date().toISOString(),
+                }));
+            }
+        } catch (apiError) {
+            console.warn('Failed to fetch favorites from backend, using local:', apiError);
+            return localFavorites;
         }
 
-        // Fallback to local storage
-        return await getLocalFavorites();
+        // 3. Merge strategies: Union (Server + Local) to ensure nothing is lost during sync failures
+        const mergedMap = new Map<string, FavoriteProvider>();
+
+        // Add local ones first
+        localFavorites.forEach(fav => mergedMap.set(fav.id || fav._id || '', fav));
+
+        // Add server ones (overwriting local details if they differ, effectively updating them)
+        serverFavorites.forEach(fav => mergedMap.set(fav.id || fav._id || '', fav));
+
+        const mergedFavorites = Array.from(mergedMap.values());
+
+        // 4. Update local cache with the merged list
+        await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavorites));
+
+        return mergedFavorites;
     } catch (error) {
-        console.error('Error getting favorites from backend:', error);
-        // Fallback to local storage
+        console.error('Error getting favorites:', error);
         return await getLocalFavorites();
     }
 }
