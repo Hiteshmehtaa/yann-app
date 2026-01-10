@@ -1,77 +1,72 @@
 /**
- * Rotating Lottie Banner
+ * Ambient Hero Animation
  * 
- * Shows rotating Lottie animations in random order
+ * A premium, text-free animation container that serves as the visual anchor
+ * for the home screen. Uses cinematic cross-dissolves and subtle scaling
+ * to create a living, breathing interface element.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Animated, Text } from 'react-native';
+import { View, StyleSheet, Dimensions, Animated, Easing, Pressable } from 'react-native';
 import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
-
-const LOTTIE_ANIMATIONS = [
-    {
-        id: 'driving-car',
-        source: require('../../../assets/lottie/Driving Car.json'),
-        title: 'Reliable Drivers',
-        subtitle: 'Verified & Safe Chauffeurs',
     },
-    {
-        id: 'meditating-mechanic',
+{
+    id: 'meditating-mechanic',
         source: require('../../../assets/lottie/Meditating Mechanic.json'),
-        title: 'Expert Mechanics',
-        subtitle: 'Quick Fixes Anywhere',
+            title: 'Expert Mechanics',
+                subtitle: 'Quick Fixes Anywhere',
     },
-    {
-        id: 'puja-thali',
+{
+    id: 'puja-thali',
         source: require('../../../assets/lottie/puja ki thali.json'),
-        title: 'Pujari Services',
-        subtitle: 'Divine Rituals at Home',
+            title: 'Pujari Services',
+                subtitle: 'Divine Rituals at Home',
     },
-    {
-        id: 'taxi-booking',
+{
+    id: 'taxi-booking',
         source: require('../../../assets/lottie/taxi booking.json'),
-        title: 'Instant Rides',
-        subtitle: 'Book Taxis in Minutes',
-        colorFilters: [
-            {
-                keypath: 'BG',
-                color: '#FFFFFF',
-            },
-            {
-                keypath: 'BG_SHAPES',
-                color: '#FFFFFF',
-            },
-            {
-                keypath: 'BG_shape_*',
-                color: '#FFFFFF',
-            },
-        ],
+            title: 'Instant Rides',
+                subtitle: 'Book Taxis in Minutes',
+                    colorFilters: [
+                        {
+                            keypath: 'BG',
+                            color: '#FFFFFF',
+                        },
+                        {
+                            keypath: 'BG_SHAPES',
+                            color: '#FFFFFF',
+                        },
+                        {
+                            keypath: 'BG_shape_*',
+                            color: '#FFFFFF',
+                        },
+                    ],
     },
-    {
-        id: 'plumber',
+{
+    id: 'plumber',
         source: require('../../../assets/lottie/Plumbers.json'),
-        title: 'Expert Plumbers',
-        subtitle: 'Fixing Leaks Instantly',
+            title: 'Expert Plumbers',
+                subtitle: 'Fixing Leaks Instantly',
     },
-    {
-        id: 'sweeping-floor',
+{
+    id: 'sweeping-floor',
         source: require('../../../assets/lottie/Sweeping Floor.json'),
-        title: 'Home Cleaning',
-        subtitle: 'Sparkling Clean Floors',
+            title: 'Home Cleaning',
+                subtitle: 'Sparkling Clean Floors',
     },
-    {
-        id: 'car-cleaning',
+{
+    id: 'car-cleaning',
         source: require('../../../assets/lottie/Car Cleaning.json'),
-        title: 'Car Cleaning',
-        subtitle: 'Professional Car Wash',
+            title: 'Car Cleaning',
+                subtitle: 'Professional Car Wash',
     },
-    {
-        id: 'wallet-payment',
+{
+    id: 'wallet-payment',
         source: require('../../../assets/lottie/Payment Success.json'),
-        title: 'Secure Payments',
-        subtitle: 'Pay via Yann Wallet',
+            title: 'Secure Payments',
+                subtitle: 'Pay via Yann Wallet',
     },
 ];
 
