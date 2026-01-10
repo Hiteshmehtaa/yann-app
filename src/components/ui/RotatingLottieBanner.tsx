@@ -89,6 +89,12 @@ export const RotatingLottieBanner: React.FC = () => {
                     loop
                     style={styles.lottie}
                     resizeMode="contain"
+                    colorFilters={[
+                        {
+                            keypath: '*',
+                            color: '#FFFFFF',
+                        },
+                    ]}
                 />
             </Animated.View>
         </View>
