@@ -62,10 +62,10 @@ const LOTTIE_ANIMATIONS = [
         subtitle: 'Sparkling Clean Floors',
     },
     {
-        id: 'washer-cleaning',
+        id: 'car-cleaning',
         source: require('../../../assets/lottie/Washer cleaning street.json'),
-        title: 'Outdoor Cleaning',
-        subtitle: 'Keeping Surroundings Tidy',
+        title: 'Car Cleaning',
+        subtitle: 'Professional Car Wash',
     },
     {
         id: 'wallet-payment',
