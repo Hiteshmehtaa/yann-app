@@ -51,7 +51,7 @@ const LOTTIE_ANIMATIONS = [
     },
     {
         id: 'plumber',
-        source: require('../../../assets/lottie/Plumber.json'),
+        source: require('../../../assets/lottie/Plumbers.json'),
         title: 'Expert Plumbers',
         subtitle: 'Fixing Leaks Instantly',
     },
@@ -69,7 +69,7 @@ const LOTTIE_ANIMATIONS = [
     },
     {
         id: 'wallet-payment',
-        source: require('../../../assets/lottie/payment from wallet.json'),
+        source: require('../../../assets/lottie/Payment Success.json'),
         title: 'Secure Payments',
         subtitle: 'Pay via Yann Wallet',
     },
