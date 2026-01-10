@@ -189,8 +189,7 @@ export const RotatingLottieBanner: React.FC = () => {
                             colorFilters={currentItem?.colorFilters}
                         />
                     </Animated.View>
-                    {/* Ambient Glow / Premium Shadow (Static behind) */}
-                    <View style={styles.ambientGlow} />
+
 
                 </Animated.View>
             </Pressable>
@@ -210,20 +209,16 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24, // Softer, clearer roundness
-        overflow: 'visible', // Allow shadow to bleed naturally
-        elevation: 10, // Android shadow
-        shadowColor: '#2A303E', // Deep, rich shadow color
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.12,
-        shadowRadius: 24,
+        // Removed white background and shadows as per user request
+        // backgroundColor: '#FFFFFF', 
+        borderRadius: 24,
+        overflow: 'hidden', // clipped to bounds
     },
     layer: {
         ...StyleSheet.absoluteFillObject,
         borderRadius: 24,
-        overflow: 'hidden', // Clip animation to card
-        backgroundColor: '#FFFFFF', // Solid backing for cross-fade
+        overflow: 'hidden',
+        // backgroundColor: '#FFFFFF', // Transparent
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -231,15 +226,5 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    ambientGlow: {
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: -20,
-        backgroundColor: '#FFFFFF',
-        zIndex: -1,
-        borderRadius: 30,
-        opacity: 0.5,
-    },
+    // ambientGlow removed
 });
