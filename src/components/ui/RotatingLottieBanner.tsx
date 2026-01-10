@@ -72,13 +72,7 @@ export const RotatingLottieBanner: React.FC = () => {
     }, []);
 
     // Visual Loop Logic
-    useEffect(() => {
-        const interval = setInterval(() => {
-            runTransition();
-        }, DISPLAY_DURATION);
-
-        return () => clearInterval(interval);
-    }, [currentIndex, animations]);
+    // We removed the setInterval. Now we rely on onAnimationFinish of the Lottie component.
 
     const runTransition = () => {
         // 1. Reset transition state
@@ -163,7 +157,7 @@ export const RotatingLottieBanner: React.FC = () => {
                             key={`next-${nextItem?.id}`} // Key forces remount/reset
                             source={nextItem?.source}
                             autoPlay
-                            loop
+                            loop={false}
                             style={styles.lottie}
                             resizeMode="contain"
                             colorFilters={nextItem?.colorFilters}
@@ -188,13 +182,13 @@ export const RotatingLottieBanner: React.FC = () => {
                             key={`current-${currentItem?.id}`}
                             source={currentItem?.source}
                             autoPlay
-                            loop
+                            loop={false}
+                            onAnimationFinish={runTransition}
                             style={styles.lottie}
                             resizeMode="contain"
                             colorFilters={currentItem?.colorFilters}
                         />
                     </Animated.View>
-
                     {/* Ambient Glow / Premium Shadow (Static behind) */}
                     <View style={styles.ambientGlow} />
 
