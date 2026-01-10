@@ -82,19 +82,15 @@ export const RotatingLottieBanner: React.FC = () => {
     return (
         <View style={styles.container}>
             <Animated.View style={[styles.animationContainer, { opacity: fadeAnim }]}>
+                {/* White background layer */}
+                <View style={styles.whiteBackground} />
                 <LottieView
                     ref={lottieRef}
                     source={animations[currentIndex].source}
                     autoPlay
                     loop
                     style={styles.lottie}
-                    resizeMode="contain"
-                    colorFilters={[
-                        {
-                            keypath: '*',
-                            color: '#FFFFFF',
-                        },
-                    ]}
+                    resizeMode="cover"
                 />
             </Animated.View>
         </View>
@@ -120,6 +116,15 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    whiteBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#FFFFFF',
+        zIndex: -1,
     },
     lottie: {
         width: '100%',
