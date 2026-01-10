@@ -50,7 +50,7 @@ export const RotatingLottieBanner: React.FC = () => {
         setAnimations(shuffleArray(LOTTIE_ANIMATIONS));
     }, []);
 
-    // Rotate animations every 5 seconds
+    // Rotate animations every 8 seconds (longer duration for taxi booking)
     useEffect(() => {
         const interval = setInterval(() => {
             // Fade out
@@ -69,7 +69,7 @@ export const RotatingLottieBanner: React.FC = () => {
                     useNativeDriver: true,
                 }).start();
             });
-        }, 5000); // Change every 5 seconds
+        }, 8000); // Changed to 8 seconds for longer playback
 
         return () => clearInterval(interval);
     }, [animations.length]);
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginBottom: 24,
         borderRadius: 16,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#FFFFFF',
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
