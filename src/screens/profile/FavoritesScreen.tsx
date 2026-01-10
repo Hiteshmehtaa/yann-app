@@ -61,67 +61,56 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderProviderCard = ({ item }: { item: FavoriteProvider }) => {
     const providerImage = item.profileImage || item.avatar;
-    const providerInitial = item.name.charAt(0).toUpperCase();
+    const firstService = item.services && item.services.length > 0 ? item.services[0] : 'General Service';
 
     return (
       <TouchableOpacity
-        style={[styles.cardContainer, { backgroundColor: colors.cardBg, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+        style={[styles.listItem, { backgroundColor: colors.cardBg, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
         onPress={() => navigation.navigate('ProviderPublicProfile', {
-          provider: item,
-          service: { title: item.services && item.services.length > 0 ? item.services[0] : 'Service' }
+          provider: item
+          // explicit: do NOT pass service, so the profile screen asks for it
         })}
-        activeOpacity={0.9}
+        activeOpacity={0.7}
       >
-        <View style={styles.cardHeader}>
+        {/* Left: Avatar */}
+        <View style={styles.listItemLeft}>
           {providerImage ? (
-            <Image source={{ uri: providerImage }} style={styles.avatar} />
+            <Image source={{ uri: providerImage }} style={styles.listAvatar} />
           ) : (
-            <View style={[styles.avatar, styles.placeholderAvatar, { backgroundColor: item.name.length % 2 === 0 ? colors.primary : colors.accentOrange }]}>
+            <View style={[styles.placeholderAvatar, { backgroundColor: colors.primary }]}>
               <Text style={styles.placeholderText}>{item.name.charAt(0).toUpperCase()}</Text>
             </View>
           )}
+        </View>
 
-          <View style={styles.headerInfo}>
-            <Text style={[styles.providerName, { color: colors.text }]} numberOfLines={1}>
-              {item.name}
+        {/* Center: Info */}
+        <View style={styles.listItemCenter}>
+          <Text style={[styles.listName, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.listService, { color: colors.textSecondary }]} numberOfLines={1}>
+            {firstService}
+          </Text>
+          <View style={styles.listRatingRow}>
+            <Ionicons name="star" size={14} color="#FFD700" />
+            <Text style={[styles.listRating, { color: colors.text }]}>
+              {item.rating?.toFixed(1) || 'NEW'}
             </Text>
-            <View style={styles.ratingRow}>
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={12} color="#FFD700" />
-                <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating?.toFixed(1) || 'NEW'}</Text>
-              </View>
-              <Text style={[styles.reviewCount, { color: colors.textSecondary }]}>• {item.totalReviews || 0} reviews</Text>
-            </View>
+            <Text style={[styles.listReviews, { color: colors.textTertiary }]}>
+              {' • '}{item.totalReviews || 0} reviews
+            </Text>
           </View>
+        </View>
 
+        {/* Right: Heart Action */}
+        <View style={styles.listItemRight}>
           <TouchableOpacity
-            style={[styles.heartButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2' }]}
+            style={[styles.listHeartButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2' }]}
             onPress={() => handleRemoveFavorite(item.id || item._id || '')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="heart" size={20} color="#EF4444" />
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.cardBody}>
-          <View style={styles.tagContainer}>
-            {item.services?.slice(0, 3).map((service, index) => (
-              <View key={index} style={[styles.serviceTag, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6' }]}>
-                <Text style={[styles.serviceTagText, { color: isDark ? '#FFF' : '#4B5563' }]}>
-                  {service}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={[styles.statsRow, { marginTop: 12 }]}>
-            <View style={styles.statItem}>
-              <Ionicons name="briefcase-outline" size={14} color={colors.textSecondary} />
-              <Text style={[styles.statText, { color: colors.textSecondary, marginLeft: 6 }]}>
-                {item.experience || 0} Years Exp.
-              </Text>
-            </View>
-          </View>
         </View>
       </TouchableOpacity>
     );
