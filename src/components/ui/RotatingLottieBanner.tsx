@@ -94,36 +94,50 @@ export const RotatingLottieBanner: React.FC = () => {
     // Visual Loop Logic
     // We removed the setInterval. Now we rely on onAnimationFinish of the Lottie component.
 
-    const runTransition = () => {
+    const runTransition = (isCancelled: boolean) => {
+        // Prevent double triggers or triggers from cancelled animations
+        if (isCancelled || isTransitioning) return;
+
+        setIsTransitioning(true);
+
+        // Attempt to freeze the current animation on the last frame
+        // to prevent it from resetting to frame 0 during the fade out
+        try {
+            currentLottieRef.current?.pause();
+        } catch (e) {
+            // ignore
+        }
+
         // 1. Reset transition state
         transitionAnim.setValue(0);
 
-        // 2. Start the cinematic transition
+        // 2. Start the cinematic transition (Faster now to hide artifacts)
         Animated.parallel([
             // Fade Cross-Dissolve: 0 -> 1 (Show next, Hide current)
             Animated.timing(transitionAnim, {
                 toValue: 1,
-                duration: TRANSITION_DURATION,
-                easing: Easing.bezier(0.4, 0.0, 0.2, 1), // Standard Material/Apple ease
+                duration: 800, // Reduced from 1200ms to minimize overlaps
+                easing: Easing.bezier(0.4, 0.0, 0.2, 1),
                 useNativeDriver: true,
             }),
-            // Breath Effect: Slight scale out during transition
+            // Breath Effect
             Animated.sequence([
                 Animated.timing(scaleAnim, {
                     toValue: 0.98,
-                    duration: TRANSITION_DURATION / 2,
+                    duration: 400,
                     useNativeDriver: true,
                 }),
                 Animated.timing(scaleAnim, {
                     toValue: 1,
-                    duration: TRANSITION_DURATION / 2,
+                    duration: 400,
                     useNativeDriver: true,
                 }),
             ]),
         ]).start(() => {
             // 3. Commit the state change
             setCurrentIndex((prev) => (prev + 1) % animations.length);
-            transitionAnim.setValue(0); // Reset for next time (current becomes visible immediately as it is now "index")
+            transitionAnim.setValue(0);
+            setIsTransitioning(false);
         });
     };
 
