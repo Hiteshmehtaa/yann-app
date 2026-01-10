@@ -141,7 +141,7 @@ export const RotatingLottieBanner: React.FC = () => {
                         autoPlay
                         loop
                         style={styles.lottie}
-                        resizeMode="cover"
+                        resizeMode="contain"
                         colorFilters={currentItem.colorFilters}
                     />
                 </View>
