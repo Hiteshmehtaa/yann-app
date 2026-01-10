@@ -206,15 +206,47 @@ export const RotatingLottieBanner: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-},
-    subtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748B',
-    letterSpacing: 0.2,
-},
+    wrapper: {
+        alignItems: 'center',
+        marginBottom: 32,
+        marginTop: 16,
+    },
+    touchable: {
+        width: width - 32,
+        height: HEIGHT,
+    },
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24, // Softer, clearer roundness
+        overflow: 'visible', // Allow shadow to bleed naturally
+        elevation: 10, // Android shadow
+        shadowColor: '#2A303E', // Deep, rich shadow color
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+    },
+    layer: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 24,
+        overflow: 'hidden', // Clip animation to card
+        backgroundColor: '#FFFFFF', // Solid backing for cross-fade
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    lottie: {
+        width: '100%',
+        height: '100%',
+    },
+    ambientGlow: {
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        right: 20,
+        bottom: -20,
+        backgroundColor: '#FFFFFF',
+        zIndex: -1,
+        borderRadius: 30,
+        opacity: 0.5,
+    },
 });
