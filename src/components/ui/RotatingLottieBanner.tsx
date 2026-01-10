@@ -76,7 +76,8 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 export const RotatingLottieBanner: React.FC = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [animations, setAnimations] = useState(HERO_ANIMATIONS);
+    // Initialize with a shuffled array right away to avoid showing the default order first
+    const [animations, setAnimations] = useState(() => shuffleArray(HERO_ANIMATIONS));
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     // Animation values for the cross-dissolve effect
@@ -87,10 +88,7 @@ export const RotatingLottieBanner: React.FC = () => {
     // Refs for Lottie instances
     const currentLottieRef = useRef<LottieView>(null);
 
-    // Initialize
-    useEffect(() => {
-        setAnimations(shuffleArray(HERO_ANIMATIONS));
-    }, []);
+    // No need for a separate useEffect to shuffle on mount anymore
 
     // Visual Loop Logic
     // We removed the setInterval. Now we rely on onAnimationFinish of the Lottie component.
@@ -136,7 +134,21 @@ export const RotatingLottieBanner: React.FC = () => {
             ]),
         ]).start(() => {
             // 3. Commit the state change
-            setCurrentIndex((prev) => (prev + 1) % animations.length);
+            setCurrentIndex((prev) => {
+                const nextIndex = (prev + 1) % animations.length;
+                // If we wrapped around to 0, shuffle the list again to keep it random
+                if (nextIndex === 0) {
+                    // We need to be careful not to make the new first item the same as the old last item
+                    let newOrder = shuffleArray(HERO_ANIMATIONS);
+                    // Simple check: if start of new order is same as end of old order, shuffle again
+                    // (Probabilistic approach usually fine for 8 items)
+                    if (newOrder[0].id === animations[animations.length - 1].id) {
+                        newOrder = shuffleArray(HERO_ANIMATIONS);
+                    }
+                    setAnimations(newOrder);
+                }
+                return nextIndex;
+            });
             transitionAnim.setValue(0);
             setIsTransitioning(false);
         });
