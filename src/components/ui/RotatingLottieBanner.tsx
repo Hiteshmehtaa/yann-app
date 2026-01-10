@@ -26,6 +26,20 @@ const LOTTIE_ANIMATIONS = [
     {
         id: 'taxi-booking',
         source: require('../../../assets/lottie/taxi booking.json'),
+        colorFilters: [
+            {
+                keypath: 'BG',
+                color: '#FFFFFF',
+            },
+            {
+                keypath: 'BG_SHAPES',
+                color: '#FFFFFF',
+            },
+            {
+                keypath: 'BG_shape_*',
+                color: '#FFFFFF',
+            },
+        ],
     },
 ];
 
@@ -91,6 +105,7 @@ export const RotatingLottieBanner: React.FC = () => {
                     loop
                     style={styles.lottie}
                     resizeMode="cover"
+                    colorFilters={animations[currentIndex].colorFilters}
                 />
             </Animated.View>
         </View>
