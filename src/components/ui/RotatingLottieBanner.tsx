@@ -43,6 +43,26 @@ const HERO_ANIMATIONS = [
         source: require('../../../assets/lottie/Driving Car.json'),
         scale: 1.0,
     },
+    {
+        id: 'plumber',
+        source: require('../../../assets/lottie/Plumbers.json'),
+        scale: 1.0,
+    },
+    {
+        id: 'wallet-payment',
+        source: require('../../../assets/lottie/Payment Success.json'),
+        scale: 1.0,
+    },
+    {
+        id: 'meditating-mechanic',
+        source: require('../../../assets/lottie/Meditating Mechanic.json'),
+        scale: 1.0,
+    },
+    {
+        id: 'puja-thali',
+        source: require('../../../assets/lottie/puja ki thali.json'),
+        scale: 1.0,
+    },
 ];
 
 const shuffleArray = <T,>(array: T[]): T[] => {
