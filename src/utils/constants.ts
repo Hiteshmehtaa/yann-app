@@ -1,8 +1,9 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // API Configuration
 // Automatically detects if local backend is running, otherwise uses production
-const LOCAL_API_URL = 'http://192.168.1.12:3000/api'; // Update this IP to match your machine's IP
+const LOCAL_API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000/api' : 'http://localhost:3000/api';
 const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
 
 // Dynamic API URL - checks if localhost is active
