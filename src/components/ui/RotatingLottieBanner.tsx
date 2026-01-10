@@ -49,6 +49,30 @@ const LOTTIE_ANIMATIONS = [
             },
         ],
     },
+    {
+        id: 'plumber',
+        source: require('../../../assets/lottie/Plumber.json'),
+        title: 'Expert Plumbers',
+        subtitle: 'Fixing Leaks Instantly',
+    },
+    {
+        id: 'sweeping-floor',
+        source: require('../../../assets/lottie/Sweeping Floor.json'),
+        title: 'Home Cleaning',
+        subtitle: 'Sparkling Clean Floors',
+    },
+    {
+        id: 'washer-cleaning',
+        source: require('../../../assets/lottie/Washer cleaning street.json'),
+        title: 'Outdoor Cleaning',
+        subtitle: 'Keeping Surroundings Tidy',
+    },
+    {
+        id: 'wallet-payment',
+        source: require('../../../assets/lottie/payment from wallet.json'),
+        title: 'Secure Payments',
+        subtitle: 'Pay via Yann Wallet',
+    },
 ];
 
 // Shuffle array function
