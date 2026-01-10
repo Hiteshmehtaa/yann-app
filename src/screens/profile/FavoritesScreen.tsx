@@ -229,80 +229,107 @@ const styles = StyleSheet.create({
   listContentEmpty: {
     flexGrow: 1,
   },
-  card: {
+  // New Card Styles
+  cardContainer: {
     borderRadius: RADIUS.large,
-    padding: SPACING.lg,
+    borderWidth: 1,
+    padding: SPACING.md,
     marginBottom: SPACING.md,
-    ...SHADOWS.md,
+    ...SHADOWS.sm,
   },
-  cardContent: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    marginRight: SPACING.md,
+    alignItems: 'flex-start',
+    marginBottom: SPACING.sm, // Reduced for tighter layout
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: SPACING.md,
   },
-  avatarPlaceholder: {
-    backgroundColor: COLORS.primary + '20',
+  placeholderAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: SPACING.md,
   },
-  avatarText: {
-    fontSize: 24,
+  placeholderText: {
+    fontSize: 20,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: '#FFF',
   },
-  providerInfo: {
+  headerInfo: {
     flex: 1,
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+    height: 48,
   },
   providerName: {
     fontSize: TYPOGRAPHY.size.lg,
     fontWeight: TYPOGRAPHY.weight.bold,
     marginBottom: 4,
   },
-  providerService: {
-    fontSize: TYPOGRAPHY.size.sm,
-    marginBottom: 8,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  ratingBadge: {
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFBEB',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 8,
   },
   ratingText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#D97706',
+    marginLeft: 4,
   },
-  experienceBadge: {
+  reviewCount: {
+    fontSize: 12,
+  },
+  heartButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Card Body
+  cardBody: {
+    marginTop: SPACING.sm,
+  },
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: SPACING.sm,
+  },
+  serviceTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  serviceTagText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
   },
-  experienceText: {
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#059669',
-  },
-  removeButton: {
-    padding: 8,
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
