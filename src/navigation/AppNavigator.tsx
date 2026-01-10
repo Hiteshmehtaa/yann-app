@@ -100,6 +100,8 @@ type RootStackParamList = {
   SafetyPolicy: undefined;
   AadhaarVerification: undefined;
   LanguageSettings: undefined;
+  BookingsList: undefined;
+  BookingDetail: { booking: any };
 };
 
 // Premium Apple-like Theme - Using new design system
