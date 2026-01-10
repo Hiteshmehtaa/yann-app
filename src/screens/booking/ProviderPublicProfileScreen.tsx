@@ -59,6 +59,27 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewStats, setReviewStats] = useState<any>(null);
   const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+
+  const handleBookService = (service: any) => {
+    setShowServiceModal(false);
+    navigation.navigate('BookingForm', {
+      service: service, // { title: '...' }
+      selectedProvider: provider
+    });
+  };
+
+  const handleBookPress = () => {
+    if (route.params.service) {
+      navigation.navigate('BookingForm', {
+        service: route.params.service,
+        selectedProvider: provider
+      });
+    } else {
+      // Show selection modal
+      setShowServiceModal(true);
+    }
+  };
 
   useEffect(() => {
     const fetchProviderDetails = async () => {
@@ -458,45 +479,220 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
         </View>
       </ScrollView>
 
-      {/* Floating Bottom Bar (BookingForm Style) - Position Fixed */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-        <View style={styles.bottomContent}>
-          <TouchableOpacity style={styles.chatButton} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Chat' })}>
-            <Ionicons name="chatbubble-ellipses-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+    </View>
 
-          <TouchableOpacity style={styles.callButton} onPress={handleCall}>
-            <Ionicons name="call-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+      {/* Service Selection Modal */ }
+  {/* Simple Overlay Modal for selecting service */ }
+  {
+    showServiceModal && (
+      <View style={StyleSheet.absoluteFill}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+          activeOpacity={1}
+          onPress={() => setShowServiceModal(false)}
+        />
+        <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Service</Text>
+            <TouchableOpacity onPress={() => setShowServiceModal(false)}>
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.modalSubtitle}>Choose a service to book with {provider.name}</Text>
 
-          <TouchableOpacity
-            style={styles.bookButton}
-            onPress={() => {
-              if (route.params.service) {
-                navigation.navigate('BookingForm', {
-                  service: route.params.service,
-                  selectedProvider: provider
-                });
-              } else {
-                navigation.goBack();
-              }
-            }}
-          >
-            <LinearGradient
-              colors={['#3B82F6', '#2563EB']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={styles.bookButtonText}>Book Now</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+          <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ paddingVertical: 10 }}>
+            {provider.services?.map((service, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.serviceOption}
+                onPress={() => handleBookService({ title: service })}
+              >
+                <View style={styles.serviceIcon}>
+                  <Ionicons name="briefcase-outline" size={20} color={COLORS.primary} />
+                </View>
+                <Text style={styles.serviceOptionText}>{service}</Text>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+              </TouchableOpacity>
+            ))}
+            {(!provider.services || provider.services.length === 0) && (
+              <TouchableOpacity
+                style={styles.serviceOption}
+                onPress={() => handleBookService({ title: 'General Service' })}
+              >
+                <Text style={styles.serviceOptionText}>General Request</Text>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+              </TouchableOpacity>
+            )}
+          </ScrollView>
         </View>
       </View>
+    )
+  }
 
-    </View>
+    </View >
   );
 };
+
+const styles = StyleSheet.create({
+  // ... existing styles ...
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingVertical: 16,
+    ...SHADOWS.lg,
+  },
+  bottomContent: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.lg,
+    gap: 12,
+  },
+  chatButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bookButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  bookButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Modal Styles
+  modalContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: SPACING.lg,
+    ...SHADOWS.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 20,
+  },
+  serviceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: COLORS.gray100,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  serviceIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  serviceOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  // ... other styles
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  seeAllLink: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  reviewCard: {
+    width: 280,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reviewerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewerInitials: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  reviewerName: {
+    fontWeight: '600',
+    color: COLORS.text,
+    fontSize: 14,
+  },
+  reviewComment: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  noReviewsText: {
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+  },
+});
+
 
 const styles = StyleSheet.create({
   container: {

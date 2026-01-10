@@ -65,8 +65,6 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: colors.cardBg }]}
-        onPress={() => handleProviderPress(item)}
         style={[styles.cardContainer, { backgroundColor: colors.cardBg, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
         onPress={() => navigation.navigate('ProviderPublicProfile', {
           provider: item,
@@ -78,7 +76,7 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
           {providerImage ? (
             <Image source={{ uri: providerImage }} style={styles.avatar} />
           ) : (
-            <View style={[styles.avatar, styles.placeholderAvatar, { backgroundColor: item.name.length % 2 === 0 ? colors.primary : colors.secondary }]}>
+            <View style={[styles.avatar, styles.placeholderAvatar, { backgroundColor: item.name.length % 2 === 0 ? colors.primary : colors.accentOrange }]}>
               <Text style={styles.placeholderText}>{item.name.charAt(0).toUpperCase()}</Text>
             </View>
           )}
@@ -229,107 +227,71 @@ const styles = StyleSheet.create({
   listContentEmpty: {
     flexGrow: 1,
   },
-  // New Card Styles
-  cardContainer: {
-    borderRadius: RADIUS.large,
-    borderWidth: 1,
+  // List Item Styles
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: SPACING.md,
     marginBottom: SPACING.md,
+    borderRadius: RADIUS.large,
+    borderWidth: 1,
     ...SHADOWS.sm,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: SPACING.sm, // Reduced for tighter layout
+  listItemLeft: {
+    marginRight: 16,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: SPACING.md,
+  listAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   placeholderAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.md,
   },
   placeholderText: {
     fontSize: 20,
     fontWeight: '700',
     color: '#FFF',
   },
-  headerInfo: {
+  listItemCenter: {
     flex: 1,
     justifyContent: 'center',
-    marginRight: SPACING.sm,
-    height: 48,
   },
-  providerName: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
+  listName: {
+    fontSize: 16,
+    fontWeight: '700',
     marginBottom: 4,
   },
-  ratingRow: {
+  listService: {
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  listRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  ratingText: {
+  listRating: {
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 4,
   },
-  reviewCount: {
+  listReviews: {
     fontSize: 12,
   },
-  heartButton: {
+  listItemRight: {
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  listHeartButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  // Card Body
-  cardBody: {
-    marginTop: SPACING.sm,
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: SPACING.sm,
-  },
-  serviceTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  serviceTagText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statText: {
-    fontSize: 12,
-    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,

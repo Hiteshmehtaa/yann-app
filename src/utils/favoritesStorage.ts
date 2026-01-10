@@ -59,10 +59,16 @@ export async function getFavorites(): Promise<FavoriteProvider[]> {
         const mergedMap = new Map<string, FavoriteProvider>();
 
         // Add local ones first
-        localFavorites.forEach(fav => mergedMap.set(fav.id || fav._id || '', fav));
+        localFavorites.forEach(fav => {
+            const key = fav.id || fav._id;
+            if (key) mergedMap.set(String(key), fav);
+        });
 
         // Add server ones (overwriting local details if they differ, effectively updating them)
-        serverFavorites.forEach(fav => mergedMap.set(fav.id || fav._id || '', fav));
+        serverFavorites.forEach(fav => {
+            const key = fav.id || fav._id;
+            if (key) mergedMap.set(String(key), fav);
+        });
 
         const mergedFavorites = Array.from(mergedMap.values());
 
