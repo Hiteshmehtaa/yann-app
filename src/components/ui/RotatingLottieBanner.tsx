@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Animated } from 'react-native';
+import { View, StyleSheet, Dimensions, Animated, Text } from 'react-native';
 import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
@@ -14,18 +14,26 @@ const LOTTIE_ANIMATIONS = [
     {
         id: 'driving-car',
         source: require('../../../assets/lottie/Driving Car.json'),
+        title: 'Reliable Drivers',
+        subtitle: 'Verified & Safe Chauffeurs',
     },
     {
         id: 'meditating-mechanic',
         source: require('../../../assets/lottie/Meditating Mechanic.json'),
+        title: 'Expert Mechanics',
+        subtitle: 'Quick Fixes Anywhere',
     },
     {
         id: 'puja-thali',
         source: require('../../../assets/lottie/puja ki thali.json'),
+        title: 'Pujari Services',
+        subtitle: 'Divine Rituals at Home',
     },
     {
         id: 'taxi-booking',
         source: require('../../../assets/lottie/taxi booking.json'),
+        title: 'Instant Rides',
+        subtitle: 'Book Taxis in Minutes',
         colorFilters: [
             {
                 keypath: 'BG',
@@ -70,7 +78,7 @@ export const RotatingLottieBanner: React.FC = () => {
             // Fade out
             Animated.timing(fadeAnim, {
                 toValue: 0,
-                duration: 300,
+                duration: 400,
                 useNativeDriver: true,
             }).start(() => {
                 // Change animation
@@ -79,7 +87,7 @@ export const RotatingLottieBanner: React.FC = () => {
                 // Fade in
                 Animated.timing(fadeAnim, {
                     toValue: 1,
-                    duration: 300,
+                    duration: 400,
                     useNativeDriver: true,
                 }).start();
             });
@@ -93,20 +101,32 @@ export const RotatingLottieBanner: React.FC = () => {
         lottieRef.current?.play();
     }, [currentIndex]);
 
+    const currentItem = animations[currentIndex];
+
     return (
         <View style={styles.container}>
-            <Animated.View style={[styles.animationContainer, { opacity: fadeAnim }]}>
+            <Animated.View style={[styles.contentContainer, { opacity: fadeAnim }]}>
                 {/* White background layer */}
                 <View style={styles.whiteBackground} />
-                <LottieView
-                    ref={lottieRef}
-                    source={animations[currentIndex].source}
-                    autoPlay
-                    loop
-                    style={styles.lottie}
-                    resizeMode="cover"
-                    colorFilters={animations[currentIndex].colorFilters}
-                />
+
+                {/* Animation */}
+                <View style={styles.lottieWrapper}>
+                    <LottieView
+                        ref={lottieRef}
+                        source={currentItem.source}
+                        autoPlay
+                        loop
+                        style={styles.lottie}
+                        resizeMode="cover"
+                        colorFilters={currentItem.colorFilters}
+                    />
+                </View>
+
+                {/* Text Overlay */}
+                <View style={styles.textOverlay}>
+                    <Text style={styles.title}>{currentItem.title}</Text>
+                    <Text style={styles.subtitle}>{currentItem.subtitle}</Text>
+                </View>
             </Animated.View>
         </View>
     );
@@ -115,34 +135,59 @@ export const RotatingLottieBanner: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         width: width - 40,
-        height: 180,
+        height: 200, // Increased height for better text spacing
         marginHorizontal: 20,
         marginBottom: 24,
-        borderRadius: 16,
+        borderRadius: 20,
         backgroundColor: '#FFFFFF',
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
+        // Premium Soft Colored Shadow
+        shadowColor: '#4F46E5', // Indigo shadow
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 8,
     },
-    animationContainer: {
+    contentContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        overflow: 'hidden',
+        borderRadius: 20,
     },
     whiteBackground: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: '#FFFFFF',
         zIndex: -1,
+    },
+    lottieWrapper: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
     },
     lottie: {
         width: '100%',
         height: '100%',
+    },
+    textOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 20,
+        paddingTop: 40, // More space for gradient effect if added later
+        justifyContent: 'flex-end',
+        // Subtle gradient background for text readability if needed, for now keeping it clean
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#1E293B',
+        marginBottom: 4,
+        letterSpacing: -0.5,
+    },
+    subtitle: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#64748B',
+        letterSpacing: 0.2,
     },
 });
