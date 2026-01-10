@@ -23,7 +23,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TopBar } from '../../components/ui/TopBar';
 import { SearchBar } from '../../components/ui/SearchBar';
 import { ServiceCard } from '../../components/ui/ServiceCard';
-import { SpecialOfferBanner } from '../../components/ui/SpecialOfferBanner';
+import { RotatingLottieBanner } from '../../components/ui/RotatingLottieBanner';
 import { AnimatedCard } from '../../components/AnimatedCard';
 import { SkeletonServiceCard } from '../../components/ui/SkeletonLoader';
 import { UpdateNotificationBanner } from '../../components/ui/UpdateNotificationBanner';
@@ -576,13 +576,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 </ScrollView>
               </View>
 
-              {/* Banners */}
-              <SpecialOfferBanner
-                discount="40%"
-                title="Special Offer!"
-                description="Get 40% off your first order! Valid for today only."
-                onPress={() => { }}
-              />
+              {/* Rotating Lottie Animations Banner */}
+              <RotatingLottieBanner />
 
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Services</Text>
