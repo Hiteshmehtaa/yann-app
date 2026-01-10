@@ -77,6 +77,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 export const RotatingLottieBanner: React.FC = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [animations, setAnimations] = useState(HERO_ANIMATIONS);
+    const [isTransitioning, setIsTransitioning] = useState(false);
 
     // Animation values for the cross-dissolve effect
     const transitionAnim = useRef(new Animated.Value(0)).current;
