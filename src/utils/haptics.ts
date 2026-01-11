@@ -1,57 +1,64 @@
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 /**
- * Haptic Feedback Utility
- * Provides consistent haptic feedback across the app
+ * Haptic Feedback Utils
+ * 
+ * Centralized control for haptic feedback to ensure consistency across the app.
+ * Automatically handles platform differences where necessary.
  */
+
+// Helper to safely trigger haptics only on supported platforms (iOS/Android)
+const trigger = async (type: () => Promise<void>) => {
+    if (Platform.OS === 'web') return;
+    try {
+        await type();
+    } catch (error) {
+        // Fail silently if haptics aren't supported or permission is denied
+        console.debug('Haptics failed:', error);
+    }
+};
 
 export const haptics = {
     /**
-     * Light impact - for subtle interactions like taps
+     * Light feedback, good for button presses, tab switches, and standard interactions.
+     * equivalent to UIImpactFeedbackGenerator(style: .light)
      */
-    light: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    },
+    light: () => trigger(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)),
 
     /**
-     * Medium impact - for standard button presses
+     * Medium feedback, good for secondary actions or prominent buttons.
+     * equivalent to UIImpactFeedbackGenerator(style: .medium)
      */
-    medium: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    },
+    medium: () => trigger(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
 
     /**
-     * Heavy impact - for important actions
+     * Heavy feedback, good for primary actions, destructive actions, or "long press" events.
+     * equivalent to UIImpactFeedbackGenerator(style: .heavy)
      */
-    heavy: () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    },
+    heavy: () => trigger(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)),
 
     /**
-     * Success feedback - for successful operations
+     * Success feedback, distinct pattern indicating a completed task.
+     * equivalent to UINotificationFeedbackGenerator(type: .success)
      */
-    success: () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    },
+    success: () => trigger(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
 
     /**
-     * Warning feedback - for warnings
+     * Warning feedback, distinct pattern indicating a warning.
+     * equivalent to UINotificationFeedbackGenerator(type: .warning)
      */
-    warning: () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    },
+    warning: () => trigger(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)),
 
     /**
-     * Error feedback - for errors
+     * Error feedback, distinct pattern indicating failure.
+     * equivalent to UINotificationFeedbackGenerator(type: .error)
      */
-    error: () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    },
+    error: () => trigger(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)),
 
     /**
-     * Selection feedback - for picker/selector changes
+     * Selection feedback, used for scrolling through pickers or lists.
+     * equivalent to UISelectionFeedbackGenerator
      */
-    selection: () => {
-        Haptics.selectionAsync();
-    },
+    selection: () => trigger(() => Haptics.selectionAsync()),
 };

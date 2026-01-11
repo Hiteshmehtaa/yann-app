@@ -13,6 +13,7 @@ import {
   Modal,
   Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
@@ -24,6 +25,38 @@ import { EmptyState } from '../../components/EmptyState';
 import { OTPInputModal } from '../../components/OTPInputModal';
 import { JobTimer } from '../../components/JobTimer';
 import { OvertimeBreakdown } from '../../components/OvertimeBreakdown';
+import { DepthCard } from '../../components/ui/DepthCard';
+import { Button } from '../../components/ui/Button';
+import { Animated } from 'react-native';
+
+const AnimatedBookingItem = ({ children, index }: { children: React.ReactNode, index: number }) => {
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(50)).current; // Increased slide distance
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: index * 100, // Slower stagger
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 7,
+        tension: 40,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+      {children}
+    </Animated.View>
+  );
+};
 
 interface ProviderBooking {
   id: string;
@@ -483,161 +516,159 @@ export const ProviderBookingsScreen = () => {
 
     // --- STANDARD CARD DESIGN (Accepted, In Progress, Completed) ---
     return (
-      <View key={booking.id} style={[styles.bookingCard, isNextJob && styles.nextJobCard]}>
+      <AnimatedBookingItem key={booking.id} index={index}>
+        <View
+          style={[
+            styles.bookingCard,
+            isNextJob && styles.nextJobCard
+          ]}
+        >
+          {isNextJob && (
+            <View style={styles.nextJobHighlightBorde} />
+          )}
 
-        {isNextJob && (
-          <View style={styles.nextJobBadge}>
-            <Ionicons name="flash" size={12} color="#FFF" />
-            <Text style={styles.nextJobText}>NEXT JOB</Text>
-          </View>
-        )}
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.dateText}>{booking.scheduledDate} • {booking.scheduledTime}</Text>
+              {isNextJob && <Text style={styles.nextJobLabel}>Next Job</Text>}
+            </View>
 
-        <View style={[styles.cardHeader, isNextJob && { paddingTop: 24 }]}>
-          <View style={styles.dateContainer}>
-            <Ionicons name="calendar" size={16} color={COLORS.primary} />
-            <Text style={styles.dateText}>{booking.scheduledDate} • {booking.scheduledTime}</Text>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '10' }]}>
-            <Ionicons name={getStatusIcon(booking.status) as any} size={12} color={statusColor} />
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {displayStatus}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.cardBody}>
-          <View style={styles.serviceSection}>
-            <Text style={styles.serviceName}>{booking.serviceName}</Text>
-            <Text style={styles.serviceCategory}>{booking.serviceCategory} Service</Text>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor + '10' }]}>
+              <Text style={[styles.statusText, { color: statusColor }]}>
+                {displayStatus}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.customerSection}>
-            <View style={[styles.customerAvatar, { backgroundColor: booking.customerAvatar ? 'transparent' : '#DBEAFE' }]}>
+          <View style={styles.cardBody}>
+            <View style={styles.serviceRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.serviceName}>{booking.serviceName}</Text>
+                <Text style={styles.serviceCategory}>{booking.serviceCategory}</Text>
+              </View>
+              <Text style={styles.amountText}>₹{booking.amount}</Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.customerRow}>
               {booking.customerAvatar ? (
                 <Image
                   source={{ uri: booking.customerAvatar }}
-                  style={{ width: 42, height: 42, borderRadius: 21 }}
+                  style={styles.customerAvatar}
                 />
               ) : (
-                <Text style={styles.customerInitial}>
-                  {booking.customerName.charAt(0).toUpperCase()}
-                </Text>
+                <View style={[styles.customerAvatar, { backgroundColor: '#F1F5F9' }]}>
+                  <Text style={styles.customerInitial}>
+                    {booking.customerName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
               )}
-            </View>
-            <View style={styles.customerInfo}>
-              <Text style={styles.customerName}>{booking.customerName}</Text>
-              <View style={styles.addressRow}>
-                <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-                <Text style={styles.addressText} numberOfLines={2}>
-                  {booking.address && booking.address !== 'N/A' ? booking.address : 'Location available in details'}
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.customerName}>{booking.customerName}</Text>
+                <Text style={styles.addressText} numberOfLines={1}>
+                  {booking.address && booking.address !== 'N/A' ? booking.address : 'Location details'}
                 </Text>
               </View>
-            </View>
-          </View>
-
-          <View style={styles.detailsGrid}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Payment</Text>
-              <Text style={styles.detailValue}>
-                {booking.paymentMethod?.toUpperCase()}
-                {booking.paymentStatus === 'paid' && <Text style={{ color: COLORS.success }}> ✓</Text>}
-              </Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Amount</Text>
-              <Text style={[styles.detailValue, { color: COLORS.primary }]}>₹{booking.amount}</Text>
-            </View>
-          </View>
-
-          {booking.notes ? (
-            <View style={styles.notesBox}>
-              <Text style={styles.notesText}>" {booking.notes} "</Text>
-            </View>
-          ) : null}
-
-          {booking.status === 'in_progress' && jobSessions[booking.id] && (
-            <View style={styles.timerWrapper}>
-              <JobTimer
-                startTime={new Date(jobSessions[booking.id].startTime)}
-                expectedDuration={jobSessions[booking.id].expectedDuration}
-              />
-            </View>
-          )}
-
-          {booking.status === 'completed' && jobSessions[booking.id] && jobSessions[booking.id].overtimeDuration > 0 && (
-            <View style={{ marginTop: 12 }}>
-              <OvertimeBreakdown
-                duration={jobSessions[booking.id].duration || 0}
-                expectedDuration={jobSessions[booking.id].expectedDuration || 480}
-                overtimeDuration={jobSessions[booking.id].overtimeDuration || 0}
-                baseHourlyRate={jobSessions[booking.id].baseHourlyRate || 0}
-                overtimeRate={jobSessions[booking.id].overtimeRate || 0}
-                overtimeCharge={jobSessions[booking.id].overtimeCharge || 0}
-                totalCharge={jobSessions[booking.id].totalCharge || booking.amount}
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.cardFooter}>
-          {booking.status === 'pending' && (
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                style={[styles.secondaryButton, { flex: 1, borderColor: '#EF4444' }]}
-                onPress={() => handleStatusChange(booking.id, 'cancelled')}
-              >
-                <Text style={[styles.secondaryButtonText, { color: '#EF4444' }]}>Reject</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.primaryButton, { flex: 1, backgroundColor: COLORS.primary }]}
-                onPress={() => handleStatusChange(booking.id, 'accepted')}
-              >
-                <Text style={styles.primaryButtonText}>Accept Booking</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {booking.status === 'accepted' && (
-            <View style={{ gap: 12 }}>
-
-              <TouchableOpacity
-                style={styles.navigateButton}
-                onPress={() => openLocationNavigation(booking)}
-              >
-                <Ionicons name="navigate" size={18} color={COLORS.primary} />
-                <Text style={styles.navigateButtonText}>Navigate to Location</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: '#2563EB' }]}
-                onPress={() => handleStartJob(booking.id)}
-              >
-                <Ionicons name="play" size={18} color="white" />
-                <Text style={styles.primaryButtonText}>Start Job</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {booking.status === 'in_progress' && (
-            <TouchableOpacity
-              style={[styles.primaryButton, { backgroundColor: '#059669' }]}
-              onPress={() => handleEndJob(booking.id)}
-            >
-              <Ionicons name="checkmark-done" size={18} color="white" />
-              <Text style={styles.primaryButtonText}>Complete Job</Text>
-            </TouchableOpacity>
-          )}
-
-          {booking.status === 'completed' && (
-            <View style={{ alignItems: 'center', paddingBottom: 12 }}>
-              <View style={[styles.statusBadge, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                <Text style={[styles.statusText, { color: '#059669' }]}>COMPLETED</Text>
+              <View style={styles.iconButton}>
+                <Ionicons name="call-outline" size={20} color={COLORS.primary} />
               </View>
             </View>
-          )}
+
+            {booking.notes ? (
+              <View style={styles.notesContainer}>
+                <Ionicons name="document-text-outline" size={14} color={COLORS.textTertiary} style={{ marginTop: 2 }} />
+                <Text style={styles.notesText} numberOfLines={2}>{booking.notes}</Text>
+              </View>
+            ) : null}
+
+            {booking.status === 'in_progress' && jobSessions[booking.id] && (
+              <View style={styles.timerWrapper}>
+                <JobTimer
+                  startTime={new Date(jobSessions[booking.id].startTime)}
+                  expectedDuration={jobSessions[booking.id].expectedDuration}
+                />
+              </View>
+            )}
+
+            {booking.status === 'completed' && jobSessions[booking.id] && jobSessions[booking.id].overtimeDuration > 0 && (
+              <View style={{ marginTop: 12 }}>
+                <OvertimeBreakdown
+                  duration={jobSessions[booking.id].duration || 0}
+                  expectedDuration={jobSessions[booking.id].expectedDuration || 480}
+                  overtimeDuration={jobSessions[booking.id].overtimeDuration || 0}
+                  baseHourlyRate={jobSessions[booking.id].baseHourlyRate || 0}
+                  overtimeRate={jobSessions[booking.id].overtimeRate || 0}
+                  overtimeCharge={jobSessions[booking.id].overtimeCharge || 0}
+                  totalCharge={jobSessions[booking.id].totalCharge || booking.amount}
+                />
+              </View>
+            )}
+          </View>
+
+          <View style={styles.cardFooter}>
+            {booking.status === 'pending' && (
+              <View style={styles.actionRow}>
+                <Button
+                  title="Decline"
+                  variant="outline"
+                  size="small"
+                  onPress={() => handleStatusChange(booking.id, 'cancelled')}
+                  style={{ flex: 1, borderColor: '#EF4444', borderWidth: 1 }}
+                  textStyle={{ color: '#EF4444' }}
+                />
+                <Button
+                  title="Accept Request"
+                  variant="primary"
+                  size="small"
+                  onPress={() => handleStatusChange(booking.id, 'accepted')}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            )}
+
+            {booking.status === 'accepted' && (
+              <View style={styles.actionRow}>
+                <Button
+                  title="Navigate"
+                  variant="outline"
+                  size="small"
+                  icon={<Ionicons name="navigate-outline" size={16} color={COLORS.text} />}
+                  onPress={() => openLocationNavigation(booking)}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title="Start Job"
+                  variant="primary"
+                  size="small"
+                  icon={<Ionicons name="play" size={16} color="white" />}
+                  onPress={() => handleStartJob(booking.id)}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            )}
+
+            {booking.status === 'in_progress' && (
+              <View style={styles.actionRow}>
+                <Button
+                  title="Complete Job"
+                  variant="primary"
+                  size="medium"
+                  icon={<Ionicons name="checkmark-done" size={18} color="white" />}
+                  onPress={() => handleEndJob(booking.id)}
+                  style={{ flex: 1, backgroundColor: '#059669' }}
+                />
+              </View>
+            )}
+            {booking.status === 'completed' && (
+              <View style={styles.completedBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                <Text style={styles.completedText}>Completed</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      </AnimatedBookingItem>
     );
   };
 
@@ -796,540 +827,273 @@ export const ProviderBookingsScreen = () => {
   );
 };
 
+// Clean Modern Styles
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: '#F1F5F9',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
-  headerSpacer: {
-    width: 40,
-  },
+  headerSpacer: { width: 40 },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    padding: SPACING.md,
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.md,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    gap: SPACING.sm,
-  },
-  errorText: {
-    color: '#991B1B',
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // Filters
+  // Clean Filters
   filterContainer: {
     backgroundColor: COLORS.white,
     paddingVertical: 12,
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.03)',
+    borderBottomColor: '#F1F5F9',
   },
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 100,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F1F5F9',
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
   filterChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#1D4ED8',
-    ...SHADOWS.sm,
+    backgroundColor: COLORS.primary, // Theme color instead of dark
   },
   filterChipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#64748B',
   },
   filterChipTextActive: {
     color: COLORS.white,
   },
 
-  // List
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: SPACING.lg,
-    paddingBottom: 40,
-  },
-  emptyState: {
-    marginTop: 60,
-    alignItems: 'center',
-  },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  emptyState: { marginTop: 60, alignItems: 'center' },
 
-  // Booking Card
+  // --- NEW CARD STYLES ---
   bookingCard: {
     backgroundColor: COLORS.white,
     borderRadius: 16,
     marginBottom: 20,
+    padding: 0, // content handles padding
+    ...SHADOWS.md, // Soft shadow
+    shadowColor: '#64748B',
+    shadowOpacity: 0.06,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-    ...SHADOWS.md,
+    borderColor: 'transparent', // Default no border
     overflow: 'hidden',
   },
+  nextJobCard: {
+    borderColor: '#3B82F6', // Blue border for next job
+    borderWidth: 1,
+    ...SHADOWS.lg, // Pop it up slightly more
+    shadowColor: '#3B82F6',
+    shadowOpacity: 0.15,
+  },
+  nextJobHighlightBorde: {
+    height: 4,
+    backgroundColor: '#3B82F6',
+    width: '100%',
+  },
+  nextJobLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#3B82F6',
+    marginTop: 2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+
+  // Card Internals
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#F9FAFB',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  dateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-start',
+    padding: 16,
+    paddingBottom: 12,
   },
   dateText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    letterSpacing: -0.2,
+    fontWeight: '700',
+    color: '#334155',
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    borderRadius: 100,
   },
   statusText: {
     fontSize: 11,
     fontWeight: '700',
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 
   cardBody: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-
-  // Service
-  serviceSection: {
-    marginBottom: 16,
+  serviceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   serviceName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: '#0F172A',
     marginBottom: 4,
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
   },
   serviceCategory: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748B',
   },
-
-  // Customer
-  customerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  customerAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  customerInitial: {
+  amountText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#0F172A',
   },
-  customerInfo: {
-    flex: 1,
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 12,
   },
-  customerName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  addressRow: {
+  customerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+  },
+  customerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  customerInitial: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  customerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 2,
   },
   addressText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#64748B',
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#eff6ff', // Light blue bg
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  notesContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#FFFBEB',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  notesText: {
     flex: 1,
+    fontSize: 13,
+    color: '#B45309',
     lineHeight: 18,
   },
 
-  // Details Grid
-  detailsGrid: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderColor: '#E5E7EB',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  detailItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  detailValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
+  timerWrapper: { marginTop: 16 },
 
-  // Notes
-  notesBox: {
-    backgroundColor: '#FFFBEB',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FEF3C7',
-    marginBottom: 16,
-  },
-  notesText: {
-    fontSize: 14,
-    color: '#92400E',
-    fontStyle: 'italic',
-    lineHeight: 20,
-  },
-
-  // Timer
-  timerWrapper: {
-    backgroundColor: '#F0FDFA',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#CCFBF1',
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-
-  // Footer Actions
   cardFooter: {
-    padding: 16,
-    paddingTop: 0,
-    gap: 12,
-  },
-
-  // Buttons
-  primaryButton: {
-    flexDirection: 'row',
-    backgroundColor: '#2563EB',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    ...SHADOWS.sm,
-  },
-  primaryButtonText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  secondaryButtonText: {
-    color: '#374151',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // Navigation Button
-  navigateButton: {
-    flexDirection: 'row',
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-  },
-  navigateButtonText: {
-    color: '#2563EB',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // Next Job Styles
-  nextJobCard: {
-    borderColor: '#2563EB',
-    borderWidth: 2,
-  },
-  nextJobBadge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderBottomRightRadius: 12,
-    zIndex: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  nextJobText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-
-  // --- PENDING CARD STYLES ---
-  pendingCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    marginBottom: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    ...SHADOWS.md,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  pendingBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderBottomLeftRadius: 12,
-  },
-  pendingBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  pendingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  customerAvatarSmall: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFF7ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  customerInitialSmall: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#D97706',
-  },
-  pendingCustomerName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  pendingServiceName: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  pendingPriceContainer: {
-    alignItems: 'flex-end',
-  },
-  pendingPriceLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    fontWeight: '600',
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  pendingPriceValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#059669', // Green for money
-  },
-  pendingDetails: {
-    gap: 8,
-    marginBottom: 20,
-    backgroundColor: '#F9FAFB',
     padding: 12,
-    borderRadius: 12,
+    paddingTop: 0,
   },
-  pendingDetailRow: {
+  actionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pendingDetailText: {
-    fontSize: 14,
-    color: '#374151',
-    flex: 1,
-  },
-  pendingActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
   },
-  pendingAcceptButton: {
-    flex: 2,
-    backgroundColor: '#111827', // Black/Dark for high contrast
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  completedBadge: {
     flexDirection: 'row',
-    gap: 8,
-    ...SHADOWS.md,
-  },
-  pendingAcceptText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  pendingRejectButton: {
-    flex: 1,
-    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
+    gap: 6,
+    paddingBottom: 4,
   },
-  pendingRejectText: {
-    color: '#6B7280',
-    fontSize: 14,
+  completedText: {
+    color: '#059669',
     fontWeight: '600',
+    fontSize: 14,
   },
 
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+  // Errors & Modals
+  errorBanner: {
+    backgroundColor: '#FEE2E2',
+    padding: 16,
+    margin: 20,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
+  errorText: { color: '#DC2626', fontSize: 14 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: 'white',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
     paddingBottom: 40,
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 24,
-  },
-  navOptions: {
-    gap: 12,
-  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  modalSubtitle: { fontSize: 14, color: '#64748B', marginBottom: 20 },
+  navOptions: { gap: 12 },
   navOption: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
   navIconBox: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 16,
   },
-  navOptionText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
+  navOptionText: { fontSize: 16, fontWeight: '600', color: '#1E293B' },
 });

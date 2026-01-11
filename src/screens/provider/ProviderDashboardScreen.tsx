@@ -85,6 +85,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   ]).current;
   const lineScaleAnim = useRef(new Animated.Value(0)).current; // For vertical line animation
   const lineSlideAnim = useRef(new Animated.Value(0)).current; // For horizontal slide
+  const graphRevealAnim = useRef(new Animated.Value(0)).current; // For L-to-R wipe
 
   const handleGraphChange = (type: GraphType, index: number) => {
     setSelectedGraph(type);
@@ -249,6 +250,13 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
           toValue: 0,
           duration: 0,
           useNativeDriver: true,
+        }),
+        // L-to-R Wipe Animation
+        Animated.timing(graphRevealAnim, {
+          toValue: 1,
+          duration: 1500, // Show drawing over 1.5s
+          delay: 200,
+          useNativeDriver: false, // Layout property (width) requires JS driver
         })
       ]).start();
 
@@ -368,7 +376,14 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
             />
           </TouchableOpacity>
           <View>
-            <Text style={styles.welcomeSub}>Welcome Back!</Text>
+            <Text style={styles.welcomeSub}>
+              {(() => {
+                const hour = new Date().getHours();
+                if (hour < 12) return 'Good Morning,';
+                if (hour < 17) return 'Good Afternoon,';
+                return 'Good Evening,';
+              })()}
+            </Text>
             <Text style={styles.welcomeName}>{user?.name?.split(' ')[0] || 'Partner'}</Text>
           </View>
         </View>
@@ -466,78 +481,91 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 ]
               }}
             >
-              {/* Wrapper for vertical line scaling animation */}
+              {/* L-to-R Reveal Animation Wrapper */}
               <Animated.View
                 style={{
-                  transform: [
-                    { scaleY: lineScaleAnim },
-                    { translateX: lineSlideAnim },
-                  ],
+                  width: graphRevealAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, width - 80]
+                  }),
+                  overflow: 'hidden', // Clips the chart as it "draws"
+                  alignItems: 'flex-start', // Anchors chart to left
                 }}
               >
-                <LineChart
-                  key={chartKey} // Force re-render for animation
-                  data={CHART_DATA[selectedGraph]}
-                  width={width - 80}
-                  height={160}
-                  yAxisLabel=""
-                  yAxisSuffix=""
-                  withInnerLines={false}
-                  withOuterLines={false}
-                  withVerticalLabels={false}
-                  withHorizontalLabels={false}
-                  withDots={true}
-                  withShadow={true}
-                  fromZero={true}
-                  segments={4}
-                  onDataPointClick={(data) => {
-                    const value = data.value;
-                    const label = CHART_DATA[selectedGraph].labels[data.index];
-                    const formattedValue = selectedGraph === 'earnings'
-                      ? `₹${value}`
-                      : selectedGraph === 'ratings'
-                        ? value.toFixed(1)
-                        : value.toString();
-
-                    // Position tooltip to the right of the dot
-                    setTooltip({
-                      visible: true,
-                      value: formattedValue,
-                      label: label,
-                      x: data.x + 15, // Position to the right of the dot
-                      y: data.y - 25, // Slightly above to center vertically
-                    });
-
-                    // Auto-hide after 2.5 seconds
-                    setTimeout(() => setTooltip(null), 2500);
+                {/* Wrapper for vertical line scaling animation */}
+                <Animated.View
+                  style={{
+                    width: width - 80, // Force full width for inner content
+                    transform: [
+                      { scaleY: lineScaleAnim },
+                      { translateX: lineSlideAnim },
+                    ],
                   }}
-                  chartConfig={{
-                    backgroundColor: 'transparent',
-                    backgroundGradientFrom: 'transparent',
-                    backgroundGradientTo: 'transparent',
-                    backgroundGradientFromOpacity: 0,
-                    backgroundGradientToOpacity: 0,
-                    fillShadowGradientFrom: '#FFFFFF',
-                    fillShadowGradientTo: '#FFFFFF',
-                    fillShadowGradientFromOpacity: 0.6,
-                    fillShadowGradientToOpacity: 0.05,
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.8})`,
-                    style: { borderRadius: 20 },
-                    propsForDots: {
-                      r: "6",
-                      strokeWidth: "3",
-                      stroke: "#3B82F6",
-                      fill: "#FFFFFF"
-                    },
-                    propsForBackgroundLines: {
-                      strokeWidth: 0,
-                    }
-                  }}
-                  bezier
-                  style={styles.chart}
-                />
+                >
+                  <LineChart
+                    key={chartKey} // Force re-render for animation
+                    data={CHART_DATA[selectedGraph]}
+                    width={width - 80}
+                    height={160}
+                    yAxisLabel=""
+                    yAxisSuffix=""
+                    withInnerLines={false}
+                    withOuterLines={false}
+                    withVerticalLabels={false}
+                    withHorizontalLabels={false}
+                    withDots={true}
+                    withShadow={true}
+                    fromZero={true}
+                    segments={4}
+                    onDataPointClick={(data) => {
+                      const value = data.value;
+                      const label = CHART_DATA[selectedGraph].labels[data.index];
+                      const formattedValue = selectedGraph === 'earnings'
+                        ? `₹${value}`
+                        : selectedGraph === 'ratings'
+                          ? value.toFixed(1)
+                          : value.toString();
+
+                      // Position tooltip to the right of the dot
+                      setTooltip({
+                        visible: true,
+                        value: formattedValue,
+                        label: label,
+                        x: data.x + 15, // Position to the right of the dot
+                        y: data.y - 25, // Slightly above to center vertically
+                      });
+
+                      // Auto-hide after 2.5 seconds
+                      setTimeout(() => setTooltip(null), 2500);
+                    }}
+                    chartConfig={{
+                      backgroundColor: 'transparent',
+                      backgroundGradientFrom: 'transparent',
+                      backgroundGradientTo: 'transparent',
+                      backgroundGradientFromOpacity: 0,
+                      backgroundGradientToOpacity: 0,
+                      fillShadowGradientFrom: '#FFFFFF',
+                      fillShadowGradientTo: '#FFFFFF',
+                      fillShadowGradientFromOpacity: 0.6,
+                      fillShadowGradientToOpacity: 0.05,
+                      decimalPlaces: 0,
+                      color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.8})`,
+                      style: { borderRadius: 20 },
+                      propsForDots: {
+                        r: "6",
+                        strokeWidth: "3",
+                        stroke: "#3B82F6",
+                        fill: "#FFFFFF"
+                      },
+                      propsForBackgroundLines: {
+                        strokeWidth: 0,
+                      }
+                    }}
+                    bezier
+                    style={styles.chart}
+                  />
+                </Animated.View>
               </Animated.View>
             </Animated.View>
 
@@ -612,38 +640,14 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.bookingsList}>
             {(dashboardData?.acceptedBookings?.slice(0, 5) || []).length > 0 ? (
-              (dashboardData?.acceptedBookings?.slice(0, 5) || []).map((item: any, index: number) => {
-                const colors = [
-                  { bg: '#DBEAFE', icon: '#60A5FA' }, // Indigo
-                  { bg: '#ECFDF5', icon: '#10B981' }, // Emerald
-                  { bg: '#FFF7ED', icon: '#F97316' }, // Orange
-                  { bg: '#FDF4FF', icon: '#D946EF' }, // Fuchsia
-                  { bg: '#DBEAFE', icon: '#3B82F6' }, // Sky
-                ];
-                const colorTheme = colors[index % colors.length];
-
-                return (
-                  <TouchableOpacity
-                    key={item.id || item._id}
-                    style={[styles.bookingRow, { borderLeftColor: colorTheme.icon, borderLeftWidth: 4 }]}
-                    onPress={() => navigation.navigate('ProviderBookings')}
-                  >
-                    <View style={[styles.bookingIconCircle, { backgroundColor: colorTheme.bg }]}>
-                      <Ionicons name="calendar-outline" size={20} color={colorTheme.icon} />
-                    </View>
-                    <View style={styles.bookingDetails}>
-                      <Text style={styles.bookingService}>{item.serviceName || 'Service'}</Text>
-                      <Text style={styles.bookingCustomer}>{item.customerName || 'Customer'}</Text>
-                    </View>
-                    <View style={styles.bookingMeta}>
-                      <Text style={styles.bookingPrice}>₹{item.totalPrice || 0}</Text>
-                      <Text style={styles.bookingTime}>
-                        {new Date(item.bookingDate || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+              (dashboardData?.acceptedBookings?.slice(0, 5) || []).map((item: any, index: number) => (
+                <BookingListItem
+                  key={item.id || item._id}
+                  item={item}
+                  index={index}
+                  navigation={navigation}
+                />
+              ))
             ) : (
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyText}>No recent bookings</Text>
@@ -655,6 +659,70 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
         </Animated.View>
       </ScrollView>
     </View>
+  );
+};
+
+// Extracted Component to fix "Hooks inside Loop" error
+const BookingListItem = ({ item, index, navigation }: { item: any; index: number; navigation: any }) => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: 500,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(animatedValue, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        delay: index * 100,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
+
+  const colors = [
+    { bg: '#DBEAFE', icon: '#60A5FA' }, // Indigo
+    { bg: '#ECFDF5', icon: '#10B981' }, // Emerald
+    { bg: '#FFF7ED', icon: '#F97316' }, // Orange
+    { bg: '#FDF4FF', icon: '#D946EF' }, // Fuchsia
+    { bg: '#DBEAFE', icon: '#3B82F6' }, // Sky
+  ];
+  const colorTheme = colors[index % colors.length];
+
+  return (
+    <Animated.View
+      style={{
+        opacity: animatedValue,
+        transform: [
+          { translateY: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) },
+          { scale: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }
+        ]
+      }}
+    >
+      <TouchableOpacity
+        style={[styles.bookingRow, { borderLeftColor: colorTheme.icon, borderLeftWidth: 4 }]}
+        onPress={() => navigation.navigate('ProviderBookings')}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.bookingIconCircle, { backgroundColor: colorTheme.bg }]}>
+          <Ionicons name="calendar-outline" size={20} color={colorTheme.icon} />
+        </View>
+        <View style={styles.bookingDetails}>
+          <Text style={styles.bookingService}>{item.serviceName || 'Service'}</Text>
+          <Text style={styles.bookingCustomer}>{item.customerName || 'Customer'}</Text>
+        </View>
+        <View style={styles.bookingMeta}>
+          <Text style={styles.bookingPrice}>₹{item.totalPrice || 0}</Text>
+          <Text style={styles.bookingTime}>
+            {new Date(item.bookingDate || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 

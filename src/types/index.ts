@@ -150,6 +150,7 @@ export interface Service {
   price: string;
   icon: string;
   popular?: boolean;
+  isNew?: boolean;
   features: string[];
 }
 

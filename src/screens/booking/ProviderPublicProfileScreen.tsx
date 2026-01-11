@@ -9,15 +9,12 @@ import {
   Animated,
   Image,
   Dimensions,
-  Share,
-  Platform,
   Linking,
-  Alert
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -25,9 +22,15 @@ import { COLORS, SHADOWS, SPACING } from '../../utils/theme';
 import { Service, ServiceProvider } from '../../types';
 import { shareProviderProfile } from '../../utils/shareUtils';
 import { toggleFavorite, isFavorited } from '../../utils/favoritesStorage';
+import { haptics } from '../../utils/haptics';
+import { useToast } from '../../hooks/useToast';
+import { Toast } from '../../components/Toast';
+import { SkeletonLoader } from '../../components/ui/SkeletonLoader';
+import { DepthCard } from '../../components/ui/DepthCard';
+import { Button } from '../../components/ui/Button';
 
 const { width, height } = Dimensions.get('window');
-const HEADER_HEIGHT_EXPANDED = height * 0.45; // 45% of screen for parallax
+const HEADER_HEIGHT_EXPANDED = height * 0.45;
 const HEADER_HEIGHT_COLLAPSED = 100;
 
 type Props = {
@@ -35,18 +38,41 @@ type Props = {
   route: RouteProp<{ params: { provider: ServiceProvider; service?: Service } }, 'params'>;
 };
 
-// FadeIn Component reused from BookingForm
 const FadeInView = ({ children, delay = 0, style }: any) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current; // Start 20px down
+
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      delay,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 100,
+        friction: 8,
+        delay,
+        useNativeDriver: true,
+      })
+    ]).start();
   }, []);
-  return <Animated.View style={[{ opacity: fadeAnim }, style]}>{children}</Animated.View>;
+
+  return (
+    <Animated.View
+      style={[
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }]
+        },
+        style
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
 };
 
 export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -58,10 +84,14 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewStats, setReviewStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const heartScale = useRef(new Animated.Value(1)).current;
   const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const { toast, showSuccess, showInfo, hideToast } = useToast();
 
   const handleBookService = (service: any) => {
+    haptics.selection();
     setShowServiceModal(false);
     navigation.navigate('BookingForm', {
       service: service, // { title: '...' }
@@ -70,13 +100,13 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   };
 
   const handleBookPress = () => {
+    haptics.heavy();
     if (route.params.service) {
       navigation.navigate('BookingForm', {
         service: route.params.service,
         selectedProvider: provider
       });
     } else {
-      // Show selection modal
       setShowServiceModal(true);
     }
   };
@@ -85,8 +115,6 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     const fetchProviderDetails = async () => {
       try {
         const id = (initialProvider as any).id || initialProvider._id;
-
-        // Fetch provider details
         const response = await apiService.getProviderById(id);
         if (response.success && response.data) {
           const newData = response.data;
@@ -99,7 +127,6 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
           }));
         }
 
-        // Fetch real reviews from API
         try {
           const reviewsResponse = await apiService.getProviderReviews(id);
           if (reviewsResponse.success && reviewsResponse.data) {
@@ -107,16 +134,16 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             setReviewStats(reviewsResponse.data.stats || null);
           }
         } catch (reviewError) {
-          console.log('No reviews found for provider:', reviewError);
           setReviews([]);
         }
       } catch (error) {
         console.log('Error fetching provider details:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchProviderDetails();
 
-    // Check if provider is favorited
     const checkFavoriteStatus = async () => {
       const providerId = (initialProvider as any).id || initialProvider._id;
       const favorited = await isFavorited(providerId);
@@ -173,6 +200,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   };
 
   const handleShare = async () => {
+    haptics.medium();
     try {
       const providerId = (provider as any).id || provider._id || '';
       const success = await shareProviderProfile({
@@ -181,34 +209,41 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
         rating: provider.rating,
         services: provider.services || [],
       });
-      if (success) {
-        Alert.alert('Success', 'Profile shared successfully!');
-      }
+      if (success) showSuccess('Profile shared successfully!');
     } catch (error) {
-      console.error('Share error:', error);
+      // ignore
     }
   };
 
   const handleCall = () => {
+    haptics.medium();
     if (provider.phone) Linking.openURL(`tel:${provider.phone}`);
   };
 
   const handleToggleFavorite = async () => {
     const success = await toggleFavorite(provider);
     if (success) {
+      if (!isBookmarked) {
+        haptics.success();
+      } else {
+        haptics.light();
+      }
       setIsBookmarked(!isBookmarked);
-      Alert.alert(
-        isBookmarked ? 'Removed from Favorites' : 'Added to Favorites',
-        isBookmarked
-          ? `${provider.name} removed from your favorites`
-          : `${provider.name} added to your favorites`
-      );
+      if (!isBookmarked) {
+        showSuccess(`${provider.name} added to Favorites`);
+        Animated.sequence([
+          Animated.spring(heartScale, { toValue: 1.3, useNativeDriver: true, speed: 50, bounciness: 4 }),
+          Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 })
+        ]).start();
+      } else {
+        showInfo('Removed from Favorites');
+      }
     }
   };
 
-  // Stats Calculations - Start from actual data (0 if no bookings)
+  // Stats Calculations
   const totalBookings = provider.totalReviews || 0;
-  const estimatedHours = totalBookings > 0 ? Math.floor(totalBookings * 2.5) : 0; // Estimate 2.5 hrs per booking
+  const estimatedHours = totalBookings > 0 ? Math.floor(totalBookings * 2.5) : 0;
   const responseTime = (provider as any).averageResponseTime || '< 1 hr';
   const experience = provider.experience || 0;
 
@@ -234,48 +269,20 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
           </Animated.View>
         )}
         <LinearGradient
-          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)']}
+          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
 
-      {/* Ambient Background Elements (Decorative) */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {/* Top Right Blob */}
-        <View style={{
-          position: 'absolute',
-          top: -100, right: -100,
-          width: 300, height: 300,
-          borderRadius: 150,
-          backgroundColor: COLORS.primary,
-          opacity: 0.05,
-        }} />
-        {/* Center Left Blob */}
-        <View style={{
-          position: 'absolute',
-          top: height * 0.4, left: -50,
-          width: 200, height: 200,
-          borderRadius: 100,
-          backgroundColor: COLORS.accentOrange || '#F97316',
-          opacity: 0.05,
-        }} />
-        {/* Bottom Right Blob */}
-        <View style={{
-          position: 'absolute',
-          bottom: 0, right: -50,
-          width: 250, height: 250,
-          borderRadius: 125,
-          backgroundColor: COLORS.primary,
-          opacity: 0.03,
-        }} />
-      </View>
-
-      {/* 2. Navigation Bar (Matches BookingForm) */}
+      {/* 2. Navigation Bar */}
       <View style={[styles.navBar, { paddingTop: insets.top, height: HEADER_HEIGHT_COLLAPSED }]}>
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#fff', opacity: headerBgOpacity, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }]} />
 
         <View style={styles.navContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => {
+            haptics.light();
+            navigation.goBack();
+          }}>
             <Ionicons name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>
 
@@ -288,7 +295,9 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
               <Ionicons name="share-social-outline" size={22} color="#1E293B" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={handleToggleFavorite}>
-              <Ionicons name={isBookmarked ? "heart" : "heart-outline"} size={22} color={isBookmarked ? "#EF4444" : "#1E293B"} />
+              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                <Ionicons name={isBookmarked ? "heart" : "heart-outline"} size={22} color={isBookmarked ? "#EF4444" : "#1E293B"} />
+              </Animated.View>
             </TouchableOpacity>
           </View>
         </View>
@@ -309,8 +318,8 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
         <View style={styles.contentContainer}>
           <View style={styles.handleBar} />
 
-          {/* Profile Main Info - Updated with Avatar */}
-          <FadeInView delay={100} style={styles.profileHeader}>
+          {/* Profile Main Info */}
+          <FadeInView delay={50} style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
               {provider.profileImage ? (
                 <Image source={{ uri: provider.profileImage }} style={styles.avatarImage} />
@@ -327,20 +336,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <Text style={styles.providerName}>{provider.name}</Text>
                 {(provider as any).isVerified && (
-                  <View>
-                    <TouchableOpacity
-                      onPress={() => setShowVerifiedTooltip(!showVerifiedTooltip)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                    </TouchableOpacity>
-                    {showVerifiedTooltip && (
-                      <View style={styles.tooltip}>
-                        <View style={styles.tooltipArrow} />
-                        <Text style={styles.tooltipText}>Verified Provider</Text>
-                      </View>
-                    )}
-                  </View>
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
                 )}
               </View>
               <Text style={styles.providerService}>
@@ -360,67 +356,85 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             </View>
           </FadeInView>
 
-          {/* Stats Grid - 3 Stats Horizontal */}
-          <FadeInView delay={200} style={styles.section}>
-            <View style={styles.statsCard}>
-              <View style={styles.statItem}>
-                <View style={styles.statIconBg}>
-                  <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+          {/* Stats Grid - Using DepthCard */}
+          <FadeInView delay={100} style={styles.section}>
+            {isLoading ? (
+              <DepthCard variant="flat" style={styles.statsCardInner}>
+                <SkeletonLoader variant="rect" height={60} width="100%" />
+              </DepthCard>
+            ) : (
+              <DepthCard variant="floating" style={styles.statsCardInner} padding={SPACING.lg}>
+                <View style={styles.statItem}>
+                  <View style={styles.statIconBg}>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.statValue}>{totalBookings}</Text>
+                  <Text style={styles.statLabel}>Bookings</Text>
                 </View>
-                <Text style={styles.statValue}>{totalBookings}</Text>
-                <Text style={styles.statLabel}>Bookings</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <View style={styles.statIconBg}>
-                  <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <View style={styles.statIconBg}>
+                    <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.statValue}>{estimatedHours > 0 ? `${estimatedHours}+` : '0'}</Text>
+                  <Text style={styles.statLabel}>Hours</Text>
                 </View>
-                <Text style={styles.statValue}>{estimatedHours > 0 ? `${estimatedHours}+` : '0'}</Text>
-                <Text style={styles.statLabel}>Hours</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <View style={styles.statIconBg}>
-                  <Ionicons name="flash-outline" size={20} color={COLORS.primary} />
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <View style={styles.statIconBg}>
+                    <Ionicons name="flash-outline" size={20} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.statValue}>{responseTime}</Text>
+                  <Text style={styles.statLabel}>Response</Text>
                 </View>
-                <Text style={styles.statValue}>{responseTime}</Text>
-                <Text style={styles.statLabel}>Response</Text>
-              </View>
-            </View>
+              </DepthCard>
+            )}
           </FadeInView>
 
           {/* About Section */}
-          <FadeInView delay={300} style={styles.section}>
+          <FadeInView delay={150} style={styles.section}>
             <Text style={styles.sectionTitle}>About</Text>
-            <Text style={styles.aboutText}>
-              {provider.bio || (provider as any).about || 'I am a dedicated professional committed to delivering high-quality work. Customer satisfaction is my top priority.'}
-            </Text>
+            {isLoading ? (
+              <View>
+                <SkeletonLoader variant="text" width="100%" style={{ marginBottom: 6 }} />
+                <SkeletonLoader variant="text" width="80%" style={{ marginBottom: 6 }} />
+                <SkeletonLoader variant="text" width="60%" />
+              </View>
+            ) : (
+              <Text style={styles.aboutText}>
+                {provider.bio || (provider as any).about || 'I am a dedicated professional committed to delivering high-quality work. Customer satisfaction is my top priority.'}
+              </Text>
+            )}
           </FadeInView>
 
-          {/* Service Rate Card */}
-          <FadeInView delay={400} style={styles.section}>
+          {/* Service Rate Card - using DepthCard */}
+          <FadeInView delay={200} style={styles.section}>
             <Text style={styles.sectionTitle}>Service Details</Text>
-            <View style={styles.rateCard}>
-              <View style={styles.rateIconContainer}>
-                <Ionicons name="pricetags-outline" size={24} color={COLORS.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rateTitle}>
-                  {route.params.service?.title || provider.services?.[0] || 'Standard Service'}
-                </Text>
-                <Text style={styles.rateSubtitle}>Hourly Rate</Text>
-              </View>
-              <View style={styles.priceTag}>
-                <Text style={styles.priceText}>{getPriceDisplay()}</Text>
-              </View>
-            </View>
+            {isLoading ? (
+              <SkeletonLoader variant="rect" height={80} width="100%" style={{ borderRadius: 16 }} />
+            ) : (
+              <DepthCard variant="elevated" style={styles.rateCardInner} padding={SPACING.lg}>
+                <View style={styles.rateIconContainer}>
+                  <Ionicons name="pricetags-outline" size={24} color={COLORS.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rateTitle}>
+                    {route.params.service?.title || provider.services?.[0] || 'Standard Service'}
+                  </Text>
+                  <Text style={styles.rateSubtitle}>Hourly Rate</Text>
+                </View>
+                <View style={styles.priceTag}>
+                  <Text style={styles.priceText}>{getPriceDisplay()}</Text>
+                </View>
+              </DepthCard>
+            )}
           </FadeInView>
 
-          {/* Reviews Section */}
-          <FadeInView delay={500} style={styles.section}>
+          {/* Reviews Section - using DepthCard for list items */}
+          <FadeInView delay={250} style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>
-                Client Reviews ({reviewStats?.totalReviews || reviews.length})
+                Client Reviews ({isLoading ? '...' : (reviewStats?.totalReviews || reviews.length)})
               </Text>
               {reviews.length > 3 && (
                 <TouchableOpacity>
@@ -428,7 +442,12 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                 </TouchableOpacity>
               )}
             </View>
-            {reviews.length > 0 ? (
+            {isLoading ? (
+              <View style={{ flexDirection: 'row', gap: 16 }}>
+                <SkeletonLoader variant="rect" width={280} height={150} style={{ borderRadius: 16 }} />
+                <SkeletonLoader variant="rect" width={280} height={150} style={{ borderRadius: 16 }} />
+              </View>
+            ) : reviews.length > 0 ? (
               <ScrollView
                 horizontal={true}
                 showsHorizontalScrollIndicator={false}
@@ -438,7 +457,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                 keyboardShouldPersistTaps="handled"
               >
                 {reviews.map((review, i) => (
-                  <View key={review.id || i} style={styles.reviewCard}>
+                  <DepthCard key={review.id || i} variant="elevated" style={styles.reviewCard} padding={SPACING.md}>
                     <View style={styles.reviewHeader}>
                       <View style={styles.reviewerAvatar}>
                         <Text style={styles.reviewerInitials}>
@@ -447,7 +466,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                       </View>
                       <View style={{ marginLeft: 10, flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <Text style={styles.reviewerName}>
+                          <Text style={styles.reviewerName} numberOfLines={1}>
                             {review.reviewerName || review.name || 'User'}
                           </Text>
                           {review.isVerifiedPurchase && (
@@ -469,7 +488,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                     <Text style={styles.reviewComment} numberOfLines={3}>
                       {review.comment || 'Great service!'}
                     </Text>
-                  </View>
+                  </DepthCard>
                 ))}
               </ScrollView>
             ) : (
@@ -479,30 +498,39 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
         </View>
       </ScrollView>
 
-      {/* Floating Bottom Bar (BookingForm Style) - Position Fixed */}
+      {/* Floating Bottom Bar - Corrected Visibility */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <View style={styles.bottomContent}>
-          <TouchableOpacity style={styles.chatButton} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Chat' })}>
-            <Ionicons name="chatbubble-ellipses-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+          <Button
+            variant="outline"
+            size="medium"
+            title=""
+            icon={<Ionicons name="chatbubble-ellipses-outline" size={22} color={COLORS.primary} />}
+            onPress={() => {
+              haptics.medium();
+              (navigation as any).navigate('MainTabs', { screen: 'Chat' });
+            }}
+            style={{ width: 56, aspectRatio: 1, paddingHorizontal: 0, minWidth: 0, backgroundColor: 'transparent' }}
+          />
+          <Button
+            variant="outline"
+            size="medium"
+            title=""
+            icon={<Ionicons name="call-outline" size={22} color={COLORS.primary} />}
+            onPress={handleCall}
+            style={{ width: 56, aspectRatio: 1, paddingHorizontal: 0, minWidth: 0, backgroundColor: 'transparent' }}
+          />
 
-          <TouchableOpacity style={styles.callButton} onPress={() => { }}>
-            <Ionicons name="call-outline" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.bookButton}
-            onPress={handleBookPress}
-          >
-            <LinearGradient
-              colors={['#3B82F6', '#2563EB']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={StyleSheet.absoluteFill}
+          <View style={{ flex: 1 }}>
+            <Button
+              variant="primary"
+              size="large"
+              title="Book Now"
+              icon={<Ionicons name="arrow-forward" size={18} color="#fff" />}
+              onPress={handleBookPress}
+              style={{ width: '100%' }}
             />
-            <Text style={styles.bookButtonText}>Book Now</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -515,7 +543,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             activeOpacity={1}
             onPress={() => setShowServiceModal(false)}
           />
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+          <DepthCard variant="floating" style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]} padding={SPACING.lg}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Service</Text>
               <TouchableOpacity onPress={() => setShowServiceModal(false)}>
@@ -548,17 +576,20 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                 </TouchableOpacity>
               )}
             </ScrollView>
-          </View>
+          </DepthCard>
         </View>
       )
       }
 
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
     </View >
   );
 };
-
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -599,7 +630,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: '#F1F5F9', // Matching BookingForm
+    borderColor: '#F1F5F9', // Subtle border
   },
   navTitle: {
     fontSize: 16,
@@ -627,11 +658,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     minHeight: height * 0.7,
     paddingHorizontal: 24,
-    paddingTop: 0, // Removed padding top to let avatar overlap
-    marginTop: -40, // Pull up to overlap with header slightly more (visual trick)
+    paddingTop: 0,
+    marginTop: -40,
     ...SHADOWS.md,
-    shadowColor: '#1E293B',
-    shadowOpacity: 0.1,
   },
   handleBar: {
     width: 40, height: 4,
@@ -645,8 +674,8 @@ const styles = StyleSheet.create({
   // Profile Header & Avatar
   profileHeader: {
     marginBottom: 24,
-    marginTop: -80, // Moved up to perfectly center on the card edge (counteracting handleBar)
-    alignItems: 'center', // Center content
+    marginTop: -80,
+    alignItems: 'center',
   },
   avatarContainer: {
     width: 100, height: 100,
@@ -681,22 +710,6 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'center',
   },
-
-  // ... (Keep existing badge styles)
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  verifiedText: {
-    fontSize: 12,
-    color: '#2563EB',
-    fontWeight: '600',
-  },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -725,53 +738,10 @@ const styles = StyleSheet.create({
     color: '#059669',
     fontWeight: '600',
   },
-  tooltip: {
-    position: 'absolute',
-    top: -50,
-    left: '50%',
-    transform: [{ translateX: -50 }],
-    backgroundColor: '#fff',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    minWidth: 130,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tooltipArrow: {
-    position: 'absolute',
-    bottom: -6,
-    left: '50%',
-    marginLeft: -6,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#fff',
-  },
-  tooltipText: {
-    fontSize: 12,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
 
   // Stats Card
-  statsCard: {
+  statsCardInner: {
     flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -804,8 +774,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
 
-  // ... (Keep other styles)
-
   // Sections
   section: {
     marginBottom: 28,
@@ -823,24 +791,16 @@ const styles = StyleSheet.create({
   },
 
   // Rate Card
-  rateCard: {
+  rateCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 20,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
   },
   rateIconContainer: {
     width: 48, height: 48,
     borderRadius: 16,
-    backgroundColor: '#DBEAFE', // Tinted blue
+    backgroundColor: '#DBEAFE',
     alignItems: 'center', justifyContent: 'center',
     marginRight: 16,
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
   },
   rateTitle: {
     fontSize: 16,
@@ -875,18 +835,9 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
   },
-  reviewsList: {
-    paddingHorizontal: 0, // Parent container has padding
-  },
   reviewCard: {
     width: 280,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
     marginRight: 16,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -922,20 +873,19 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Bottom Bar - Fixed to bottom with enhanced styling
+  // Bottom Bar
   bottomBar: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFFFF', // Solid white background
     paddingHorizontal: 20,
     paddingTop: 20,
     zIndex: 999,
-    ...SHADOWS.lg,
-    shadowColor: '#1E293B',
+    shadowColor: '#000', // Standard shadow props as fallback to theme
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 20,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
@@ -944,54 +894,7 @@ const styles = StyleSheet.create({
     gap: 14,
     alignItems: 'center',
   },
-  chatButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.sm,
-    shadowColor: '#64748B',
-    shadowOpacity: 0.1,
-  },
-  callButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.sm,
-    shadowColor: '#64748B',
-    shadowOpacity: 0.1,
-  },
-  bookButton: {
-    flex: 1,
-    height: 56,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    overflow: 'hidden',
-    ...SHADOWS.md,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.35,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  bookButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.3,
-  },
+
   // Modal Styles
   modalContent: {
     position: 'absolute',
@@ -1001,8 +904,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: SPACING.lg,
-    ...SHADOWS.lg,
   },
   modalHeader: {
     flexDirection: 'row',

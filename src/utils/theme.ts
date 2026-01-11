@@ -14,29 +14,29 @@
 const lightColors = {
   primary: '#3B82F6',          // Blue 500 - Vibrant True Blue
   primaryLight: '#DBEAFE',     // Blue 100 - Light background
-  primaryGradientStart: '#3B82F6',  // Blue gradient start
-  primaryGradientEnd: '#2563EB',    // Blue 600 gradient end
+  primaryGradientStart: '#60A5FA',  // Blue 400 - Lighter top
+  primaryGradientEnd: '#2563EB',    // Blue 600 - Saturated bottom
   accentOrange: '#FF8A3D',     // Accent Orange
   accentYellow: '#F7C948',     // Accent Yellow
-  background: '#F8F9FA',       // Background Light (softer gray)
+  background: '#F6F8FC',       // NEW: Cool Gray - Premium Tech Feel
   cardBg: '#FFFFFF',           // Card Background (pure white)
   elevated: '#FFFFFF',         // Elevated surfaces (pure white)
-  text: '#1A1C1E',             // Heading Text
-  textSecondary: '#6B7280',    // Body Text (softer gray)
-  textTertiary: '#9CA3AF',     // Muted text
-  border: '#E5E7EB',           // Borders / Light Lines
-  divider: '#F0F0F0',          // Dividers (lighter)
-  success: '#27C07D',          // Success Green
-  error: '#E63946',            // Error Red
-  warning: '#F7C948',          // Warning Yellow (same as accent)
-  info: '#3B82F6',             // Info Blue (same as primary)
-  overlay: 'rgba(0, 0, 0, 0.5)',
-  gradientOverlay: 'rgba(26, 28, 30, 0.6)',
+  text: '#0F172A',             // NEW: Darker Slate for High Contrast
+  textSecondary: '#475569',    // NEW: Richer Gray for Body (Slate 600)
+  textTertiary: '#94A3B8',     // Slate 400
+  border: '#E2E8F0',           // Slate 200
+  divider: '#F1F5F9',          // Slate 100
+  success: '#10B981',          // Emerald 500
+  error: '#EF4444',            // Red 500
+  warning: '#F59E0B',          // Amber 500
+  info: '#3B82F6',             // Blue 500
+  overlay: 'rgba(15, 23, 42, 0.6)', // Slate overlay
+  gradientOverlay: 'rgba(15, 23, 42, 0.8)',
   white: '#FFFFFF',
   black: '#000000',
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
+  gray50: '#F8FAFC',
+  gray100: '#F1F5F9',
+  gray200: '#E2E8F0',
 };
 
 const darkColors = {
@@ -167,48 +167,68 @@ export const ICON_SIZES = {
 } as const;
 
 // ============================================
+// 🌈 GRADIENTS - Premium Depth
+// ============================================
+export const GRADIENTS = {
+  primary: ['#60A5FA', '#3B82F6'] as const, // Lighter to Darker Blue
+  success: ['#34D399', '#10B981'] as const,
+  orange: ['#FB923C', '#F97316'] as const,
+  dark: ['#1E293B', '#0F172A'] as const,
+  glass: ['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.4)'] as const,
+  mesh: ['#EFF6FF', '#F5F3FF', '#FDF2F8'] as const, // Subtle background wash
+};
+
+// ============================================
 // 🎭 SHADOWS - Soft & Premium (Apple-like)
 // ============================================
 export const SHADOWS = {
   sm: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03, // Reduced from 0.04
-    shadowRadius: 8,     // Increased from 6
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
     elevation: 2,
   },
 
   md: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 }, // Increased height
-    shadowOpacity: 0.05, // Reduced from 0.06
-    shadowRadius: 14,    // Increased from 10
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   lg: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.07, // Reduced from 0.08
-    shadowRadius: 30,    // Increased from 20
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
 
-  // Colored shadows for emphasis
-  primary: {
-    shadowColor: COLORS.primary,
+  xl: {
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 20,
-    elevation: 6,
+    elevation: 10,
+  },
+
+  // Removed colored shadows to look more native/professional
+  primary: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   orange: {
-    shadowColor: COLORS.accentOrange,
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 6,
+    shadowRadius: 8,
+    elevation: 4,
   },
 } as const;
 

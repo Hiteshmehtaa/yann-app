@@ -55,22 +55,10 @@ export async function getFavorites(): Promise<FavoriteProvider[]> {
             return localFavorites;
         }
 
-        // 3. Merge strategies: Union (Server + Local) to ensure nothing is lost during sync failures
-        const mergedMap = new Map<string, FavoriteProvider>();
-
-        // Add local ones first
-        localFavorites.forEach(fav => {
-            const key = fav.id || fav._id;
-            if (key) mergedMap.set(String(key), fav);
-        });
-
-        // Add server ones (overwriting local details if they differ, effectively updating them)
-        serverFavorites.forEach(fav => {
-            const key = fav.id || fav._id;
-            if (key) mergedMap.set(String(key), fav);
-        });
-
-        const mergedFavorites = Array.from(mergedMap.values());
+        // 3. Sync Strategy: Server Authority
+        // We implicitly trust the server response if it succeeded.
+        // This ensures that providers deleted on the backend are removed from the local device.
+        const mergedFavorites = serverFavorites;
 
         // 4. Update local cache with the merged list
         await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(mergedFavorites));

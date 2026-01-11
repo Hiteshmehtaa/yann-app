@@ -8,12 +8,14 @@ interface EmptyStateProps {
   title: string;
   subtitle?: string;
   animationSource?: any;
+  children?: React.ReactNode;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   subtitle,
   animationSource = require('../../assets/lottie/empty cart.json'),
+  children,
 }) => {
   const { colors } = useTheme();
   return (
@@ -26,6 +28,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       />
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
+      {children && <View style={{ marginTop: SPACING.lg }}>{children}</View>}
     </View>
   );
 };

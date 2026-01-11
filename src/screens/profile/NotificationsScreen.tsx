@@ -154,19 +154,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: '#F1F5F9', // Consistent back button
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
 
   content: {
@@ -177,25 +181,26 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: 10,
     marginLeft: 4,
-    marginTop: 10,
+    marginTop: 20, // More space
   },
   sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8', // Lighter text
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 16, // Consistent radius
     overflow: 'hidden',
-    marginBottom: 24,
-    ...SHADOWS.sm,
+    marginBottom: 12,
+    ...SHADOWS.sm, // Soft shadow
     shadowColor: '#64748B',
     shadowOpacity: 0.05,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'transparent',
   },
   settingItem: {
     flexDirection: 'row',
@@ -209,8 +214,8 @@ const styles = StyleSheet.create({
   },
   settingIcon: {
     width: 36, height: 36,
-    borderRadius: 12,
-    backgroundColor: '#DBEAFE',
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
     alignItems: 'center', justifyContent: 'center',
     marginRight: 12,
   },
@@ -225,24 +230,23 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   settingDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
-    lineHeight: 18,
+    lineHeight: 16,
   },
 
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: '#DBEAFE',
-    borderRadius: 16,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
     padding: 16,
     gap: 12,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
+    marginTop: 12,
   },
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#2563EB',
+    color: '#3B82F6',
     lineHeight: 18,
     fontWeight: '500',
   },

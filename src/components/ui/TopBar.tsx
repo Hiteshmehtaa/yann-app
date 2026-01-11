@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { LogoSVG } from '../LogoSVG';
-import { COLORS, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT } from '../../utils/theme';
+import { COLORS, SPACING, RADIUS, ICON_SIZES, SHADOWS, LAYOUT, TYPOGRAPHY } from '../../utils/theme';
 
 type TopBarProps = {
   title?: string;
@@ -13,6 +14,7 @@ type TopBarProps = {
   userName?: string | null;
   onProfilePress?: () => void;
   onBackPress?: () => void;
+  glass?: boolean;
 };
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -23,122 +25,197 @@ export const TopBar: React.FC<TopBarProps> = ({
   userName,
   onProfilePress,
   onBackPress,
+  glass = false,
 }) => {
-  // Only show name if actually provided, otherwise show nothing
   const displayName = userName || '';
   const firstName = displayName ? displayName.split(' ')[0] : '';
   const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U';
 
-  return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Left Side - Logo or Back Button */}
-        {/* Left Side - Back Button or Logo */}
-        {showBack && (
-          <TouchableOpacity style={styles.backButton} onPress={onBackPress}>
-            <Ionicons name="arrow-back" size={ICON_SIZES.large} color={COLORS.text} />
+  const Container = glass ? View : SafeAreaView;
+  const containerStyle = glass ? styles.glassContainer : styles.safeArea;
+
+  const renderContent = () => (
+    <View style={[styles.contentContainer, glass && styles.glassContent]}>
+      {/* Left Side */}
+      <View style={styles.leftContainer}>
+        {showBack ? (
+          <TouchableOpacity
+            style={[styles.iconButton, glass && styles.glassButton]}
+            onPress={onBackPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
-        )}
-        {!showBack && showLogo && (
-          <View style={styles.logoContainer}>
+        ) : showLogo && (
+          <View style={[styles.logoContainer, glass && styles.glassButton]}>
             <LogoSVG size={28} />
           </View>
         )}
-        {!showBack && !showLogo && (
-          <View style={styles.spacer} />
+      </View>
+
+      {/* Center content */}
+      <View style={styles.centerContainer}>
+        {title ? (
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+        ) : (
+          !!firstName && (
+            <Text style={styles.welcomeText}>
+              <Text style={{ fontWeight: '400', color: COLORS.textSecondary }}>Hi, </Text>
+              {firstName}
+            </Text>
+          )
         )}
+      </View>
 
-        {/* Center - Title or Welcome Text */}
-        <View style={styles.centerContent}>
-          {!!title && <Text style={styles.title}>{title}</Text>}
-          {!title && !!firstName && <Text style={styles.welcomeText}>Hi, {firstName} 👋</Text>}
-        </View>
-
-        {/* Right Side - Profile Avatar */}
+      {/* Right Side */}
+      <View style={styles.rightContainer}>
         {showProfile && (
-          <TouchableOpacity style={styles.profileButton} onPress={onProfilePress}>
+          <TouchableOpacity
+            onPress={onProfilePress}
+            activeOpacity={0.8}
+            style={[styles.profileButton, glass && styles.glassButton]}
+          >
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>{initial}</Text>
             </View>
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+    </View>
+  );
+
+  if (glass) {
+    if (Platform.OS === 'ios') {
+      return (
+        <BlurView intensity={80} tint="light" style={styles.absoluteHeader}>
+          <SafeAreaView edges={['top']}>
+            {renderContent()}
+          </SafeAreaView>
+        </BlurView>
+      );
+    }
+    // Android Fallback for Glass
+    return (
+      <View style={[styles.absoluteHeader, styles.androidGlass]}>
+        <SafeAreaView edges={['top']}>
+          {renderContent()}
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  return (
+    <Container edges={['top']} style={containerStyle}>
+      {renderContent()}
+    </Container>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: COLORS.cardBg,
+    backgroundColor: COLORS.background,
+    zIndex: 10,
   },
-  container: {
+  glassContainer: {
+    backgroundColor: 'transparent',
+    zIndex: 10,
+  },
+  absoluteHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
+  androidGlass: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  contentContainer: {
+    height: LAYOUT.topBarHeight,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+  },
+  glassContent: {
+    // specialized spacing for glass headers if needed
+  },
+  leftContainer: {
+    width: 48,
+    alignItems: 'flex-start',
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  rightContainer: {
+    width: 48,
+    alignItems: 'flex-end',
+  },
+  // Refactored to Tactile Style (No Shadows)
+  iconButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: COLORS.cardBg,
-    height: LAYOUT.topBarHeight,
+    borderRadius: RADIUS.small,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderBottomWidth: 3, // Tactile depth
+    borderBottomColor: '#CBD5E1',
+  },
+  glassButton: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
   },
   logoContainer: {
-    width: LAYOUT.logoSize,
-    height: LAYOUT.logoSize,
-    borderRadius: RADIUS.small,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: COLORS.cardBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.sm,
-  },
-  logoImage: {
-    width: 24,
-    height: 24,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
     borderRadius: RADIUS.small,
-    backgroundColor: COLORS.cardBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.sm,
-  },
-  spacer: {
-    width: LAYOUT.logoSize,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: SPACING.md,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: 0.3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderBottomWidth: 3,
+    borderBottomColor: '#CBD5E1',
   },
   welcomeText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: COLORS.text,
-    letterSpacing: 0.3,
+    letterSpacing: -0.5,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: -0.3,
   },
   profileButton: {
-    width: LAYOUT.avatarSize,
-    height: LAYOUT.avatarSize,
+    padding: 2,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderBottomWidth: 2,
+    borderBottomColor: '#CBD5E1',
   },
   avatarCircle: {
-    width: LAYOUT.avatarSize,
-    height: LAYOUT.avatarSize,
+    width: 36,
+    height: 36,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.primary,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   avatarText: {
-    fontSize: 18,
+    color: '#FFF',
     fontWeight: '700',
-    color: COLORS.white,
+    fontSize: 14,
   },
 });

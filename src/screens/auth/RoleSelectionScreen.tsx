@@ -43,14 +43,14 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
+
       {/* Background pattern */}
       <View style={styles.bgPattern}>
         <View style={styles.patternCircle1} />
         <View style={styles.patternCircle2} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
@@ -59,8 +59,8 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
           {/* Logo Section */}
           <Animated.View style={[styles.logoSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../../public/Logo.jpg')} 
+              <Image
+                source={require('../../../public/Logo.jpg')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -91,12 +91,12 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                   <View style={styles.iconCircleBlue}>
                     <Ionicons name="home" size={28} color={COLORS.primary} />
                   </View>
-                  <View style={styles.arrowCircle}>
-                    <Ionicons name="arrow-forward" size={20} color={COLORS.primary} />
-                  </View>
                 </View>
-                
-                <Text style={styles.cardTitle}>BOOK SERVICES</Text>
+
+                <View style={styles.titleRow}>
+                  <Text style={styles.cardTitle}>BOOK SERVICES</Text>
+                  <Ionicons name="arrow-forward" size={20} color={COLORS.primary} style={{ marginLeft: 8 }} />
+                </View>
                 <Text style={styles.cardDescription}>
                   Trusted professionals at your doorstep
                 </Text>
@@ -114,12 +114,12 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                   <View style={styles.iconCircleYellow}>
                     <Text style={styles.iconEmoji}>💼</Text>
                   </View>
-                  <View style={styles.arrowCircleGray}>
-                    <Ionicons name="arrow-forward" size={20} color={COLORS.textTertiary} />
-                  </View>
                 </View>
-                
-                <Text style={styles.cardTitleDark}>BECOME A PARTNER</Text>
+
+                <View style={styles.titleRow}>
+                  <Text style={styles.cardTitleDark}>BECOME A PARTNER</Text>
+                  <Ionicons name="arrow-forward" size={20} color={COLORS.textTertiary} style={{ marginLeft: 8 }} />
+                </View>
                 <Text style={styles.cardDescriptionDark}>
                   Join our network of experts
                 </Text>
@@ -144,7 +144,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.statLabel}>RATING</Text>
             </View>
           </Animated.View>
-          
+
           {/* Footer */}
           <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
             <Text style={styles.footerText}>Already have an account? </Text>
@@ -298,28 +298,16 @@ const styles = StyleSheet.create({
   iconEmoji: {
     fontSize: 28,
   },
-  arrowCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary + '10',
-    justifyContent: 'center',
+  titleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  arrowCircleGray: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 6,
   },
   cardTitle: {
     fontSize: 19,
     fontWeight: '700',
     color: COLORS.primary,
     letterSpacing: 0.5,
-    marginBottom: 6,
   },
   cardTitleDark: {
     fontSize: 19,

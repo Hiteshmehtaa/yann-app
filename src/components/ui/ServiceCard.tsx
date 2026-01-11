@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType, Animated, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SPACING, RADIUS, SHADOWS } from '../../utils/theme';
+import { SPACING, RADIUS, SHADOWS, COLORS } from '../../utils/theme';
 import { ServiceIcon } from '../icons/ServiceIcon';
 import { Badge } from './Badge';
+import { DepthCard } from './DepthCard';
 import { haptics } from '../../utils/haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -45,7 +46,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
 
   // Partner Count Logic
   const displayCount = partnerCount > 2 ? '2+' : partnerCount;
@@ -60,37 +60,27 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     return GRADIENT_PRESETS.default;
   };
 
+  const gradientColors = getGradient();
+
   const handlePressIn = () => {
     if (!isComingSoon) {
       haptics.light();
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 0.95,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-      ]).start();
+      Animated.spring(scaleAnim, {
+        toValue: 0.92, // More noticeable shrink (was 0.95)
+        speed: 20,     // Faster response
+        bounciness: 4,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
   const handlePressOut = () => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(glowAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }),
-    ]).start();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      speed: 15,
+      bounciness: 6, // Slight bounce back
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePress = () => {
@@ -100,11 +90,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     }
   };
 
-  const gradientColors = getGradient();
-  const shadowColor = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(0,0,0,0.1)', gradientColors[0]],
-  });
+  const AnimatedDepthCard = Animated.createAnimatedComponent(DepthCard);
 
   return (
     <TouchableOpacity
@@ -115,86 +101,83 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       style={[styles.container, isComingSoon && styles.comingSoonContainer, style]}
       disabled={isComingSoon}
     >
-      <Animated.View style={[
-        styles.card, 
-        { 
-          backgroundColor: isDark ? colors.cardBg : colors.cardBg,
-          transform: [{ scale: scaleAnim }],
-          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
-          borderWidth: 1,
-        }
-      ]}>
-        {/* Subtle gradient overlay for dark mode */}
-        {isDark && (
-          <LinearGradient
-            colors={['rgba(99,102,241,0.05)', 'rgba(168,85,247,0.02)', 'transparent']}
-            style={styles.gradientOverlay}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-        )}
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <View style={[
+          styles.glassCard,
+          {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)',
+          }
+        ]}>
 
-        {/* Partner Count Badge - Top Left */}
-        {showCount && (
-          <LinearGradient
-            colors={gradientColors}
-            style={styles.partnerCountBadge}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          {/* Partner Count Badge - Top Left */}
+          {showCount && (
+            <LinearGradient
+              colors={gradientColors}
+              style={styles.partnerCountBadge}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.partnerCountText}>{displayCount}</Text>
+            </LinearGradient>
+          )}
+
+          {/* Image/Icon Container (Transparent now) */}
+          <View style={[
+            styles.imageContainer,
+            // Removed background color as per user feedback
+            { backgroundColor: 'transparent' }
+          ]}>
+            {iconImage ? (
+              <Image
+                source={iconImage}
+                style={[styles.serviceImage, isComingSoon && { opacity: 0.5 }]}
+                resizeMode="contain" // Contain to show full PNG without cropping
+              />
+            ) : (
+              <ServiceIcon size={40} color={COLORS.primary} />
+            )}
+          </View>
+
+          {/* Title */}
+          <Text
+            style={[
+              styles.title,
+              { color: colors.text },
+              isComingSoon && { color: colors.textTertiary }
+            ]}
+            numberOfLines={2}
           >
-            <Text style={styles.partnerCountText}>{displayCount}</Text>
-          </LinearGradient>
-        )}
+            {title}
+          </Text>
 
-        {/* Image Container with Gradient Background */}
-        <LinearGradient
-          colors={isComingSoon ? ['#9CA3AF', '#6B7280'] : gradientColors}
-          style={styles.imageContainer}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {iconImage ? (
-            <Image 
-              source={iconImage} 
-              style={[styles.serviceImage, isComingSoon && { opacity: 0.5 }]} 
-              resizeMode="cover"
-            />
-          ) : (
-            <ServiceIcon size={36} color="#FFF" />
+          {/* Price Tag (New, clean look) */}
+          {!isComingSoon && (
+            <Text style={[styles.priceTag, { color: colors.textSecondary }]}>
+              {price}
+            </Text>
           )}
-        </LinearGradient>
 
-        {/* Title */}
-        <Text 
-          style={[
-            styles.title, 
-            { color: colors.text }, 
-            isComingSoon && { color: colors.textTertiary }
-          ]} 
-          numberOfLines={2}
-        >
-          {title}
-        </Text>
-        
-        {/* Badges - Top Right Stack */}
-        <View style={styles.badgesContainer}>
-          {isNew && !isComingSoon && (
-            <View style={styles.badgeWrapper}>
-              <Badge variant="new" />
-            </View>
-          )}
-          
-          {popular && !isComingSoon && !isNew && (
-            <View style={styles.badgeWrapper}>
-              <Badge variant="popular" />
-            </View>
-          )}
-          
-          {isComingSoon && (
-            <View style={styles.badgeWrapper}>
-              <Badge variant="coming-soon" />
-            </View>
-          )}
+          {/* Badges - Top Right Stack */}
+          <View style={styles.badgesContainer}>
+            {isNew && !isComingSoon && (
+              <View style={styles.badgeWrapper}>
+                <Badge variant="new" />
+              </View>
+            )}
+
+            {popular && !isComingSoon && !isNew && (
+              <View style={styles.badgeWrapper}>
+                <Badge variant="popular" />
+              </View>
+            )}
+
+            {isComingSoon && (
+              <View style={styles.badgeWrapper}>
+                <Badge variant="coming-soon" />
+              </View>
+            )}
+          </View>
         </View>
       </Animated.View>
     </TouchableOpacity>
@@ -205,58 +188,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  comingSoonContainer: {
-    opacity: 0.7,
-  },
-  card: {
-    borderRadius: 20,
-    padding: SPACING.md,
+  glassCard: {
+    height: 160,
+    borderRadius: 24,
+    borderWidth: 0,
+    padding: 12,
     alignItems: 'center',
-    height: 155,
-    justifyContent: 'space-between',
-    position: 'relative',
+    justifyContent: 'center',
     overflow: 'hidden',
-    // Modern shadow
-    ...Platform.select({
-      ios: {
-        shadowColor: '#60A5FA',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    // Very subtle shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 20,
+  comingSoonContainer: {
+    opacity: 0.8,
   },
   imageContainer: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: 18,
-    marginBottom: SPACING.xs,
+    marginBottom: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    // Subtle inner glow
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
   },
   serviceImage: {
     width: '100%',
@@ -264,13 +220,16 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   title: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 17,
-    marginTop: 6,
     marginBottom: 4,
-    letterSpacing: 0.2,
+    lineHeight: 18,
+  },
+  priceTag: {
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.8,
   },
   badgesContainer: {
     position: 'absolute',
@@ -284,17 +243,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   partnerCountText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#FFF',
   },
+  // Unused but kept to prevent breakages if refs exist
+  gradientOverlay: { display: 'none' },
+  cardContent: { display: 'none' },
 });
-

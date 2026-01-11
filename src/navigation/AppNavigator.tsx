@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS } from '../utils/theme';
+import { FloatingTabBar } from '../components/ui/FloatingTabBar';
+import { TopBar } from '../components/ui/TopBar';
 
 // Screen transition configuration
 const screenTransitionConfig = {
@@ -138,7 +140,7 @@ const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => (
   <Ionicons
     name={name as any}
     size={24}
-    color={focused ? THEME.accent : THEME.textMuted}
+    color={focused ? '#FFF' : COLORS.textSecondary} // Update color to be White when focused (for the Neo pill) and Gray when inactive
   />
 );
 
@@ -175,36 +177,11 @@ const renderEarningsIcon = (props: { focused: boolean }) => (
 function TabNavigator() {
   return (
     <Tab.Navigator
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: THEME.primary,
-        tabBarInactiveTintColor: '#999999',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E5E5',
-          height: Platform.OS === 'ios' ? 88 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '500',
-          marginTop: 2,
-        },
         headerShown: true,
-        headerStyle: {
-          backgroundColor: THEME.bg,
-          elevation: 0,
-          shadowOpacity: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: THEME.border,
-        },
-        headerTitleStyle: {
-          fontWeight: '800',
-          fontSize: 17,
-          color: THEME.text,
-          letterSpacing: 1,
-        },
+        header: (props) => <TopBar {...props} glass showLogo title={props.options.title || props.route.name} />, // Use new Glass TopBar globally for tabs
+        tabBarShowLabel: false, // Hide labels for clean look
       }}
     >
       <Tab.Screen
@@ -260,36 +237,11 @@ function TabNavigator() {
 function ProviderTabNavigator() {
   return (
     <Tab.Navigator
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: THEME.primary,
-        tabBarInactiveTintColor: '#999999',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E5E5',
-          height: Platform.OS === 'ios' ? 88 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '500',
-          marginTop: 2,
-        },
         headerShown: true,
-        headerStyle: {
-          backgroundColor: THEME.bg,
-          elevation: 0,
-          shadowOpacity: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: THEME.border,
-        },
-        headerTitleStyle: {
-          fontWeight: '800',
-          fontSize: 17,
-          color: THEME.text,
-          letterSpacing: 1,
-        },
+        header: (props) => <TopBar {...props} glass showLogo title={props.options.title || props.route.name} />,
+        tabBarShowLabel: false,
       }}
     >
       <Tab.Screen

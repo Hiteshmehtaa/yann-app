@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,8 @@ import {
   Animated,
   Image,
   Dimensions,
-  Platform,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,8 +19,12 @@ import type { RouteProp } from '@react-navigation/native';
 import type { Service, ServiceProvider } from '../../types';
 import { apiService } from '../../services/api';
 import { getServiceIconImage } from '../../utils/serviceImages';
-import { COLORS, RADIUS, SHADOWS } from '../../utils/theme';
+import { COLORS, SPACING, SHADOWS } from '../../utils/theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { DepthCard } from '../../components/ui/DepthCard';
+import { TopBar } from '../../components/ui/TopBar';
+import { Button } from '../../components/ui/Button';
+import { SkeletonLoader } from '../../components/ui/SkeletonLoader';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -41,26 +44,11 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [providers, setProviders] = useState<ServiceProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
 
   // Animations
   const scrollY = useRef(new Animated.Value(0)).current;
   const tabAnim = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(1)).current;
-
-  // Track scroll for status bar
-  useEffect(() => {
-    const listener = scrollY.addListener(({ value }) => {
-      const shouldBeVisible = value > HERO_HEIGHT - 100; // Match header opacity trigger
-      if (shouldBeVisible !== isHeaderVisible) {
-        setIsHeaderVisible(shouldBeVisible);
-      }
-    });
-
-    return () => {
-      scrollY.removeListener(listener);
-    };
-  }, [isHeaderVisible, scrollY]);
 
   // Tab Switch Handler
   const switchTab = (tab: string, index: number) => {
@@ -126,41 +114,6 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     ? Math.min(...providers.map(p => p.priceForService || 0))
     : service.price;
 
-  // Render Helpers
-  const renderHeader = () => {
-    const headerOpacity = scrollY.interpolate({
-      inputRange: [HERO_HEIGHT - 100, HERO_HEIGHT - 50],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: headerOpacity }]}>
-          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          <View style={[styles.headerBorder, { backgroundColor: colors.divider }]} />
-        </Animated.View>
-
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={[styles.roundButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)' }]}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-
-          <Animated.Text style={[styles.headerTitle, { opacity: headerOpacity, color: colors.text }]}>
-            {service.title}
-          </Animated.Text>
-
-          <TouchableOpacity style={[styles.roundButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)' }]}>
-            <Ionicons name="share-outline" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
   const renderHero = () => {
     const scale = scrollY.interpolate({
       inputRange: [-HERO_HEIGHT, 0, HERO_HEIGHT],
@@ -180,20 +133,24 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           source={getServiceIconImage(service.title)}
           style={styles.heroImage}
         />
-        {/* Top Gradient for Status Bar Visibility */}
         <LinearGradient
-          colors={['rgba(0,0,0,0.7)', 'transparent']}
+          colors={['rgba(0,0,0,0.6)', 'transparent']}
           style={styles.topGradient}
         />
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.6)']}
+          colors={['transparent', 'rgba(0,0,0,0.8)']}
           style={styles.heroGradient}
         />
         <View style={styles.heroContent}>
-          <View style={styles.categoryTag}>
-            <Text style={styles.categoryText}>{service.category?.toUpperCase()}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <View>
+              <View style={styles.categoryTag}>
+                <Text style={styles.categoryText}>{service.category?.toUpperCase()}</Text>
+              </View>
+              <Text style={styles.heroTitle}>{service.title}</Text>
+            </View>
           </View>
-          <Text style={styles.heroTitle}>{service.title}</Text>
+
           <View style={styles.heroStats}>
             <View style={styles.heroStatItem}>
               <Ionicons name="star" size={16} color="#FFD700" />
@@ -211,7 +168,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const renderQuickStats = () => (
-    <View style={[styles.quickStatsRow, { backgroundColor: colors.cardBg, shadowColor: colors.text }]}>
+    <DepthCard variant="floating" style={styles.quickStatsRow} padding={SPACING.md}>
       <View style={styles.statBox}>
         <View style={[styles.statIcon, { backgroundColor: isDark ? colors.primary + '20' : '#E3F2FD' }]}>
           <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
@@ -232,19 +189,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
         <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Support</Text>
       </View>
-    </View>
+    </DepthCard>
   );
 
   const renderTabs = () => {
-    const tabWidth = (width - 40 - 16) / 3; // (Screen Width - Sheet Padding - Internal Tab Padding) / 3
+    const tabWidth = (width - 40 - 16) / 3;
     const translateX = tabAnim.interpolate({
       inputRange: [0, 1, 2],
-      outputRange: [4, 4 + tabWidth, 4 + tabWidth * 2] // Adjusting for padding
+      outputRange: [4, 4 + tabWidth, 4 + tabWidth * 2]
     });
 
     return (
-      <View style={[styles.tabsContainer, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
-        {/* Animated Background Indicator */}
+      <View style={[styles.tabsContainer, { backgroundColor: isDark ? colors.border : '#F1F5F9' }]}>
         <Animated.View style={[styles.activeTabIndicator, {
           width: tabWidth,
           transform: [{ translateX }],
@@ -274,91 +230,93 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const renderProvider = (item: any, index: number) => (
     <TouchableOpacity
       key={item._id}
-      style={[
-        styles.providerCard,
-        {
-          backgroundColor: colors.cardBg,
-          borderColor: 'transparent',
-          shadowColor: colors.text
-        },
-        selectedProvider?._id === item._id && {
-          borderColor: colors.primary,
-          backgroundColor: isDark ? colors.primary + '10' : '#F5F9FF'
-        }
-      ]}
       onPress={() => setSelectedProvider(item)}
       activeOpacity={0.9}
     >
-      <View style={styles.providerHeader}>
-        {item.profileImage ? (
-          <Image
-            source={{ uri: item.profileImage }}
-            style={styles.providerAvatar}
-          />
-        ) : (
-          <View style={[styles.providerAvatar, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
-            <Ionicons name="person" size={24} color={colors.textTertiary} />
-          </View>
-        )}
-        <View style={styles.providerInfo}>
-          <View style={styles.nameRow}>
-            <Text style={[styles.providerName, { color: colors.text }]}>{item.name}</Text>
-            {index === 0 && (
-              <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
-                <Text style={styles.badgeText}>TOP RATED</Text>
+      <DepthCard
+        variant="elevated"
+        style={[
+          styles.providerCard,
+          selectedProvider?._id === item._id && { borderColor: colors.primary, borderWidth: 1.5 }
+        ]}
+        padding={SPACING.md}
+      >
+        <View style={styles.providerHeader}>
+          <View style={styles.providerAvatarContainer}>
+            {item.profileImage ? (
+              <Image
+                source={{ uri: item.profileImage }}
+                style={styles.providerAvatar}
+              />
+            ) : (
+              <View style={[styles.providerAvatar, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
+                <Ionicons name="person" size={24} color={colors.textTertiary} />
               </View>
             )}
           </View>
-          <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>{item.experience} years exp • {item.totalReviews} jobs</Text>
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={14} color="#FFD700" />
-            <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
+          <View style={styles.providerInfo}>
+            <View style={styles.nameRow}>
+              <Text style={[styles.providerName, { color: colors.text }]}>{item.name}</Text>
+              {index === 0 && (
+                <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.badgeText}>TOP RATED</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>{item.experience} years exp • {item.totalReviews} jobs</Text>
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={14} color="#FFD700" />
+              <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
+            </View>
+          </View>
+          <View style={styles.priceTag}>
+            <Text style={[styles.priceVal, { color: colors.primary }]}>₹{item.priceForService}</Text>
+            <Text style={[styles.priceUnit, { color: colors.textTertiary }]}>/hr</Text>
           </View>
         </View>
-        <View style={styles.priceTag}>
-          <Text style={[styles.priceVal, { color: colors.primary }]}>₹{item.priceForService}</Text>
-          <Text style={[styles.priceUnit, { color: colors.textTertiary }]}>/hr</Text>
-        </View>
-      </View>
 
-      {/* Selection Checkmark */}
-      <View style={[
-        styles.radioButton,
-        { borderColor: isDark ? colors.border : '#E0E0E0' },
-        selectedProvider?._id === item._id && {
-          borderColor: colors.primary,
-          backgroundColor: colors.primary
-        }
-      ]}>
-        {selectedProvider?._id === item._id && (
-          <Ionicons name="checkmark" size={16} color="#FFF" />
-        )}
-      </View>
+        {/* Selection Checkmark */}
+        <View style={[
+          styles.radioButton,
+          { borderColor: isDark ? colors.border : '#E0E0E0' },
+          selectedProvider?._id === item._id && {
+            borderColor: colors.primary,
+            backgroundColor: colors.primary
+          }
+        ]}>
+          {selectedProvider?._id === item._id && (
+            <Ionicons name="checkmark" size={16} color="#FFF" />
+          )}
+        </View>
+      </DepthCard>
     </TouchableOpacity>
   );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar
-        barStyle={isHeaderVisible && !isDark ? "dark-content" : "light-content"}
-        backgroundColor="transparent"
-        translucent
-      />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {renderHero()}
-      {renderHeader()}
+
+      {/* Glass Header */}
+      <TopBar
+        title={service.title}
+        glass
+        showBack
+        onBackPress={() => navigation.goBack()}
+        showProfile={false}
+      />
 
       <Animated.ScrollView
         contentContainerStyle={{ paddingTop: HERO_HEIGHT - 40, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false } // Change to false because we need the listener
+          { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
       >
-        <View style={[styles.sheetContainer, { backgroundColor: colors.background }]}>
-          {/* Dragger */}
+        <View style={[styles.sheetContainer, { backgroundColor: colors.cardBg }]}>
           <View style={styles.dragHandleCenter}>
             <View style={[styles.dragHandle, { backgroundColor: colors.divider }]} />
           </View>
@@ -378,7 +336,9 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {activeTab === 'providers' && (
               <View style={{ gap: 16 }}>
                 {isLoading ? (
-                  <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading professionals...</Text>
+                  <View style={{ gap: 12 }}>
+                    {[1, 2, 3].map(i => <SkeletonLoader key={i} height={100} variant="rect" />)}
+                  </View>
                 ) : providers.length === 0 ? (
                   <View style={styles.emptyState}>
                     <Ionicons name="search" size={32} color={colors.textTertiary} />
@@ -393,18 +353,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {activeTab === 'details' && (
               <View style={styles.detailsList}>
                 {['Professional Equipment', 'Safety Protocols', 'Insured Service', 'Satisfaction Guarantee'].map((feat, i) => (
-                  <View key={i} style={[styles.detailRow, { backgroundColor: colors.cardBg }]}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                  <DepthCard key={i} variant="flat" style={styles.detailRow} padding={SPACING.md}>
+                    <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
                     <Text style={[styles.detailText, { color: colors.text }]}>{feat}</Text>
-                  </View>
+                  </DepthCard>
                 ))}
               </View>
             )}
 
             {activeTab === 'reviews' && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll} contentContainerStyle={{ paddingRight: 20 }}>
                 {[1, 2, 3].map((i) => (
-                  <View key={i} style={[styles.reviewCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+                  <DepthCard key={i} variant="elevated" style={styles.reviewCard} padding={SPACING.md}>
                     <View style={styles.reviewHeader}>
                       <View style={[styles.reviewAvatar, { backgroundColor: isDark ? colors.border : '#E0E0E0' }]}>
                         <Text style={[styles.reviewInitial, { color: colors.textSecondary }]}>U{i}</Text>
@@ -415,7 +375,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                       </View>
                     </View>
                     <Text style={[styles.reviewBody, { color: colors.textSecondary }]}>"Amazing service! The professional was on time and did a great job."</Text>
-                  </View>
+                  </DepthCard>
                 ))}
               </ScrollView>
             )}
@@ -432,24 +392,24 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             {selectedProvider ? `₹${selectedProvider.priceForService}` : `From ₹${startPrice}`}
           </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.bookBtn, { backgroundColor: colors.primary }, (!selectedProvider && providers.length > 1) && styles.bookBtnDisabled]}
-          onPress={() => {
-            if (providers.length > 1 && !selectedProvider) return;
-            const providerToView = selectedProvider || providers[0];
-            if (!providerToView || !providerToView._id) {
-              console.warn('No valid provider to view');
-              return;
-            }
-            navigation.navigate('ProviderPublicProfile', {
-              provider: providerToView,
-              service: service
-            });
-          }}
-        >
-          <Text style={styles.bookBtnText}>View Profile</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFF" />
-        </TouchableOpacity>
+        <View style={{ flex: 1, maxWidth: 180 }}>
+          <Button
+            title="View Profile"
+            onPress={() => {
+              if (providers.length > 1 && !selectedProvider) return; // Maybe show toast?
+              const providerToView = selectedProvider || providers[0];
+              if (!providerToView || !providerToView._id) return;
+              navigation.navigate('ProviderPublicProfile', {
+                provider: providerToView,
+                service: service
+              });
+            }}
+            disabled={!selectedProvider && providers.length > 1}
+            variant={(!selectedProvider && providers.length > 1) ? "ghost" : "primary"}
+            icon={<Ionicons name="arrow-forward" size={18} color="#FFF" />}
+            size="medium"
+          />
+        </View>
       </BlurView>
     </View>
   );
@@ -458,51 +418,8 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F7', // Slightly grey background for contrast
+    backgroundColor: '#F5F5F7',
   },
-  // Header
-  headerContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    height: 100, // Approximate safe area + nav height
-    justifyContent: 'center',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    height: 50,
-  },
-  headerBorder: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  roundButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-
   // Hero
   heroContainer: {
     position: 'absolute',
@@ -522,19 +439,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
+    height: '60%',
   },
   topGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 100, // Sufficient for status bar visibility
+    height: 120,
     zIndex: 1,
   },
   heroContent: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 60,
     left: 20,
     right: 20,
   },
@@ -588,7 +505,6 @@ const styles = StyleSheet.create({
 
   // Sheet
   sheetContainer: {
-    backgroundColor: '#FAFAFA',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     minHeight: height - HERO_HEIGHT + 40,
@@ -612,11 +528,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 20,
-    padding: 16,
     marginBottom: 24,
-    ...SHADOWS.sm,
   },
   statBox: {
     flex: 1,
@@ -633,7 +546,6 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textSecondary,
   },
   statDivider: {
     width: 1,
@@ -648,23 +560,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
     marginBottom: 8,
   },
   descriptionText: {
     fontSize: 15,
     lineHeight: 24,
-    color: COLORS.textSecondary,
   },
 
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
     borderRadius: 16,
     padding: 4,
     marginBottom: 24,
-    position: 'relative', // for absolute indicator
+    position: 'relative',
     height: 48,
   },
   tabItem: {
@@ -674,32 +583,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     zIndex: 1,
   },
-  // validation fix: Removed activeTab style as it is no longer used directly on the item
   activeTabIndicator: {
     position: 'absolute',
     top: 4,
     left: 0,
     height: 40,
-    backgroundColor: '#FFF',
     borderRadius: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 3,
     elevation: 2,
     zIndex: 0,
   },
-  activeTab: {
-    // keeping for reference or if we fall back, but currently relying on indicator
-  },
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.textTertiary,
-  },
-  activeTabText: {
-    color: COLORS.text,
-    fontWeight: '700',
   },
 
   contentArea: {
@@ -710,29 +608,22 @@ const styles = StyleSheet.create({
   providerCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#FFF',
-    padding: 16,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    ...SHADOWS.sm,
-    shadowOpacity: 0.05,
     alignItems: 'center',
-  },
-  selectedProviderCard: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#F5F9FF',
+    marginBottom: 4, // Spacing handled by parent gap
   },
   providerHeader: {
     flexDirection: 'row',
     gap: 12,
     flex: 1,
   },
+  providerAvatarContainer: {
+    marginRight: 4,
+  },
   providerAvatar: {
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: '#F0F0F0',
   },
   providerInfo: {
     flex: 1,
@@ -747,10 +638,8 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
   },
   badgeContainer: {
-    backgroundColor: COLORS.primary,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -762,7 +651,6 @@ const styles = StyleSheet.create({
   },
   providerMeta: {
     fontSize: 12,
-    color: COLORS.textTertiary,
     marginBottom: 4,
   },
   ratingRow: {
@@ -773,7 +661,6 @@ const styles = StyleSheet.create({
   ratingVal: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.text,
   },
   priceTag: {
     flexDirection: 'row',
@@ -784,27 +671,35 @@ const styles = StyleSheet.create({
   priceVal: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.primary,
   },
   priceUnit: {
     fontSize: 11,
-    color: COLORS.textTertiary,
   },
   radioButton: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radioButtonSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary,
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  emptyText: {
+    marginTop: 10,
+    fontSize: 14,
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 20,
   },
 
-  // Details
+  // Details list
   detailsList: {
     gap: 12,
   },
@@ -812,72 +707,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 16,
   },
   detailText: {
     fontSize: 15,
     fontWeight: '500',
-    color: COLORS.text,
   },
 
   // Reviews
   reviewsScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+
   },
   reviewCard: {
     width: 280,
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 20,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    marginRight: 16,
   },
   reviewHeader: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 10,
   },
   reviewAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E0E0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
   },
   reviewInitial: {
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+    fontWeight: '700', fontSize: 14,
   },
   reviewerName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontWeight: '600', fontSize: 14,
   },
   reviewBody: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-  },
-
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  emptyText: {
-    color: COLORS.textTertiary,
-    fontSize: 14,
-  },
-  loadingText: {
-    textAlign: 'center',
-    color: COLORS.textTertiary,
-    marginTop: 20,
+    fontSize: 14, lineHeight: 20,
   },
 
   // Bottom Bar
@@ -886,49 +747,24 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-    paddingTop: 12,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   priceContainer: {
-    gap: 4,
+    flex: 1,
   },
   totalLabel: {
     fontSize: 12,
-    color: COLORS.textTertiary,
   },
   totalPrice: {
     fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  bookBtn: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-    height: 50,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    fontWeight: '700',
   },
   bookBtnDisabled: {
-    backgroundColor: '#E0E0E0',
-    shadowOpacity: 0,
-  },
-  bookBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
+    opacity: 0.6,
   },
 });

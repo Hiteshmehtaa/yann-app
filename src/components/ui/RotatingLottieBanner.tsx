@@ -100,7 +100,6 @@ export const RotatingLottieBanner: React.FC = () => {
         setIsTransitioning(true);
 
         // Attempt to freeze the current animation on the last frame
-        // to prevent it from resetting to frame 0 during the fade out
         try {
             currentLottieRef.current?.pause();
         } catch (e) {
@@ -110,16 +109,14 @@ export const RotatingLottieBanner: React.FC = () => {
         // 1. Reset transition state
         transitionAnim.setValue(0);
 
-        // 2. Start the cinematic transition (Faster now to hide artifacts)
+        // 2. Start the cinematic transition
         Animated.parallel([
-            // Fade Cross-Dissolve: 0 -> 1 (Show next, Hide current)
             Animated.timing(transitionAnim, {
                 toValue: 1,
-                duration: 800, // Reduced from 1200ms to minimize overlaps
+                duration: 800,
                 easing: Easing.bezier(0.4, 0.0, 0.2, 1),
                 useNativeDriver: true,
             }),
-            // Breath Effect
             Animated.sequence([
                 Animated.timing(scaleAnim, {
                     toValue: 0.98,
@@ -138,10 +135,7 @@ export const RotatingLottieBanner: React.FC = () => {
                 const nextIndex = (prev + 1) % animations.length;
                 // If we wrapped around to 0, shuffle the list again to keep it random
                 if (nextIndex === 0) {
-                    // We need to be careful not to make the new first item the same as the old last item
                     let newOrder = shuffleArray(HERO_ANIMATIONS);
-                    // Simple check: if start of new order is same as end of old order, shuffle again
-                    // (Probabilistic approach usually fine for 8 items)
                     if (newOrder[0].id === animations[animations.length - 1].id) {
                         newOrder = shuffleArray(HERO_ANIMATIONS);
                     }
@@ -153,6 +147,17 @@ export const RotatingLottieBanner: React.FC = () => {
             setIsTransitioning(false);
         });
     };
+
+    // Fallback timer to prevent stuck animations if onAnimationFinish doesn't fire
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!isTransitioning) {
+                runTransition(false);
+            }
+        }, DISPLAY_DURATION); // 9000ms fallback
+
+        return () => clearTimeout(timer);
+    }, [currentIndex, isTransitioning]);
 
     // Touch Interaction
     const handlePressIn = () => {
