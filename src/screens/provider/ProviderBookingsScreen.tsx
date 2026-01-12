@@ -90,6 +90,7 @@ export const ProviderBookingsScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Navigation Modal State
   const [navModalVisible, setNavModalVisible] = useState(false);
@@ -300,6 +301,7 @@ export const ProviderBookingsScreen = () => {
   };
 
   const handleAcceptBooking = async (bookingId: string) => {
+    setActionLoadingId(bookingId);
     try {
       const response = await apiService.acceptBooking(
         bookingId,
@@ -313,10 +315,13 @@ export const ProviderBookingsScreen = () => {
     } catch (err) {
       console.error('❌ Error accepting booking:', err);
       setError('Failed to accept booking');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const handleRejectBooking = async (bookingId: string) => {
+    setActionLoadingId(bookingId);
     try {
       const providerId = user?._id || user?.id;
       if (!providerId) {
@@ -331,16 +336,19 @@ export const ProviderBookingsScreen = () => {
     } catch (err) {
       console.error('❌ Error rejecting booking:', err);
       setError('Failed to reject booking');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
-    try {
-      if (newStatus === 'accepted') {
-        await handleAcceptBooking(bookingId);
-      } else if (newStatus === 'cancelled') {
-        await handleRejectBooking(bookingId);
-      } else {
+    if (newStatus === 'accepted') {
+      await handleAcceptBooking(bookingId);
+    } else if (newStatus === 'cancelled') {
+      await handleRejectBooking(bookingId);
+    } else {
+      setActionLoadingId(bookingId);
+      try {
         const response = await apiService.updateBookingStatus(
           bookingId,
           newStatus as 'in_progress' | 'completed' | 'cancelled',
@@ -350,10 +358,12 @@ export const ProviderBookingsScreen = () => {
           console.log(`✅ Booking status updated to ${newStatus}`);
           fetchBookings();
         }
+      } catch (err) {
+        console.error(`❌ Error updating booking status to ${newStatus}:`, err);
+        setError(`Failed to update booking status`);
+      } finally {
+        setActionLoadingId(null);
       }
-    } catch (err) {
-      console.error(`❌ Error updating booking status to ${newStatus}:`, err);
-      setError(`Failed to update booking status`);
     }
   };
 
@@ -616,6 +626,7 @@ export const ProviderBookingsScreen = () => {
                   onPress={() => handleStatusChange(booking.id, 'cancelled')}
                   style={{ flex: 1, borderColor: '#EF4444', borderWidth: 1 }}
                   textStyle={{ color: '#EF4444' }}
+                  loading={actionLoadingId === booking.id}
                 />
                 <Button
                   title="Accept Request"
@@ -623,6 +634,7 @@ export const ProviderBookingsScreen = () => {
                   size="small"
                   onPress={() => handleStatusChange(booking.id, 'accepted')}
                   style={{ flex: 1 }}
+                  loading={actionLoadingId === booking.id}
                 />
               </View>
             )}
@@ -644,6 +656,7 @@ export const ProviderBookingsScreen = () => {
                   icon={<Ionicons name="play" size={16} color="white" />}
                   onPress={() => handleStartJob(booking.id)}
                   style={{ flex: 1 }}
+                  loading={actionLoadingId === booking.id}
                 />
               </View>
             )}
@@ -657,6 +670,7 @@ export const ProviderBookingsScreen = () => {
                   icon={<Ionicons name="checkmark-done" size={18} color="white" />}
                   onPress={() => handleEndJob(booking.id)}
                   style={{ flex: 1, backgroundColor: '#059669' }}
+                  loading={actionLoadingId === booking.id}
                 />
               </View>
             )}

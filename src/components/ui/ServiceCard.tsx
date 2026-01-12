@@ -98,15 +98,21 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
-      style={[styles.container, isComingSoon && styles.comingSoonContainer, style]}
+      style={[styles.container, style]} // Removed opacity from container to keep text sharp
       disabled={isComingSoon}
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <View style={[
           styles.glassCard,
           {
-            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
-            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)',
+            backgroundColor: isComingSoon
+              ? (isDark ? 'rgba(50,50,50,0.3)' : 'rgba(200,200,200,0.3)') // Gray for Coming Soon
+              : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)'),
+            borderColor: isComingSoon
+              ? (isDark ? 'rgba(100,100,100,0.2)' : 'rgba(150,150,150,0.2)')
+              : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)'),
+            borderWidth: 1,
+            // Grayscale effect hack for content inside? No, handled by tinting children
           }
         ]}>
 
@@ -118,24 +124,29 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.partnerCountText}>{displayCount}</Text>
+              <Text style={styles.partnerCountText}>{partnerCount} active</Text>
             </LinearGradient>
           )}
 
-          {/* Image/Icon Container (Transparent now) */}
+          {/* Image/Icon Container */}
           <View style={[
             styles.imageContainer,
-            // Removed background color as per user feedback
             { backgroundColor: 'transparent' }
           ]}>
             {iconImage ? (
               <Image
                 source={iconImage}
-                style={[styles.serviceImage, isComingSoon && { opacity: 0.5 }]}
-                resizeMode="contain" // Contain to show full PNG without cropping
+                style={[
+                  styles.serviceImage,
+                  isComingSoon && { opacity: 0.3, tintColor: isDark ? '#888' : '#bbb' } // Gray out image
+                ]}
+                resizeMode="contain"
               />
             ) : (
-              <ServiceIcon size={40} color={COLORS.primary} />
+              <ServiceIcon
+                size={40}
+                color={isComingSoon ? COLORS.textTertiary : COLORS.primary}
+              />
             )}
           </View>
 
@@ -143,16 +154,19 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           <Text
             style={[
               styles.title,
-              { color: colors.text },
-              isComingSoon && { color: colors.textTertiary }
+              { color: isComingSoon ? colors.textTertiary : colors.text },
             ]}
             numberOfLines={2}
           >
             {title}
           </Text>
 
-          {/* Price Tag (New, clean look) */}
-          {!isComingSoon && (
+          {/* Price Tag OR Coming Soon Text */}
+          {isComingSoon ? (
+            <Text style={[styles.comingSoonText, { color: colors.textTertiary }]}>
+              COMING SOON
+            </Text>
+          ) : (
             <Text style={[styles.priceTag, { color: colors.textSecondary }]}>
               {price}
             </Text>
@@ -172,11 +186,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               </View>
             )}
 
-            {isComingSoon && (
-              <View style={styles.badgeWrapper}>
-                <Badge variant="coming-soon" />
-              </View>
-            )}
+            {/* Removed the 'Coming Soon' badge since we have text now, or keep it as minimal dot? Removed for clean look */}
           </View>
         </View>
       </Animated.View>
@@ -196,15 +206,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    // Very subtle shadow
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
   },
   comingSoonContainer: {
-    opacity: 0.8,
+    // No opacity change here, handled in glassCard
   },
   imageContainer: {
     width: 56,
@@ -231,6 +235,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     opacity: 0.8,
   },
+  comingSoonText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
   badgesContainer: {
     position: 'absolute',
     top: 8,
@@ -243,16 +253,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   partnerCountText: {
-    fontSize: 9,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '700',
     color: '#FFF',
   },
   // Unused but kept to prevent breakages if refs exist

@@ -30,7 +30,8 @@ export function generateProviderLink(params: ShareProviderParams): string {
     });
 
     // Create web fallback URL that redirects to store
-    const webUrl = `https://yann.app/provider/${providerId}`; // Your website URL
+    // Using query param for GitHub Pages compatibility
+    const webUrl = `https://yann.app/provider?id=${providerId}`; // Your website URL
 
     return webUrl; // Use web URL for better compatibility
 }

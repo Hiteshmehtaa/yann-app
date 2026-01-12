@@ -152,6 +152,10 @@ export interface Service {
   popular?: boolean;
   isNew?: boolean;
   features: string[];
+  profileRequirements?: string[]; // Optional requirements for providers
+  hasOvertimeCharges?: boolean; // Whether service requires start & end time input (default: false)
+  gstRate?: number; // GST rate (0 to 1, e.g., 0.18 for 18%) (default: 0.18)
+  platformCommission?: number; // Platform commission rate (e.g., 0.10 for 10%) (default: 0.10)
 }
 
 export interface Homeowner {

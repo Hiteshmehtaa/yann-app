@@ -2,16 +2,23 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 // API Configuration
-// Automatically detects if local backend is running, otherwise uses production
-const LOCAL_API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000/api' : 'http://localhost:3000/api';
+// TEMPORARILY DISABLED: Local backend detection
+// Using production backend only
+// const LOCAL_API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000/api' : 'http://192.168.1.12:3000/api';
 const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
 
-// Dynamic API URL - checks if localhost is active
+// Dynamic API URL - DISABLED, using production only
 let cachedApiUrl: string | null = null;
 let lastCheckTime = 0;
 const CHECK_INTERVAL = 30000; // Re-check every 30 seconds
 
 async function detectActiveBackend(): Promise<string> {
+  // FORCE PRODUCTION ONLY
+  console.log('🌐 Using production backend:', PRODUCTION_API_URL);
+  cachedApiUrl = PRODUCTION_API_URL;
+  return PRODUCTION_API_URL;
+
+  /* DISABLED: Local backend detection
   const now = Date.now();
 
   // Use cached result if recent
@@ -50,6 +57,7 @@ async function detectActiveBackend(): Promise<string> {
   cachedApiUrl = PRODUCTION_API_URL;
   lastCheckTime = now;
   return PRODUCTION_API_URL;
+  */
 }
 
 // Export as a promise that resolves to the active backend URL
@@ -59,6 +67,7 @@ export const getApiBaseUrl = detectActiveBackend;
 export const API_BASE_URL = cachedApiUrl || PRODUCTION_API_URL;
 
 // Static Services - Yannhome Platform Categories
+// Service configuration includes overtime tracking and GST rates per service
 export const SERVICES = [
   {
     id: 1,
@@ -70,6 +79,9 @@ export const SERVICES = [
     popular: true,
     features: ['Licensed drivers', 'Flexible hours', 'Background verified'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: true, // Requires start & end time input
+    gstRate: 0.18, // 18% GST
+    platformCommission: 0.10, // 10% platform fee
   },
   {
     id: 2,
@@ -81,6 +93,9 @@ export const SERVICES = [
     popular: true,
     features: ['Experienced pujaris', 'All rituals', 'Timely service'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false, // Fixed duration, no overtime
+    gstRate: 0, // 0% GST for religious services
+    platformCommission: 0.10,
   },
   {
     id: 3,
@@ -92,6 +107,9 @@ export const SERVICES = [
     popular: true,
     features: ['Daily cleaning', 'Background verified', 'Flexible timing'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: true, // Regular house cleaning with overtime
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 4,
@@ -103,6 +121,9 @@ export const SERVICES = [
     popular: true,
     features: ['Experienced caregivers', 'Background verified', 'Day/night shifts'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 5,
@@ -114,6 +135,9 @@ export const SERVICES = [
     popular: true,
     features: ['Certified nurses', '24/7 available', 'Emergency care'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 6,
@@ -124,6 +148,9 @@ export const SERVICES = [
     icon: '🤝',
     features: ['Patient care', 'Elderly support', 'Day/night shifts'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 7,
@@ -134,6 +161,9 @@ export const SERVICES = [
     icon: '🧽',
     features: ['Deep cleaning', 'All surfaces', 'Eco-friendly products'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: true, // Deep house cleaning with overtime
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 8,
@@ -144,6 +174,9 @@ export const SERVICES = [
     icon: '👔',
     features: ['Office tasks', 'Document handling', 'Reliable'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 9,
@@ -154,6 +187,9 @@ export const SERVICES = [
     icon: '🏢',
     features: ['Multi-task support', 'Document delivery', 'Office maintenance'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 10,
@@ -164,6 +200,9 @@ export const SERVICES = [
     icon: '🎨',
     features: ['Bridal heena', 'Modern designs', 'Natural heena'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 11,
@@ -174,6 +213,9 @@ export const SERVICES = [
     icon: '❄️',
     features: ['All AC brands', 'Installation & repair', 'Maintenance'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 12,
@@ -184,6 +226,9 @@ export const SERVICES = [
     icon: '💧',
     features: ['All RO brands', 'Installation & repair', 'Filter replacement'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 13,
@@ -194,6 +239,9 @@ export const SERVICES = [
     icon: '🧊',
     features: ['All brands', 'Gas refilling', 'Cooling issues'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 14,
@@ -204,6 +252,9 @@ export const SERVICES = [
     icon: '🌬️',
     features: ['All brands', 'Filter replacement', 'Deep cleaning'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 15,
@@ -214,6 +265,9 @@ export const SERVICES = [
     icon: '🚽',
     features: ['Deep cleaning', 'Sanitization', 'Odor removal'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: true, // Bathroom deep clean with overtime
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 16,
@@ -224,6 +278,9 @@ export const SERVICES = [
     icon: '🔥',
     features: ['All brands', 'Deep cleaning', 'Motor repair'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false, // Chimney cleaning - no overtime
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 17,
@@ -234,6 +291,9 @@ export const SERVICES = [
     icon: '🛡️',
     features: ['Trained guards', '24/7 shifts', 'Background verified'],
     profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
 ];
 

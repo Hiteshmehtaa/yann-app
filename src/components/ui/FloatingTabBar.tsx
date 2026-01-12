@@ -1,16 +1,10 @@
-import React, { useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, Dimensions, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, Dimensions, Animated } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS, SPACING, RADIUS, GRADIENTS } from '../../utils/theme';
 import { haptics } from '../../utils/haptics';
-import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming
-} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -27,24 +21,21 @@ const ACTIVE_PILL_OFFSET = (TAB_WIDTH - ACTIVE_PILL_WIDTH) / 2;
 export const FloatingTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation, insets }) => {
 
     // Default to first tab (Home)
-    const translateX = useSharedValue(0);
+    const translateX = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         // Animate to the current tab position
         // current tab index * tab width + centering offset
         const targetX = (state.index * TAB_WIDTH) + ACTIVE_PILL_OFFSET;
-        translateX.value = withSpring(targetX, {
+
+        Animated.spring(translateX, {
+            toValue: targetX,
+            useNativeDriver: true,
             damping: 15,
             stiffness: 150,
             mass: 0.5
-        });
+        }).start();
     }, [state.index]);
-
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            transform: [{ translateX: translateX.value }]
-        };
-    });
 
     return (
         <View style={styles.container}>
@@ -56,7 +47,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors
                 <BlurView intensity={90} tint="light" style={styles.content}>
                     <View style={styles.innerContainer}>
                         {/* Animated Active Indicator (Background) */}
-                        <Animated.View style={[styles.activeIndicator, animatedStyle]}>
+                        <Animated.View style={[styles.activeIndicator, { transform: [{ translateX }] }]}>
                             <LinearGradient
                                 colors={GRADIENTS.primary}
                                 style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}
@@ -74,7 +65,7 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors
             ) : (
                 <View style={[styles.content, styles.androidContent]}>
                     <View style={styles.innerContainer}>
-                        <Animated.View style={[styles.activeIndicator, animatedStyle]}>
+                        <Animated.View style={[styles.activeIndicator, { transform: [{ translateX }] }]}>
                             <LinearGradient
                                 colors={GRADIENTS.primary}
                                 style={[StyleSheet.absoluteFill, { borderRadius: 22 }]}

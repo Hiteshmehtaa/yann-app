@@ -50,6 +50,7 @@ export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressS
                     {
                         width: isLarge ? COL_2_WIDTH : COL_3_WIDTH,
                         marginBottom: GAP,
+                        marginRight: isLarge ? 0 : ((index + 1) % 3 === 0 ? 0 : GAP), // Add right margin except for every 3rd item
                         transform: [
                             { translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) },
                             { scale: animValue }
@@ -101,6 +102,5 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: GAP,
     },
 });

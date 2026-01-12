@@ -95,6 +95,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [services, setServices] = useState<Service[]>(SERVICES);
   const [filteredServices, setFilteredServices] = useState<Service[]>(SERVICES);
   const [partnerCounts, setPartnerCounts] = useState<{ [serviceTitle: string]: number }>({});
+  const [totalUniqueProviders, setTotalUniqueProviders] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasFetchedInitial, setHasFetchedInitial] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -130,35 +131,58 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       setError(null);
       setIsNetworkError(false);
       const response = await apiService.getAllServices();
-      const servicesList = response.data || [];
-      if (servicesList.length > 0) {
-        const mappedServices: Service[] = servicesList.map((s: any, index: number) => {
-          const isNew = s.createdAt
-            ? (Date.now() - new Date(s.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
-            : false;
+      const fetchedServices = response.data || [];
 
-          return {
-            id: s._id || s.id || `service-${index + 1}`,
-            title: s.title || s.name,
-            description: s.description || '',
-            category: s.category || 'other',
-            price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-            icon: s.icon || getServiceIcon(s.category || s.title),
-            popular: s.popular || false,
-            features: s.features || [],
-            isNew,
-          };
-        });
-        setServices(mappedServices);
-        setFilteredServices(mappedServices);
-        const uniqueCategories = ['all', ...Array.from(new Set(servicesList.map((s: any) => s.category).filter(Boolean)))];
-        setCategories(uniqueCategories);
-      } else {
-        setServices(SERVICES);
-        setFilteredServices(SERVICES);
-      }
+      // Map fetched services to our app structure
+      const mappedFetchedServices: Service[] = fetchedServices.map((s: any, index: number) => {
+        const isNew = s.createdAt
+          ? (Date.now() - new Date(s.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
+          : false;
+
+        return {
+          id: s._id || s.id || `service-${index + 1}`,
+          title: s.title || s.name,
+          description: s.description || '',
+          category: s.category || 'other',
+          price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
+          icon: s.icon || getServiceIcon(s.category || s.title),
+          popular: s.popular || false,
+          features: s.features || [],
+          isNew,
+        };
+      });
+
+      // MERGE LOGIC: Combine fetched services with local SERVICES constant
+      // Priority: Fetched Service > Local Service (based on matching title)
+      const mergedServices = [...SERVICES];
+
+      mappedFetchedServices.forEach(fetchedService => {
+        const index = mergedServices.findIndex(
+          local => local.title.toLowerCase() === fetchedService.title.toLowerCase()
+        );
+
+        if (index !== -1) {
+          // Update existing local service with backend data (id, price, etc)
+          mergedServices[index] = { ...mergedServices[index], ...fetchedService };
+        } else {
+          // Optional: Add entirely new services from backend that aren't in local constants
+          // distinct from "Coming Soon" ones.
+          mergedServices.push(fetchedService);
+        }
+      });
+
+      setServices(mergedServices);
+      setFilteredServices(mergedServices);
+
+      // Update categories based on the merged list
+      const uniqueCategories = ['all', ...Array.from(new Set(mergedServices.map(s => s.category).filter(Boolean)))];
+      setCategories(uniqueCategories);
+
     } catch (err: any) {
       console.error('Error fetching services:', err);
+      // Fallback is already handled by initial state, but explicit reset is safe
+      // If network error, we stick with initialized SERVICES (which are already set)
+
       const isNetwork =
         err.message?.toLowerCase().includes('network') ||
         err.message?.toLowerCase().includes('connection') ||
@@ -168,25 +192,43 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
       setError(err);
       setIsNetworkError(isNetwork);
-      setServices([]);
-      setFilteredServices([]);
+      // Keep showing SERVICES if fetch fails
+      setFilteredServices(SERVICES);
     }
   };
 
   const fetchPartnerCounts = async () => {
     try {
-      const response = await apiService.getServicePartnerCounts();
-      if (response.success && response.data && Array.isArray(response.data)) {
+      // Parallel fetch: Service counts (for cards) AND All Providers (for unique total)
+      const [countsResponse, providersResponse] = await Promise.all([
+        apiService.getServicePartnerCounts(),
+        apiService.getAllProviders({ limit: 1 }) // We just need the meta.total ideally, or fetch all if small
+      ]);
+
+      // 1. Process Service Counts
+      if (countsResponse.success && countsResponse.data && Array.isArray(countsResponse.data)) {
+        console.log('📊 Raw Partner Counts:', JSON.stringify(countsResponse.data, null, 2));
         const countsObject: { [key: string]: number } = {};
-        for (const item of response.data) {
+        for (const item of countsResponse.data) {
           if (item?.service && typeof item?.providerCount === 'number') {
             countsObject[item.service] = item.providerCount;
           }
         }
+        console.log('✅ Processed Partner Counts:', JSON.stringify(countsObject, null, 2));
         setPartnerCounts(countsObject);
       }
+
+      // 2. Process Unique Total Providers
+      if (providersResponse.success && providersResponse.meta) {
+        // Use the server-provided total count from metadata if available
+        setTotalUniqueProviders(providersResponse.meta.total || 0);
+      } else if (providersResponse.success && Array.isArray(providersResponse.data)) {
+        // Fallback: count the array length
+        setTotalUniqueProviders(providersResponse.data.length);
+      }
+
     } catch (err) {
-      console.error(err);
+      console.error('❌ Error fetching partner data:', err);
     } finally {
       setIsRefreshing(false);
     }
@@ -355,7 +397,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <SmartHero
           userName={user?.name}
           activeServices={Object.keys(partnerCounts).length || 0}
-          activeProviders={Object.values(partnerCounts).reduce((a: any, b: any) => a + (typeof b === 'number' ? b : 0), 0) || 0}
+          activeProviders={totalUniqueProviders || 0}
         />
 
         {/* Floating Control Dock */}

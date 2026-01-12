@@ -182,8 +182,25 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const basePrice = getProviderPrice();
-  const gstAmount = basePrice * 0.18;
+
+  // Use service-specific GST rate (default to 18% if not specified)
+  const serviceGstRate = service.gstRate ?? 0.18;
+  const gstAmount = basePrice * serviceGstRate;
   const totalPrice = basePrice + gstAmount;
+
+  // Check if service has overtime charges
+  const hasOvertimeCharges = service.hasOvertimeCharges ?? false;
+
+  // Calculate booked duration for overtime services
+  const calculateBookedHours = (): number => {
+    if (!hasOvertimeCharges || !bookingTime || !endTime) return 0;
+    const startMinutes = bookingTime.getHours() * 60 + bookingTime.getMinutes();
+    const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+    const durationMinutes = endMinutes - startMinutes;
+    return durationMinutes > 0 ? durationMinutes / 60 : 0;
+  };
+
+  const bookedHours = calculateBookedHours();
 
   // Header Animation
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -200,6 +217,9 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!selectedAddress) errors.address = 'Required';
     if (!bookingDate) errors.date = 'Required';
     if (!bookingTime) errors.time = 'Required';
+    // Require end time for overtime services
+    if (hasOvertimeCharges && !endTime) errors.endTime = 'Required';
+    // Legacy driver service check
     if (isDriverService && !endTime) errors.endTime = 'Required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -249,15 +269,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const createBookingRecord = async (method: string, paymentDetails: any = {}) => {
-    let numericServiceId: number;
-    const serviceId = service.id || (service as any)._id;
-
-    if (typeof serviceId === 'number') numericServiceId = serviceId;
-    else if (typeof serviceId === 'string') numericServiceId = parseInt(serviceId, 10);
-    else numericServiceId = 0;
+    // Keep serviceId as string - API validation expects string format
+    const serviceId = String(service.id || (service as any)._id || '');
 
     const payload = {
-      serviceId: numericServiceId,
+      serviceId: serviceId,
       serviceName: service.title,
       serviceCategory: service.category,
       providerId: provider?.id || provider?._id,
@@ -291,6 +307,9 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       baseAmount: basePrice,
       gstAmount: gstAmount,
       totalPrice: totalPrice,
+
+      // Add booked hours for overtime services
+      ...(hasOvertimeCharges && bookedHours > 0 ? { bookedHours } : {}),
 
       paymentDetails,
       status: 'pending'
@@ -567,7 +586,53 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
               </View>
 
-              {(formErrors.address || formErrors.date || formErrors.time) && (
+              {/* End Time Picker - Only for Overtime Services */}
+              {(hasOvertimeCharges || isDriverService) && (
+                <>
+                  <View style={styles.divider} />
+                  <View style={styles.pickerSection}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <Text style={styles.pickerLabel}>Select End Time</Text>
+                      {bookedHours > 0 && (
+                        <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#4F46E5' }}>
+                            {bookedHours.toFixed(1)} hours
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.timeGrid}>
+                      {['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map((time) => {
+                        const isSelected = endTime && endTime.toTimeString().substring(0, 5) === time;
+                        return (
+                          <TouchableOpacity
+                            key={time}
+                            style={[styles.timeChip, isSelected && styles.timeChipSelected]}
+                            onPress={() => {
+                              const [h, m] = time.split(':');
+                              const newTime = new Date();
+                              newTime.setHours(parseInt(h), parseInt(m), 0);
+                              setEndTime(newTime);
+                              Haptics.selectionAsync();
+                            }}
+                          >
+                            <Text style={[styles.timeText, isSelected && styles.textSelected]}>{time}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    {hasOvertimeCharges && bookedHours > 0 && (
+                      <View style={{ marginTop: 12, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 8 }}>
+                        <Text style={{ fontSize: 12, color: '#92400E', fontWeight: '500' }}>
+                          ⚠️ Overtime charges may apply if job exceeds {bookedHours.toFixed(1)} hours
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {(formErrors.address || formErrors.date || formErrors.time || formErrors.endTime) && (
                 <View style={styles.errorContainer}>
                   <Ionicons name="alert-circle" size={16} color="#EF4444" />
                   <Text style={styles.errorText}>Please select Location, Date and Time</Text>
@@ -651,10 +716,12 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.summaryLabel}>Service Rate</Text>
                 <Text style={styles.summaryValue}>₹{basePrice.toFixed(2)}</Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>GST (18%)</Text>
-                <Text style={styles.summaryValue}>₹{gstAmount.toFixed(2)}</Text>
-              </View>
+              {serviceGstRate > 0 && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>GST ({(serviceGstRate * 100).toFixed(0)}%)</Text>
+                  <Text style={styles.summaryValue}>₹{gstAmount.toFixed(2)}</Text>
+                </View>
+              )}
 
               <View style={styles.dashedLine} />
 

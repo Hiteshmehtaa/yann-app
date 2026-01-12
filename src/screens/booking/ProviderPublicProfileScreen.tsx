@@ -11,6 +11,7 @@ import {
   Dimensions,
   Linking,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -88,6 +89,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const heartScale = useRef(new Animated.Value(1)).current;
   const [showVerifiedTooltip, setShowVerifiedTooltip] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const { toast, showSuccess, showInfo, hideToast } = useToast();
 
   const handleBookService = (service: any) => {
@@ -221,23 +223,31 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   };
 
   const handleToggleFavorite = async () => {
-    const success = await toggleFavorite(provider);
-    if (success) {
-      if (!isBookmarked) {
-        haptics.success();
-      } else {
-        haptics.light();
+    if (isFavoriteLoading) return;
+    setIsFavoriteLoading(true);
+    try {
+      const success = await toggleFavorite(provider);
+      if (success) {
+        if (!isBookmarked) {
+          haptics.success();
+        } else {
+          haptics.light();
+        }
+        setIsBookmarked(!isBookmarked);
+        if (!isBookmarked) {
+          showSuccess(`${provider.name} added to Favorites`);
+          Animated.sequence([
+            Animated.spring(heartScale, { toValue: 1.3, useNativeDriver: true, speed: 50, bounciness: 4 }),
+            Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 })
+          ]).start();
+        } else {
+          showInfo('Removed from Favorites');
+        }
       }
-      setIsBookmarked(!isBookmarked);
-      if (!isBookmarked) {
-        showSuccess(`${provider.name} added to Favorites`);
-        Animated.sequence([
-          Animated.spring(heartScale, { toValue: 1.3, useNativeDriver: true, speed: 50, bounciness: 4 }),
-          Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 })
-        ]).start();
-      } else {
-        showInfo('Removed from Favorites');
-      }
+    } catch (error) {
+      console.log('Error toggling favorite:', error);
+    } finally {
+      setIsFavoriteLoading(false);
     }
   };
 
@@ -294,9 +304,13 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
               <Ionicons name="share-social-outline" size={22} color="#1E293B" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleToggleFavorite}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleToggleFavorite} disabled={isFavoriteLoading}>
               <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                <Ionicons name={isBookmarked ? "heart" : "heart-outline"} size={22} color={isBookmarked ? "#EF4444" : "#1E293B"} />
+                {isFavoriteLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <Ionicons name={isBookmarked ? "heart" : "heart-outline"} size={22} color={isBookmarked ? "#EF4444" : "#1E293B"} />
+                )}
               </Animated.View>
             </TouchableOpacity>
           </View>
