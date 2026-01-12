@@ -17,47 +17,6 @@ async function detectActiveBackend(): Promise<string> {
   console.log('🌐 Using production backend:', PRODUCTION_API_URL);
   cachedApiUrl = PRODUCTION_API_URL;
   return PRODUCTION_API_URL;
-
-  /* DISABLED: Local backend detection
-  const now = Date.now();
-
-  // Use cached result if recent
-  if (cachedApiUrl && (now - lastCheckTime) < CHECK_INTERVAL) {
-    return cachedApiUrl;
-  }
-
-  try {
-    // Try to reach local backend with a quick timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5 second timeout
-
-    const response = await fetch(`${LOCAL_API_URL}/services`, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    clearTimeout(timeoutId);
-
-    if (response.ok || response.status === 401 || response.status === 403) { // Server is up
-      console.log('✅ Local backend detected, using:', LOCAL_API_URL);
-      cachedApiUrl = LOCAL_API_URL;
-      lastCheckTime = now;
-      return LOCAL_API_URL;
-    }
-  } catch (error: any) {
-    // Local backend not reachable - this is expected when server is down
-    const errorMsg = error.name === 'AbortError' ? 'timeout' : error.message || 'unreachable';
-    console.log(`🌐 Local backend ${errorMsg}, using production:`, PRODUCTION_API_URL);
-  }
-
-  // Fallback to production
-  cachedApiUrl = PRODUCTION_API_URL;
-  lastCheckTime = now;
-  return PRODUCTION_API_URL;
-  */
 }
 
 // Export as a promise that resolves to the active backend URL
@@ -66,232 +25,368 @@ export const getApiBaseUrl = detectActiveBackend;
 // For immediate synchronous access (defaults to production, will be updated after first check)
 export const API_BASE_URL = cachedApiUrl || PRODUCTION_API_URL;
 
+// ============================================================================
+// SERVICE CONFIGURATION - Based on Services charges.xlsx
+// ============================================================================
+
 // Static Services - Yannhome Platform Categories
 // Service configuration includes overtime tracking and GST rates per service
 export const SERVICES = [
+  // =========== DRIVERS (18% GST, Overtime YES) ===========
   {
     id: 1,
-    title: 'Drivers',
-    description: 'Professional drivers for your transportation needs',
+    title: 'Full-Day Personal Driver',
+    description: 'Professional full-day driver service',
     category: 'driver',
     price: 'Varies',
     icon: '🚗',
     popular: true,
     features: ['Licensed drivers', 'Flexible hours', 'Background verified'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
-    hasOvertimeCharges: true, // Requires start & end time input
-    gstRate: 0.18, // 18% GST
-    platformCommission: 0.10, // 10% platform fee
+    hasOvertimeCharges: true,
+    gstRate: 0.18,
+    platformCommission: 0.10,
   },
   {
     id: 2,
-    title: 'Pujari',
-    description: 'Experienced pujaris for religious ceremonies',
+    title: 'Outstation Driving Service',
+    description: 'Driver for outstation trips',
+    category: 'driver',
+    price: 'Varies',
+    icon: '🛣️',
+    popular: true,
+    features: ['Long distance', 'Experienced drivers', 'Safe travel'],
+    hasOvertimeCharges: true,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+
+  // =========== PUJARI SERVICES (0% GST, Overtime NO) ===========
+  {
+    id: 3,
+    title: 'Lakshmi Puja',
+    description: 'Traditional Lakshmi puja at home',
     category: 'pujari',
     price: 'Varies',
     icon: '🙏',
     popular: true,
-    features: ['Experienced pujaris', 'All rituals', 'Timely service'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
-    hasOvertimeCharges: false, // Fixed duration, no overtime
-    gstRate: 0, // 0% GST for religious services
-    platformCommission: 0.10,
-  },
-  {
-    id: 3,
-    title: 'Maids',
-    description: 'Reliable maids for household cleaning',
-    category: 'cleaning',
-    price: 'Varies',
-    icon: '🧹',
-    popular: true,
-    features: ['Daily cleaning', 'Background verified', 'Flexible timing'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
-    hasOvertimeCharges: true, // Regular house cleaning with overtime
-    gstRate: 0.18,
+    features: ['Experienced pujari', 'All materials included', 'Timely service'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 4,
-    title: 'Baby Sitters',
-    description: 'Trusted baby sitters for childcare',
-    category: 'childcare',
+    title: 'Satyanarayan Katha',
+    description: 'Complete Satyanarayan Katha ceremony',
+    category: 'pujari',
     price: 'Varies',
-    icon: '👶',
-    popular: true,
-    features: ['Experienced caregivers', 'Background verified', 'Day/night shifts'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '📿',
+    features: ['Full ceremony', 'Prasad included', 'Experienced pujari'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 5,
-    title: 'Nurses',
-    description: 'Qualified nurses for healthcare needs',
-    category: 'healthcare',
+    title: 'Ganesh Puja at Home',
+    description: 'Ganesh puja for new beginnings',
+    category: 'pujari',
     price: 'Varies',
-    icon: '👩‍⚕️',
-    popular: true,
-    features: ['Certified nurses', '24/7 available', 'Emergency care'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '🙏',
+    features: ['Auspicious ceremony', 'All rituals', 'Materials provided'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 6,
-    title: 'Attendants',
-    description: 'Dedicated attendants for elderly and patient care',
-    category: 'healthcare',
+    title: 'Griha Pravesh Puja',
+    description: 'House warming ceremony puja',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🤝',
-    features: ['Patient care', 'Elderly support', 'Day/night shifts'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '🏠',
+    features: ['Complete ritual', 'Havan included', 'Experienced pujari'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 7,
-    title: 'Cleaners',
-    description: 'Professional cleaners for deep cleaning',
-    category: 'cleaning',
+    title: 'Vastu Shanti Puja',
+    description: 'Vastu shanti for positive energy',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🧽',
-    features: ['Deep cleaning', 'All surfaces', 'Eco-friendly products'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
-    hasOvertimeCharges: true, // Deep house cleaning with overtime
-    gstRate: 0.18,
+    icon: '🕉️',
+    features: ['Vastu remedies', 'Complete puja', 'Expert pujari'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 8,
-    title: 'Office Boys',
-    description: 'Office support staff for various tasks',
-    category: 'assistant',
+    title: 'Havan Ceremony',
+    description: 'Traditional havan ceremony',
+    category: 'pujari',
     price: 'Varies',
-    icon: '👔',
-    features: ['Office tasks', 'Document handling', 'Reliable'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '🔥',
+    features: ['Agni puja', 'Mantras chanting', 'All materials'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 9,
-    title: 'Chaprasi',
-    description: 'Chaprasi for office and residential support',
-    category: 'assistant',
+    title: 'Rudrabhishek Puja',
+    description: 'Shiva Rudrabhishek ceremony',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🏢',
-    features: ['Multi-task support', 'Document delivery', 'Office maintenance'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '🔱',
+    features: ['Shiva puja', 'Abhishek ritual', 'Experienced priest'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 10,
-    title: 'Heena Artists',
-    description: 'Skilled heena artists for events and occasions',
-    category: 'specialty',
+    title: 'Vivah (Wedding Ceremony)',
+    description: 'Complete wedding rituals',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🎨',
-    features: ['Bridal heena', 'Modern designs', 'Natural heena'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '💒',
+    features: ['All wedding rituals', 'Experienced pandit', 'Muhurat planning'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 11,
-    title: 'AC Service Technicians',
-    description: 'Expert AC repair and maintenance',
-    category: 'maintenance',
+    title: 'Ring Ceremony',
+    description: 'Engagement ring ceremony puja',
+    category: 'pujari',
     price: 'Varies',
-    icon: '❄️',
-    features: ['All AC brands', 'Installation & repair', 'Maintenance'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '💍',
+    features: ['Engagement ritual', 'Blessings', 'Short ceremony'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 12,
-    title: 'RO Service Technicians',
-    description: 'RO water purifier service and repair',
-    category: 'maintenance',
+    title: 'Ramjan Path',
+    description: 'Ramayan path recitation',
+    category: 'pujari',
     price: 'Varies',
-    icon: '💧',
-    features: ['All RO brands', 'Installation & repair', 'Filter replacement'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '📖',
+    features: ['Complete path', 'Group recitation', 'Prasad'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 13,
-    title: 'Refrigerator Service Technicians',
-    description: 'Refrigerator repair and maintenance',
-    category: 'maintenance',
+    title: 'Mahamrityunjay Jaap',
+    description: 'Mahamrityunjay mantra jaap',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🧊',
-    features: ['All brands', 'Gas refilling', 'Cooling issues'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '🕉️',
+    features: ['108 times jaap', 'Health benefits', 'Expert chanting'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 14,
-    title: 'Air Purifier Service Technicians',
-    description: 'Air purifier servicing and filter replacement',
-    category: 'maintenance',
+    title: 'Gayatri Jaap',
+    description: 'Gayatri mantra jaap ceremony',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🌬️',
-    features: ['All brands', 'Filter replacement', 'Deep cleaning'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '☀️',
+    features: ['Vedic chanting', 'Spiritual benefits', 'Morning ceremony'],
     hasOvertimeCharges: false,
-    gstRate: 0.18,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 15,
-    title: 'Toilet Cleaning Experts',
-    description: 'Specialized toilet and bathroom cleaning',
-    category: 'cleaning',
+    title: 'Pitra Shanti Puja',
+    description: 'Ancestors peace ceremony',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🚽',
-    features: ['Deep cleaning', 'Sanitization', 'Odor removal'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
-    hasOvertimeCharges: true, // Bathroom deep clean with overtime
-    gstRate: 0.18,
+    icon: '🙏',
+    features: ['Tarpan ritual', 'Pind daan', 'Complete ceremony'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 16,
-    title: 'Chimney Service Technicians',
-    description: 'Kitchen chimney cleaning and repair',
-    category: 'maintenance',
+    title: 'Nav Graha Shanti',
+    description: 'Nine planets pacification puja',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🔥',
-    features: ['All brands', 'Deep cleaning', 'Motor repair'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
-    hasOvertimeCharges: false, // Chimney cleaning - no overtime
-    gstRate: 0.18,
+    icon: '🌙',
+    features: ['All 9 planets', 'Dosha nivaran', 'Expert astrologer'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
     platformCommission: 0.10,
   },
   {
     id: 17,
-    title: 'Security Guards',
-    description: 'Professional security guards for your safety',
-    category: 'security',
+    title: 'Bhoomi Poojan',
+    description: 'Ground breaking ceremony',
+    category: 'pujari',
     price: 'Varies',
-    icon: '🛡️',
-    features: ['Trained guards', '24/7 shifts', 'Background verified'],
-    profileRequirements: ['Photo', 'Name', 'Aadhaar'],
+    icon: '🌍',
+    features: ['Construction start', 'Bhoomi puja', 'Auspicious beginning'],
     hasOvertimeCharges: false,
+    gstRate: 0,
+    platformCommission: 0.10,
+  },
+  {
+    id: 18,
+    title: 'Vaahan Poojan',
+    description: 'Vehicle puja ceremony',
+    category: 'pujari',
+    price: 'Varies',
+    icon: '🚙',
+    features: ['New vehicle puja', 'Safety blessings', 'Quick ceremony'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
+    platformCommission: 0.10,
+  },
+  {
+    id: 19,
+    title: 'Shraddh Karm',
+    description: 'Annual ancestral rituals',
+    category: 'pujari',
+    price: 'Varies',
+    icon: '🕯️',
+    features: ['Pitru shraddh', 'Complete ritual', 'Brahmin bhojan'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
+    platformCommission: 0.10,
+  },
+  {
+    id: 20,
+    title: 'Janmadin Poojan',
+    description: 'Birthday puja ceremony',
+    category: 'pujari',
+    price: 'Varies',
+    icon: '🎂',
+    features: ['Birthday blessings', 'Aarti', 'Short ceremony'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
+    platformCommission: 0.10,
+  },
+  {
+    id: 21,
+    title: 'Sundarkand Path',
+    description: 'Sundarkand recitation',
+    category: 'pujari',
+    price: 'Varies',
+    icon: '📜',
+    features: ['Complete path', 'Group chanting', 'Spiritual benefits'],
+    hasOvertimeCharges: false,
+    gstRate: 0,
+    platformCommission: 0.10,
+  },
+
+  // =========== CLEANING SERVICES (18% GST) ===========
+  {
+    id: 22,
+    title: 'Deep House Cleaning',
+    description: 'Thorough deep cleaning service',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '🧹',
+    popular: true,
+    features: ['All rooms', 'Deep clean', 'Eco-friendly products'],
+    hasOvertimeCharges: true,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+  {
+    id: 23,
+    title: 'Regular House Cleaning',
+    description: 'Daily/weekly house cleaning',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '🏠',
+    popular: true,
+    features: ['Regular maintenance', 'Flexible timing', 'Trained staff'],
+    hasOvertimeCharges: true,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+  {
+    id: 24,
+    title: 'Bathroom Deep Clean',
+    description: 'Specialized bathroom cleaning',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '🚿',
+    features: ['Sanitization', 'Tile cleaning', 'Odor removal'],
+    hasOvertimeCharges: true,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+  {
+    id: 25,
+    title: 'Car Washing',
+    description: 'Professional car cleaning',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '🚗',
+    features: ['Interior & exterior', 'Polishing', 'Vacuum cleaning'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+  {
+    id: 26,
+    title: 'Laundry & Ironing',
+    description: 'Clothes washing and ironing',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '👔',
+    features: ['Wash & fold', 'Ironing', 'Pickup available'],
+    hasOvertimeCharges: true,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+  {
+    id: 27,
+    title: 'Dry Cleaning Service',
+    description: 'Professional dry cleaning',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '🧥',
+    features: ['Delicate fabrics', 'Stain removal', 'Premium care'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+  {
+    id: 28,
+    title: 'Chimney & Exhaust Cleaning',
+    description: 'Kitchen chimney cleaning',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '🔥',
+    features: ['Deep cleaning', 'Filter wash', 'Motor check'],
+    hasOvertimeCharges: false,
+    gstRate: 0.18,
+    platformCommission: 0.10,
+  },
+  {
+    id: 29,
+    title: 'Water Tank Cleaning',
+    description: 'Overhead/underground tank cleaning',
+    category: 'cleaning',
+    price: 'Varies',
+    icon: '💧',
+    features: ['Sanitization', 'Algae removal', 'Safe water'],
+    hasOvertimeCharges: true,
     gstRate: 0.18,
     platformCommission: 0.10,
   },
@@ -300,25 +395,13 @@ export const SERVICES = [
 // Service Categories
 export const SERVICE_CATEGORIES = [
   'cleaning',
-  'deep-clean',
-  'bathroom',
-  'kitchen',
-  'laundry',
-  'carpet',
-  'window',
-  'move',
   'pujari',
-  'specialty',
   'driver',
-  'general',
   'maintenance',
-  'delivery',
-  'pet-care',
-  'assistant',
-  'garden',
-  'childcare',
   'healthcare',
   'security',
+  'domestic',
+  'specialty',
 ] as const;
 
 // Payment Methods (using valid Ionicons names)
@@ -354,3 +437,20 @@ export const STORAGE_KEYS = {
   USER_DATA: 'userData',
   EMAIL: 'email',
 } as const;
+
+// Helper function to get service config by title
+export const getServiceConfig = (title: string) => {
+  return SERVICES.find(s => s.title === title);
+};
+
+// Helper function to get GST rate for a service
+export const getServiceGstRate = (title: string): number => {
+  const service = getServiceConfig(title);
+  return service?.gstRate ?? 0.18; // Default to 18% if not found
+};
+
+// Helper function to check if service has overtime charges
+export const hasOvertimeCharges = (title: string): boolean => {
+  const service = getServiceConfig(title);
+  return service?.hasOvertimeCharges ?? false;
+};

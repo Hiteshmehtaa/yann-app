@@ -151,6 +151,8 @@ export interface Service {
   icon: string;
   popular?: boolean;
   isNew?: boolean;
+  isComingSoon?: boolean; // Whether service is coming soon (not yet available)
+  partnerCount?: number; // Number of active partners for this service
   features: string[];
   profileRequirements?: string[]; // Optional requirements for providers
   hasOvertimeCharges?: boolean; // Whether service requires start & end time input (default: false)

@@ -11,49 +11,43 @@ interface ServiceMatrixProps {
 
 const { width } = Dimensions.get('window');
 const GAP = 12;
-const PADDING = 20;
-// Calculate widths
-const COL_2_WIDTH = (width - (PADDING * 2) - GAP) / 2;
-const COL_3_WIDTH = (width - (PADDING * 2) - (GAP * 2)) / 3;
+const PADDING = 16;
+// Consistent 2-column layout
+const CARD_WIDTH = (width - (PADDING * 2) - GAP) / 2;
 
 export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressService }) => {
     // Staggered animation values
     const animValues = useRef(services.map(() => new Animated.Value(0))).current;
 
     useEffect(() => {
+        // Reset and create new animation values when services change
         const animations = services.map((_, index) => {
-            return Animated.spring(animValues[index], {
+            return Animated.spring(animValues[index] || new Animated.Value(0), {
                 toValue: 1,
                 tension: 50,
                 friction: 7,
                 useNativeDriver: true,
-                delay: index * 50, // Stagger effect
             });
         });
 
-        Animated.stagger(50, animations).start();
+        Animated.stagger(40, animations).start();
     }, [services]);
 
-    // Split services for Bento Layout
-    // Top 2 services get larger cards
-    const topServices = services.slice(0, 2);
-    const otherServices = services.slice(2);
-
-    const renderServiceItem = (service: Service, index: number, isLarge: boolean) => {
-        const animIndex = isLarge ? index : index + 2;
-        const animValue = animValues[animIndex] || new Animated.Value(1);
+    const renderServiceItem = (service: Service, index: number) => {
+        const animValue = animValues[index] || new Animated.Value(1);
+        const isRightColumn = index % 2 === 1;
 
         return (
             <Animated.View
-                key={service.id}
+                key={service.id || index}
                 style={[
+                    styles.cardWrapper,
                     {
-                        width: isLarge ? COL_2_WIDTH : COL_3_WIDTH,
-                        marginBottom: GAP,
-                        marginRight: isLarge ? 0 : ((index + 1) % 3 === 0 ? 0 : GAP), // Add right margin except for every 3rd item
+                        width: CARD_WIDTH,
+                        marginRight: isRightColumn ? 0 : GAP,
                         transform: [
-                            { translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) },
-                            { scale: animValue }
+                            { translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) },
+                            { scale: animValue.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }
                         ],
                         opacity: animValue
                     }
@@ -63,12 +57,13 @@ export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressS
                     title={service.title}
                     price={service.price}
                     icon={service.icon}
-                    iconImage={typeof service.icon === 'number' ? service.icon : undefined} // handle image source
+                    iconImage={typeof service.icon === 'number' ? service.icon : undefined}
                     popular={service.popular}
                     isNew={service.isNew}
-                    // partnerCount={service.partnerCount} // Assuming this might be passed or added to Type
+                    partnerCount={service.partnerCount}
+                    isComingSoon={service.isComingSoon}
                     onPress={() => onPressService(service)}
-                    style={{ height: isLarge ? 170 : 145 }} // Taller for top cards
+                    style={styles.card}
                 />
             </Animated.View>
         );
@@ -76,14 +71,8 @@ export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressS
 
     return (
         <View style={styles.container}>
-            {/* Top Row: 2 Large Cards */}
-            <View style={styles.row}>
-                {topServices.map((service, index) => renderServiceItem(service, index, true))}
-            </View>
-
-            {/* Grid: 3 Column Layout */}
             <View style={styles.grid}>
-                {otherServices.map((service, index) => renderServiceItem(service, index, false))}
+                {services.map((service, index) => renderServiceItem(service, index))}
             </View>
         </View>
     );
@@ -92,15 +81,16 @@ export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressS
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: PADDING,
-        paddingBottom: 100, // Space for scrolling
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: GAP,
+        paddingBottom: 100, // Space for bottom navigation
     },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+    },
+    cardWrapper: {
+        marginBottom: GAP,
+    },
+    card: {
+        height: 160,
     },
 });
