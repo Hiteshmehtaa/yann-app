@@ -1139,6 +1139,61 @@ class ApiService {
     return response.data;
   }
 
+  /**
+   * POST /api/bookings/complete-payment
+   * Pay the remaining 75% after job completion (for wallet payments)
+   */
+  async payCompletionAmount(bookingId: string): Promise<ApiResponse<{
+    amount: number;
+    newBalance: number;
+    bookingId: string;
+    serviceName: string;
+    totalPaid: number;
+  }>> {
+    const response = await this.client.post('/bookings/complete-payment', { bookingId });
+    return response.data;
+  }
+
+  /**
+   * GET /api/wallet/withdraw
+   * Get withdrawal info for providers (limits, commission rate, etc)
+   */
+  async getWithdrawalInfo(): Promise<ApiResponse<{
+    balance: number;
+    hasBankDetails: boolean;
+    bankAccount: string | null;
+    bankName: string | null;
+    withdrawalConfig: {
+      commissionRate: number;
+      minAmount: number;
+      maxAmount: number;
+      autoApproveLimit: number;
+      processingDays: number;
+    };
+  }>> {
+    const response = await this.client.get('/wallet/withdraw');
+    return response.data;
+  }
+
+  /**
+   * POST /api/wallet/withdraw
+   * Request withdrawal for partner (with commission deduction)
+   */
+  async requestWithdrawal(amount: number): Promise<ApiResponse<{
+    requestedAmount: number;
+    commissionRate: number;
+    commissionAmount: number;
+    netAmount: number;
+    newBalance: number;
+    status: 'completed' | 'pending';
+    autoApproved: boolean;
+    processingDays: number;
+    bankAccount: string;
+  }>> {
+    const response = await this.client.post('/wallet/withdraw', { amount });
+    return response.data;
+  }
+
   // ====================================================================
   // PUSH NOTIFICATION ENDPOINTS
   // ====================================================================

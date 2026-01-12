@@ -404,13 +404,24 @@ export const SERVICE_CATEGORIES = [
   'specialty',
 ] as const;
 
-// Payment Methods (using valid Ionicons names)
+// Payment Methods - Simplified to Cash and Wallet only
+// Users who want online payment must recharge their wallet first
 export const PAYMENT_METHODS = [
-  { id: 'wallet', label: 'Yann Wallet', value: 'wallet', icon: 'wallet-outline' },
-  { id: 'cash', label: 'Cash', value: 'cash', icon: 'cash-outline' },
-  { id: 'upi', label: 'UPI', value: 'upi', icon: 'phone-portrait-outline' },
-  { id: 'card', label: 'Card', value: 'card', icon: 'card-outline' },
-  { id: 'online', label: 'Online', value: 'online', icon: 'globe-outline' },
+  {
+    id: 'wallet',
+    label: 'Yann Wallet',
+    value: 'wallet',
+    icon: 'wallet-outline',
+    description: 'Pay 25% now, 75% after service',
+    recommended: true
+  },
+  {
+    id: 'cash',
+    label: 'Cash',
+    value: 'cash',
+    icon: 'cash-outline',
+    description: 'Pay full amount after service'
+  },
 ];
 
 // Booking Status

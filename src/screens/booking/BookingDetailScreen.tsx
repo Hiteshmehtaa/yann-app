@@ -30,6 +30,16 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const [booking, setBooking] = useState<Booking>(initialBooking);
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isPayingCompletion, setIsPayingCompletion] = useState(false);
+
+    // Check if booking needs 75% completion payment
+    const needsCompletionPayment = () => {
+        return (
+            booking.status === 'completed' &&
+            (booking.paymentMethod as string) === 'wallet' &&
+            (booking as any).walletPaymentStage === 'initial_25_released'
+        );
+    };
 
     // Check if booking is eligible for rating
     const canRate = () => {
@@ -42,6 +52,42 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             return daysSince <= 30;
         }
         return false;
+    };
+
+    // Handle 75% completion payment
+    const handleCompletionPayment = async () => {
+        try {
+            setIsPayingCompletion(true);
+            const response = await apiService.payCompletionAmount(booking._id);
+
+            if (response.success) {
+                Alert.alert(
+                    'Payment Successful!',
+                    `₹${(booking as any).escrowDetails?.completionAmount || booking.totalPrice * 0.75} has been paid to the service provider.`,
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => {
+                                // Update booking state
+                                setBooking(prev => ({
+                                    ...prev,
+                                    walletPaymentStage: 'completed',
+                                    paymentStatus: 'paid'
+                                } as any));
+                            },
+                        },
+                    ]
+                );
+            }
+        } catch (error: any) {
+            Alert.alert(
+                'Payment Failed',
+                error.message || 'Unable to process the completion payment. Please try again.',
+                [{ text: 'OK' }]
+            );
+        } finally {
+            setIsPayingCompletion(false);
+        }
     };
 
     const handleSubmitRating = async (rating: number, comment: string) => {
@@ -200,7 +246,72 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         <Text style={styles.paymentMethodLabel}>Payment Method</Text>
                         <Text style={styles.paymentMethodValue}>{booking.paymentMethod.toUpperCase()}</Text>
                     </View>
+
+                    {/* Staged Payment Status for Wallet Payments */}
+                    {(booking.paymentMethod as string) === 'wallet' && (booking as any).escrowDetails && (
+                        <>
+                            <View style={styles.divider} />
+                            <View style={{ backgroundColor: '#F0F9FF', borderRadius: 12, padding: 12, marginTop: 8 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#0369A1', marginBottom: 8 }}>
+                                    Staged Payment Status
+                                </Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Initial Payment (25%)</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons name="checkmark-circle" size={14} color="#10B981" style={{ marginRight: 4 }} />
+                                        <Text style={{ fontSize: 13, color: '#10B981', fontWeight: '600' }}>
+                                            ₹{(booking as any).escrowDetails.initialAmount}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Completion Payment (75%)</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons
+                                            name={(booking as any).walletPaymentStage === 'completed' ? 'checkmark-circle' : 'time-outline'}
+                                            size={14}
+                                            color={(booking as any).walletPaymentStage === 'completed' ? '#10B981' : '#EAB308'}
+                                            style={{ marginRight: 4 }}
+                                        />
+                                        <Text style={{
+                                            fontSize: 13,
+                                            color: (booking as any).walletPaymentStage === 'completed' ? '#10B981' : '#EAB308',
+                                            fontWeight: '600'
+                                        }}>
+                                            ₹{(booking as any).escrowDetails.completionAmount}
+                                            {(booking as any).walletPaymentStage !== 'completed' && ' (Pending)'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </>
+                    )}
                 </View>
+
+                {/* Completion Payment Button - For staged wallet payments */}
+                {needsCompletionPayment() && (
+                    <TouchableOpacity
+                        style={[styles.rateButton, { marginBottom: 8 }]}
+                        onPress={handleCompletionPayment}
+                        activeOpacity={0.8}
+                        disabled={isPayingCompletion}
+                    >
+                        <LinearGradient
+                            colors={isPayingCompletion ? ['#94A3B8', '#64748B'] : ['#10B981', '#059669']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.rateButtonGradient}
+                        >
+                            <Ionicons name="wallet" size={20} color="#FFFFFF" />
+                            <Text style={styles.rateButtonText}>
+                                {isPayingCompletion
+                                    ? 'Processing...'
+                                    : `Pay Remaining ₹${(booking as any).escrowDetails?.completionAmount || Math.round(booking.totalPrice * 0.75)}`
+                                }
+                            </Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                )}
 
                 {/* Rate Provider Button - Only for completed bookings */}
                 {canRate() && (

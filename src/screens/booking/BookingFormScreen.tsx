@@ -89,9 +89,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [formData, setFormData] = useState<FormData>({
     notes: '',
-    paymentMethod: 'cash',
+    paymentMethod: 'wallet', // Default to wallet for staged payment
   });
   const [formErrors, setFormErrors] = useState<any>({});
+
+  // Wallet balance for staged payment UI
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingWallet, setLoadingWallet] = useState(true);
 
   // UX: Scroll Reference for Progressive Flow
   const scrollViewRef = useRef<ScrollView>(null);
@@ -109,6 +113,22 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       const primary = user.addressBook.find(addr => addr.isPrimary) || user.addressBook[0];
       setSelectedAddress(primary);
     }
+
+    // Fetch wallet balance for staged payment UI
+    const fetchWalletBalance = async () => {
+      try {
+        setLoadingWallet(true);
+        const response = await apiService.getWalletBalance();
+        if (response.success) {
+          setWalletBalance(response.data?.balance || 0);
+        }
+      } catch (error) {
+        console.log('Failed to fetch wallet balance:', error);
+      } finally {
+        setLoadingWallet(false);
+      }
+    };
+    fetchWalletBalance();
   }, []);
 
   // UX: Progressive Scroll Helper
@@ -202,6 +222,12 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const bookedHours = calculateBookedHours();
 
+  // Staged Payment Calculations (for wallet payments)
+  const initialPaymentPercentage = 25;
+  const initialPayment = Math.round(totalPrice * 0.25 * 100) / 100; // 25%
+  const completionPayment = Math.round((totalPrice - initialPayment) * 100) / 100; // 75%
+  const hasInsufficientBalance = walletBalance < initialPayment;
+
   // Header Animation
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -242,16 +268,60 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     setIsLoading(true);
     setShowSuccess(false);
 
-    // Online Payment Flow
-    if (formData.paymentMethod !== 'cash') {
-      try {
-        await executeRazorpayPayment();
-      } catch (error: any) {
-        console.error('Payment failed:', error);
+    // Wallet Payment Flow (25% staged payment)
+    if (formData.paymentMethod === 'wallet') {
+      // Validate wallet balance for initial 25%
+      if (hasInsufficientBalance) {
         setIsLoading(false);
-        const msg = error.message?.toLowerCase();
-        if (msg?.includes('cancel')) showError('Payment cancelled');
-        else showError(error.message || 'Payment failed');
+        showError(`Insufficient balance. You need ₹${initialPayment.toFixed(2)} to book.`);
+        return;
+      }
+
+      try {
+        // Use the wallet payment API which handles 25% escrow
+        const payload = {
+          serviceId: String(service.id || (service as any)._id || ''),
+          serviceName: service.title,
+          serviceCategory: service.category,
+          providerId: provider?.id || provider?._id,
+          customerId: (user as any)?._id || user?.id,
+          customerName: selectedAddress?.name || user?.name || 'Guest',
+          customerPhone: selectedAddress?.phone || user?.phone || '',
+          customerEmail: user?.email,
+          customerAddress: selectedAddress?.fullAddress || '',
+          latitude: selectedAddress?.latitude || 0,
+          longitude: selectedAddress?.longitude || 0,
+          providerNavigationAddress: {
+            fullAddress: selectedAddress?.fullAddress || '',
+            latitude: selectedAddress?.latitude || 0,
+            longitude: selectedAddress?.longitude || 0,
+            phone: selectedAddress?.phone || user?.phone || '',
+          },
+          bookingDate: bookingDate ? bookingDate.toISOString().split('T')[0] : '',
+          date: bookingDate,
+          bookingTime: bookingTime ? bookingTime.toTimeString().substring(0, 5) : '',
+          time: bookingTime,
+          startTime: bookingTime,
+          endTime: isDriverService ? endTime : undefined,
+          notes: formData.notes,
+          baseAmount: basePrice,
+          gstAmount: gstAmount,
+          totalPrice: totalPrice,
+          ...(hasOvertimeCharges && bookedHours > 0 ? { bookedHours } : {}),
+        };
+
+        const response = await apiService.createBookingWithWallet(payload);
+
+        if (response.success) {
+          setIsLoading(false);
+          setShowSuccess(true);
+        } else {
+          throw new Error(response.message || 'Wallet payment failed');
+        }
+      } catch (error: any) {
+        console.error('Wallet payment failed:', error);
+        setIsLoading(false);
+        showError(error.message || 'Wallet payment failed');
       }
       return;
     }
@@ -654,7 +724,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 contentContainerStyle={styles.paymentMethodsContainer}
                 nestedScrollEnabled={true}
               >
-                {PAYMENT_METHODS.map((method) => {
+                {PAYMENT_METHODS.map((method: any) => {
                   const isSelected = formData.paymentMethod === method.id;
                   return (
                     <TouchableOpacity
@@ -678,6 +748,16 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                         <Text style={[styles.paymentText, isSelected && { color: '#fff', fontWeight: '600' }]}>
                           {method.label}
                         </Text>
+                        {method.description && (
+                          <Text style={[{ fontSize: 10, marginTop: 2 }, isSelected ? { color: '#fff', opacity: 0.8 } : { color: '#94A3B8' }]}>
+                            {method.description}
+                          </Text>
+                        )}
+                        {method.recommended && !isSelected && (
+                          <View style={{ backgroundColor: '#10B981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 }}>
+                            <Text style={{ fontSize: 9, color: '#fff', fontWeight: '600' }}>RECOMMENDED</Text>
+                          </View>
+                        )}
                       </View>
                       {isSelected && (
                         <View style={styles.checkmarkBadge}>
@@ -689,7 +769,52 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 })}
               </ScrollView>
 
-              <View style={{ padding: 16, paddingTop: 0 }}>
+              {/* Wallet Payment Info - Staged Payment Breakdown */}
+              {formData.paymentMethod === 'wallet' && (
+                <View style={{ padding: 16, paddingTop: 8 }}>
+                  {/* Wallet Balance */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, color: '#64748B' }}>Your Wallet Balance</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: hasInsufficientBalance ? '#EF4444' : '#10B981' }}>
+                      {loadingWallet ? '...' : `₹${walletBalance.toFixed(2)}`}
+                    </Text>
+                  </View>
+
+                  {/* Staged Payment Breakdown */}
+                  <View style={{ backgroundColor: '#F0F9FF', borderRadius: 12, padding: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#0369A1', marginBottom: 8 }}>
+                      Staged Payment Breakdown
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Pay Now ({initialPaymentPercentage}%)</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#0C4A6E' }}>₹{initialPayment.toFixed(2)}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 13, color: '#0C4A6E' }}>After Service (75%)</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#0C4A6E' }}>₹{completionPayment.toFixed(2)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Insufficient Balance Warning */}
+                  {hasInsufficientBalance && (
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
+                      onPress={() => navigation.navigate('MainTabs', { screen: 'Wallet' })}
+                    >
+                      <Ionicons name="warning-outline" size={20} color="#EF4444" />
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#DC2626' }}>Insufficient Balance</Text>
+                        <Text style={{ fontSize: 12, color: '#B91C1C' }}>
+                          You need ₹{(initialPayment - walletBalance).toFixed(2)} more. Tap to recharge.
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              <View style={{ padding: 16, paddingTop: formData.paymentMethod === 'wallet' ? 0 : 16 }}>
                 <FloatingLabelInput
                   label="Add Note (Gate code, etc.)"
                   value={formData.notes}

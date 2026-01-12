@@ -38,7 +38,33 @@ interface Transaction {
 
 // Helper to determine if transaction is income or expense
 const isIncomeTransaction = (type: string) => {
-  return ['wallet_topup', 'wallet_refund', 'wallet_credit'].includes(type);
+  return [
+    'wallet_topup',
+    'wallet_refund',
+    'wallet_credit',
+    'escrow_refund',      // Refund to user when rejected
+    'escrow_release',     // Credit to provider on acceptance
+    'withdrawal_rejected' // Returned funds on rejected withdrawal
+  ].includes(type);
+};
+
+// Helper to get transaction display info
+const getTransactionInfo = (type: string): { label: string; icon: string } => {
+  const typeMap: Record<string, { label: string; icon: string }> = {
+    wallet_topup: { label: 'Wallet Top-up', icon: 'add-circle' },
+    wallet_debit: { label: 'Payment', icon: 'remove-circle' },
+    wallet_refund: { label: 'Refund', icon: 'refresh-circle' },
+    wallet_credit: { label: 'Earning', icon: 'cash' },
+    escrow_hold: { label: 'Booking Deposit (25%)', icon: 'lock-closed' },
+    escrow_release: { label: 'Booking Payment Received', icon: 'lock-open' },
+    escrow_refund: { label: 'Deposit Refunded', icon: 'refresh-circle' },
+    completion_payment: { label: 'Service Payment (75%)', icon: 'checkmark-circle' },
+    withdrawal_request: { label: 'Withdrawal Pending', icon: 'hourglass' },
+    withdrawal_completed: { label: 'Withdrawal Completed', icon: 'checkmark-done-circle' },
+    withdrawal_rejected: { label: 'Withdrawal Rejected', icon: 'close-circle' },
+    commission: { label: 'Platform Commission', icon: 'trending-down' },
+  };
+  return typeMap[type] || { label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), icon: 'ellipse' };
 };
 
 const QUICK_AMOUNTS = [100, 500, 1000, 2000];
@@ -86,7 +112,7 @@ const AnimatedButton: React.FC<{
 export const WalletScreen = ({ navigation }: any) => {
   const { user } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
-  
+
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +122,19 @@ export const WalletScreen = ({ navigation }: any) => {
   const [customAmount, setCustomAmount] = useState('');
   const [refundableAmount, setRefundableAmount] = useState(0);
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+
+  // Partner Withdrawal State
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawalConfig, setWithdrawalConfig] = useState({
+    commissionRate: 15,
+    minAmount: 100,
+    maxAmount: 100000,
+    processingDays: 3,
+    hasBankDetails: false,
+    bankAccount: null as string | null,
+  });
 
   useEffect(() => {
     loadWalletData();
@@ -109,6 +148,25 @@ export const WalletScreen = ({ navigation }: any) => {
         setBalance(response.data.balance || 0);
         setTransactions(response.data.transactions || []);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      // Load withdrawal config for providers
+      if (user?.role === 'provider') {
+        try {
+          const withdrawInfo = await apiService.getWithdrawalInfo();
+          if (withdrawInfo.success && withdrawInfo.data) {
+            setWithdrawalConfig({
+              commissionRate: withdrawInfo.data.withdrawalConfig?.commissionRate || 15,
+              minAmount: withdrawInfo.data.withdrawalConfig?.minAmount || 100,
+              maxAmount: withdrawInfo.data.withdrawalConfig?.maxAmount || 100000,
+              processingDays: withdrawInfo.data.withdrawalConfig?.processingDays || 3,
+              hasBankDetails: withdrawInfo.data.hasBankDetails || false,
+              bankAccount: withdrawInfo.data.bankAccount || null,
+            });
+          }
+        } catch (e) {
+          console.log('Failed to load withdrawal config:', e);
+        }
       }
     } catch (error) {
       console.error('Failed to load wallet:', error);
@@ -134,7 +192,7 @@ export const WalletScreen = ({ navigation }: any) => {
     try {
       setIsProcessingRefund(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
+
       const response = await apiService.requestAutoRefund();
       if (response.success && (response as any).refundAmount) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -151,6 +209,54 @@ export const WalletScreen = ({ navigation }: any) => {
     }
   };
 
+  // Handler for partner withdrawal
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+
+    if (isNaN(amount) || amount <= 0) {
+      showError('Please enter a valid amount');
+      return;
+    }
+
+    if (amount < withdrawalConfig.minAmount) {
+      showError(`Minimum withdrawal is ₹${withdrawalConfig.minAmount}`);
+      return;
+    }
+
+    if (amount > balance) {
+      showError('Insufficient balance');
+      return;
+    }
+
+    if (!withdrawalConfig.hasBankDetails) {
+      showError('Please add your bank account details first');
+      return;
+    }
+
+    try {
+      setIsWithdrawing(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      const response = await apiService.requestWithdrawal(amount);
+
+      if (response.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const data = (response as any).data || response;
+        const netAmount = data.netAmount || amount;
+        const autoApproved = data.autoApproved || false;
+        showSuccess(`Withdrawal of ₹${netAmount} ${autoApproved ? 'processed' : 'requested'}!`);
+        setShowWithdrawModal(false);
+        setWithdrawAmount('');
+        loadWalletData(); // Refresh balance
+      }
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showError(error.message || 'Withdrawal failed');
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   const openAmountModal = () => {
     setCustomAmount('');
     setShowAmountModal(true);
@@ -163,17 +269,17 @@ export const WalletScreen = ({ navigation }: any) => {
     }
 
     const finalAmount = amountToAdd || 500;
-    
+
     // Validate amount
     if (finalAmount < 1) {
       showError('Minimum amount is ₹1');
       return;
     }
-    
+
     try {
       setIsAddingMoney(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
+
       const orderRes = await apiService.createWalletTopupOrder(finalAmount);
       if (!orderRes.success) throw new Error('Failed to create order');
 
@@ -194,7 +300,7 @@ export const WalletScreen = ({ navigation }: any) => {
       };
 
       const data = await RazorpayCheckout.open(options);
-      
+
       const verifyRes = await apiService.verifyWalletTopup({
         razorpay_order_id: data.razorpay_order_id,
         razorpay_payment_id: data.razorpay_payment_id,
@@ -231,7 +337,7 @@ export const WalletScreen = ({ navigation }: any) => {
   const renderTransaction = ({ item, index }: { item: Transaction, index: number }) => {
     const isIncome = isIncomeTransaction(item.type);
     const iconName = getTransactionIcon(item.description, item.type);
-    
+
     // Modern color scheme - Green for income, Red for expense
     const colors = {
       income: {
@@ -245,9 +351,9 @@ export const WalletScreen = ({ navigation }: any) => {
         amount: '#DC2626',
       },
     };
-    
+
     const colorScheme = isIncome ? colors.income : colors.expense;
-    
+
     const date = new Date(item.createdAt);
     const isToday = new Date().toDateString() === date.toDateString();
     const dateStr = isToday ? 'Today' : date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
@@ -259,7 +365,7 @@ export const WalletScreen = ({ navigation }: any) => {
         <View style={[styles.transactionIconCircle, { backgroundColor: colorScheme.iconBg }]}>
           <MaterialCommunityIcons name={iconName} size={20} color={colorScheme.icon} />
         </View>
-        
+
         <View style={styles.transactionDetails}>
           <Text style={styles.transactionTitle} numberOfLines={1}>
             {item.description || 'Transaction'}
@@ -268,7 +374,7 @@ export const WalletScreen = ({ navigation }: any) => {
             {dateStr} • {timeStr}
           </Text>
         </View>
-        
+
         <View style={styles.transactionAmountContainer}>
           <Text style={[styles.transactionAmount, { color: colorScheme.amount }]}>
             {isIncome ? '+' : '-'}₹{Math.abs(item.amount).toFixed(2)}
@@ -361,7 +467,7 @@ export const WalletScreen = ({ navigation }: any) => {
               <View style={styles.patternDot1} />
               <View style={styles.patternDot2} />
               <View style={styles.patternAhoy} />
-              
+
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={styles.cardLabel}>Total Balance</Text>
@@ -380,7 +486,7 @@ export const WalletScreen = ({ navigation }: any) => {
                 {/* Top Up button removed as requested */}
               </View>
             </LinearGradient>
-            
+
             {/* Floating 3D Stats - Overlapping the Card */}
             <View style={styles.floatingStatsContainer}>
               <View style={styles.statCard}>
@@ -394,7 +500,7 @@ export const WalletScreen = ({ navigation }: any) => {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.statCard}>
                 <View style={[styles.statIcon, { backgroundColor: '#FEF2F2' }]}>
                   <Ionicons name="arrow-up" size={20} color="#DC2626" />
@@ -416,20 +522,64 @@ export const WalletScreen = ({ navigation }: any) => {
           {user?.role === 'provider' ? (
             <View style={styles.quickActionsSection}>
               <Text style={styles.sectionTitle}>Withdraw Earnings</Text>
-              {/* Withdrawal button temporarily commented out */}
-              {/* <TouchableOpacity
-                style={styles.withdrawButton}
+
+              {/* Commission Info Card */}
+              <View style={{ backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="information-circle-outline" size={18} color="#92400E" />
+                  <Text style={{ fontSize: 12, color: '#92400E', marginLeft: 8, flex: 1 }}>
+                    {withdrawalConfig.commissionRate}% platform commission on withdrawals
+                  </Text>
+                </View>
+              </View>
+
+              {/* Bank Account Status */}
+              {withdrawalConfig.bankAccount ? (
+                <View style={{ backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={{ fontSize: 12, color: '#059669', fontWeight: '500' }}>Bank Account Linked</Text>
+                    <Text style={{ fontSize: 14, color: '#065F46', fontWeight: '600' }}>{withdrawalConfig.bankAccount}</Text>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
+                  onPress={() => showError('Please update your bank details in profile settings')}
+                >
+                  <Ionicons name="warning-outline" size={20} color="#DC2626" />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '500' }}>Bank Account Required</Text>
+                    <Text style={{ fontSize: 11, color: '#B91C1C' }}>Add bank details to enable withdrawals</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+                </TouchableOpacity>
+              )}
+
+              {/* Withdrawal Button */}
+              <TouchableOpacity
+                style={[styles.withdrawButton, { opacity: balance >= withdrawalConfig.minAmount && withdrawalConfig.hasBankDetails ? 1 : 0.5 }]}
                 onPress={() => {
+                  if (!withdrawalConfig.hasBankDetails) {
+                    showError('Please add bank account details first');
+                    return;
+                  }
+                  if (balance < withdrawalConfig.minAmount) {
+                    showError(`Minimum balance of ₹${withdrawalConfig.minAmount} required`);
+                    return;
+                  }
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  showSuccess('Withdrawal feature coming soon!');
+                  setShowWithdrawModal(true);
                 }}
+                disabled={isWithdrawing}
               >
                 <Ionicons name="cash-outline" size={24} color="#FFF" />
                 <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
-              </TouchableOpacity> */}
-              <View style={styles.comingSoonCard}>
-                <Text style={styles.comingSoonText}>Withdrawal feature coming soon!</Text>
-              </View>
+              </TouchableOpacity>
+
+              <Text style={{ fontSize: 11, color: '#6B7280', textAlign: 'center', marginTop: 8 }}>
+                Min ₹{withdrawalConfig.minAmount} • Processed in {withdrawalConfig.processingDays} days
+              </Text>
             </View>
           ) : (
             <>
@@ -448,7 +598,7 @@ export const WalletScreen = ({ navigation }: any) => {
                   ))}
                 </ScrollView>
               </View>
-              
+
               {/* Withdrawal for Members - temporarily commented out */}
               {/* <View style={[styles.quickActionsSection, { marginTop: 0 }]}>
                 <Text style={styles.sectionTitle}>Withdraw Money</Text>
@@ -476,7 +626,7 @@ export const WalletScreen = ({ navigation }: any) => {
                 </AnimatedButton>
               )}
             </View>
-            
+
             {transactions.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIconContainer}>
@@ -512,7 +662,7 @@ export const WalletScreen = ({ navigation }: any) => {
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Add Money to Wallet</Text>
               <Text style={styles.modalSubtitle}>Enter amount to add</Text>
-              
+
               <View style={styles.inputContainer}>
                 <Text style={styles.currencySymbol}>₹</Text>
                 <TextInput
@@ -557,6 +707,80 @@ export const WalletScreen = ({ navigation }: any) => {
                   }}
                 >
                   <Text style={styles.modalButtonTextConfirm}>Add Money</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Withdrawal Modal for Providers */}
+        <Modal
+          visible={showWithdrawModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowWithdrawModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Withdraw to Bank</Text>
+              <Text style={styles.modalSubtitle}>Enter withdrawal amount</Text>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.currencySymbol}>₹</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={withdrawAmount}
+                  onChangeText={setWithdrawAmount}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor="#9CA3AF"
+                  autoFocus
+                />
+              </View>
+
+              {/* Live Commission Preview */}
+              {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                <View style={{ backgroundColor: '#F0F9FF', borderRadius: 12, padding: 12, marginTop: 12 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Amount</Text>
+                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>₹{parseFloat(withdrawAmount).toFixed(2)}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 13, color: '#DC2626' }}>Commission ({withdrawalConfig.commissionRate}%)</Text>
+                    <Text style={{ fontSize: 13, color: '#DC2626' }}>
+                      -₹{(parseFloat(withdrawAmount) * withdrawalConfig.commissionRate / 100).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={{ height: 1, backgroundColor: '#E0E7FF', marginVertical: 8 }} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 14, color: '#059669', fontWeight: '600' }}>You'll Receive</Text>
+                    <Text style={{ fontSize: 14, color: '#059669', fontWeight: '700' }}>
+                      ₹{(parseFloat(withdrawAmount) * (1 - withdrawalConfig.commissionRate / 100)).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => {
+                    setShowWithdrawModal(false);
+                    setWithdrawAmount('');
+                  }}
+                >
+                  <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: '#059669' }]}
+                  onPress={handleWithdraw}
+                  disabled={isWithdrawing}
+                >
+                  {isWithdrawing ? (
+                    <Text style={[styles.modalButtonTextConfirm, { opacity: 0.7 }]}>Processing...</Text>
+                  ) : (
+                    <Text style={styles.modalButtonTextConfirm}>Withdraw</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -614,7 +838,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 120,
   },
-  
+
   // Wallet Card
   // Premium Wallet Card
   cardContainer: {
