@@ -646,223 +646,223 @@ export const ProviderBookingsScreen = () => {
                 <Ionicons name="call" size={18} color="#0F172A" />
               </TouchableOpacity>
             </View>
-          </View>
 
-          {/* Service & Details */}
-          <View style={{ padding: 14 }}>
-            {/* Service Row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+            {/* Service & Details */}
+            <View style={{ padding: 14 }}>
+              {/* Service Row */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+                <View style={{
+                  width: 36, height: 36,
+                  borderRadius: 10,
+                  backgroundColor: '#EFF6FF',
+                  alignItems: 'center', justifyContent: 'center',
+                  marginRight: 10,
+                }}>
+                  <Ionicons name={getServiceIcon(booking.serviceCategory) as any} size={18} color="#3B82F6" />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#0F172A' }}>
+                    {booking.serviceName}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>{booking.serviceCategory}</Text>
+                </View>
+
+                {/* Price */}
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 }}>
+                    ₹{booking.amount}
+                  </Text>
+                  {booking.paymentMethod === 'wallet' && (
+                    <Text style={{ fontSize: 10, color: '#10B981', fontWeight: 'bold' }}>WALLET</Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Divider */}
+              <View style={{ height: 1, backgroundColor: '#E2E8F0', borderStyle: 'dashed', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 1, marginBottom: 14 }} />
+
+              {/* Date & Time */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 24 }}>
+                  <Ionicons name="calendar" size={16} color="#64748B" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600' }}>
+                    {booking.scheduledDate}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="time" size={16} color="#64748B" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600' }}>
+                    {booking.scheduledTime}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Location */}
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+                <Ionicons name="location" size={16} color="#64748B" style={{ marginRight: 8, marginTop: 2 }} />
+                <Text style={{ fontSize: 13, color: '#475569', flex: 1, lineHeight: 20 }} numberOfLines={2}>
+                  {booking.address && booking.address !== 'N/A' ? booking.address : 'Address not provided'}
+                </Text>
+              </View>
+
+              {/* Payment Badge - Minimal */}
               <View style={{
-                width: 36, height: 36,
-                borderRadius: 10,
-                backgroundColor: '#EFF6FF',
-                alignItems: 'center', justifyContent: 'center',
-                marginRight: 10,
+                alignSelf: 'flex-start',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor: paymentInfo.bg,
+                borderRadius: 100,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
               }}>
-                <Ionicons name={getServiceIcon(booking.serviceCategory) as any} size={18} color="#3B82F6" />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#0F172A' }}>
-                  {booking.serviceName}
-                </Text>
-                <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>{booking.serviceCategory}</Text>
-              </View>
-
-              {/* Price */}
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 }}>
-                  ₹{booking.amount}
-                </Text>
-                {booking.paymentMethod === 'wallet' && (
-                  <Text style={{ fontSize: 10, color: '#10B981', fontWeight: 'bold' }}>WALLET</Text>
-                )}
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View style={{ height: 1, backgroundColor: '#E2E8F0', borderStyle: 'dashed', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 1, marginBottom: 14 }} />
-
-            {/* Date & Time */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 24 }}>
-                <Ionicons name="calendar" size={16} color="#64748B" style={{ marginRight: 8 }} />
-                <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600' }}>
-                  {booking.scheduledDate}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="time" size={16} color="#64748B" style={{ marginRight: 8 }} />
-                <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600' }}>
-                  {booking.scheduledTime}
+                <Ionicons name={paymentInfo.icon as any} size={14} color={paymentInfo.color} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: paymentInfo.color }}>
+                  {paymentInfo.label}
                 </Text>
               </View>
             </View>
 
-            {/* Location */}
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-              <Ionicons name="location" size={16} color="#64748B" style={{ marginRight: 8, marginTop: 2 }} />
-              <Text style={{ fontSize: 13, color: '#475569', flex: 1, lineHeight: 20 }} numberOfLines={2}>
-                {booking.address && booking.address !== 'N/A' ? booking.address : 'Address not provided'}
-              </Text>
-            </View>
+            {/* Action Buttons */}
+            {isPending && (
+              <View style={{
+                flexDirection: 'row',
+                gap: 12,
+                padding: 14,
+                paddingTop: 0,
+              }}>
+                <TouchableOpacity
+                  onPress={() => handleStatusChange(booking.id, 'cancelled')}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#FEF2F2',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: '#FECACA'
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>
+                    Decline
+                  </Text>
+                </TouchableOpacity>
 
-            {/* Payment Badge - Minimal */}
-            <View style={{
-              alignSelf: 'flex-start',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              backgroundColor: paymentInfo.bg,
-              borderRadius: 100,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-            }}>
-              <Ionicons name={paymentInfo.icon as any} size={14} color={paymentInfo.color} />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: paymentInfo.color }}>
-                {paymentInfo.label}
-              </Text>
-            </View>
+                <TouchableOpacity
+                  onPress={() => handleStatusChange(booking.id, 'accepted')}
+                  style={{
+                    flex: 2,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#3B82F6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#3B82F6',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
+                    Accept Booking
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {isAccepted && (
+              <View style={{
+                flexDirection: 'row',
+                gap: 12,
+                padding: 14,
+                paddingTop: 0,
+              }}>
+                <TouchableOpacity
+                  onPress={() => openLocationNavigation(booking)}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
+                    backgroundColor: '#F1F5F9',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0'
+                  }}
+                >
+                  <Ionicons name="navigate" size={22} color="#64748B" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleStartJob(booking.id)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#10B981',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    gap: 8,
+                    shadowColor: '#10B981',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  <Ionicons name="play-circle" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
+                    Start Job
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {isInProgress && (
+              <View style={{
+                padding: 14,
+                paddingTop: 0,
+              }}>
+                <TouchableOpacity
+                  onPress={() => handleEndJob(booking.id)}
+                  style={{
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#10B981',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    gap: 8,
+                    shadowColor: '#10B981',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
+                    Complete Job
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Job Timer for Active Jobs */}
+            {(isAccepted || isInProgress) && activeJobSession?.startTime && (
+              <View style={{ padding: 14, paddingTop: 0 }}>
+                <JobTimer
+                  startTime={new Date(activeJobSession.startTime)}
+                  expectedDuration={activeJobSession.expectedDuration || 60}
+                  variant="compact"
+                />
+              </View>
+            )}
           </View>
-
-          {/* Action Buttons */}
-          {isPending && (
-            <View style={{
-              flexDirection: 'row',
-              gap: 12,
-              padding: 14,
-              paddingTop: 0,
-            }}>
-              <TouchableOpacity
-                onPress={() => handleStatusChange(booking.id, 'cancelled')}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor: '#FEF2F2',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: '#FECACA'
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>
-                  Decline
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleStatusChange(booking.id, 'accepted')}
-                style={{
-                  flex: 2,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor: '#3B82F6',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#3B82F6',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
-                  Accept Booking
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {isAccepted && (
-            <View style={{
-              flexDirection: 'row',
-              gap: 12,
-              padding: 14,
-              paddingTop: 0,
-            }}>
-              <TouchableOpacity
-                onPress={() => openLocationNavigation(booking)}
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
-                  backgroundColor: '#F1F5F9',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: '#E2E8F0'
-                }}
-              >
-                <Ionicons name="navigate" size={22} color="#64748B" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleStartJob(booking.id)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor: '#10B981',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  gap: 8,
-                  shadowColor: '#10B981',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-              >
-                <Ionicons name="play-circle" size={20} color="#FFFFFF" />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
-                  Start Job
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {isInProgress && (
-            <View style={{
-              padding: 14,
-              paddingTop: 0,
-            }}>
-              <TouchableOpacity
-                onPress={() => handleEndJob(booking.id)}
-                style={{
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor: '#10B981',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  gap: 8,
-                  shadowColor: '#10B981',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-              >
-                <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
-                  Complete Job
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Job Timer for Active Jobs */}
-          {(isAccepted || isInProgress) && activeJobSession?.startTime && (
-            <View style={{ padding: 14, paddingTop: 0 }}>
-              <JobTimer
-                startTime={new Date(activeJobSession.startTime)}
-                expectedDuration={activeJobSession.expectedDuration || 60}
-                variant="compact"
-              />
-            </View>
-          )}
         </View>
       </AnimatedBookingItem>
     );
