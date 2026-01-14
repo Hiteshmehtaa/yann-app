@@ -659,10 +659,16 @@ export const ProviderBookingsScreen = () => {
                   <Ionicons name="location" size={18} color={COLORS.primary} />
                   {/* Dotted Line */}
                   <View style={{ width: 1, height: 20, backgroundColor: '#E2E8F0', marginVertical: 2 }} />
-                  <Image
-                    source={booking.customerAvatar ? { uri: booking.customerAvatar } : require('../../../assets/default-avatar.png')}
-                    style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#E2E8F0' }}
-                  />
+                  {booking.customerAvatar ? (
+                    <Image
+                      source={{ uri: booking.customerAvatar }}
+                      style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#E2E8F0' }}
+                    />
+                  ) : (
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="person" size={12} color="#64748B" />
+                    </View>
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, color: '#334155', lineHeight: 20, marginBottom: 8, fontWeight: '500' }}>
