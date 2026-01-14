@@ -82,11 +82,17 @@ interface ProviderBooking {
   createdAt: string;
   sortableDate?: number;
   customerAvatar?: string;
+  jobSession?: {
+    startTime: string;
+    expectedDuration: number;
+    status: string;
+  };
 }
 
 type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed';
 
 export const ProviderBookingsScreen = () => {
+  // ... (keeping existing hooks)
   const navigation = useNavigation();
   const { user } = useAuth();
   const [bookings, setBookings] = useState<ProviderBooking[]>([]);
@@ -96,6 +102,10 @@ export const ProviderBookingsScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  // ... (rest of code)
+
+
 
   // Navigation Modal State
   const [navModalVisible, setNavModalVisible] = useState(false);
@@ -722,6 +732,17 @@ export const ProviderBookingsScreen = () => {
                   {isInProgress && (
                     <Button title="Complete Job" variant="primary" size="medium" onPress={() => handleEndJob(booking.id)} style={{ flex: 1 }} icon={<Ionicons name="checkmark-done" size={20} color="#FFF" />} />
                   )}
+                </View>
+              )}
+
+              {/* Job Timer - Visible when accepted or in progress */}
+              {/* Job Timer - Visible when accepted or in progress AND has start time */}
+              {(isAccepted || isInProgress) && booking.jobSession?.startTime && (
+                <View style={{ marginTop: 16 }}>
+                  <JobTimer
+                    startTime={new Date(booking.jobSession.startTime)}
+                    expectedDuration={booking.jobSession.expectedDuration || 60}
+                  />
                 </View>
               )}
             </View>
