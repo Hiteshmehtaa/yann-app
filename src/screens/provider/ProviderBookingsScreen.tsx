@@ -570,8 +570,8 @@ export const ProviderBookingsScreen = () => {
             backgroundColor: '#FFFFFF',
             borderRadius: 20,
             overflow: 'hidden', // Contain children
-            borderWidth: 1,
-            borderColor: isNextJob ? COLORS.primary : '#E2E8F0',
+            // borderWidth: 1, // Removed outline
+            // borderColor: isNextJob ? COLORS.primary : '#E2E8F0', // Removed outline
           }}>
 
             {/* --- TOP SECTION: Service & Status --- */}
