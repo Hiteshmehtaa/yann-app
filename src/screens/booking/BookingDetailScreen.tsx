@@ -17,6 +17,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme';
 import { STATUS_COLORS } from '../../utils/constants';
 import { RatingModal } from '../../components/RatingModal';
+import { JobTimer } from '../../components/JobTimer';
 import { apiService } from '../../services/api';
 import type { Booking } from '../../types';
 
@@ -287,6 +288,18 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         </>
                     )}
                 </View>
+
+                {/* Job Timer - Show for active jobs */}
+                {(booking.status === 'accepted' || booking.status === 'in_progress') && (booking as any).jobSession?.startTime && (
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Job Progress</Text>
+                        <JobTimer
+                            startTime={new Date((booking as any).jobSession.startTime)}
+                            expectedDuration={(booking as any).jobSession.expectedDuration || 60}
+                            variant="compact"
+                        />
+                    </View>
+                )}
 
                 {/* Completion Payment Button - For staged wallet payments */}
                 {needsCompletionPayment() && (
