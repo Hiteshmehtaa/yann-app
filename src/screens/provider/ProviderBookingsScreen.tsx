@@ -69,7 +69,7 @@ interface ProviderBooking {
   address: string;
   latitude?: number;
   longitude?: number;
-  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' | 'rejected';
   amount: number;
   paymentStatus: 'pending' | 'paid' | 'partial';
   paymentMethod?: string;
@@ -89,7 +89,7 @@ interface ProviderBooking {
   };
 }
 
-type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed';
+type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'rejected';
 
 export const ProviderBookingsScreen = () => {
   // ... (keeping existing hooks)
@@ -244,7 +244,11 @@ export const ProviderBookingsScreen = () => {
   const filterBookings = () => {
     let list = [];
     if (activeFilter === 'all') {
-      list = [...bookings];
+      // Exclude rejected/cancelled from 'All' view to keep it clean
+      list = bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled');
+    } else if (activeFilter === 'rejected') {
+      // Show both rejected and cancelled in 'Declined' view
+      list = bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled');
     } else {
       list = bookings.filter(b => b.status === activeFilter);
     }
@@ -887,6 +891,8 @@ export const ProviderBookingsScreen = () => {
   const acceptedCount = bookings.filter(b => b.status === 'accepted').length;
   const inProgressCount = bookings.filter(b => b.status === 'in_progress').length;
   const completedCount = bookings.filter(b => b.status === 'completed').length;
+  const rejectedCount = bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length;
+  const allCount = bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled').length;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -906,11 +912,12 @@ export const ProviderBookingsScreen = () => {
 
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('All', 'all', bookings.length)}
+          {renderFilterChip('All', 'all', allCount)}
           {renderFilterChip('New', 'pending', pendingCount)}
           {renderFilterChip('Upcoming', 'accepted', acceptedCount)}
           {renderFilterChip('Active', 'in_progress', inProgressCount)}
           {renderFilterChip('History', 'completed', completedCount)}
+          {renderFilterChip('Declined', 'rejected', rejectedCount)}
         </ScrollView>
       </View>
 
