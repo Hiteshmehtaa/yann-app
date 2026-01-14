@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +16,7 @@ interface JobTimerProps {
   startTime: Date;
   expectedDuration: number; // in minutes
   style?: any;
+  variant?: 'default' | 'compact';
 }
 
 const { width } = Dimensions.get('window');
@@ -22,13 +24,16 @@ const { width } = Dimensions.get('window');
 export const JobTimer: React.FC<JobTimerProps> = ({
   startTime,
   expectedDuration,
-  style
+  style,
+  variant = 'default'
 }) => {
   const { colors } = useTheme();
+  // ... existing hooks ...
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isOvertime, setIsOvertime] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // ... existing useEffects (copy exactly as is) ...
   useEffect(() => {
     // Calculate initial elapsed time
     const now = new Date();
@@ -65,6 +70,7 @@ export const JobTimer: React.FC<JobTimerProps> = ({
     return () => clearInterval(interval);
   }, [startTime, expectedDuration]);
 
+  // ... helper functions ...
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -86,9 +92,39 @@ export const JobTimer: React.FC<JobTimerProps> = ({
   // Calculate progress percentage (capped at 100%)
   const progressPercent = Math.min(100, (elapsedMinutes / expectedDuration) * 100);
 
+  if (variant === 'compact') {
+    return (
+      <View style={[styles.compactContainer, style, isOvertime && styles.compactOvertime]}>
+        <View style={styles.compactRow}>
+          <View style={styles.compactTimeBox}>
+            <Text style={[styles.compactDigit, isOvertime && { color: '#EF4444' }]}>
+              {time.hours}:{time.minutes}:{time.seconds}
+            </Text>
+            <Text style={styles.compactLabel}>ELAPSED</Text>
+          </View>
+
+          <View style={styles.compactDivider} />
+
+          <View style={styles.compactLiveBox}>
+            <Animated.View style={[styles.compactDot, { opacity: pulseAnim, backgroundColor: isOvertime ? '#EF4444' : '#10B981' }]} />
+            <Text style={[styles.compactLiveText, { color: isOvertime ? '#EF4444' : '#10B981' }]}>
+              {isOvertime ? 'OVERTIME' : 'ACTIVE'}
+            </Text>
+          </View>
+        </View>
+
+        {isOvertime && (
+          <Text style={styles.compactAlert}>
+            +{Math.floor(overtimeMinutes / 60)}h {overtimeMinutes % 60}m
+          </Text>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.deviceFrame, style]}>
-      {/* Physical Device Frame Bevels */}
+      {/* ... existing default render ... */}
       <View style={styles.outerBevel}>
         <View style={styles.innerBevel}>
 
@@ -195,6 +231,7 @@ export const JobTimer: React.FC<JobTimerProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // ... existing styles ...
   deviceFrame: {
     backgroundColor: '#E2E8F0', // Slate 200 Frame
     borderRadius: 24,
@@ -207,6 +244,77 @@ const styles = StyleSheet.create({
     borderBottomColor: '#CBD5E1', // Darker Slate
     borderWidth: 1,
     borderColor: '#F1F5F9', // Highlight top
+  },
+  // ... (keep all existing styles) ...
+  // New Compact Styles
+  compactContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    alignItems: 'center',
+  },
+  compactOvertime: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+  },
+  compactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  compactTimeBox: {
+    alignItems: 'flex-end',
+  },
+  compactDigit: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    fontVariant: ['tabular-nums'],
+  },
+  compactLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  compactDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#CBD5E1',
+  },
+  compactLiveBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  compactDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  compactLiveText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  compactAlert: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
   },
   outerBevel: {
     backgroundColor: '#334155', // Slate 700 - Dark Bevel

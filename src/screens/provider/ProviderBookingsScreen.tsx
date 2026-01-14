@@ -742,6 +742,7 @@ export const ProviderBookingsScreen = () => {
                   <JobTimer
                     startTime={new Date(booking.jobSession.startTime)}
                     expectedDuration={booking.jobSession.expectedDuration || 60}
+                    variant="compact"
                   />
                 </View>
               )}
