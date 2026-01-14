@@ -543,12 +543,16 @@ export const ProviderBookingsScreen = () => {
     const getPaymentStatusInfo = () => {
       if (booking.paymentMethod === 'wallet') {
         if (booking.walletPaymentStage === 'initial_25_held') {
-          return { label: '25% Paid', color: '#F59E0B', bg: '#FEF3C7' };
+          return { label: '25% Paid (Wallet)', color: '#F59E0B', bg: '#FEF3C7', icon: 'wallet' };
+        } else if (booking.walletPaymentStage === 'initial_25_released') {
+          return { label: '25% Released', color: '#3B82F6', bg: '#DBEAFE', icon: 'checkmark-circle' };
         } else if (booking.walletPaymentStage === 'completed') {
-          return { label: 'Fully Paid', color: '#10B981', bg: '#D1FAE5' };
+          return { label: 'Fully Paid', color: '#10B981', bg: '#D1FAE5', icon: 'checkmark-done' };
         }
+        // Default for wallet payments without stage info
+        return { label: 'Wallet Payment', color: '#8B5CF6', bg: '#EDE9FE', icon: 'wallet' };
       }
-      return { label: 'Cash on Service', color: '#64748B', bg: '#F1F5F9' };
+      return { label: 'Cash on Service', color: '#64748B', bg: '#F1F5F9', icon: 'cash' };
     };
 
     const getServiceIcon = (category: string) => {
@@ -686,11 +690,15 @@ export const ProviderBookingsScreen = () => {
             {/* Payment Status Badge */}
             <View style={{
               alignSelf: 'flex-start',
-              paddingHorizontal: 14,
-              paddingVertical: 8,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
               backgroundColor: paymentInfo.bg,
               borderRadius: 100,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
             }}>
+              <Ionicons name={paymentInfo.icon as any} size={16} color={paymentInfo.color} />
               <Text style={{ fontSize: 13, fontWeight: '700', color: paymentInfo.color }}>
                 {paymentInfo.label}
               </Text>
