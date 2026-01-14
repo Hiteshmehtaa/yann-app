@@ -668,8 +668,8 @@ export const ProviderBookingsScreen = () => {
             {/* Address Row with Icon */}
             <View style={{ flexDirection: 'row', marginBottom: 12 }}>
               <Ionicons name="location" size={16} color="#94A3B8" style={{ marginTop: 2 }} />
-              <Text style={{ flex: 1, marginLeft: 6, fontSize: 13, color: '#475569', lineHeight: 18 }}>
-                {booking.address}
+              <Text style={{ flex: 1, marginLeft: 6, fontSize: 13, color: '#334155', lineHeight: 18 }} numberOfLines={2}>
+                {booking.address && booking.address !== 'N/A' ? booking.address : 'Address not provided'}
               </Text>
             </View>
 
@@ -807,108 +807,65 @@ export const ProviderBookingsScreen = () => {
               borderTopColor: '#F1F5F9',
               flexDirection: 'row',
               gap: 10,
+              alignItems: 'flex-start', // Important for 3D buttons not to stretch weirdly
             }}>
 
               {isPending && (
                 <>
-                  <TouchableOpacity
+                  <Button
+                    title="Decline"
+                    variant="outline"
+                    size="medium"
                     onPress={() => handleStatusChange(booking.id, 'cancelled')}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderRadius: 14,
-                      backgroundColor: '#F1F5F9',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#64748B' }}>Decline</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
+                    disabled={actionLoadingId === booking.id}
+                    style={{ flex: 1 }}
+                    icon={<Ionicons name="close" size={18} color="#64748B" />}
+                    textStyle={{ color: '#64748B' }}
+                  />
+                  <Button
+                    title="Accept"
+                    variant="primary"
+                    size="medium"
                     onPress={() => handleStatusChange(booking.id, 'accepted')}
-                    style={{
-                      flex: 2,
-                      paddingVertical: 12,
-                      borderRadius: 14,
-                      backgroundColor: COLORS.primary, // Use app theme
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      shadowColor: COLORS.primary,
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Accept Request</Text>
-                  </TouchableOpacity>
+                    disabled={actionLoadingId === booking.id}
+                    style={{ flex: 2 }}
+                  />
                 </>
               )}
 
               {isAccepted && (
                 <>
-                  <TouchableOpacity
+                  <Button
+                    title="Maps"
+                    variant="outline"
+                    size="medium"
                     onPress={() => openLocationNavigation(booking)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderRadius: 14,
-                      backgroundColor: '#F1F5F9',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexDirection: 'row',
-                      gap: 6
-                    }}
-                  >
-                    <Ionicons name="navigate" size={16} color="#475569" />
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#475569' }}>Maps</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
+                    style={{ flex: 1 }}
+                    icon={<Ionicons name="navigate" size={16} color="#475569" />}
+                    textStyle={{ color: '#475569' }}
+                  />
+                  <Button
+                    title="Start Job"
+                    variant="primary"
+                    size="medium"
                     onPress={() => handleStartJob(booking.id)}
-                    style={{
-                      flex: 2,
-                      paddingVertical: 12,
-                      borderRadius: 14,
-                      backgroundColor: COLORS.primary, // Use app theme
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      shadowColor: COLORS.primary,
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 8,
-                      elevation: 4,
-                      flexDirection: 'row',
-                      gap: 8,
-                    }}
-                  >
-                    <Ionicons name="play" size={16} color="#FFF" />
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Start Job</Text>
-                  </TouchableOpacity>
+                    disabled={actionLoadingId === booking.id}
+                    style={{ flex: 2 }}
+                    icon={<Ionicons name="play" size={16} color="#FFF" />}
+                  />
                 </>
               )}
 
               {isInProgress && (
-                <TouchableOpacity
+                <Button
+                  title="Complete Job"
+                  variant="primary" // Assuming primary has 3D valid
+                  size="medium"
                   onPress={() => handleEndJob(booking.id)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    borderRadius: 14,
-                    backgroundColor: '#16A34A', // Green
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: "#16A34A",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 8,
-                    elevation: 4,
-                    flexDirection: 'row',
-                    gap: 8
-                  }}
-                >
-                  <Ionicons name="checkmark-done-circle" size={18} color="#FFF" />
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Complete Job</Text>
-                </TouchableOpacity>
+                  disabled={actionLoadingId === booking.id}
+                  style={{ flex: 1 }}
+                  icon={<Ionicons name="checkmark-done-circle" size={20} color="#FFF" />}
+                />
               )}
 
             </View>
