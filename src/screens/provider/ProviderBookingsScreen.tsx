@@ -540,6 +540,9 @@ export const ProviderBookingsScreen = () => {
     const isCompleted = booking.status === 'completed';
     const isCancelled = booking.status === 'cancelled';
 
+    // Resolve job session from local state (immediate update) or booking prop
+    const activeJobSession = jobSessions[booking.id] || booking.jobSession;
+
     const getPaymentStatusInfo = () => {
       if (booking.paymentMethod === 'wallet') {
         if (booking.walletPaymentStage === 'initial_25_held') {
@@ -804,11 +807,11 @@ export const ProviderBookingsScreen = () => {
           )}
 
           {/* Job Timer for Active Jobs */}
-          {(isAccepted || isInProgress) && booking.jobSession?.startTime && (
+          {(isAccepted || isInProgress) && activeJobSession?.startTime && (
             <View style={{ padding: 16, paddingTop: 0 }}>
               <JobTimer
-                startTime={new Date(booking.jobSession.startTime)}
-                expectedDuration={booking.jobSession.expectedDuration || 60}
+                startTime={new Date(activeJobSession.startTime)}
+                expectedDuration={activeJobSession.expectedDuration || 60}
                 variant="compact"
               />
             </View>
