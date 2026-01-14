@@ -38,12 +38,10 @@ export const Button: React.FC<ButtonProps> = ({
   const handlePressIn = () => {
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: 2, // Move down
+        toValue: 4, // Move down deeper for new depth
         duration: 100,
         useNativeDriver: true,
       }),
-      // Visual border reduction would need layout animation or non-native driver, 
-      // but translate is smoother. We'll stick to translate.
     ]).start();
   };
 
@@ -143,8 +141,8 @@ export const Button: React.FC<ButtonProps> = ({
   const get3DBorderColor = () => {
     if (disabled) return COLORS.gray200;
     switch (variant) {
-      case 'primary': return '#1D4ED8'; // Darker Blue
-      case 'secondary': return '#C2410C'; // Darker Orange
+      case 'primary': return '#0f3c9e'; // Much Darker Blue for contrast
+      case 'secondary': return '#9a3412'; // Much Darker Orange
       case 'outline': return COLORS.gray200;
       // Ghost bumps don't throw shadows usually
       default: return 'transparent';
@@ -166,7 +164,7 @@ export const Button: React.FC<ButtonProps> = ({
         styles.container,
         // Tactile 3D Border
         has3Deffect && {
-          borderBottomWidth: 4,
+          borderBottomWidth: 6, // Increased from 4 for deeper look
           borderColor: get3DBorderColor(),
           borderRadius: RADIUS.medium,
         },
