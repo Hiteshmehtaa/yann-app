@@ -662,7 +662,6 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-// Extracted Component to fix "Hooks inside Loop" error
 const BookingListItem = ({ item, index, navigation }: { item: any; index: number; navigation: any }) => {
   const animatedValue = useRef(new Animated.Value(0)).current;
 
@@ -684,43 +683,95 @@ const BookingListItem = ({ item, index, navigation }: { item: any; index: number
     ]).start();
   }, []);
 
-  const colors = [
-    { bg: '#DBEAFE', icon: '#60A5FA' }, // Indigo
-    { bg: '#ECFDF5', icon: '#10B981' }, // Emerald
-    { bg: '#FFF7ED', icon: '#F97316' }, // Orange
-    { bg: '#FDF4FF', icon: '#D946EF' }, // Fuchsia
-    { bg: '#DBEAFE', icon: '#3B82F6' }, // Sky
-  ];
-  const colorTheme = colors[index % colors.length];
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'accepted': return '#10B981';
+      case 'pending': return '#F59E0B';
+      case 'completed': return '#3B82F6';
+      default: return '#64748B';
+    }
+  };
 
   return (
     <Animated.View
       style={{
         opacity: animatedValue,
+        marginBottom: 16,
         transform: [
           { translateY: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) },
-          { scale: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }
+          { scale: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }
         ]
       }}
     >
       <TouchableOpacity
-        style={[styles.bookingRow, { borderLeftColor: colorTheme.icon, borderLeftWidth: 4 }]}
-        onPress={() => navigation.navigate('ProviderBookings')}
-        activeOpacity={0.7}
+        onPress={() => navigation.navigate('ProviderBookings')} // Navigate to full list
+        activeOpacity={0.9}
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 16,
+          overflow: 'visible', // For shadows
+          shadowColor: '#64748B',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 3,
+        }}
       >
-        <View style={[styles.bookingIconCircle, { backgroundColor: colorTheme.bg }]}>
-          <Ionicons name="calendar-outline" size={20} color={colorTheme.icon} />
+        {/* Ticket Header (Service & Price) */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: '#F1F5F9',
+          borderStyle: 'dashed'
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{
+              width: 36, height: 36, borderRadius: 10,
+              backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Ionicons name="calendar" size={18} color="#0EA5E9" />
+            </View>
+            <View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>{item.serviceName || 'Service'}</Text>
+              <Text style={{ fontSize: 11, color: '#64748B' }}>{new Date(item.bookingDate || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' })}</Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A' }}>₹{item.totalPrice || 0}</Text>
         </View>
-        <View style={styles.bookingDetails}>
-          <Text style={styles.bookingService}>{item.serviceName || 'Service'}</Text>
-          <Text style={styles.bookingCustomer}>{item.customerName || 'Customer'}</Text>
+
+        {/* Ticket Body (Customer) */}
+        <View style={{ padding: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {item.customerAvatar ? (
+                <Image source={{ uri: item.customerAvatar }} style={{ width: 24, height: 24, borderRadius: 12 }} />
+              ) : (
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748B' }}>{item.customerName?.charAt(0) || 'C'}</Text>
+                </View>
+              )}
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#334155' }}>{item.customerName || 'Customer'}</Text>
+            </View>
+
+            <View style={{
+              paddingHorizontal: 8, paddingVertical: 4,
+              backgroundColor: getStatusColor(item.status) + '15',
+              borderRadius: 6
+            }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: getStatusColor(item.status), textTransform: 'uppercase' }}>
+                {item.status || 'Pending'}
+              </Text>
+            </View>
+          </View>
         </View>
-        <View style={styles.bookingMeta}>
-          <Text style={styles.bookingPrice}>₹{item.totalPrice || 0}</Text>
-          <Text style={styles.bookingTime}>
-            {new Date(item.bookingDate || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-          </Text>
-        </View>
+
+        {/* Ticket Notches */}
+        <View style={{ position: 'absolute', top: 58, left: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: '#F8FAFC' }} />
+        <View style={{ position: 'absolute', top: 58, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: '#F8FAFC' }} />
+
       </TouchableOpacity>
     </Animated.View>
   );
