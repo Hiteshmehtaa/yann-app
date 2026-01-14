@@ -522,7 +522,7 @@ export const ProviderBookingsScreen = () => {
     );
   };
 
-  // --- ULTRA-MODERN CARD COMPONENT ---
+  // --- ULTRA-MODERN CARD COMPONENT (SCALED DOWN & THEMED) ---
   const renderBookingCard = (booking: ProviderBooking, index: number) => {
     // Status Logic
     const isAccepted = booking.status === 'accepted';
@@ -538,7 +538,7 @@ export const ProviderBookingsScreen = () => {
     // Configs for styling
     const statusConfig: Record<string, { label: string; color: string; bg: string; dotColor: string }> = {
       pending: { label: 'New Request', color: '#B45309', bg: '#FFFBEB', dotColor: '#F59E0B' },
-      accepted: { label: 'Scheduled', color: '#0369A1', bg: '#E0F2FE', dotColor: '#0EA5E9' },
+      accepted: { label: 'Scheduled', color: COLORS.primary, bg: '#E0F2FE', dotColor: COLORS.primary },
       in_progress: { label: 'In Progress', color: '#7C3AED', bg: '#F3E8FF', dotColor: '#9333EA' },
       completed: { label: 'Completed', color: '#15803D', bg: '#DCFCE7', dotColor: '#22C55E' },
       cancelled: { label: 'Cancelled', color: '#B91C1C', bg: '#FEE2E2', dotColor: '#EF4444' },
@@ -549,7 +549,7 @@ export const ProviderBookingsScreen = () => {
     const getServiceTheme = (category: string) => {
       const cat = category?.toLowerCase() || '';
       if (cat.includes('puja')) return { icon: 'flame', color: '#EA580C', bg: '#FFEDD5' }; // Orange
-      if (cat.includes('clean')) return { icon: 'sparkles', color: '#0284C7', bg: '#E0F2FE' }; // Blue
+      if (cat.includes('clean')) return { icon: 'sparkles', color: COLORS.primary, bg: '#E0F2FE' }; // Blue (Primary)
       if (cat.includes('driver')) return { icon: 'car', color: '#4F46E5', bg: '#E0E7FF' }; // Indigo
       return { icon: 'construct', color: '#64748B', bg: '#F1F5F9' }; // Slate
     };
@@ -561,9 +561,9 @@ export const ProviderBookingsScreen = () => {
 
       const stage = booking.walletPaymentStage || 'default';
       if (stage === 'initial_25_held') return { label: 'Escrow Secured', color: '#CA8A04', icon: 'shield-checkmark' };
-      if (stage === 'initial_25_released') return { label: '25% Paid', color: '#2563EB', icon: 'wallet' };
+      if (stage === 'initial_25_released') return { label: '25% Paid', color: COLORS.primary, icon: 'wallet' };
       if (stage === 'completed') return { label: 'Fully Paid', color: '#16A34A', icon: 'checkmark-circle' };
-      return { label: 'Wallet', color: '#4F46E5', icon: 'card' };
+      return { label: 'Wallet', color: COLORS.primary, icon: 'card' };
     };
     const paymentInfo = getPaymentDisplay();
 
@@ -571,15 +571,15 @@ export const ProviderBookingsScreen = () => {
       <AnimatedBookingItem key={booking.id} index={index}>
         <View style={{
           backgroundColor: '#FFFFFF',
-          borderRadius: 24,
-          marginBottom: 24,
+          borderRadius: 16, // Reduced from 24
+          marginBottom: 16, // Reduced margin
           shadowColor: "#0F172A",
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
-          elevation: 4,
+          shadowOffset: { width: 0, height: 4 }, // Reduced shadow
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          elevation: 3,
           borderWidth: 1,
-          borderColor: isNextJob ? '#3B82F6' : '#F1F5F9', // Subtle border, blue if next job
+          borderColor: isNextJob ? COLORS.primary : '#F1F5F9',
         }}>
 
           {/* --- HEADER: Date/Time + Status --- */}
@@ -587,26 +587,26 @@ export const ProviderBookingsScreen = () => {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: 16,
+            paddingHorizontal: 16, // Reduced padding
+            paddingTop: 16,
+            paddingBottom: 12,
           }}>
             {/* Date Time Group */}
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{
-                paddingHorizontal: 10,
-                paddingVertical: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
                 backgroundColor: '#F8FAFC',
-                borderRadius: 8,
+                borderRadius: 6,
                 borderWidth: 1,
                 borderColor: '#E2E8F0',
-                marginRight: 10,
+                marginRight: 8,
               }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#334155' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>
                   {booking.scheduledTime}
                 </Text>
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: '#64748B' }}>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: '#64748B' }}>
                 {booking.scheduledDate}
               </Text>
             </View>
@@ -615,13 +615,13 @@ export const ProviderBookingsScreen = () => {
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
               backgroundColor: statusStyle.bg,
               borderRadius: 100,
             }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusStyle.dotColor, marginRight: 6 }} />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: statusStyle.color }}>
+              <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: statusStyle.dotColor, marginRight: 5 }} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: statusStyle.color }}>
                 {statusStyle.label}
               </Text>
             </View>
@@ -629,46 +629,46 @@ export const ProviderBookingsScreen = () => {
 
           {/* --- HERO: Service + Price --- */}
           <View style={{
-            paddingHorizontal: 20,
-            paddingBottom: 20,
+            paddingHorizontal: 16,
+            paddingBottom: 16,
             flexDirection: 'row',
             alignItems: 'center',
           }}>
             {/* Big Soft Icon */}
             <View style={{
-              width: 56,
-              height: 56,
-              borderRadius: 18,
+              width: 48, // Reduced size
+              height: 48,
+              borderRadius: 14,
               backgroundColor: serviceTheme.bg,
               alignItems: 'center',
               justifyContent: 'center',
-              marginRight: 16,
+              marginRight: 12,
             }}>
-              <Ionicons name={serviceTheme.icon as any} size={28} color={serviceTheme.color} />
+              <Ionicons name={serviceTheme.icon as any} size={24} color={serviceTheme.color} />
             </View>
 
             {/* Title & Category */}
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5, lineHeight: 24 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', letterSpacing: -0.3, lineHeight: 22 }}>
                 {booking.serviceName}
               </Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#64748B', marginTop: 2 }}>
+              <Text style={{ fontSize: 12, fontWeight: '500', color: '#64748B', marginTop: 1 }}>
                 {booking.serviceCategory} • {isWalletPayment ? 'Via Wallet' : 'Cash Job'}
               </Text>
             </View>
 
             {/* Price - Clean & Big */}
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#0F172A' }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>
               ₹{booking.amount}
             </Text>
           </View>
 
           {/* --- MIDDLE: Location & Customer (Modern List Item) --- */}
-          <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
             {/* Address Row with Icon */}
-            <View style={{ flexDirection: 'row', marginBottom: 16 }}>
-              <Ionicons name="location" size={18} color="#94A3B8" style={{ marginTop: 2 }} />
-              <Text style={{ flex: 1, marginLeft: 8, fontSize: 14, color: '#475569', lineHeight: 20 }}>
+            <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+              <Ionicons name="location" size={16} color="#94A3B8" style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, marginLeft: 6, fontSize: 13, color: '#475569', lineHeight: 18 }}>
                 {booking.address}
               </Text>
             </View>
@@ -678,76 +678,76 @@ export const ProviderBookingsScreen = () => {
               flexDirection: 'row',
               alignItems: 'center',
               backgroundColor: '#F8FAFC',
-              padding: 12,
-              borderRadius: 16,
+              padding: 10,
+              borderRadius: 12,
             }}>
               {booking.customerAvatar ? (
-                <Image source={{ uri: booking.customerAvatar }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+                <Image source={{ uri: booking.customerAvatar }} style={{ width: 36, height: 36, borderRadius: 18 }} />
               ) : (
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontWeight: '700', color: '#64748B', fontSize: 16 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontWeight: '700', color: '#64748B', fontSize: 14 }}>
                     {booking.customerName.charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
 
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>{booking.customerName}</Text>
-                <Text style={{ fontSize: 12, color: '#64748B' }}>Verified Customer</Text>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{booking.customerName}</Text>
+                <Text style={{ fontSize: 11, color: '#64748B' }}>Verified Customer</Text>
               </View>
 
               <TouchableOpacity
                 onPress={() => Linking.openURL(`tel:${booking.customerPhone}`)}
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
                   backgroundColor: '#FFFFFF',
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: 1,
                   borderColor: '#E2E8F0',
                   shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
+                  shadowOffset: { width: 0, height: 1 },
                   shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  shadowRadius: 2,
+                  elevation: 1,
                 }}
               >
-                <Ionicons name="call" size={18} color="#0F172A" />
+                <Ionicons name="call" size={16} color="#0F172A" />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* --- INFO: Payment Capsule (If Wallet) --- */}
           {isWalletPayment && booking.escrowDetails && (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
               <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                padding: 12,
+                padding: 10,
                 backgroundColor: '#FFFFFF',
-                borderRadius: 12,
+                borderRadius: 10,
                 borderWidth: 1,
                 borderColor: '#E2E8F0',
                 borderStyle: 'dashed', // Modern touch for financial details
               }}>
                 <View style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
                   backgroundColor: paymentInfo.color + '15',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginRight: 10,
+                  marginRight: 8,
                 }}>
-                  <Ionicons name={paymentInfo.icon as any} size={16} color={paymentInfo.color} />
+                  <Ionicons name={paymentInfo.icon as any} size={14} color={paymentInfo.color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
                     {paymentInfo.label}
                   </Text>
-                  <Text style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>
+                  <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
                     {booking.walletPaymentStage === 'initial_25_held'
                       ? `₹${booking.escrowDetails?.initialAmount} ready for release`
                       : booking.walletPaymentStage === 'initial_25_released'
@@ -757,8 +757,8 @@ export const ProviderBookingsScreen = () => {
                 </View>
                 {/* Visual Progress Dots */}
                 <View style={{ flexDirection: 'row', gap: 4 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: paymentInfo.color }} />
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: booking.walletPaymentStage === 'completed' ? '#16A34A' : '#E2E8F0' }} />
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: paymentInfo.color }} />
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: booking.walletPaymentStage === 'completed' ? '#16A34A' : '#E2E8F0' }} />
                 </View>
               </View>
             </View>
@@ -766,8 +766,8 @@ export const ProviderBookingsScreen = () => {
 
           {/* --- INFO: Notes (If any) --- */}
           {booking.notes ? (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
-              <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8 }}>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+              <Text style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic', backgroundColor: '#F8FAFC', padding: 8, borderRadius: 6 }}>
                 "{booking.notes}"
               </Text>
             </View>
@@ -775,7 +775,7 @@ export const ProviderBookingsScreen = () => {
 
           {/* --- TIMER (In Progress) --- */}
           {isInProgress && jobSessions[booking.id] && (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
               <JobTimer
                 startTime={new Date(jobSessions[booking.id].startTime)}
                 expectedDuration={jobSessions[booking.id].expectedDuration}
@@ -785,7 +785,7 @@ export const ProviderBookingsScreen = () => {
 
           {/* --- OVERTIME (Completed) --- */}
           {isCompleted && jobSessions[booking.id]?.overtimeDuration > 0 && (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
               <OvertimeBreakdown
                 duration={jobSessions[booking.id].duration || 0}
                 expectedDuration={jobSessions[booking.id].expectedDuration || 480}
@@ -802,11 +802,11 @@ export const ProviderBookingsScreen = () => {
           {/* Only show actions if there's something to do. Completed/Cancelled don't need buttons generally unless support */}
           {(isPending || isAccepted || isInProgress) && (
             <View style={{
-              padding: 16,
+              padding: 12, // Reduced padding
               borderTopWidth: 1,
               borderTopColor: '#F1F5F9',
               flexDirection: 'row',
-              gap: 12,
+              gap: 10,
             }}>
 
               {isPending && (
@@ -815,32 +815,32 @@ export const ProviderBookingsScreen = () => {
                     onPress={() => handleStatusChange(booking.id, 'cancelled')}
                     style={{
                       flex: 1,
-                      paddingVertical: 14,
-                      borderRadius: 16,
+                      paddingVertical: 12,
+                      borderRadius: 14,
                       backgroundColor: '#F1F5F9',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#64748B' }}>Decline</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#64748B' }}>Decline</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleStatusChange(booking.id, 'accepted')}
                     style={{
                       flex: 2,
-                      paddingVertical: 14,
-                      borderRadius: 16,
-                      backgroundColor: '#0F172A', // Dark modern color
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      backgroundColor: COLORS.primary, // Use app theme
                       alignItems: 'center',
                       justifyContent: 'center',
-                      shadowColor: "#0F172A",
+                      shadowColor: COLORS.primary,
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.2,
                       shadowRadius: 8,
                       elevation: 4,
                     }}
                   >
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Accept Request</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Accept Request</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -851,8 +851,8 @@ export const ProviderBookingsScreen = () => {
                     onPress={() => openLocationNavigation(booking)}
                     style={{
                       flex: 1,
-                      paddingVertical: 14,
-                      borderRadius: 16,
+                      paddingVertical: 12,
+                      borderRadius: 14,
                       backgroundColor: '#F1F5F9',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -860,19 +860,19 @@ export const ProviderBookingsScreen = () => {
                       gap: 6
                     }}
                   >
-                    <Ionicons name="navigate" size={18} color="#475569" />
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#475569' }}>Maps</Text>
+                    <Ionicons name="navigate" size={16} color="#475569" />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#475569' }}>Maps</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleStartJob(booking.id)}
                     style={{
                       flex: 2,
-                      paddingVertical: 14,
-                      borderRadius: 16,
-                      backgroundColor: '#2563EB', // Bright Blue
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      backgroundColor: COLORS.primary, // Use app theme
                       alignItems: 'center',
                       justifyContent: 'center',
-                      shadowColor: "#2563EB",
+                      shadowColor: COLORS.primary,
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.25,
                       shadowRadius: 8,
@@ -881,8 +881,8 @@ export const ProviderBookingsScreen = () => {
                       gap: 8,
                     }}
                   >
-                    <Ionicons name="play" size={18} color="#FFF" />
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Start Job</Text>
+                    <Ionicons name="play" size={16} color="#FFF" />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Start Job</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -892,8 +892,8 @@ export const ProviderBookingsScreen = () => {
                   onPress={() => handleEndJob(booking.id)}
                   style={{
                     flex: 1,
-                    paddingVertical: 14,
-                    borderRadius: 16,
+                    paddingVertical: 12,
+                    borderRadius: 14,
                     backgroundColor: '#16A34A', // Green
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -906,8 +906,8 @@ export const ProviderBookingsScreen = () => {
                     gap: 8
                   }}
                 >
-                  <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Complete Job</Text>
+                  <Ionicons name="checkmark-done-circle" size={18} color="#FFF" />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Complete Job</Text>
                 </TouchableOpacity>
               )}
 
@@ -915,8 +915,8 @@ export const ProviderBookingsScreen = () => {
           )}
 
           {(isCompleted || isCancelled) && (
-            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#F8FAFC', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#94A3B8' }}>
+            <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: '#F8FAFC', alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#94A3B8' }}>
                 {isCompleted ? 'Service completed successfully' : 'Booking was cancelled'}
               </Text>
             </View>
