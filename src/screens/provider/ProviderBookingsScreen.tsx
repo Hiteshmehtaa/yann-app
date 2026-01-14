@@ -564,7 +564,7 @@ export const ProviderBookingsScreen = () => {
     return (
       <AnimatedBookingItem key={booking.id} index={index}>
         <View style={{
-          marginHorizontal: 16,
+          marginHorizontal: 8,
           marginBottom: 20,
           backgroundColor: '#FFFFFF',
           borderRadius: 20,
