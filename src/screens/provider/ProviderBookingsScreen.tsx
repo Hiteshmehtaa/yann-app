@@ -71,8 +71,13 @@ interface ProviderBooking {
   longitude?: number;
   status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
   amount: number;
-  paymentStatus: 'pending' | 'paid';
+  paymentStatus: 'pending' | 'paid' | 'partial';
   paymentMethod?: string;
+  walletPaymentStage?: 'initial_25_held' | 'initial_25_released' | 'completed' | null;
+  escrowDetails?: {
+    initialAmount?: number;
+    completionAmount?: number;
+  };
   notes?: string;
   createdAt: string;
   sortableDate?: number;
@@ -164,6 +169,8 @@ export const ProviderBookingsScreen = () => {
           amount: b.totalPrice || b.basePrice || b.amount || 0,
           paymentStatus: b.paymentStatus || 'pending',
           paymentMethod: b.paymentMethod || 'cash',
+          walletPaymentStage: b.walletPaymentStage || null,
+          escrowDetails: b.escrowDetails || null,
           notes: b.notes || '',
           createdAt: b.createdAt || new Date().toISOString(),
           sortableDate: getTimestamp(b.bookingDate || b.scheduledDate),
@@ -556,8 +563,64 @@ export const ProviderBookingsScreen = () => {
                 <Text style={styles.serviceName}>{booking.serviceName}</Text>
                 <Text style={styles.serviceCategory}>{booking.serviceCategory}</Text>
               </View>
-              <Text style={styles.amountText}>₹{booking.amount}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.amountText}>₹{booking.amount}</Text>
+                {/* Payment Method Badge */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 4,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  backgroundColor: booking.paymentMethod === 'wallet' ? '#EEF2FF' : '#FEF3C7',
+                }}>
+                  <Ionicons
+                    name={booking.paymentMethod === 'wallet' ? 'wallet-outline' : 'cash-outline'}
+                    size={12}
+                    color={booking.paymentMethod === 'wallet' ? '#4F46E5' : '#D97706'}
+                  />
+                  <Text style={{
+                    fontSize: 10,
+                    fontWeight: '600',
+                    marginLeft: 4,
+                    color: booking.paymentMethod === 'wallet' ? '#4F46E5' : '#D97706',
+                  }}>
+                    {booking.paymentMethod === 'wallet' ? 'Wallet' : 'Cash'}
+                  </Text>
+                </View>
+              </View>
             </View>
+
+            {/* Wallet Payment Status - Show staged payment info */}
+            {booking.paymentMethod === 'wallet' && booking.escrowDetails && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 10,
+                padding: 10,
+                backgroundColor: '#F0FDF4',
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#BBF7D0',
+              }}>
+                <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#166534' }}>
+                    {booking.walletPaymentStage === 'initial_25_held' ? 'Escrow Payment Ready' :
+                      booking.walletPaymentStage === 'initial_25_released' ? '25% Received' :
+                        booking.walletPaymentStage === 'completed' ? 'Fully Paid' : 'Wallet Payment'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#15803D', marginTop: 2 }}>
+                    {booking.walletPaymentStage === 'initial_25_held'
+                      ? `₹${booking.escrowDetails?.initialAmount || Math.round(booking.amount * 0.25)} on accept • ₹${booking.escrowDetails?.completionAmount || Math.round(booking.amount * 0.75)} after service`
+                      : booking.walletPaymentStage === 'initial_25_released'
+                        ? `₹${booking.escrowDetails?.initialAmount || Math.round(booking.amount * 0.25)} received • ₹${booking.escrowDetails?.completionAmount || Math.round(booking.amount * 0.75)} after service`
+                        : `Total ₹${booking.amount} received`}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             <View style={styles.divider} />
 

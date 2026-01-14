@@ -304,7 +304,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           startTime: bookingTime,
           endTime: isDriverService ? endTime : undefined,
           notes: formData.notes,
-          baseAmount: basePrice,
+          basePrice: basePrice, // Fixed: was baseAmount
           gstAmount: gstAmount,
           totalPrice: totalPrice,
           ...(hasOvertimeCharges && bookedHours > 0 ? { bookedHours } : {}),
@@ -714,101 +714,205 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* 3. Payment Method */}
           <FadeInView delay={300} style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Payment</Text>
+              <Text style={styles.sectionTitle}>Payment Method</Text>
             </View>
 
             <View style={styles.cardContainerNoPadding}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.paymentMethodsContainer}
-                nestedScrollEnabled={true}
-              >
+              {/* Payment Options - Vertical Cards */}
+              <View style={{ padding: 16, gap: 12 }}>
                 {PAYMENT_METHODS.map((method: any) => {
                   const isSelected = formData.paymentMethod === method.id;
+                  const isWallet = method.id === 'wallet';
+
                   return (
                     <TouchableOpacity
                       key={method.id}
-                      style={[styles.paymentOption, isSelected && styles.paymentOptionSelected]}
+                      style={[
+                        {
+                          borderRadius: 16,
+                          borderWidth: 2,
+                          borderColor: isSelected ? '#3B82F6' : '#E2E8F0',
+                          backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                          overflow: 'hidden',
+                        },
+                        isSelected && SHADOWS.md,
+                      ]}
                       onPress={() => {
                         setFormData({ ...formData, paymentMethod: method.id });
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
+                      activeOpacity={0.7}
                     >
-                      <LinearGradient
-                        colors={isSelected ? ['#3B82F6', '#2563EB'] : ['#F8FAFC', '#F8FAFC']}
-                        style={StyleSheet.absoluteFill}
-                      />
-                      <View style={styles.paymentContent}>
-                        <Ionicons
-                          name={method.icon as any}
-                          size={24}
-                          color={isSelected ? '#fff' : '#64748B'}
-                        />
-                        <Text style={[styles.paymentText, isSelected && { color: '#fff', fontWeight: '600' }]}>
-                          {method.label}
-                        </Text>
-                        {method.description && (
-                          <Text style={[{ fontSize: 10, marginTop: 2 }, isSelected ? { color: '#fff', opacity: 0.8 } : { color: '#94A3B8' }]}>
-                            {method.description}
-                          </Text>
-                        )}
-                        {method.recommended && !isSelected && (
-                          <View style={{ backgroundColor: '#10B981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 }}>
-                            <Text style={{ fontSize: 9, color: '#fff', fontWeight: '600' }}>RECOMMENDED</Text>
-                          </View>
-                        )}
-                      </View>
-                      {isSelected && (
-                        <View style={styles.checkmarkBadge}>
-                          <Ionicons name="checkmark" size={12} color="#3B82F6" />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
+                        {/* Icon Container */}
+                        <View style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: 14,
+                          backgroundColor: isSelected ? '#3B82F6' : '#F1F5F9',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 14,
+                        }}>
+                          <Ionicons
+                            name={method.icon as any}
+                            size={26}
+                            color={isSelected ? '#FFFFFF' : '#64748B'}
+                          />
                         </View>
-                      )}
+
+                        {/* Text Content */}
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                            <Text style={{
+                              fontSize: 16,
+                              fontWeight: '700',
+                              color: isSelected ? '#1E40AF' : '#1E293B',
+                            }}>
+                              {method.label}
+                            </Text>
+                            {method.recommended && (
+                              <View style={{
+                                backgroundColor: '#10B981',
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: 6,
+                                marginLeft: 10,
+                              }}>
+                                <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: '700' }}>
+                                  RECOMMENDED
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {method.description && (
+                            <Text style={{
+                              fontSize: 13,
+                              color: isSelected ? '#3B82F6' : '#64748B',
+                              lineHeight: 18,
+                            }}>
+                              {method.description}
+                            </Text>
+                          )}
+
+                          {/* Wallet Balance Inline for Wallet Option */}
+                          {isWallet && !loadingWallet && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                              <Text style={{ fontSize: 12, color: '#64748B' }}>Balance: </Text>
+                              <Text style={{
+                                fontSize: 13,
+                                fontWeight: '700',
+                                color: walletBalance >= initialPayment ? '#10B981' : '#EF4444',
+                              }}>
+                                ₹{walletBalance.toFixed(2)}
+                              </Text>
+                              {walletBalance < initialPayment && (
+                                <Text style={{ fontSize: 11, color: '#EF4444', marginLeft: 6 }}>
+                                  (Need ₹{initialPayment.toFixed(0)})
+                                </Text>
+                              )}
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Selection Indicator */}
+                        <View style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          borderWidth: 2,
+                          borderColor: isSelected ? '#3B82F6' : '#CBD5E1',
+                          backgroundColor: isSelected ? '#3B82F6' : 'transparent',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          {isSelected && (
+                            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                          )}
+                        </View>
+                      </View>
                     </TouchableOpacity>
-                  )
+                  );
                 })}
-              </ScrollView>
+              </View>
 
               {/* Wallet Payment Info - Staged Payment Breakdown */}
               {formData.paymentMethod === 'wallet' && (
-                <View style={{ padding: 16, paddingTop: 8 }}>
-                  {/* Wallet Balance */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 14, color: '#64748B' }}>Your Wallet Balance</Text>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: hasInsufficientBalance ? '#EF4444' : '#10B981' }}>
-                      {loadingWallet ? '...' : `₹${walletBalance.toFixed(2)}`}
-                    </Text>
-                  </View>
-
+                <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
                   {/* Staged Payment Breakdown */}
-                  <View style={{ backgroundColor: '#F0F9FF', borderRadius: 12, padding: 12 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#0369A1', marginBottom: 8 }}>
-                      Staged Payment Breakdown
-                    </Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Pay Now ({initialPaymentPercentage}%)</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#0C4A6E' }}>₹{initialPayment.toFixed(2)}</Text>
+                  <View style={{
+                    backgroundColor: '#F0FDF4',
+                    borderRadius: 14,
+                    padding: 14,
+                    borderWidth: 1,
+                    borderColor: '#BBF7D0',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                      <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534', marginLeft: 8 }}>
+                        Secure Staged Payment
+                      </Text>
                     </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#3B82F6', marginRight: 8 }} />
+                        <Text style={{ fontSize: 14, color: '#374151' }}>Pay Now ({initialPaymentPercentage}%)</Text>
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937' }}>₹{initialPayment.toFixed(2)}</Text>
+                    </View>
+
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 13, color: '#0C4A6E' }}>After Service (75%)</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#0C4A6E' }}>₹{completionPayment.toFixed(2)}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#94A3B8', marginRight: 8 }} />
+                        <Text style={{ fontSize: 14, color: '#6B7280' }}>After Service (75%)</Text>
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280' }}>₹{completionPayment.toFixed(2)}</Text>
                     </View>
                   </View>
 
                   {/* Insufficient Balance Warning */}
                   {hasInsufficientBalance && (
                     <TouchableOpacity
-                      style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginTop: 12, flexDirection: 'row', alignItems: 'center' }}
+                      style={{
+                        backgroundColor: '#FEF2F2',
+                        borderRadius: 14,
+                        padding: 14,
+                        marginTop: 10,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: '#FECACA',
+                      }}
                       onPress={() => navigation.navigate('MainTabs', { screen: 'Wallet' })}
                     >
-                      <Ionicons name="warning-outline" size={20} color="#EF4444" />
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#DC2626' }}>Insufficient Balance</Text>
-                        <Text style={{ fontSize: 12, color: '#B91C1C' }}>
-                          You need ₹{(initialPayment - walletBalance).toFixed(2)} more. Tap to recharge.
+                      <View style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: '#FEE2E2',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <Ionicons name="wallet-outline" size={20} color="#DC2626" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#DC2626' }}>
+                          Top Up Required
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#B91C1C', marginTop: 2 }}>
+                          Add ₹{(initialPayment - walletBalance).toFixed(0)} to book this service
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={20} color="#EF4444" />
+                      <View style={{
+                        backgroundColor: '#DC2626',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                      }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>Top Up</Text>
+                      </View>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -850,10 +954,28 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
               <View style={styles.dashedLine} />
 
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabelReceipt}>Total to Pay</Text>
-                <Text style={styles.totalAmountReceipt}>₹{totalPrice.toFixed(2)}</Text>
-              </View>
+              {/* Show different total based on payment method */}
+              {formData.paymentMethod === 'wallet' ? (
+                <>
+                  <View style={styles.totalRow}>
+                    <Text style={[styles.totalLabelReceipt, { color: '#64748B' }]}>Pay Now (25%)</Text>
+                    <Text style={[styles.totalAmountReceipt, { color: '#3B82F6' }]}>₹{initialPayment.toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.summaryRow, { marginTop: 4 }]}>
+                    <Text style={[styles.summaryLabel, { fontSize: 12 }]}>After Service (75%)</Text>
+                    <Text style={[styles.summaryValue, { fontSize: 12 }]}>₹{completionPayment.toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.summaryRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }]}>
+                    <Text style={[styles.summaryLabel, { fontWeight: '600' }]}>Service Total</Text>
+                    <Text style={[styles.summaryValue, { fontWeight: '600' }]}>₹{totalPrice.toFixed(2)}</Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabelReceipt}>Total to Pay</Text>
+                  <Text style={styles.totalAmountReceipt}>₹{totalPrice.toFixed(2)}</Text>
+                </View>
+              )}
 
               {/* ZigZag Bottom SVG or Image could go here, for now just clean bottom */}
             </View>
@@ -867,8 +989,12 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
         <View style={styles.bottomBarContent}>
           <View style={styles.priceBlock}>
-            <Text style={styles.totalLabelSmall}>Total</Text>
-            <Text style={styles.finalPrice}>₹{totalPrice.toFixed(2)}</Text>
+            <Text style={styles.totalLabelSmall}>
+              {formData.paymentMethod === 'wallet' ? 'Pay Now' : 'Total'}
+            </Text>
+            <Text style={styles.finalPrice}>
+              ₹{formData.paymentMethod === 'wallet' ? initialPayment.toFixed(2) : totalPrice.toFixed(2)}
+            </Text>
           </View>
 
           {/* Dynamic Book Button */}
@@ -900,7 +1026,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             ) : (
               <>
                 <Text style={[styles.bookButtonText, (!bookingDate || !bookingTime) && { color: '#94A3B8' }]}>
-                  {!bookingDate ? 'Select Date' : !bookingTime ? 'Select Time' : formData.paymentMethod === 'cash' ? 'Book Now' : `Pay ₹${totalPrice.toFixed(2)}`}
+                  {!bookingDate ? 'Select Date' : !bookingTime ? 'Select Time' : formData.paymentMethod === 'cash' ? 'Book Now' : `Pay ₹${initialPayment.toFixed(2)} (25%)`}
                 </Text>
                 {(bookingDate && bookingTime) && <Ionicons name="arrow-forward" size={20} color="#fff" />}
               </>
