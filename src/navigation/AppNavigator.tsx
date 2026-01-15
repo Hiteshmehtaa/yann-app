@@ -60,6 +60,7 @@ import { ProviderBookingsScreen } from '../screens/provider/ProviderBookingsScre
 import { ProviderProfileScreen } from '../screens/provider/ProviderProfileScreen';
 import { ProviderServicesScreen } from '../screens/provider/ProviderServicesScreen';
 import { ProviderEarningsScreen } from '../screens/provider/ProviderEarningsScreen';
+import { BankDetailsScreen } from '../screens/provider/BankDetailsScreen';
 import { ProviderChatScreen } from '../screens/provider/ProviderChatScreen';
 import { AadhaarVerificationScreen } from '../screens/auth/AadhaarVerificationScreen';
 
@@ -69,6 +70,9 @@ import { PrivacyPolicyScreen } from '../screens/legal/PrivacyPolicyScreen';
 import { RefundPolicyScreen } from '../screens/legal/RefundPolicyScreen';
 import { ProviderTermsScreen } from '../screens/legal/ProviderTermsScreen';
 import { SafetyPolicyScreen } from '../screens/legal/SafetyPolicyScreen';
+
+// Global Components
+import { GlobalPaymentModal } from '../components/GlobalPaymentModal';
 
 // Navigation Types
 type RootStackParamList = {
@@ -87,6 +91,7 @@ type RootStackParamList = {
   ProviderEditProfile: undefined;
   ProviderServices: undefined;
   ProviderEarnings: undefined;
+  BankDetails: undefined;
   // Homeowner profile screens
   EditProfile: undefined;
   SavedAddresses: { fromBooking?: boolean } | undefined;
@@ -345,6 +350,7 @@ export function AppNavigator() {
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderServices" component={ProviderServicesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="ProviderEarnings" component={ProviderEarningsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="BankDetails" component={BankDetailsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Wallet" component={WalletScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen as any} options={screenTransitionConfig} />
@@ -394,6 +400,9 @@ export function AppNavigator() {
           </>
         )}
       </Stack.Navigator>
+      
+      {/* Global Payment Modal - Shows automatically when job is completed */}
+      {isAuthenticated && !isProvider && <GlobalPaymentModal />}
     </NavigationContainer>
   );
 }

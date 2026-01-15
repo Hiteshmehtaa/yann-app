@@ -337,12 +337,29 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
                         )}
                       </View>
                     </View>
-                    <Switch
-                      value={service.isActive}
-                      onValueChange={() => toggleService(service.id)}
-                      trackColor={{ false: THEME.colors.border, true: `${THEME.colors.success}50` }}
-                      thumbColor={service.isActive ? THEME.colors.success : '#f4f3f4'}
-                    />
+                    
+                    {/* Action Buttons */}
+                    <View style={styles.actionButtons}>
+                      {/* Update Rate Button */}
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => {
+                          setSelectedService(service);
+                          setPriceInput(service.rate.toString());
+                          setShowPriceModal(true);
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={18} color={THEME.colors.primary} />
+                      </TouchableOpacity>
+                      
+                      {/* Delete Service Button */}
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.deleteButton]}
+                        onPress={() => toggleService(service.id)}
+                      >
+                        <Ionicons name="trash-outline" size={18} color={THEME.colors.error} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -353,16 +370,17 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Available Services</Text>
             <Text style={styles.sectionSubtitle}>
-              Toggle to add services you can provide
+              Tap to add services you can provide
             </Text>
             <View style={styles.serviceList}>
               {availableServices.map((service, index) => (
-                <View
+                <TouchableOpacity
                   key={service.id}
                   style={[
                     styles.serviceCard,
                     index === availableServices.length - 1 && styles.serviceCardLast
                   ]}
+                  onPress={() => toggleService(service.id)}
                 >
                   <View style={styles.serviceInfo}>
                     <Text style={styles.serviceIcon}>{service.icon}</Text>
@@ -370,13 +388,10 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
                       <Text style={styles.serviceName}>{service.title}</Text>
                     </View>
                   </View>
-                  <Switch
-                    value={service.isActive}
-                    onValueChange={() => toggleService(service.id)}
-                    trackColor={{ false: THEME.colors.border, true: `${THEME.colors.success}50` }}
-                    thumbColor={service.isActive ? THEME.colors.success : '#f4f3f4'}
-                  />
-                </View>
+                  <View style={styles.addServiceButton}>
+                    <Ionicons name="add-circle" size={28} color={THEME.colors.primary} />
+                  </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -569,6 +584,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: THEME.colors.success,
     marginTop: 2,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${THEME.colors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButton: {
+    backgroundColor: `${THEME.colors.error}15`,
+  },
+  addServiceButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   helpCard: {
     flexDirection: 'row',

@@ -6,11 +6,12 @@ import { apiService } from '../services/api';
 
 export interface AppNotification {
   id: string;
-  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'general';
+  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'payment_required' | 'general';
   title: string;
   message: string;
   otp?: string;
   bookingId?: string;
+  completionAmount?: number;
   timestamp: string; // ISO string for storage
   read: boolean;
 }
@@ -22,12 +23,15 @@ interface NotificationContextType {
   markAllAsRead: () => Promise<void>;
   clearAll: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
+  paymentModalData: { bookingId: string; completionAmount: number; notificationId: string } | null;
+  setPaymentModalData: (data: { bookingId: string; completionAmount: number; notificationId: string } | null) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [paymentModalData, setPaymentModalData] = useState<{ bookingId: string; completionAmount: number; notificationId: string } | null>(null);
   const { user } = useAuth();
 
   const STORAGE_KEY = `yann_notifications_${user?.id || 'guest'}`;
@@ -39,7 +43,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // Active polling every 15 seconds to ensure OTP delivery even if push fails
       const intervalId = setInterval(() => {
-        console.log('🔄 Polling for new notifications...');
         loadNotifications();
       }, 15000);
 
@@ -59,20 +62,30 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       // Filter notifications: Only accept if recipientId matches current user or if generic (no recipientId)
       const recipientId = data.recipientId;
       if (recipientId && user && recipientId !== user.id) {
-        console.log('Ignored notification for different user', { recipientId, currentUserId: user.id });
         return;
       }
 
       const newNotification: AppNotification = {
         id: Date.now().toString(),
-        type: (data.type as any) || (data.otp ? (data.otpType === 'start' ? 'otp_start' : 'otp_end') : 'general'),
+        type: (data.type as any) || (data.otp ? (data.otpType === 'start' ? 'otp_start' : 'otp_end') : (data.action === 'pay_completion' || data.completionAmount ? 'payment_required' : 'general')),
         title: notification.request.content.title || 'New Notification',
         message: notification.request.content.body || '',
         otp: data.otp as string | undefined,
         bookingId: data.bookingId as string | undefined,
+        completionAmount: data.completionAmount as number | undefined,
         timestamp: new Date().toISOString(),
         read: false,
       };
+
+      // INSTANT PAYMENT TRIGGER: If payment required, show modal immediately!
+      if (newNotification.type === 'payment_required' && data.bookingId && data.completionAmount) {
+        const notifId = (data.notificationId as string) || newNotification.id;
+        setPaymentModalData({
+          bookingId: data.bookingId as string,
+          completionAmount: data.completionAmount as number,
+          notificationId: notifId
+        });
+      }
 
       // Add to state and save to storage
       setNotifications(prev => {
@@ -101,7 +114,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       if (response.success && response.data && response.data.length > 0) {
         const serverNotifications = response.data;
-        console.log(`🔔 Loaded ${serverNotifications.length} notifications from backend`);
 
         // Map backend notifications to AppNotification format
         const mappedNotifications: AppNotification[] = serverNotifications.map(n => ({
@@ -111,10 +123,23 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           message: n.message,
           bookingId: n.data?.bookingId,
           otp: n.data?.otp,
+          completionAmount: n.data?.completionAmount,
           timestamp: n.timestamp,
           read: n.read || false
         }));
 
+        // CHECK FOR PAYMENT REQUIRED: Trigger payment modal if there's an unread payment_required notification
+        const paymentRequiredNotif = mappedNotifications.find(
+          n => n.type === 'payment_required' && !n.read && n.bookingId && n.completionAmount
+        );
+        
+        if (paymentRequiredNotif && !paymentModalData) {
+          setPaymentModalData({
+            bookingId: paymentRequiredNotif.bookingId!,
+            completionAmount: paymentRequiredNotif.completionAmount!,
+            notificationId: paymentRequiredNotif.id
+          });
+        }
 
         setNotifications(prevNotifications => {
           // Create a map of currently read notifications to preserve local optimistic updates
@@ -139,7 +164,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       // 2. Fallback to local storage if backend empty or failed
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        console.log('Using locally cached notifications');
         setNotifications(JSON.parse(stored));
       }
     } catch (error) {
@@ -198,7 +222,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         markAsRead,
         markAllAsRead,
         clearAll,
-        refreshNotifications: loadNotifications
+        refreshNotifications: loadNotifications,
+        paymentModalData,
+        setPaymentModalData
       }}
     >
       {children}

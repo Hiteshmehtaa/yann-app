@@ -201,10 +201,37 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     return isNaN(price) ? 0 : price;
   };
 
-  const basePrice = getProviderPrice();
+  // Determine pricing model
+  const pricingModel = service.pricingModel || 'fixed';
+  const isHourlyService = pricingModel === 'hourly';
+  
+  // Calculate hourly pricing if applicable
+  const calculateHourlyPrice = (): { baseCost: number; duration: number } => {
+    if (!isHourlyService || !bookingTime || !endTime) {
+      return { baseCost: 0, duration: 0 };
+    }
+    
+    const startMinutes = bookingTime.getHours() * 60 + bookingTime.getMinutes();
+    const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+    const durationMinutes = endMinutes > startMinutes ? endMinutes - startMinutes : 0;
+    const duration = durationMinutes / 60;
+    
+    const hourlyRate = getProviderPrice();
+    const baseCost = duration * hourlyRate;
+    
+    return { baseCost, duration };
+  };
 
-  // Use service-specific GST rate (default to 18% if not specified)
-  const serviceGstRate = service.gstRate ?? 0.18;
+  const hourlyPricing = isHourlyService ? calculateHourlyPrice() : { baseCost: 0, duration: 0 };
+  
+  // Base price calculation
+  const basePrice = isHourlyService && bookingTime && endTime 
+    ? hourlyPricing.baseCost 
+    : getProviderPrice();
+
+  // Use service-specific GST rate (support both percentage and decimal formats)
+  const serviceGstPercentage = service.gstPercentage ?? (service.gstRate ? service.gstRate * 100 : 18);
+  const serviceGstRate = serviceGstPercentage / 100;
   const gstAmount = basePrice * serviceGstRate;
   const totalPrice = basePrice + gstAmount;
 
@@ -243,6 +270,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!selectedAddress) errors.address = 'Required';
     if (!bookingDate) errors.date = 'Required';
     if (!bookingTime) errors.time = 'Required';
+    // Require end time for hourly services
+    if (isHourlyService && !endTime) errors.endTime = 'End time required for hourly service';
     // Require end time for overtime services
     if (hasOvertimeCharges && !endTime) errors.endTime = 'Required';
     // Legacy driver service check
@@ -301,8 +330,12 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           date: bookingDate,
           bookingTime: bookingTime ? bookingTime.toTimeString().substring(0, 5) : '',
           time: bookingTime,
-          startTime: bookingTime,
-          endTime: isDriverService ? endTime : undefined,
+          startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime 
+            ? bookingTime.toTimeString().substring(0, 5) 
+            : bookingTime,
+          endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime 
+            ? endTime.toTimeString().substring(0, 5) 
+            : undefined,
           notes: formData.notes,
           basePrice: basePrice, // Fixed: was baseAmount
           gstAmount: gstAmount,
@@ -367,8 +400,12 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       date: bookingDate,
       bookingTime: bookingTime ? bookingTime.toTimeString().substring(0, 5) : '',
       time: bookingTime,
-      startTime: bookingTime,
-      endTime: isDriverService ? endTime : undefined,
+      startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime 
+        ? bookingTime.toTimeString().substring(0, 5) 
+        : bookingTime,
+      endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime 
+        ? endTime.toTimeString().substring(0, 5) 
+        : undefined,
 
       paymentMethod: method,
       notes: formData.notes,
@@ -945,6 +982,16 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.summaryLabel}>Service Rate</Text>
                 <Text style={styles.summaryValue}>₹{basePrice.toFixed(2)}</Text>
               </View>
+              {isHourlyService && bookingTime && endTime && (
+                <View style={[styles.summaryRow, { marginTop: 4 }]}>
+                  <Text style={[styles.summaryLabel, { fontSize: 12, color: '#64748B' }]}>
+                    {hourlyPricing.duration.toFixed(1)}h × ₹{getProviderPrice()}/hr
+                  </Text>
+                  <Text style={[styles.summaryValue, { fontSize: 12, color: '#64748B' }]}>
+                    ({bookingTime.toTimeString().substring(0, 5)} - {endTime.toTimeString().substring(0, 5)})
+                  </Text>
+                </View>
+              )}
               {serviceGstRate > 0 && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>GST ({(serviceGstRate * 100).toFixed(0)}%)</Text>

@@ -129,7 +129,7 @@ export const WalletScreen = ({ navigation }: any) => {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawalConfig, setWithdrawalConfig] = useState({
     commissionRate: 15,
-    minAmount: 100,
+    minAmount: 1,
     maxAmount: 100000,
     processingDays: 3,
     hasBankDetails: false,
@@ -155,9 +155,14 @@ export const WalletScreen = ({ navigation }: any) => {
         try {
           const withdrawInfo = await apiService.getWithdrawalInfo();
           if (withdrawInfo.success && withdrawInfo.data) {
+            const minAmount = withdrawInfo.data.withdrawalConfig?.minAmount;
+            console.log('🔍 Withdrawal config from API:', withdrawInfo.data.withdrawalConfig);
+            console.log('🔍 minAmount received:', minAmount);
+            const finalMinAmount = minAmount === 100 ? 1 : (minAmount || 1);
+            console.log('✅ minAmount after override:', finalMinAmount);
             setWithdrawalConfig({
               commissionRate: withdrawInfo.data.withdrawalConfig?.commissionRate || 15,
-              minAmount: withdrawInfo.data.withdrawalConfig?.minAmount || 100,
+              minAmount: finalMinAmount,
               maxAmount: withdrawInfo.data.withdrawalConfig?.maxAmount || 100000,
               processingDays: withdrawInfo.data.withdrawalConfig?.processingDays || 3,
               hasBankDetails: withdrawInfo.data.hasBankDetails || false,
@@ -229,7 +234,7 @@ export const WalletScreen = ({ navigation }: any) => {
     }
 
     if (!withdrawalConfig.hasBankDetails) {
-      showError('Please add your bank account details first');
+      navigation.navigate('BankDetails' as never);
       return;
     }
 
@@ -545,7 +550,7 @@ export const WalletScreen = ({ navigation }: any) => {
               ) : (
                 <TouchableOpacity
                   style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
-                  onPress={() => showError('Please update your bank details in profile settings')}
+                  onPress={() => navigation.navigate('BankDetails' as never)}
                 >
                   <Ionicons name="warning-outline" size={20} color="#DC2626" />
                   <View style={{ flex: 1, marginLeft: 10 }}>
@@ -561,7 +566,7 @@ export const WalletScreen = ({ navigation }: any) => {
                 style={[styles.withdrawButton, { opacity: balance >= withdrawalConfig.minAmount && withdrawalConfig.hasBankDetails ? 1 : 0.5 }]}
                 onPress={() => {
                   if (!withdrawalConfig.hasBankDetails) {
-                    showError('Please add bank account details first');
+                    navigation.navigate('BankDetails' as never);
                     return;
                   }
                   if (balance < withdrawalConfig.minAmount) {

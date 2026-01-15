@@ -923,6 +923,40 @@ class ApiService {
     return response.data;
   }
 
+  /**
+   * GET /api/provider/bank-details
+   * Get provider's bank details
+   */
+  async getBankDetails(): Promise<ApiResponse<{
+    hasBankDetails: boolean;
+    accountNumber: string | null;
+    ifscCode: string | null;
+    bankName: string | null;
+    verified: boolean;
+    verifiedAt: string | null;
+  }>> {
+    const response = await this.client.get('/provider/bank-details');
+    return response.data;
+  }
+
+  /**
+   * POST /api/provider/bank-details
+   * Update provider's bank details
+   */
+  async updateBankDetails(data: {
+    accountNumber: string;
+    ifscCode: string;
+    bankName?: string;
+  }): Promise<ApiResponse<{
+    accountNumber: string;
+    ifscCode: string;
+    bankName: string;
+    verified: boolean;
+  }>> {
+    const response = await this.client.post('/provider/bank-details', data);
+    return response.data;
+  }
+
   // ====================================================================
   // UPLOAD ENDPOINTS
   // ====================================================================
@@ -951,7 +985,6 @@ class ApiService {
         meta: response.data.meta
       };
     } catch (error: any) {
-      console.log('Notification fetch failed:', error?.message || '');
       return {
         success: false,
         message: 'Failed to load notifications',

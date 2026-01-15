@@ -158,6 +158,8 @@ export interface Service {
   hasOvertimeCharges?: boolean; // Whether service requires start & end time input (default: false)
   gstRate?: number; // GST rate (0 to 1, e.g., 0.18 for 18%) (default: 0.18)
   platformCommission?: number; // Platform commission rate (e.g., 0.10 for 10%) (default: 0.10)
+  pricingModel?: 'hourly' | 'fixed'; // Pricing model: hourly for time-based services, fixed for one-time services
+  gstPercentage?: number; // GST percentage (0 to 100, e.g., 18 for 18%)
 }
 
 export interface Homeowner {

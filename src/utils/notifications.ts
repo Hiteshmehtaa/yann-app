@@ -39,7 +39,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
         }
 
         if (finalStatus !== 'granted') {
-            console.log('❌ Failed to get push notification permissions');
             return;
         }
 
@@ -57,7 +56,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
             console.error('❌ Error getting push token:', error);
         }
     } else {
-        console.log('⚠️ Must use physical device for Push Notifications');
+        // Not a physical device
     }
 
     return token;
@@ -75,13 +74,11 @@ export function setupNotificationListeners(
 ) {
     // Handle notification received while app is in foreground
     const receivedSubscription = Notifications.addNotificationReceivedListener(notification => {
-        console.log('📬 Notification received:', notification);
         onNotificationReceived?.(notification);
     });
 
     // Handle notification tapped
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
-        console.log('👆 Notification tapped:', response);
         onNotificationTapped?.(response);
     });
 

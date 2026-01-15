@@ -233,6 +233,12 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
       onPress: handleVerification,
     },
     {
+      icon: 'card-outline',
+      title: 'Bank Details',
+      subtitle: 'Manage your bank account for withdrawals',
+      onPress: () => navigation.navigate('BankDetails'),
+    },
+    {
       icon: 'settings-outline',
       title: 'Settings',
       subtitle: 'Notifications, Password, etc.',

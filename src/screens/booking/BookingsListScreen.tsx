@@ -27,6 +27,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { TabBar } from '../../components/ui/TabBar';
 import { CountdownTimer } from '../../components/ui/CountdownTimer';
 import { RatingModal } from '../../components/RatingModal';
+import { CompletionPaymentModal } from '../../components/CompletionPaymentModal';
 import { Alert } from 'react-native';
 import { storage } from '../../utils/storage';
 
@@ -39,6 +40,7 @@ const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
   completed: ['#667eea', '#764ba2'],
   pending: ['#F59E0B', '#D97706'],
   cancelled: ['#EF4444', '#DC2626'],
+  rejected: ['#EF4444', '#DC2626'],
 };
 
 type Props = {
@@ -49,6 +51,7 @@ const TABS = [
   { key: 'ongoing', label: 'Ongoing' },
   { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
+  { key: 'rejected', label: 'Rejected' },
 ];
 
 export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
@@ -60,6 +63,8 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('ongoing');
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedBookingForRating, setSelectedBookingForRating] = useState<Booking | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<Booking | null>(null);
 
   const handleRateBooking = (booking: Booking) => {
     setSelectedBookingForRating(booking);
@@ -158,6 +163,22 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
       fetchBookings();
     }, [])
   );
+
+  // Auto-show payment modal for newly completed bookings needing payment
+  React.useEffect(() => {
+    const completedBookingNeedingPayment = bookings.find(
+      booking =>
+        booking.status === 'completed' &&
+        (booking.paymentMethod as string) === 'wallet' &&
+        (booking as any).walletPaymentStage === 'initial_25_released' &&
+        !showPaymentModal
+    );
+
+    if (completedBookingNeedingPayment && !selectedBookingForPayment) {
+      setSelectedBookingForPayment(completedBookingNeedingPayment);
+      setShowPaymentModal(true);
+    }
+  }, [bookings]);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -300,6 +321,13 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.rateButtonText}>Rate Experience</Text>
             </LinearGradient>
           </TouchableOpacity>
+        ) : activeTab === 'rejected' ? (
+          <View style={[styles.countdownFooter, { backgroundColor: '#FEF2F2' }]}>
+            <Ionicons name="information-circle" size={14} color="#DC2626" />
+            <Text style={[styles.countdownLabel, { color: '#DC2626' }]}>
+              {item.paymentMethod === 'wallet' ? 'Wallet refunded' : 'Booking cancelled'}
+            </Text>
+          </View>
         ) : null}
       </TouchableOpacity>
     );
@@ -318,6 +346,10 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
       cancelled: {
         title: 'No cancelled bookings',
         subtitle: 'Cancelled bookings will appear here',
+      },
+      rejected: {
+        title: 'No rejected bookings',
+        subtitle: 'Bookings declined by partners will appear here',
       },
     };
 
@@ -357,14 +389,9 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     );
   }
 
-  // Filter bookings based on active tab (exclude rejected bookings)
+  // Filter bookings based on active tab
   const filteredBookings = bookings.filter((booking) => {
     const status = booking.status.toLowerCase();
-
-    // Never show rejected bookings to members
-    if (status === 'rejected') {
-      return false;
-    }
 
     if (activeTab === 'ongoing') {
       return status === 'pending' || status === 'accepted' || status === 'confirmed' || status === 'active' || status === 'in_progress';
@@ -372,6 +399,8 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
       return status === 'completed';
     } else if (activeTab === 'cancelled') {
       return status === 'cancelled';
+    } else if (activeTab === 'rejected') {
+      return status === 'rejected';
     }
     return true;
   });
@@ -436,6 +465,31 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         providerName={(selectedBookingForRating as any)?.providerName || 'Provider'}
         serviceName={selectedBookingForRating?.serviceName || 'Service'}
       />
+
+      {/* Completion Payment Modal */}
+      {selectedBookingForPayment && (
+        <CompletionPaymentModal
+          visible={showPaymentModal}
+          bookingId={selectedBookingForPayment._id}
+          serviceName={selectedBookingForPayment.serviceName}
+          completionAmount={(selectedBookingForPayment as any).escrowDetails?.completionAmount || selectedBookingForPayment.totalPrice * 0.75}
+          totalAmount={selectedBookingForPayment.totalPrice}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedBookingForPayment(null);
+          }}
+          onPaymentSuccess={() => {
+            // Update local state
+            setBookings(prev => prev.map(b =>
+              b._id === selectedBookingForPayment._id
+                ? { ...b, walletPaymentStage: 'completed', paymentStatus: 'paid' } as any
+                : b
+            ));
+            // Refresh list to get latest data
+            fetchBookings(false);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
