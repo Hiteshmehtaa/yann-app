@@ -2,18 +2,24 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 // API Configuration
-// TEMPORARILY DISABLED: Local backend detection
-// Using production backend only
-// const LOCAL_API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000/api' : 'http://192.168.1.12:3000/api';
+// Enable local backend for debugging
+const USE_LOCAL_BACKEND = false; // Set to false to use production
+const LOCAL_API_URL = 'http://192.168.1.12:3000`/api'; // Works for both simulator and real device
 const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
 
-// Dynamic API URL - DISABLED, using production only
+// Dynamic API URL
 let cachedApiUrl: string | null = null;
 let lastCheckTime = 0;
 const CHECK_INTERVAL = 30000; // Re-check every 30 seconds
 
 async function detectActiveBackend(): Promise<string> {
-  // FORCE PRODUCTION ONLY
+  if (USE_LOCAL_BACKEND) {
+    console.log('🔧 Using LOCAL backend for debugging:', LOCAL_API_URL);
+    cachedApiUrl = LOCAL_API_URL;
+    return LOCAL_API_URL;
+  }
+  
+  // Use production
   console.log('🌐 Using production backend:', PRODUCTION_API_URL);
   cachedApiUrl = PRODUCTION_API_URL;
   return PRODUCTION_API_URL;
@@ -22,8 +28,8 @@ async function detectActiveBackend(): Promise<string> {
 // Export as a promise that resolves to the active backend URL
 export const getApiBaseUrl = detectActiveBackend;
 
-// For immediate synchronous access (defaults to production, will be updated after first check)
-export const API_BASE_URL = cachedApiUrl || PRODUCTION_API_URL;
+// For immediate synchronous access
+export const API_BASE_URL = cachedApiUrl || (USE_LOCAL_BACKEND ? LOCAL_API_URL : PRODUCTION_API_URL);
 
 // ============================================================================
 // SERVICE CONFIGURATION - Based on Services charges.xlsx
