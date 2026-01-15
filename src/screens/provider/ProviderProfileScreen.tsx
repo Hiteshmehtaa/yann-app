@@ -227,6 +227,12 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
       onPress: () => navigation.navigate('ProviderEditProfile'),
     },
     {
+      icon: 'briefcase-outline',
+      title: 'Manage Services',
+      subtitle: 'Add, update rates & remove services',
+      onPress: () => navigation.navigate('ProviderServices'),
+    },
+    {
       icon: 'shield-checkmark-outline',
       title: 'Verify Identity',
       subtitle: user?.isVerified ? 'Verified Partner' : 'Complete KYC Verification',
