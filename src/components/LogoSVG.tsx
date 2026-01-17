@@ -12,7 +12,7 @@ export const LogoSVG: React.FC<LogoSVGProps> = ({
   color = COLORS.primary
 }) => {
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100">
+    <Svg width={size} height={size} viewBox="0 0 120 120">
       <Defs>
         <LinearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <Stop offset="0%" stopColor={COLORS.primary} stopOpacity="1" />

@@ -4,7 +4,21 @@ import { Platform } from 'react-native';
 // API Configuration
 // Enable local backend for debugging
 const USE_LOCAL_BACKEND = false; // Set to false to use production
-const LOCAL_API_URL = 'http://192.168.1.12:3000`/api'; // Works for both simulator and real device
+// For physical devices, use your computer's local IP address
+// For emulators/simulators, use special localhost addresses
+const getLocalhost = () => {
+  const isDevice = Constants.isDevice; // true for physical device, false for simulator/emulator
+  
+  if (isDevice) {
+    return '192.168.31.230'; // Your computer's local IP - for physical devices on same WiFi
+  }
+  
+  if (Platform.OS === 'android') {
+    return '10.0.2.2'; // Android emulator
+  }
+  return 'localhost'; // iOS simulator
+};
+const LOCAL_API_URL = `http://${getLocalhost()}:3000/api`;
 const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
 
 // Dynamic API URL
