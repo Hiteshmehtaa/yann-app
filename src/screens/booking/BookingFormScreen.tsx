@@ -310,7 +310,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             {
               text: 'Top Up',
               style: 'default',
-              onPress: () => navigation.navigate('MainTabs', { screen: 'Wallet' })
+              onPress: () => navigation.navigate('Wallet')
             }
           ]
         );
