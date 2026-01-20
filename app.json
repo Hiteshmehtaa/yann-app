@@ -16,10 +16,24 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
+      "buildNumber": "5",
       "associatedDomains": [
         "applinks:yann.app",
+        "applinks:www.yann.app",
+        "applinks:yann.app",
         "applinks:www.yann.app"
-      ]
+      ],
+      "config": {
+        "googleMapsApiKey": "AIzaSyDuWW76Kch_KG5n9vxNwSq3GfJCSSZuBOg"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow Yann to use your location for accurate service delivery.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Yann to use your location for accurate service delivery.",
+        "NSCameraUsageDescription": "Allow Yann to access your camera to take a profile picture.",
+        "NSPhotoLibraryUsageDescription": "Allow Yann to access your photos to upload a profile picture.",
+        "NSPhotoLibraryAddUsageDescription": "Allow Yann to save photos to your library.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.yanncare.mobile",
@@ -32,10 +46,11 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "INTERNET",
-        "ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ],
       "config": {
         "googleMaps": {

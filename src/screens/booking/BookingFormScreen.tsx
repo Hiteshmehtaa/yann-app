@@ -204,29 +204,29 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   // Determine pricing model
   const pricingModel = service.pricingModel || 'fixed';
   const isHourlyService = pricingModel === 'hourly';
-  
+
   // Calculate hourly pricing if applicable
   const calculateHourlyPrice = (): { baseCost: number; duration: number } => {
     if (!isHourlyService || !bookingTime || !endTime) {
       return { baseCost: 0, duration: 0 };
     }
-    
+
     const startMinutes = bookingTime.getHours() * 60 + bookingTime.getMinutes();
     const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
     const durationMinutes = endMinutes > startMinutes ? endMinutes - startMinutes : 0;
     const duration = durationMinutes / 60;
-    
+
     const hourlyRate = getProviderPrice();
     const baseCost = duration * hourlyRate;
-    
+
     return { baseCost, duration };
   };
 
   const hourlyPricing = isHourlyService ? calculateHourlyPrice() : { baseCost: 0, duration: 0 };
-  
+
   // Base price calculation
-  const basePrice = isHourlyService && bookingTime && endTime 
-    ? hourlyPricing.baseCost 
+  const basePrice = isHourlyService && bookingTime && endTime
+    ? hourlyPricing.baseCost
     : getProviderPrice();
 
   // Use service-specific GST rate (support both percentage and decimal formats)
@@ -302,7 +302,18 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       // Validate wallet balance for initial 25%
       if (hasInsufficientBalance) {
         setIsLoading(false);
-        showError(`Insufficient balance. You need ₹${initialPayment.toFixed(2)} to book.`);
+        Alert.alert(
+          'Insufficient Balance',
+          `You need ₹${initialPayment.toFixed(2)} to book this service. Would you like to top up your wallet?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Top Up',
+              style: 'default',
+              onPress: () => navigation.navigate('MainTabs', { screen: 'Wallet' })
+            }
+          ]
+        );
         return;
       }
 
@@ -330,11 +341,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           date: bookingDate,
           bookingTime: bookingTime ? bookingTime.toTimeString().substring(0, 5) : '',
           time: bookingTime,
-          startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime 
-            ? bookingTime.toTimeString().substring(0, 5) 
+          startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime
+            ? bookingTime.toTimeString().substring(0, 5)
             : bookingTime,
-          endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime 
-            ? endTime.toTimeString().substring(0, 5) 
+          endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime
+            ? endTime.toTimeString().substring(0, 5)
             : undefined,
           notes: formData.notes,
           basePrice: basePrice, // Fixed: was baseAmount
@@ -400,11 +411,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       date: bookingDate,
       bookingTime: bookingTime ? bookingTime.toTimeString().substring(0, 5) : '',
       time: bookingTime,
-      startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime 
-        ? bookingTime.toTimeString().substring(0, 5) 
+      startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime
+        ? bookingTime.toTimeString().substring(0, 5)
         : bookingTime,
-      endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime 
-        ? endTime.toTimeString().substring(0, 5) 
+      endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime
+        ? endTime.toTimeString().substring(0, 5)
         : undefined,
 
       paymentMethod: method,
