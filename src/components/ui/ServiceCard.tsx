@@ -31,7 +31,7 @@ const GRADIENT_PRESETS: Record<string, readonly [string, string]> = {
   spiritual: ['#f7971e', '#ffd200'],
 };
 
-export const ServiceCard: React.FC<ServiceCardProps> = ({
+export const ServiceCard = React.memo<ServiceCardProps>(({
   title,
   price,
   icon,
@@ -192,7 +192,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       </Animated.View>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

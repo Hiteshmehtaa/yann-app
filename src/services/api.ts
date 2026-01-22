@@ -993,6 +993,15 @@ class ApiService {
     }
   }
 
+  /**
+   * POST /api/call-requests
+   * Create a call request for support
+   */
+  async createCallRequest(phoneNumber: string): Promise<ApiResponse> {
+    const response = await this.client.post('/call-requests', { phoneNumber });
+    return response.data;
+  }
+
   // ====================================================================
   // UPLOAD ENDPOINTS
   // ====================================================================
@@ -1466,6 +1475,24 @@ class ApiService {
   async removeFromFavorites(providerId: string): Promise<ApiResponse<ServiceProvider[]>> {
     const response = await this.client.delete(`/favorites/${providerId}`);
     return response.data;
+  }
+
+  /**
+   * PATCH /api/provider/profile
+   * Update provider availability (Online=active, Offline=inactive)
+   * Backend now properly accepts and persists the status field
+   */
+  async updateProviderAvailability(isAvailable: boolean, providerId?: string): Promise<ApiResponse> {
+    const status = isAvailable ? 'active' : 'inactive';
+
+    try {
+      const response = await this.client.patch('/provider/profile', { status });
+      console.log(`✅ Provider status updated to: ${status}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to update provider status:', error);
+      throw error;
+    }
   }
 }
 

@@ -205,9 +205,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const pricingModel = service.pricingModel || 'fixed';
   const isHourlyService = pricingModel === 'hourly';
 
+  // Check if service has overtime charges
+  const hasOvertimeCharges = service.hasOvertimeCharges ?? false;
+
   // Calculate hourly pricing if applicable
   const calculateHourlyPrice = (): { baseCost: number; duration: number } => {
-    if (!isHourlyService || !bookingTime || !endTime) {
+    // Work for both hourly services AND services with overtime charges
+    if ((!isHourlyService && !hasOvertimeCharges) || !bookingTime || !endTime) {
       return { baseCost: 0, duration: 0 };
     }
 
@@ -222,10 +226,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     return { baseCost, duration };
   };
 
-  const hourlyPricing = isHourlyService ? calculateHourlyPrice() : { baseCost: 0, duration: 0 };
+  const hourlyPricing = (isHourlyService || hasOvertimeCharges) ? calculateHourlyPrice() : { baseCost: 0, duration: 0 };
 
   // Base price calculation
-  const basePrice = isHourlyService && bookingTime && endTime
+  // For hourly services OR services with overtime charges, calculate based on duration
+  const basePrice = (isHourlyService || hasOvertimeCharges) && bookingTime && endTime
     ? hourlyPricing.baseCost
     : getProviderPrice();
 
@@ -234,9 +239,6 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const serviceGstRate = serviceGstPercentage / 100;
   const gstAmount = basePrice * serviceGstRate;
   const totalPrice = basePrice + gstAmount;
-
-  // Check if service has overtime charges
-  const hasOvertimeCharges = service.hasOvertimeCharges ?? false;
 
   // Calculate booked duration for overtime services
   const calculateBookedHours = (): number => {
@@ -357,6 +359,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         const response = await apiService.createBookingWithWallet(payload);
 
         if (response.success) {
+          // Success haptic feedback
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setIsLoading(false);
           setShowSuccess(true);
         } else {
@@ -993,10 +997,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.summaryLabel}>Service Rate</Text>
                 <Text style={styles.summaryValue}>₹{basePrice.toFixed(2)}</Text>
               </View>
-              {isHourlyService && bookingTime && endTime && (
+              {(isHourlyService || hasOvertimeCharges) && bookingTime && endTime && (
                 <View style={[styles.summaryRow, { marginTop: 4 }]}>
                   <Text style={[styles.summaryLabel, { fontSize: 12, color: '#64748B' }]}>
-                    {hourlyPricing.duration.toFixed(1)}h × ₹{getProviderPrice()}/hr
+                    {(hourlyPricing.duration || calculateHourlyPrice().duration).toFixed(1)}h × ₹{getProviderPrice()}/hr
                   </Text>
                   <Text style={[styles.summaryValue, { fontSize: 12, color: '#64748B' }]}>
                     ({bookingTime.toTimeString().substring(0, 5)} - {endTime.toTimeString().substring(0, 5)})

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ComingSoonModal } from '../../components/ComingSoonModal';
+import { LogoutConfirmModal } from '../../components/LogoutConfirmModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,6 +48,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { colors, toggleTheme, isDark } = useTheme();
   const { isTablet } = useResponsive();
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
@@ -155,6 +157,11 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   }, [fetchUserStats]);
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutConfirm(false);
     logout().catch((error) => console.error('Logout error:', error));
   };
 
@@ -437,6 +444,12 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         title="Coming Soon!"
         message="This feature is under development and will be available soon. Stay tuned!"
         onClose={() => setShowComingSoon(false)}
+      />
+
+      <LogoutConfirmModal
+        visible={showLogoutConfirm}
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
       />
     </SafeAreaView>
   );

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { SearchBar } from '../ui/SearchBar';
 import { COLORS, SHADOWS, RADIUS } from '../../utils/theme';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -24,6 +25,12 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
     onSelectCategory,
 }) => {
     const { colors, isDark } = useTheme();
+
+    const handleCategorySelect = (category: string) => {
+        // Haptic feedback for category selection
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onSelectCategory(category);
+    };
 
     return (
         <View style={styles.container}>
@@ -58,7 +65,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                 {categories.map((cat) => (
                     <TouchableOpacity
                         key={cat}
-                        onPress={() => onSelectCategory(cat)}
+                        onPress={() => handleCategorySelect(cat)}
                         style={[
                             styles.categoryPill,
                             selectedCategory === cat

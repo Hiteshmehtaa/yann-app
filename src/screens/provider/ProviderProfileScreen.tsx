@@ -14,6 +14,7 @@ import {
   Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LogoutConfirmModal } from '../../components/LogoutConfirmModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -56,6 +57,7 @@ type MenuItemType = {
 export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout, updateUser } = useAuth();
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -115,6 +117,11 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   }, [fetchProfile]);
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutConfirm(false);
     logout().catch((error) => console.error('Logout error:', error));
   };
 
@@ -373,6 +380,12 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
         </Animated.View>
       </ScrollView>
+
+      <LogoutConfirmModal
+        visible={showLogoutConfirm}
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </SafeAreaView>
   );
 };

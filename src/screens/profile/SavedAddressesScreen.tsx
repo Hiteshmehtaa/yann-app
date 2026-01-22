@@ -17,6 +17,7 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import { MapLocationPickerModal } from '../../components/ui/MapLocationPickerModal';
 import { apiService } from '../../services/api';
+import { useToast } from '../../hooks/useToast';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Address } from '../../types';
@@ -32,6 +33,7 @@ type Props = {
 export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => {
   const { fromBooking } = route.params || {};
   const { user, updateUser } = useAuth();
+  const { showSuccess, showError } = useToast();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +74,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
     try {
       // Fetch addresses from database API
       const response = await apiService.getSavedAddresses();
-      
+
       if (response.success && response.data) {
         const fetchedAddresses = response.data.map((addr: any, index: number) => ({
           id: addr._id || addr.id || `addr-${index}`,
@@ -92,7 +94,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
           isPrimary: addr.isPrimary || index === 0,
         }));
         setAddresses(fetchedAddresses);
-        
+
         // Also update local user context for offline access
         updateUser({ addressBook: fetchedAddresses });
       } else {
@@ -128,9 +130,9 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
     }
   };
 
-  const handleLocationSelect = (location: { 
-    latitude: number; 
-    longitude: number; 
+  const handleLocationSelect = (location: {
+    latitude: number;
+    longitude: number;
     address: string;
     fullAddress: string;
     city: string;
@@ -190,15 +192,15 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
     try {
       // Save to backend database
       const response = await apiService.addAddress(addressPayload);
-      
+
       if (response.success && response.data) {
         const savedAddress = response.data;
         const updatedAddresses = [...addresses, savedAddress];
         setAddresses(updatedAddresses);
-        
+
         // Also update local user context
         updateUser({ addressBook: updatedAddresses });
-        
+
         setNewAddress({
           label: 'Home' as AddressLabel,
           name: '',
@@ -212,7 +214,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
         });
         setSelectedCoordinates(null);
         setShowAddForm(false);
-        Alert.alert('Success', 'Address saved to database successfully');
+        showSuccess('Address saved successfully!');
       } else {
         Alert.alert('Error', response.message || 'Failed to save address');
       }
@@ -232,7 +234,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
           const updatedAddresses = addresses.filter(addr => addr.id !== id && addr._id !== id);
           setAddresses(updatedAddresses);
           updateUser({ addressBook: updatedAddresses });
-          Alert.alert('Success', 'Address deleted successfully');
+          showSuccess('Address deleted successfully!');
         } else {
           Alert.alert('Error', response.message || 'Failed to delete address');
         }
@@ -263,7 +265,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
       isPrimary: addr.id === id,
     }));
     setAddresses(updatedAddresses);
-    
+
     // Persist to user context
     updateUser({ addressBook: updatedAddresses });
   };
@@ -291,7 +293,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
@@ -308,7 +310,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
           {showAddForm && (
             <View style={styles.addForm}>
               <Text style={styles.formTitle}>Add New Address</Text>
-              
+
               {/* Contact Details Section */}
               <Text style={styles.sectionLabel}>Contact Details</Text>
               <TextInput
@@ -327,7 +329,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                 keyboardType="phone-pad"
                 maxLength={10}
               />
-              
+
               {/* Address Label */}
               <Text style={styles.sectionLabel}>Address Type</Text>
               <View style={styles.labelSelector}>
@@ -349,10 +351,10 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                   </TouchableOpacity>
                 ))}
               </View>
-              
+
               {/* Location Section */}
               <Text style={styles.sectionLabel}>Location</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.mapPickerButton}
                 onPress={() => setShowMapPicker(true)}
               >
@@ -369,7 +371,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                   </Text>
                 </View>
               )}
-              
+
               {/* Address Details Section */}
               <Text style={styles.sectionLabel}>Address Details</Text>
               <TextInput
@@ -418,10 +420,10 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                 keyboardType="number-pad"
                 maxLength={6}
               />
-              
+
               <View style={styles.formActions}>
-                <TouchableOpacity 
-                  style={styles.cancelButton} 
+                <TouchableOpacity
+                  style={styles.cancelButton}
                   onPress={() => {
                     setShowAddForm(false);
                     setSelectedCoordinates(null);
@@ -429,8 +431,8 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.saveFormButton} 
+                <TouchableOpacity
+                  style={styles.saveFormButton}
                   onPress={handleAddAddress}
                 >
                   <Text style={styles.saveFormButtonText}>Save Address</Text>
@@ -452,75 +454,75 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
                 }
 
                 return (
-                <TouchableOpacity
-                  key={addr.id}
-                  style={[
-                    styles.addressCard,
-                    index === addresses.length - 1 && styles.addressCardLast
-                  ]}
-                  onPress={() => {
-                    if (fromBooking) {
-                      // Set params on the previous screen before going back
-                      const routes = navigation.getState().routes;
-                      const currentIndex = navigation.getState().index;
-                      
-                      if (currentIndex > 0) {
-                        const previousRoute = routes[currentIndex - 1];
+                  <TouchableOpacity
+                    key={addr.id}
+                    style={[
+                      styles.addressCard,
+                      index === addresses.length - 1 && styles.addressCardLast
+                    ]}
+                    onPress={() => {
+                      if (fromBooking) {
                         // Set params on the previous screen before going back
-                        navigation.navigate({
-                          name: previousRoute.name,
-                          params: { 
-                            ...previousRoute.params,
-                            selectedAddress: addr 
-                          },
-                          merge: true,
-                        } as any);
-                      } else {
-                        // Fallback: just go back with the address
-                        navigation.goBack();
+                        const routes = navigation.getState().routes;
+                        const currentIndex = navigation.getState().index;
+
+                        if (currentIndex > 0) {
+                          const previousRoute = routes[currentIndex - 1];
+                          // Set params on the previous screen before going back
+                          navigation.navigate({
+                            name: previousRoute.name,
+                            params: {
+                              ...previousRoute.params,
+                              selectedAddress: addr
+                            },
+                            merge: true,
+                          } as any);
+                        } else {
+                          // Fallback: just go back with the address
+                          navigation.goBack();
+                        }
                       }
-                    }
-                  }}
-                  disabled={!fromBooking}
-                  activeOpacity={fromBooking ? 0.7 : 1}
-                >
-                  <View style={styles.addressMain}>
-                    <View style={styles.addressHeader}>
-                      <View style={styles.labelContainer}>
-                        <Ionicons 
-                          name={iconName}
-                          size={18} 
-                          color={COLORS.primary} 
-                        />
-                        <Text style={styles.addressLabel}>{addr.label}</Text>
-                        {addr.isPrimary && (
-                          <View style={styles.defaultBadge}>
-                            <Text style={styles.defaultText}>PRIMARY</Text>
-                          </View>
-                        )}
+                    }}
+                    disabled={!fromBooking}
+                    activeOpacity={fromBooking ? 0.7 : 1}
+                  >
+                    <View style={styles.addressMain}>
+                      <View style={styles.addressHeader}>
+                        <View style={styles.labelContainer}>
+                          <Ionicons
+                            name={iconName}
+                            size={18}
+                            color={COLORS.primary}
+                          />
+                          <Text style={styles.addressLabel}>{addr.label}</Text>
+                          {addr.isPrimary && (
+                            <View style={styles.defaultBadge}>
+                              <Text style={styles.defaultText}>PRIMARY</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
+                      <Text style={styles.addressName}>{addr.name}</Text>
+                      <Text style={styles.addressPhone}>📞 {addr.phone}</Text>
+                      <Text style={styles.addressText}>{addr.fullAddress}</Text>
                     </View>
-                    <Text style={styles.addressName}>{addr.name}</Text>
-                    <Text style={styles.addressPhone}>📞 {addr.phone}</Text>
-                    <Text style={styles.addressText}>{addr.fullAddress}</Text>
-                  </View>
-                  <View style={styles.addressActions}>
-                    {!addr.isPrimary && (
-                      <TouchableOpacity 
-                        style={styles.actionButton}
-                        onPress={() => handleSetDefault(addr.id || '')}
+                    <View style={styles.addressActions}>
+                      {!addr.isPrimary && (
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => handleSetDefault(addr.id || '')}
+                        >
+                          <Text style={styles.setDefaultText}>Set Primary</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteAddress(addr.id || addr._id || '')}
                       >
-                        <Text style={styles.setDefaultText}>Set Primary</Text>
+                        <Ionicons name="trash-outline" size={18} color={COLORS.error} />
                       </TouchableOpacity>
-                    )}
-                    <TouchableOpacity 
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteAddress(addr.id || addr._id || '')}
-                    >
-                      <Ionicons name="trash-outline" size={18} color={COLORS.error} />
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -529,7 +531,7 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
               <Ionicons name="location-outline" size={48} color={COLORS.textTertiary} />
               <Text style={styles.emptyTitle}>No addresses saved</Text>
               <Text style={styles.emptySubtitle}>Add an address to make booking easier</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.addFirstButton}
                 onPress={() => setShowAddForm(true)}
               >

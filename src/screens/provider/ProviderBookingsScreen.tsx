@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
   StatusBar,
   Modal,
   Image,
+  Animated,
+  Dimensions,
+  Switch, // Added
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,43 +23,17 @@ import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
-import { EmptyState } from '../../components/EmptyState';
+import { COLORS, SPACING, RADIUS, SHADOWS, GRADIENTS, TYPOGRAPHY } from '../../utils/theme';
 import { OTPInputModal } from '../../components/OTPInputModal';
 import { JobTimer } from '../../components/JobTimer';
-import { OvertimeBreakdown } from '../../components/OvertimeBreakdown';
-import { DepthCard } from '../../components/ui/DepthCard';
-import { Button } from '../../components/ui/Button';
-import { Animated } from 'react-native';
 
-const AnimatedBookingItem = ({ children, index }: { children: React.ReactNode, index: number }) => {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const slideAnim = React.useRef(new Animated.Value(50)).current; // Increased slide distance
+const { width } = Dimensions.get('window');
 
-  React.useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        delay: index * 100, // Slower stagger
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        friction: 7,
-        tension: 40,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-      {children}
-    </Animated.View>
-  );
-};
+// ==============================================
+// 💎 MODERN SLEEK THEME
+// ==============================================
+const BG_COLOR = COLORS.background; // #F6F8FC Cool Gray
+const CARD_BG = COLORS.cardBg; // #FFFFFF
 
 interface ProviderBooking {
   id: string;
@@ -74,26 +51,52 @@ interface ProviderBooking {
   paymentStatus: 'pending' | 'paid' | 'partial';
   paymentMethod?: string;
   walletPaymentStage?: 'initial_25_held' | 'initial_25_released' | 'completed' | null;
-  escrowDetails?: {
-    initialAmount?: number;
-    completionAmount?: number;
-  };
+  escrowDetails?: { initialAmount?: number; completionAmount?: number };
   notes?: string;
   createdAt: string;
   sortableDate?: number;
   customerAvatar?: string;
-  jobSession?: {
-    startTime: string;
-    expectedDuration: number;
-    status: string;
-  };
+  jobSession?: { startTime: string; expectedDuration: number; status: string };
 }
 
 type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'rejected';
 
+// ==============================================
+// 🎬 ANIMATED ENTRY
+// ==============================================
+const AnimatedEntry = ({ children, index }: { children: React.ReactNode; index: number }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  const slide = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 500,
+        delay: index * 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slide, {
+        toValue: 0,
+        duration: 600,
+        delay: index * 60,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: anim, transform: [{ translateY: slide }] }}>
+      {children}
+    </Animated.View>
+  );
+};
+
 export const ProviderBookingsScreen = () => {
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth(); // Added updateUser
+
+  // State
   const [bookings, setBookings] = useState<ProviderBooking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<ProviderBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,11 +105,9 @@ export const ProviderBookingsScreen = () => {
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  // Navigation Modal State
+  // Modals
   const [navModalVisible, setNavModalVisible] = useState(false);
   const [selectedBookingForNav, setSelectedBookingForNav] = useState<ProviderBooking | null>(null);
-
-  // OTP Modal State
   const [otpModalVisible, setOtpModalVisible] = useState(false);
   const [otpModalTitle, setOtpModalTitle] = useState('');
   const [otpModalSubtitle, setOtpModalSubtitle] = useState('');
@@ -115,1006 +116,600 @@ export const ProviderBookingsScreen = () => {
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
   const [currentJobSessionId, setCurrentJobSessionId] = useState<string | null>(null);
   const [otpAction, setOtpAction] = useState<'start' | 'end' | null>(null);
-
-  // Job Session State
   const [jobSessions, setJobSessions] = useState<{ [bookingId: string]: any }>({});
+
+  // Availability State
+  const [isAvailable, setIsAvailable] = useState(true); // Default online
+  const [isToggling, setIsToggling] = useState(false);
 
   useEffect(() => {
     fetchBookings();
+    // Initialize availability from user status if available
+    if (user?.status) {
+      setIsAvailable(user.status === 'active');
+    }
   }, []);
+  useEffect(() => { filterBookings(); }, [activeFilter, bookings]);
 
-  useEffect(() => {
-    filterBookings();
-  }, [activeFilter, bookings]);
-
+  // Data Fetching
   const fetchBookings = async () => {
     try {
       setError(null);
-      const providerId = user?._id || user?.id;
-      const email = user?.email;
-
-      console.log('🔍 Fetching bookings for provider:', { providerId, email, name: user?.name });
-
-      const response: any = await apiService.getProviderRequests(providerId, email);
-
+      const response: any = await apiService.getProviderRequests(user?._id || user?.id, user?.email);
       if (response.success) {
         const formatDate = (dateStr: string) => {
           if (!dateStr || dateStr === 'N/A') return 'N/A';
-          try {
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            });
-          } catch {
-            return dateStr;
-          }
+          try { return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }); }
+          catch { return dateStr; }
         };
-
-        const getTimestamp = (dateStr: string, timeStr?: string) => {
-          try {
-            const date = new Date(dateStr);
-            return date.getTime();
-          } catch { return 0; }
-        };
-
+        const getTimestamp = (dateStr: string) => { try { return new Date(dateStr).getTime(); } catch { return 0; } };
         const mapBooking = (b: any, statusOverride?: string) => ({
-          id: b._id || b.id,
-          customerName: b.customerName,
-          customerPhone: b.customerPhone,
-          serviceName: b.serviceName,
-          serviceCategory: b.serviceCategory,
+          id: b._id || b.id, customerName: b.customerName, customerPhone: b.customerPhone,
+          serviceName: b.serviceName, serviceCategory: b.serviceCategory,
           scheduledDate: formatDate(b.bookingDate || b.scheduledDate),
           scheduledTime: b.bookingTime || b.scheduledTime || 'N/A',
           address: b.customerAddress || b.address || 'N/A',
-          latitude: b.latitude,
-          longitude: b.longitude,
+          latitude: b.latitude, longitude: b.longitude,
           status: statusOverride || b.status || 'pending',
           amount: b.totalPrice || b.basePrice || b.amount || 0,
-          paymentStatus: b.paymentStatus || 'pending',
-          paymentMethod: b.paymentMethod || 'cash',
-          walletPaymentStage: b.walletPaymentStage || null,
-          escrowDetails: b.escrowDetails || null,
-          notes: b.notes || '',
-          createdAt: b.createdAt || new Date().toISOString(),
+          paymentStatus: b.paymentStatus || 'pending', paymentMethod: b.paymentMethod || 'cash',
+          walletPaymentStage: b.walletPaymentStage || null, escrowDetails: b.escrowDetails || null,
+          notes: b.notes || '', createdAt: b.createdAt || new Date().toISOString(),
           sortableDate: getTimestamp(b.bookingDate || b.scheduledDate),
-          customerAvatar: b.customerAvatar || null,
-          jobSession: b.jobSession || null,
+          customerAvatar: b.customerAvatar || null, jobSession: b.jobSession || null,
         });
 
-        const pendingRequests = (response.pendingRequests || []).map((b: any) => mapBooking(b, 'pending'));
-        const acceptedBookings = (response.acceptedBookings || []).map((b: any) => mapBooking(b));
+        const all = [...(response.pendingRequests || []).map((b: any) => mapBooking(b, 'pending')), ...(response.acceptedBookings || []).map((b: any) => mapBooking(b))];
+        const unique = Array.from(new Map(all.map(b => [b.id, b])).values());
+        setBookings(unique);
 
-        const allBookings = [...pendingRequests, ...acceptedBookings];
-
-        // Deduplicate bookings
-        const uniqueBookings = Array.from(new Map(allBookings.map(b => [b.id, b])).values());
-
-        setBookings(uniqueBookings);
-
-        // Populate job sessions
-        const sessionsMap: { [key: string]: any } = {};
-        acceptedBookings.forEach((b: any) => {
-          if (b.jobSession) {
-            sessionsMap[b.id] = b.jobSession;
-          }
-        });
-
-        if (Object.keys(sessionsMap).length > 0) {
-          setJobSessions(prev => ({ ...prev, ...sessionsMap }));
-        }
-
-        console.log(`✅ Loaded ${allBookings.length} total bookings`);
+        const sessions: any = {};
+        (response.acceptedBookings || []).forEach((b: any) => { if (b.jobSession) sessions[b._id || b.id] = b.jobSession; });
+        if (Object.keys(sessions).length > 0) setJobSessions(prev => ({ ...prev, ...sessions }));
       }
-    } catch (err: any) {
-      console.error('❌ Error fetching provider bookings:', err);
-      setError(err.isNetworkError ? 'No internet connection' : 'Failed to load bookings');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  const getSortedBookings = (list: ProviderBooking[]) => {
-    return list.sort((a, b) => {
-      // Priority 1: In Progress should be at the very top
-      if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
-      if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
-
-      // Priority 2: Accepted (Upcoming) - SOONEST FIRST
-      if (a.status === 'accepted' && b.status === 'accepted') {
-        return (a.sortableDate || 0) - (b.sortableDate || 0); // Ascending
-      }
-
-      // Priority 3: Pending - NEWEST FIRST
-      if (a.status === 'pending' && b.status === 'pending') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Descending
-      }
-
-      // Priority 4: Completed/Cancelled - NEWEST FIRST
-      return (b.sortableDate || 0) - (a.sortableDate || 0);
-    });
+    } catch { setError('Failed to load'); }
+    finally { setIsLoading(false); setIsRefreshing(false); }
   };
 
   const filterBookings = () => {
-    let list = [];
-    if (activeFilter === 'all') {
-      // Exclude rejected/cancelled from 'All' view to keep it clean
-      list = bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled');
-    } else if (activeFilter === 'rejected') {
-      // Show both rejected and cancelled in 'Declined' view
-      list = bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled');
-    } else {
-      list = bookings.filter(b => b.status === activeFilter);
-    }
-    setFilteredBookings(getSortedBookings(list));
+    const list = activeFilter === 'all'
+      ? bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled')
+      : activeFilter === 'rejected'
+        ? bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled')
+        : bookings.filter(b => b.status === activeFilter);
+
+    // Sort
+    const sorted = list.sort((a, b) => {
+      if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
+      if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
+      return (b.sortableDate || 0) - (a.sortableDate || 0);
+    });
+    setFilteredBookings(sorted);
   };
 
-  const onRefresh = () => {
-    setIsRefreshing(true);
-    fetchBookings();
-  };
+  const onRefresh = () => { setIsRefreshing(true); fetchBookings(); };
 
+  // Handlers
+  const handleAcceptBooking = async (id: string) => {
+    setActionLoadingId(id);
+    const userId = user?._id || user?.id || '';
+    try { const r = await apiService.acceptBooking(id, userId, user?.name); if (r.success) fetchBookings(); } catch { Alert.alert('Error', 'Failed to accept'); } finally { setActionLoadingId(null); }
+  };
+  const handleRejectBooking = async (id: string) => {
+    setActionLoadingId(id);
+    const userId = user?._id || user?.id || '';
+    try { const r = await apiService.rejectBooking(id, userId); if (r.success) fetchBookings(); } catch { Alert.alert('Error', 'Failed to reject'); } finally { setActionLoadingId(null); }
+  };
+  const handleStatusChange = async (id: string, status: string) => {
+    const userId = user?._id || user?.id || '';
+    if (status === 'accepted') await handleAcceptBooking(id);
+    else if (status === 'cancelled') await handleRejectBooking(id);
+    else { setActionLoadingId(id); try { const r = await apiService.updateBookingStatus(id, status as any, userId); if (r.success) fetchBookings(); } catch { } finally { setActionLoadingId(null); } }
+  };
   const openLocationNavigation = (booking: ProviderBooking) => {
-    const { latitude, longitude, address } = booking;
-
-    if (!latitude || !longitude) {
-      const addressQuery = encodeURIComponent(address);
-      const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${addressQuery}`;
-      Linking.openURL(googleMapsUrl);
-      return;
-    }
-
-    setSelectedBookingForNav(booking);
-    setNavModalVisible(true);
+    if (!booking.latitude) { Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.address)}`); return; }
+    setSelectedBookingForNav(booking); setNavModalVisible(true);
   };
-
   const handleNavigationAppSelect = async (appName: 'google' | 'uber' | 'ola' | 'rapido') => {
-    if (!selectedBookingForNav || !selectedBookingForNav.latitude || !selectedBookingForNav.longitude) return;
-
+    if (!selectedBookingForNav?.latitude) return;
     const { latitude, longitude } = selectedBookingForNav;
-
     let url = '';
-
     switch (appName) {
-      case 'google':
-        url = Platform.select({
-          ios: `maps://app?daddr=${latitude},${longitude}`,
-          android: `google.navigation:q=${latitude},${longitude}`,
-        }) || '';
-        if (!url) url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
-        break;
-      case 'uber':
-        url = `uber://?action=setPickup&pickup=my_location&dropoff[latitude]=${latitude}&dropoff[longitude]=${longitude}`;
-        break;
-      case 'ola':
-        url = `ola://app/launch?lat=${latitude}&lng=${longitude}`;
-        break;
-      case 'rapido':
-        url = `rapido://destination?lat=${latitude}&lng=${longitude}`;
-        break;
+      case 'google': url = Platform.select({ ios: `maps://app?daddr=${latitude},${longitude}`, android: `google.navigation:q=${latitude},${longitude}` }) || `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`; break;
+      case 'uber': url = `uber://?action=setPickup&pickup=my_location&dropoff[latitude]=${latitude}&dropoff[longitude]=${longitude}`; break;
+      case 'ola': url = `ola://app/launch?lat=${latitude}&lng=${longitude}`; break;
+      case 'rapido': url = `rapido://destination?lat=${latitude}&lng=${longitude}`; break;
     }
-
     setNavModalVisible(false);
-
-    if (!url) return;
-
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        if (appName === 'google') {
-          await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`);
-        } else {
-          Alert.alert('App not installed', `Please install ${appName.charAt(0).toUpperCase() + appName.slice(1)} to use this feature.`);
-        }
-      }
-    } catch (err) {
-      console.error("Error opening URL:", err);
-      Alert.alert('Error', 'Could not open the selected app.');
-    }
+    if (url) Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open app'));
   };
-
-  const handleAcceptBooking = async (bookingId: string) => {
-    setActionLoadingId(bookingId);
+  const handleStartJob = async (id: string) => {
+    const userId = user?._id || user?.id || '';
     try {
-      const response = await apiService.acceptBooking(
-        bookingId,
-        user?._id || user?.id,
-        user?.name
-      );
-      if (response.success) {
-        console.log('✅ Booking accepted');
-        fetchBookings();
-      }
-    } catch (err) {
-      console.error('❌ Error accepting booking:', err);
-      setError('Failed to accept booking');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const handleRejectBooking = async (bookingId: string) => {
-    setActionLoadingId(bookingId);
-    try {
-      const providerId = user?._id || user?.id;
-      if (!providerId) {
-        setError('Provider ID not found');
-        return;
-      }
-      const response = await apiService.rejectBooking(bookingId, providerId);
-      if (response.success) {
-        console.log('✅ Booking rejected');
-        fetchBookings();
-      }
-    } catch (err) {
-      console.error('❌ Error rejecting booking:', err);
-      setError('Failed to reject booking');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const handleStatusChange = async (bookingId: string, newStatus: string) => {
-    if (newStatus === 'accepted') {
-      await handleAcceptBooking(bookingId);
-    } else if (newStatus === 'cancelled') {
-      await handleRejectBooking(bookingId);
-    } else {
-      setActionLoadingId(bookingId);
-      try {
-        const response = await apiService.updateBookingStatus(
-          bookingId,
-          newStatus as 'in_progress' | 'completed' | 'cancelled',
-          user?._id || user?.id
-        );
-        if (response.success) {
-          console.log(`✅ Booking status updated to ${newStatus}`);
-          fetchBookings();
-        }
-      } catch (err) {
-        console.error(`❌ Error updating booking status to ${newStatus}:`, err);
-        setError(`Failed to update booking status`);
-      } finally {
-        setActionLoadingId(null);
-      }
-    }
-  };
-
-  const handleStartJob = async (bookingId: string) => {
-    try {
-      const providerId = user?._id || user?.id;
-      if (!providerId) {
-        setError('Provider ID not found');
-        return;
-      }
-      const response = await apiService.generateStartOTP(bookingId, providerId);
-      if (response.success && response.data) {
-        setCurrentBookingId(bookingId);
-        setCurrentJobSessionId(response.data.jobSessionId);
+      const r = await apiService.generateStartOTP(id, userId);
+      if (r.success && r.data) { // Ensure r.data exists
+        setCurrentBookingId(id);
+        setCurrentJobSessionId(r.data.jobSessionId);
         setOtpAction('start');
-        setOtpModalTitle('Start Job Verification');
-        setOtpModalSubtitle(`Enter the OTP provided by ${response.data.customerName}`);
+        setOtpModalTitle('Start Job');
+        setOtpModalSubtitle('Enter Customer OTP');
         setOtpModalVisible(true);
-        setOtpError(null);
       }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to generate OTP');
-    }
+    } catch (e: any) { Alert.alert('Error', e.message); }
   };
-
-  const handleEndJob = async (bookingId: string) => {
-    try {
-      const providerId = user?._id || user?.id;
-      if (!providerId) {
-        setError('Provider ID not found');
-        return;
-      }
-      const jobSession = jobSessions[bookingId];
-      if (!jobSession || !jobSession._id) {
-        Alert.alert('Error', 'Job session not found. Please start the job first.');
-        return;
-      }
-      const response = await apiService.generateEndOTP(jobSession._id, providerId);
-      if (response.success && response.data) {
-        setCurrentBookingId(bookingId);
-        setCurrentJobSessionId(jobSession._id);
-        setOtpAction('end');
-        setOtpModalTitle('Complete Job Verification');
-        setOtpModalSubtitle('Enter the completion OTP provided by the customer');
-        setOtpModalVisible(true);
-        setOtpError(null);
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to generate OTP');
-    }
+  const handleEndJob = async (id: string) => {
+    const userId = user?._id || user?.id || '';
+    try { const s = jobSessions[id]; if (!s?._id) return; const r = await apiService.generateEndOTP(s._id, userId); if (r.success) { setCurrentBookingId(id); setCurrentJobSessionId(s._id); setOtpAction('end'); setOtpModalTitle('Complete Job'); setOtpModalSubtitle('Enter Completion OTP'); setOtpModalVisible(true); } } catch (e: any) { Alert.alert('Error', e.message); }
   };
-
   const handleOTPSubmit = async (otp: string) => {
-    if (!currentJobSessionId || !currentBookingId || !otpAction) {
-      setOtpError('Invalid session');
-      return;
-    }
+    if (!currentJobSessionId || !otpAction || !currentBookingId) return;
     setOtpLoading(true);
-    setOtpError(null);
     try {
-      const providerId = user?._id || user?.id;
-      if (!providerId) {
-        throw new Error('Provider ID not found');
-      }
+      const userId = user?._id || user?.id || '';
       if (otpAction === 'start') {
-        const response = await apiService.verifyStartOTP(currentJobSessionId, otp, providerId);
-        if (response.success && response.data) {
-          setJobSessions(prev => ({
-            ...prev,
+        const r = await apiService.verifyStartOTP(currentJobSessionId, otp, userId);
+        if (r.success) {
+          setJobSessions(p => ({
+            ...p,
             [currentBookingId]: {
               _id: currentJobSessionId,
-              startTime: response.data?.startTime || new Date().toISOString(),
-              expectedDuration: response.data?.expectedDuration || 480,
-              status: response.data?.status || 'in_progress'
+              startTime: r.data?.startTime,
+              expectedDuration: r.data?.expectedDuration,
+              status: 'in_progress'
             }
           }));
           setOtpModalVisible(false);
           fetchBookings();
-          Alert.alert('Success', 'Job started successfully! Timer is now running.');
+          Alert.alert('Success', 'Job Started');
         }
-      } else if (otpAction === 'end') {
-        const response = await apiService.verifyEndOTP(currentJobSessionId, otp, providerId);
-        if (response.success && response.data) {
-          setJobSessions(prev => {
-            const newSessions = { ...prev };
-            delete newSessions[currentBookingId];
-            return newSessions;
-          });
+      } else {
+        const r = await apiService.verifyEndOTP(currentJobSessionId, otp, userId);
+        if (r.success) {
+          setJobSessions(p => { const n = { ...p }; delete n[currentBookingId]; return n; });
           setOtpModalVisible(false);
           fetchBookings();
-          let message = 'Job completed successfully!';
-          if (response.data.overtimeDuration > 0) {
-            message += `\n\nOvertime: ${Math.floor(response.data.overtimeDuration / 60)}h ${response.data.overtimeDuration % 60}m`;
-            message += `\nOvertime Charge: ₹${response.data.overtimeCharge}`;
-          }
-          Alert.alert('Success', message);
+          const earned = (r.data as any)?.totalAmount || 0;
+          Alert.alert('Job Completed', `Earned: ₹${earned}`);
         }
       }
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Invalid OTP. Please try again.';
-      setOtpError(errorMessage);
+    } catch (e: any) { setOtpError(e.message || 'Invalid OTP'); } finally { setOtpLoading(false); }
+  };
+  const handleCloseOTPModal = () => { setOtpModalVisible(false); setOtpError(null); setCurrentBookingId(null); setCurrentJobSessionId(null); setOtpAction(null); };
+
+  // Availability Handler
+  const toggleAvailability = async () => {
+    if (isToggling) return;
+    setIsToggling(true);
+    const newStatus = !isAvailable;
+
+    // Optimistic update
+    setIsAvailable(newStatus);
+
+    try {
+      const userId = user?._id || user?.id || '';
+      if (!userId) throw new Error('User ID not found');
+
+      const r = await apiService.updateProviderAvailability(newStatus, userId);
+      if (!r.success) {
+        // Revert on failure
+        setIsAvailable(!newStatus);
+        Alert.alert('Error', 'Failed to update status');
+      } else {
+        // Success - Update global context with FULL returned profile (includes cleared services if offline)
+        // r.data contains the updated provider profile
+        const updatedProfile = r.data || r.user || r.provider;
+        if (updatedProfile) {
+          updateUser(updatedProfile);
+        } else {
+          // Fallback status update if full profile missing
+          updateUser({ status: newStatus ? 'active' : 'inactive' });
+        }
+      }
+    } catch (e) {
+      setIsAvailable(!newStatus);
+      Alert.alert('Error', 'Failed to update status');
     } finally {
-      setOtpLoading(false);
+      setIsToggling(false);
     }
   };
 
-  const handleCloseOTPModal = () => {
-    setOtpModalVisible(false);
-    setOtpError(null);
-    setCurrentBookingId(null);
-    setCurrentJobSessionId(null);
-    setOtpAction(null);
+  // ==============================================
+  // 🏷️ RENDERERS - Sleek & Modern
+  // ==============================================
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return COLORS.warning;
+      case 'accepted': return COLORS.primary;
+      case 'in_progress': return COLORS.info;
+      case 'completed': return COLORS.success;
+      case 'cancelled':
+      case 'rejected': return COLORS.error;
+      default: return COLORS.textSecondary;
+    }
   };
 
-  const renderFilterChip = (label: string, value: FilterStatus, count: number) => {
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending': return 'New Request';
+      case 'accepted': return 'Scheduled';
+      case 'in_progress': return 'In Progress';
+      case 'completed': return 'Completed';
+      case 'rejected': return 'Rejected';
+      case 'cancelled': return 'Cancelled';
+      default: return status;
+    }
+  };
+
+  const renderFilter = (label: string, value: FilterStatus, count: number) => {
     const isActive = activeFilter === value;
     return (
       <TouchableOpacity
-        style={[styles.filterChip, isActive && styles.filterChipActive]}
         onPress={() => setActiveFilter(value)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
+        style={[styles.filterPill, isActive && styles.filterPillActiveBackground]} // Added background logic
       >
-        <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-          {label} {count > 0 && `(${count})`}
-        </Text>
+        {isActive ? (
+          <LinearGradient
+            colors={GRADIENTS.primary}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        ) : null}
+
+        <Text style={[styles.filterText, isActive && styles.filterTextActive]}>{label}</Text>
+        {count > 0 && (
+          <View style={[
+            styles.filterBadge,
+            isActive ? styles.filterBadgeActive : styles.filterBadgeInactive
+          ]}>
+            <Text style={[
+              styles.filterBadgeText,
+              isActive ? styles.filterBadgeTextActive : styles.filterBadgeTextInactive
+            ]}>{count}</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
 
-  // --- PRO EFFICIENCY CARD COMPONENT ---
-  const renderBookingCard = (booking: ProviderBooking, index: number) => {
-    const isAccepted = booking.status === 'accepted';
-    const isPending = booking.status === 'pending';
-    const isInProgress = booking.status === 'in_progress';
-    const isCompleted = booking.status === 'completed';
-    const isCancelled = booking.status === 'cancelled';
-    const isRejected = booking.status === 'rejected';
-
-    const activeJobSession = jobSessions[booking.id] || booking.jobSession;
-
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'pending': return '#F59E0B'; // Amber 500
-        case 'accepted': return '#3B82F6'; // Blue 500
-        case 'in_progress': return '#8B5CF6'; // Violet 500
-        case 'completed': return '#10B981'; // Emerald 500
-        case 'cancelled':
-        case 'rejected': return '#EF4444'; // Red 500
-        default: return '#64748B'; // Slate 500
-      }
-    };
-
-    const statusColor = getStatusColor(booking.status);
-
-    const getPaymentStatusInfo = () => {
-      if (booking.paymentMethod === 'wallet') {
-        if (booking.walletPaymentStage === 'initial_25_held') return '25% Held';
-        if (booking.walletPaymentStage === 'initial_25_released') return '25% Paid';
-        if (booking.walletPaymentStage === 'completed') return 'Paid';
-        return 'Wallet';
-      }
-      return 'Cash';
-    };
+  const renderBookingCard = (item: ProviderBooking, index: number) => {
+    const statusColor = getStatusColor(item.status);
+    const isPending = item.status === 'pending';
+    const isAccepted = item.status === 'accepted';
+    const isInProgress = item.status === 'in_progress';
+    const session = jobSessions[item.id] || item.jobSession;
 
     return (
-      <AnimatedBookingItem key={booking.id} index={index}>
-        <View style={styles.proCard}>
-          {/* Status Indicator Strip */}
-          <View style={[styles.statusIndicator, { backgroundColor: statusColor }]} />
+      <AnimatedEntry key={item.id} index={index}>
+        <View style={styles.card}>
 
-          <View style={styles.proContent}>
-            {/* Header: Service & Price */}
-            <View style={styles.proHeader}>
+          {/* Card Header Area */}
+          <View style={styles.cardHeader}>
+            <View style={styles.headerLeft}>
+              <View style={[styles.iconBox, { backgroundColor: `${COLORS.primary}10` }]}>
+                <Ionicons name="briefcase" size={20} color={COLORS.primary} />
+              </View>
+              <View>
+                <Text style={styles.serviceName}>{item.serviceName}</Text>
+                <Text style={styles.serviceCategory}>{item.serviceCategory}</Text>
+              </View>
+            </View>
+            {/* Status Badge - Sleek Pill */}
+            <View style={[styles.statusPill, { backgroundColor: `${statusColor}10` }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <Text style={[styles.statusText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
+            </View>
+          </View>
+
+          {/* Divider with spacing */}
+          <View style={styles.divider} />
+
+          {/* Details Grid - More Spacious */}
+          <View style={styles.detailsGrid}>
+
+            {/* Date */}
+            <View style={styles.detailItem}>
+              <View style={styles.detailIconBox}>
+                <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
+              </View>
+              <View>
+                <Text style={styles.detailLabel}>Date & Time</Text>
+                <Text style={styles.detailValue}>{item.scheduledDate} • {item.scheduledTime}</Text>
+              </View>
+            </View>
+
+            {/* Location */}
+            <View style={styles.detailItem}>
+              <View style={styles.detailIconBox}>
+                <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
+              </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.proServiceName} numberOfLines={1}>
-                  {booking.serviceName}
-                </Text>
-                <View style={styles.proMetaRow}>
-                  <View style={[styles.proStatusBadge, { backgroundColor: statusColor + '15' }]}>
-                    <Text style={[styles.proStatusText, { color: statusColor }]}>
-                      {booking.status.replace('_', ' ')}
-                    </Text>
-                  </View>
-                  <Text style={styles.proCategoryText}>{booking.serviceCategory}</Text>
-                </View>
-              </View>
-              <Text style={styles.proPriceText}>₹{booking.amount}</Text>
-            </View>
-
-            {/* Grid Content: Date & Customer */}
-            <View style={styles.proGrid}>
-              {/* Date & Location Column */}
-              <View style={styles.proGridItem}>
-                <View style={styles.proIconRow}>
-                  <Ionicons name="calendar-outline" size={14} color="#64748B" />
-                  <Text style={styles.proLabel}>Date & Time</Text>
-                </View>
-                <Text style={styles.proValue}>
-                  {booking.scheduledDate} • {booking.scheduledTime}
-                </Text>
-                <View style={[styles.proIconRow, { marginTop: 8 }]}>
-                  <Ionicons name="location-outline" size={14} color="#64748B" />
-                  <Text style={styles.proValue} numberOfLines={1}>
-                    {booking.address || 'N/A'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Customer Column */}
-              <View style={[styles.proGridItem, { paddingLeft: 12, borderLeftWidth: 1, borderLeftColor: '#F1F5F9' }]}>
-                <View style={styles.proIconRow}>
-                  <Ionicons name="person-outline" size={14} color="#64748B" />
-                  <Text style={styles.proLabel}>Customer</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 }}>
-                  {booking.customerAvatar ? (
-                    <Image source={{ uri: booking.customerAvatar }} style={styles.proAvatar} />
-                  ) : (
-                    <View style={styles.proAvatarPlaceholder}>
-                      <Text style={styles.proAvatarText}>{booking.customerName?.charAt(0) || 'C'}</Text>
-                    </View>
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.proValue} numberOfLines={1}>{booking.customerName}</Text>
-                    <TouchableOpacity onPress={() => Linking.openURL(`tel:${booking.customerPhone}`)}>
-                      <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Call</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <Text style={styles.detailLabel}>Location</Text>
+                <Text style={styles.detailValue} numberOfLines={1}>{item.address}</Text>
               </View>
             </View>
 
-            {/* Notes / Payment / Job Timer */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 12 }}>
-              <View style={styles.proTag}>
-                <Text style={styles.proTagText}>{getPaymentStatusInfo()}</Text>
+            {/* Price - Highlighted */}
+            <View style={styles.detailItem}>
+              <View style={styles.detailIconBox}>
+                <Ionicons name="wallet-outline" size={16} color={COLORS.textSecondary} />
               </View>
-              {(isAccepted || isInProgress) && activeJobSession?.startTime && (
-                <View style={{ flex: 1 }}>
-                  <JobTimer
-                    startTime={new Date(activeJobSession.startTime)}
-                    expectedDuration={activeJobSession.expectedDuration || 60}
-                    variant="compact"
-                  />
-                </View>
-              )}
+              <View>
+                <Text style={styles.detailLabel}>Earning</Text>
+                <Text style={styles.priceValue}>₹{item.amount}</Text>
+              </View>
             </View>
-
-
-            {/* Actions */}
-            {(isPending || isAccepted || isInProgress) && (
-              <View style={styles.proActions}>
-                {isPending && (
-                  <>
-                    <TouchableOpacity
-                      onPress={() => handleStatusChange(booking.id, 'cancelled')}
-                      style={styles.compactDeclineBtn}
-                    >
-                      <Text style={styles.compactDeclineText}>Decline</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleStatusChange(booking.id, 'accepted')}
-                      style={[styles.compactPrimaryBtn, { backgroundColor: '#0F172A' }]}
-                    >
-                      <Text style={styles.compactPrimaryText}>Accept</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-                {isAccepted && (
-                  <>
-                    <TouchableOpacity
-                      onPress={() => openLocationNavigation(booking)}
-                      style={styles.compactSecondaryBtn}
-                    >
-                      <Ionicons name="navigate" size={16} color="#475569" />
-                      <Text style={styles.compactSecondaryText}>Navigate</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleStartJob(booking.id)}
-                      style={[styles.compactPrimaryBtn, { backgroundColor: statusColor, flex: 1 }]}
-                    >
-                      <Ionicons name="play" size={16} color="#FFF" />
-                      <Text style={styles.compactPrimaryText}>Start</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-                {isInProgress && (
-                  <TouchableOpacity
-                    onPress={() => handleEndJob(booking.id)}
-                    style={[styles.compactPrimaryBtn, { backgroundColor: statusColor, flex: 1 }]}
-                  >
-                    <Ionicons name="checkmark" size={18} color="#FFF" />
-                    <Text style={styles.compactPrimaryText}>Complete Job</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {(isCompleted || isCancelled || isRejected) && (
-              <View style={{ marginTop: 16, borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 12 }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: statusColor, textTransform: 'uppercase' }}>
-                  {booking.status.replace('_', ' ')}
-                </Text>
-              </View>
-            )}
 
           </View>
+
+          {/* Timer active state */}
+          {(isAccepted || isInProgress) && session?.startTime && (
+            <View style={styles.timerWrapper}>
+              <JobTimer startTime={new Date(session.startTime)} expectedDuration={session.expectedDuration || 60} variant="compact" />
+            </View>
+          )}
+
+          {/* Footer Actions */}
+          {(isPending || isAccepted || isInProgress) && (
+            <View style={styles.footerActions}>
+              {isPending && (
+                <>
+                  <TouchableOpacity style={styles.actionBtnOutline} onPress={() => handleStatusChange(item.id, 'cancelled')}>
+                    <Text style={styles.actionBtnTextOutline}>Decline</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionBtnPrimary} onPress={() => handleStatusChange(item.id, 'accepted')}>
+                    <LinearGradient colors={GRADIENTS.primary} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                    <Text style={styles.actionBtnTextPrimary}>Accept Request</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              {isAccepted && (
+                <>
+                  <TouchableOpacity style={styles.actionBtnOutline} onPress={() => openLocationNavigation(item)}>
+                    <Ionicons name="navigate" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                    <Text style={[styles.actionBtnTextOutline, { color: COLORS.primary }]}>Navigate</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionBtnPrimary} onPress={() => handleStartJob(item.id)}>
+                    <LinearGradient colors={GRADIENTS.primary} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                    <Ionicons name="play" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.actionBtnTextPrimary}>Start</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              {isInProgress && (
+                <TouchableOpacity style={styles.actionBtnFull} onPress={() => handleEndJob(item.id)}>
+                  <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                  <Ionicons name="checkmark-done" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.actionBtnTextPrimary}>Complete Job</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Customer Mini Bar (Bottom) */}
+          <View style={styles.customerBar}>
+            <View style={styles.customerRow}>
+              {item.customerAvatar ? (
+                <Image source={{ uri: item.customerAvatar }} style={styles.miniAvatar} />
+              ) : (
+                <View style={styles.avatarPlaceholderMini}>
+                  <Text style={styles.avatarTextMini}>{item.customerName.charAt(0)}</Text>
+                </View>
+              )}
+              <Text style={styles.customerNameMini}>{item.customerName}</Text>
+            </View>
+            <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.customerPhone}`)} style={styles.callBtnMini}>
+              <Ionicons name="call" size={14} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+
         </View>
-      </AnimatedBookingItem>
+      </AnimatedEntry>
     );
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <LottieView
-            source={require('../../../assets/lottie/loading.json')}
-            autoPlay
-            loop
-            style={{ width: 200, height: 200 }}
-          />
-        </View>
-      </View>
-    );
-  }
 
-  const pendingCount = bookings.filter(b => b.status === 'pending').length;
-  const acceptedCount = bookings.filter(b => b.status === 'accepted').length;
-  const inProgressCount = bookings.filter(b => b.status === 'in_progress').length;
-  const completedCount = bookings.filter(b => b.status === 'completed').length;
-  const rejectedCount = bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length;
-  const allCount = bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled').length;
+  // Count Helpers
+  const counts = {
+    all: bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled').length,
+    pending: bookings.filter(b => b.status === 'pending').length,
+    accepted: bookings.filter(b => b.status === 'accepted').length,
+    in_progress: bookings.filter(b => b.status === 'in_progress').length,
+    completed: bookings.filter(b => b.status === 'completed').length,
+    rejected: bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length,
+  };
+
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={BG_COLOR} />
 
-      {/* Header */}
+      {/* Header Matches Dashboard/Profile */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Bookings</Text>
-        <View style={styles.headerSpacer} />
+
+        {/* Availability Switch */}
+        <View style={styles.headerRight}>
+          <Text style={[styles.statusLabel, { color: isAvailable ? COLORS.success : COLORS.textTertiary }]}>
+            {isAvailable ? 'Online' : 'Offline'}
+          </Text>
+          <Switch
+            trackColor={{ false: COLORS.gray200, true: COLORS.success }}
+            thumbColor={'#FFFFFF'}
+            ios_backgroundColor={COLORS.gray200}
+            onValueChange={toggleAvailability}
+            value={isAvailable}
+            disabled={isToggling}
+            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+          />
+        </View>
       </View>
 
-      <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterChip('All', 'all', allCount)}
-          {renderFilterChip('New', 'pending', pendingCount)}
-          {renderFilterChip('Upcoming', 'accepted', acceptedCount)}
-          {renderFilterChip('Active', 'in_progress', inProgressCount)}
-          {renderFilterChip('History', 'completed', completedCount)}
-          {renderFilterChip('Declined', 'rejected', rejectedCount)}
+      {/* Filter Tabs */}
+      <View style={styles.filtersWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          {renderFilter('All', 'all', counts.all)}
+          {renderFilter('New', 'pending', counts.pending)}
+          {renderFilter('Upcoming', 'accepted', counts.accepted)}
+          {renderFilter('Active', 'in_progress', counts.in_progress)}
+          {renderFilter('History', 'completed', counts.completed)}
+          {renderFilter('Cancelled', 'rejected', counts.rejected)}
         </ScrollView>
       </View>
 
-      <View style={styles.container}>
-        {error && (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={20} color="#DC2626" />
-            <Text style={styles.errorText}>{error}</Text>
+      {/* List */}
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        showsVerticalScrollIndicator={false}
+      >
+        {isLoading ? (
+          <View style={styles.center}>
+            <LottieView source={require('../../../assets/lottie/loading.json')} autoPlay loop style={{ width: 120, height: 120 }} />
           </View>
+        ) : filteredBookings.length === 0 ? (
+          <View style={styles.center}>
+            <View style={styles.emptyIcon}><Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} /></View>
+            <Text style={styles.emptyText}>No bookings found</Text>
+            <Text style={styles.emptySub}>Your scheduled jobs will appear here</Text>
+          </View>
+        ) : (
+          filteredBookings.map((b, i) => renderBookingCard(b, i))
         )}
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          bounces={true}
-          alwaysBounceVertical={true}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.primary}
-              colors={[COLORS.primary]}
-            />
-          }
-        >
-          {filteredBookings.length === 0 ? (
-            <View style={styles.emptyState}>
-              <EmptyState
-                title={activeFilter === 'all' ? 'No bookings yet' : `No ${activeFilter.replace('_', ' ')} bookings`}
-                subtitle={activeFilter === 'all'
-                  ? 'Bookings will appear here when customers request your services'
-                  : `You have no ${activeFilter.replace('_', ' ')} bookings at the moment`}
-              />
-            </View>
-          ) : (
-            filteredBookings.map((b, i) => renderBookingCard(b, i))
-          )}
-        </ScrollView>
-      </View>
+      </ScrollView>
 
       {/* Navigation Modal */}
-      <Modal
-        visible={navModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setNavModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setNavModalVisible(false)}
-        >
-          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Navigate to Location</Text>
-              <TouchableOpacity onPress={() => setNavModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.modalSubtitle}>Choose an app to start navigation</Text>
-
-            <View style={styles.navOptions}>
-              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('google')}>
-                <View style={[styles.navIconBox, { backgroundColor: '#E8F5E9' }]}>
-                  <Ionicons name="map" size={24} color="#4CAF50" />
+      <Modal visible={navModalVisible} transparent animationType="slide" onRequestClose={() => setNavModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Navigate to Customer</Text>
+            {[{ k: 'google', l: 'Google Maps', c: '#34A853' }, { k: 'uber', l: 'Uber', c: '#000' }, { k: 'ola', l: 'Ola', c: '#b2d235' }, { k: 'rapido', l: 'Rapido', c: '#f9c933' }].map((o: any) => (
+              <TouchableOpacity key={o.k} style={styles.modalOption} onPress={() => handleNavigationAppSelect(o.k)}>
+                <View style={[styles.modalIconBox, { backgroundColor: `${o.c}10` }]}>
+                  <Ionicons name={o.k === 'google' ? 'map' : 'car'} size={22} color={o.c} />
                 </View>
-                <Text style={styles.navOptionText}>Google Maps</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                <Text style={styles.modalOptionText}>{o.l}</Text>
+                <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
               </TouchableOpacity>
-
-              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('uber')}>
-                <View style={[styles.navIconBox, { backgroundColor: '#F3F4F6' }]}>
-                  <Text style={{ fontWeight: '900', fontSize: 18 }}>U</Text>
-                </View>
-                <Text style={styles.navOptionText}>Uber</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('ola')}>
-                <View style={[styles.navIconBox, { backgroundColor: '#ECFCCB' }]}>
-                  <Text style={{ fontWeight: '900', fontSize: 16, color: '#65A30D' }}>Ola</Text>
-                </View>
-                <Text style={styles.navOptionText}>Ola</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.navOption} onPress={() => handleNavigationAppSelect('rapido')}>
-                <View style={[styles.navIconBox, { backgroundColor: '#FEF9C3' }]}>
-                  <Text style={{ fontWeight: '900', fontSize: 16, color: '#EAB308' }}>Rapido</Text>
-                </View>
-                <Text style={styles.navOptionText}>Rapido</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-
-          </TouchableOpacity>
-        </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </Modal>
 
-      <OTPInputModal
-        visible={otpModalVisible}
-        onClose={handleCloseOTPModal}
-        onSubmit={handleOTPSubmit}
-        title={otpModalTitle}
-        subtitle={otpModalSubtitle}
-        isLoading={otpLoading}
-        error={otpError}
-      />
+      <OTPInputModal visible={otpModalVisible} onClose={handleCloseOTPModal} onSubmit={handleOTPSubmit} title={otpModalTitle} subtitle={otpModalSubtitle} isLoading={otpLoading} error={otpError} />
+
     </SafeAreaView>
   );
 };
 
-// --- PRO EFFICIENCY STYLES ---
+// ==============================================
+// 🖌️ STYLES (Sleek & Professional)
+// ==============================================
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8FAFC', // Cool gray background
-  },
+  container: { flex: 1, backgroundColor: BG_COLOR },
+
+  // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, backgroundColor: BG_COLOR
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
-    letterSpacing: -0.5,
-  },
-  headerSpacer: { width: 40 },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.5 },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusLabel: { fontSize: 12, fontWeight: '600' },
 
-  // Clean Filters (Unchanged mostly)
-  filterContainer: {
-    backgroundColor: COLORS.white,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    marginRight: 8,
-  },
-  filterChipActive: {
-    backgroundColor: '#0F172A', // Dark efficient color
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#64748B',
-  },
-  filterChipTextActive: {
-    color: '#F8FAFC',
-  },
-
-  container: { flex: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 100 },
-  emptyState: { marginTop: 60, alignItems: 'center' },
-
-  // --- CARD STYLES ---
-  proCard: {
+  // Filters
+  filtersWrapper: { paddingVertical: SPACING.md, backgroundColor: BG_COLOR },
+  filterScroll: { paddingHorizontal: SPACING.lg, gap: 10 },
+  filterPill: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 16,
-    flexDirection: 'row',
-    ...SHADOWS.sm,
-    shadowColor: '#64748B',
-    shadowOpacity: 0.05,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    overflow: 'hidden',
+    overflow: 'hidden', // Contain gradient
+    // Subtle shadow for unselected
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1
   },
-  statusIndicator: {
-    width: 4,
-    height: '100%',
+  filterPillActiveBackground: {
+    backgroundColor: COLORS.primary, // Fallback/Base
+    borderWidth: 0,
+    elevation: 4, shadowOpacity: 0.15, shadowColor: COLORS.primary
   },
-  proContent: {
-    flex: 1,
-    padding: 16,
-  },
-  proHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  proServiceName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  proMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  proStatusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  proStatusText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  proCategoryText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  proPriceText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
+  filterText: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
+  filterTextActive: { color: '#FFF' },
+
+  filterBadge: { marginLeft: 6, backgroundColor: COLORS.gray100, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  filterBadgeActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  filterBadgeInactive: { backgroundColor: COLORS.gray100 },
+  filterBadgeText: { fontSize: 10, fontWeight: '700' },
+  filterBadgeTextActive: { color: '#FFF' },
+  filterBadgeTextInactive: { color: COLORS.textSecondary },
+
+  // Content
+  content: { flex: 1, paddingHorizontal: SPACING.lg },
+  center: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.gray100, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  emptyText: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+  emptySub: { fontSize: 14, color: COLORS.textSecondary },
+
+  // Card
+  card: {
+    backgroundColor: CARD_BG, borderRadius: 24, marginBottom: 20,
+    shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4,
+    padding: 0, overflow: 'hidden'
   },
 
-  // Grid
-  proGrid: {
-    flexDirection: 'row',
-  },
-  proGridItem: {
-    flex: 1,
-  },
-  proIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  proLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-  },
-  proValue: {
-    fontSize: 13,
-    color: '#334155',
-    fontWeight: '500',
-  },
-  proAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  proAvatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  proAvatarText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
+  // Card Header
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 20, paddingBottom: 16 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  iconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  serviceName: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 2 },
+  serviceCategory: { fontSize: 12, color: COLORS.textSecondary },
 
-  proTag: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  proTagText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#475569',
-  },
+  statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, gap: 6 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+
+  divider: { height: 1, backgroundColor: COLORS.divider, marginHorizontal: 20 },
+
+  // Details Grid
+  detailsGrid: { padding: 20, gap: 16 },
+  detailItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  detailIconBox: { width: 32, height: 32, borderRadius: 10, backgroundColor: COLORS.gray50, justifyContent: 'center', alignItems: 'center' },
+  detailLabel: { fontSize: 11, color: COLORS.textTertiary, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
+  detailValue: { fontSize: 14, color: COLORS.text, fontWeight: '600' },
+  priceValue: { fontSize: 16, color: COLORS.primary, fontWeight: '700' },
+
+  timerWrapper: { paddingHorizontal: 20, paddingBottom: 16 },
 
   // Actions
-  proActions: {
-    flexDirection: 'row',
-    marginTop: 16,
-    gap: 12,
-  },
-  compactDeclineBtn: {
-    paddingHorizontal: 16,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  compactDeclineText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
-  compactPrimaryBtn: {
-    height: 36,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  compactPrimaryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  compactSecondaryBtn: {
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  compactSecondaryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
-  },
+  footerActions: { flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingBottom: 20 },
+  actionBtnOutline: { flex: 1, height: 46, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
+  actionBtnPrimary: { flex: 1.5, height: 46, borderRadius: 14, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
+  actionBtnFull: { flex: 1, height: 48, borderRadius: 14, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
 
-  // Modals & Errors (Keep existing)
-  errorBanner: {
-    backgroundColor: '#FEE2E2',
-    padding: 16,
-    margin: 20,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  errorText: { color: '#DC2626', fontSize: 14 },
+  actionBtnTextOutline: { fontSize: 14, fontWeight: '600', color: COLORS.error },
+  actionBtnTextPrimary: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  modalSubtitle: { fontSize: 14, color: '#64748B', marginBottom: 20 },
-  navOptions: { gap: 12 },
-  navOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-  },
-  navIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  navOptionText: { fontSize: 16, fontWeight: '600', color: '#1E293B' },
+  // Customer Bar (Bottom)
+  customerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: COLORS.gray50, borderTopWidth: 1, borderTopColor: COLORS.divider },
+  customerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  miniAvatar: { width: 28, height: 28, borderRadius: 14 },
+  avatarPlaceholderMini: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.gray200, justifyContent: 'center', alignItems: 'center' },
+  avatarTextMini: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
+  customerNameMini: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
+  callBtnMini: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, backgroundColor: COLORS.gray200, borderRadius: 2, alignSelf: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 20 },
+  modalOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: COLORS.divider },
+  modalIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  modalOptionText: { flex: 1, fontSize: 16, fontWeight: '600', color: COLORS.text },
 });

@@ -88,7 +88,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             phone: p.phone || '0000000000',
             services: p.services || [],
             serviceRates: p.serviceRates || (p.price ? [{ serviceName: service.title, price: p.price }] : []),
-            status: 'active' as 'active' | 'inactive' | 'pending',
+            status: (p.status || 'active') as 'active' | 'inactive' | 'pending',
             rating: p.rating || 4.8,
             totalReviews: p.totalReviews || 0,
             profileImage: p.profileImage,
@@ -227,70 +227,81 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  const renderProvider = (item: any, index: number) => (
-    <TouchableOpacity
-      key={item._id}
-      onPress={() => setSelectedProvider(item)}
-      activeOpacity={0.9}
-    >
-      <DepthCard
-        variant="elevated"
-        style={[
-          styles.providerCard,
-          selectedProvider?._id === item._id && { borderColor: colors.primary, borderWidth: 1.5 }
-        ]}
-        padding={SPACING.md}
+  const renderProvider = (item: any, index: number) => {
+    const isAvailable = item.status === 'active';
+
+    return (
+      <TouchableOpacity
+        key={item._id}
+        onPress={() => isAvailable && setSelectedProvider(item)}
+        activeOpacity={isAvailable ? 0.9 : 1}
+        disabled={!isAvailable}
       >
-        <View style={styles.providerHeader}>
-          <View style={styles.providerAvatarContainer}>
-            {item.profileImage ? (
-              <Image
-                source={{ uri: item.profileImage }}
-                style={styles.providerAvatar}
-              />
-            ) : (
-              <View style={[styles.providerAvatar, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
-                <Ionicons name="person" size={24} color={colors.textTertiary} />
-              </View>
-            )}
-          </View>
-          <View style={styles.providerInfo}>
-            <View style={styles.nameRow}>
-              <Text style={[styles.providerName, { color: colors.text }]}>{item.name}</Text>
-              {index === 0 && (
-                <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.badgeText}>TOP RATED</Text>
+        <DepthCard
+          variant="elevated"
+          style={[
+            styles.providerCard,
+            selectedProvider?._id === item._id && { borderColor: colors.primary, borderWidth: 1.5 },
+            !isAvailable && { backgroundColor: isDark ? '#1E1E1E' : '#F5F5F5', opacity: 0.6 }
+          ]}
+          padding={SPACING.md}
+        >
+          {!isAvailable && (
+            <View style={styles.unavailableOverlay}>
+              <Text style={styles.unavailableText}>Currently Unavailable</Text>
+            </View>
+          )}
+          <View style={styles.providerHeader}>
+            <View style={styles.providerAvatarContainer}>
+              {item.profileImage ? (
+                <Image
+                  source={{ uri: item.profileImage }}
+                  style={styles.providerAvatar}
+                />
+              ) : (
+                <View style={[styles.providerAvatar, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
+                  <Ionicons name="person" size={24} color={colors.textTertiary} />
                 </View>
               )}
             </View>
-            <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>{item.experience} years exp • {item.totalReviews} jobs</Text>
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={14} color="#FFD700" />
-              <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
+            <View style={styles.providerInfo}>
+              <View style={styles.nameRow}>
+                <Text style={[styles.providerName, { color: colors.text }]}>{item.name}</Text>
+                {index === 0 && (
+                  <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.badgeText}>TOP RATED</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>{item.experience} years exp • {item.totalReviews} jobs</Text>
+              <View style={styles.ratingRow}>
+                <Ionicons name="star" size={14} color="#FFD700" />
+                <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
+              </View>
+            </View>
+            <View style={styles.priceTag}>
+              <Text style={[styles.priceVal, { color: colors.primary }]}>₹{item.priceForService}</Text>
+              <Text style={[styles.priceUnit, { color: colors.textTertiary }]}>/hr</Text>
             </View>
           </View>
-          <View style={styles.priceTag}>
-            <Text style={[styles.priceVal, { color: colors.primary }]}>₹{item.priceForService}</Text>
-            <Text style={[styles.priceUnit, { color: colors.textTertiary }]}>/hr</Text>
-          </View>
-        </View>
 
-        {/* Selection Checkmark */}
-        <View style={[
-          styles.radioButton,
-          { borderColor: isDark ? colors.border : '#E0E0E0' },
-          selectedProvider?._id === item._id && {
-            borderColor: colors.primary,
-            backgroundColor: colors.primary
-          }
-        ]}>
-          {selectedProvider?._id === item._id && (
-            <Ionicons name="checkmark" size={16} color="#FFF" />
-          )}
-        </View>
-      </DepthCard>
-    </TouchableOpacity>
-  );
+          {/* Selection Checkmark */}
+          <View style={[
+            styles.radioButton,
+            { borderColor: isDark ? colors.border : '#E0E0E0' },
+            selectedProvider?._id === item._id && {
+              borderColor: colors.primary,
+              backgroundColor: colors.primary
+            }
+          ]}>
+            {selectedProvider?._id === item._id && (
+              <Ionicons name="checkmark" size={16} color="#FFF" />
+            )}
+          </View>
+        </DepthCard>
+      </TouchableOpacity >
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -404,14 +415,14 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 service: service
               });
             }}
-            disabled={!selectedProvider && providers.length > 1}
+            disabled={!selectedProvider && providers.length > 1 || providers.length === 0}
             variant={(!selectedProvider && providers.length > 1) ? "ghost" : "primary"}
             icon={<Ionicons name="arrow-forward" size={18} color="#FFF" />}
             size="medium"
           />
         </View>
       </BlurView>
-    </View>
+    </View >
   );
 };
 
@@ -766,5 +777,24 @@ const styles = StyleSheet.create({
   },
   bookBtnDisabled: {
     opacity: 0.6,
+  },
+  unavailableOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  unavailableText: {
+    backgroundColor: '#000',
+    color: '#FFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: '700',
+    overflow: 'hidden',
   },
 });

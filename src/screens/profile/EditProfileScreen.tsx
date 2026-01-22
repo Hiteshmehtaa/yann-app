@@ -18,6 +18,7 @@ import { AnimatedButton } from '../../components/AnimatedButton';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
+import { useToast } from '../../hooks/useToast';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 
@@ -27,6 +28,7 @@ type Props = {
 
 export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, updateUser } = useAuth();
+  const { showSuccess, showError } = useToast();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -124,10 +126,10 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
               avatar: newAvatarUrl,
               profileImage: newAvatarUrl,
             });
-            Alert.alert('Success', 'Profile photo updated');
+            showSuccess('Profile photo updated successfully!');
           } else {
             // If success but no URL returned, maybe it was just a 200 OK
-            Alert.alert('Success', 'Profile photo updated');
+            showSuccess('Profile photo updated successfully!');
             // Refresh profile to get new image
             // Note: In a real app we might want to fetch the profile again here
           }
@@ -189,7 +191,7 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
         });
         updateUser({ ...user, name: formData.name, phone: formData.phone });
       }
-      Alert.alert('Success', 'Profile updated successfully');
+      showSuccess('Profile updated successfully!');
       navigation.goBack();
     } catch (error: any) {
       console.error('❌ Profile update error:', error);

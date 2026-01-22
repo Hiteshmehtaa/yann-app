@@ -24,12 +24,14 @@ interface ProviderCardProps {
   price: string;
   isVerified?: boolean;
   isTopRated?: boolean;
+  isAvailable?: boolean; // Added optional prop
   specialties?: string[];
+  bio?: string; // Added for offline check
   onPress: () => void;
   onCall?: () => void;
 }
 
-export const ProviderCard: React.FC<ProviderCardProps> = ({
+export const ProviderCard = React.memo<ProviderCardProps>(({
   name,
   avatar,
   rating,
@@ -38,18 +40,33 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
   price,
   isVerified = false,
   isTopRated = false,
+  isAvailable = true, // Default to true
   specialties,
+  bio,
   onPress,
   onCall,
+  ...props
 }) => {
+  const isOffline = !isAvailable || (props.bio && props.bio.includes('[OFFLINE]'));
+
   return (
     <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      style={styles.container}
+      activeOpacity={!isOffline ? 0.9 : 1}
+      onPress={!isOffline ? onPress : undefined} // Disable press if unavailable
+      style={[styles.container, isOffline && styles.containerDisabled]}
     >
+      {/* Offline Overlay */}
+      {isOffline && (
+        <View style={styles.offlineOverlay}>
+          <View style={styles.offlineMessageContainer}>
+            <Text style={styles.offlineTitle}>Currently Unavailable</Text>
+            <Text style={styles.offlineSubtitle}>Please try again later</Text>
+          </View>
+        </View>
+      )}
+
       {/* Top Badges */}
-      <View style={styles.badges}>
+      <View style={[styles.badges, !isAvailable && { opacity: 0.5 }]}>
         {isVerified && (
           <View style={[styles.badge, { backgroundColor: `${COLORS.success}15` }]}>
             <VerifiedBadgeIcon size={12} color={COLORS.success} />
@@ -65,7 +82,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
       </View>
 
       {/* Provider Info */}
-      <View style={styles.content}>
+      <View style={[styles.content, !isAvailable && { opacity: 0.4 }]}>
         {/* Avatar and Name */}
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
@@ -101,15 +118,15 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
         </View>
 
         {/* Specialties */}
-            {specialties && specialties.length > 0 && (
-              <View style={styles.specialties}>
-                {specialties.slice(0, 3).map((specialty) => (
-                  <View key={specialty} style={styles.specialtyTag}>
-                    <Text style={styles.specialtyText}>{specialty}</Text>
-                  </View>
-                ))}
+        {specialties && specialties.length > 0 && (
+          <View style={styles.specialties}>
+            {specialties.slice(0, 3).map((specialty) => (
+              <View key={specialty} style={styles.specialtyTag}>
+                <Text style={styles.specialtyText}>{specialty}</Text>
               </View>
-            )}
+            ))}
+          </View>
+        )}
 
         {/* Footer */}
         <View style={styles.footer}>
@@ -118,7 +135,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
             <Text style={styles.price}>{price}</Text>
           </View>
 
-          {onCall && (
+          {onCall && isAvailable && ( // Hide call button if unavailable
             <TouchableOpacity
               onPress={onCall}
               style={styles.callButton}
@@ -129,9 +146,10 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
           )}
         </View>
       </View>
+
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -257,5 +275,42 @@ const styles = StyleSheet.create({
     backgroundColor: `${COLORS.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  containerDisabled: {
+    backgroundColor: COLORS.gray100, // Gray background when offline
+    borderColor: COLORS.divider,
+    borderWidth: 1,
+  },
+  offlineOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  offlineMessageContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  offlineTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginBottom: 2,
+  },
+  offlineSubtitle: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
   },
 });

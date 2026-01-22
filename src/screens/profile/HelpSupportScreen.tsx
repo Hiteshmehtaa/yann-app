@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
+import { apiService } from '../../services/api';
+import { useToast } from '../../hooks/useToast';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -48,7 +50,7 @@ const FAQ_DATA: FAQItem[] = [
 ];
 
 export const HelpSupportScreen: React.FC<Props> = ({ navigation }) => {
-
+  const { showSuccess, showError, showWarning } = useToast();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [expandedFAQ, setExpandedFAQ] = React.useState<number | null>(null);
   const [showCallOptions, setShowCallOptions] = React.useState(false);
@@ -84,36 +86,24 @@ export const HelpSupportScreen: React.FC<Props> = ({ navigation }) => {
 
   const submitCallRequest = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      alert('Please enter a valid phone number');
+      showWarning('Please enter a valid phone number');
       return;
     }
 
     setLoading(true);
     try {
-      // In a real app, you'd get the base URL from env or specialized config
-      const response = await fetch('http://10.0.2.2:3000/api/call-requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ phoneNumber }),
-      });
+      const response = await apiService.createCallRequest(phoneNumber);
 
-      const data = await response.json();
-
-      if (data.success) {
-        alert('Request sent successfully! We will call you back shortly.');
+      if (response.success) {
+        showSuccess('Request sent successfully! We will call you back shortly.');
         setShowRequestForm(false);
         setPhoneNumber('');
       } else {
-        alert('Failed to send request. Please try again.');
+        showError('Failed to send request. Please try again.');
       }
     } catch (error) {
       console.error('Error sending call request:', error);
-      // For now, since the backend might not be ready, we'll simulate success or show specific error
-      alert('Request sent! (Simulated)');
-      setShowRequestForm(false);
-      setPhoneNumber('');
+      showError('Failed to send request. Please try calling us directly or use WhatsApp.');
     } finally {
       setLoading(false);
     }
