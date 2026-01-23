@@ -1486,6 +1486,44 @@ class ApiService {
     const status = isAvailable ? 'active' : 'inactive';
 
     try {
+      // 1. Fetch current profile to check for lost services (from previous workaround)
+      if (isAvailable) {
+        try {
+          const profile = await this.getProviderOwnProfile();
+          const currentBio = profile.data?.bio || '';
+
+          // Check if we have backup data in bio
+          const match = currentBio.match(/<!--OFFLINE_DATA:(.*?)-->/);
+          if (match && match[1] && (!profile.data?.services || profile.data?.services.length === 0)) {
+            console.log('🛠️ Found backup services in bio, restoring...');
+            try {
+              const data = JSON.parse(match[1]);
+              const restoredServices = data.s || [];
+              const restoredRates = data.r || [];
+
+              if (restoredServices.length > 0) {
+                // Clean the bio (remove tag)
+                const cleanBio = currentBio.replace(/<!--OFFLINE_DATA:.*?-->/g, '').replace(/ \[OFFLINE\]/g, '').trim();
+
+                // Restore services + Update status
+                const response = await this.client.patch('/provider/profile', {
+                  status,
+                  services: restoredServices,
+                  serviceRates: restoredRates,
+                  bio: cleanBio
+                });
+                console.log('✅ Restored services and updated status');
+                return response.data;
+              }
+            } catch (e) {
+              console.error('Failed to parse backup', e);
+            }
+          }
+        } catch (err) {
+          console.error('Error in auto-restore check', err);
+        }
+      }
+
       const response = await this.client.patch('/provider/profile', { status });
       console.log(`✅ Provider status updated to: ${status}`);
       return response.data;
