@@ -229,6 +229,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const renderProvider = (item: any, index: number) => {
     const isAvailable = item.status === 'active';
+    const isPending = item.status === 'pending';
+
+    // Determine overlay text based on status
+    let statusText = 'Currently Unavailable';
+    if (isPending) statusText = 'Approval Pending';
+    else if (item.status === 'inactive') statusText = 'Currently Offline';
 
     return (
       <TouchableOpacity
@@ -242,13 +248,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           style={[
             styles.providerCard,
             selectedProvider?._id === item._id && { borderColor: colors.primary, borderWidth: 1.5 },
-            !isAvailable && { backgroundColor: isDark ? '#1E1E1E' : '#F5F5F5', opacity: 0.6 }
+            !isAvailable && { backgroundColor: isDark ? '#1E1E1E' : '#F5F5F5', opacity: 0.7 }
           ]}
           padding={SPACING.md}
         >
           {!isAvailable && (
             <View style={styles.unavailableOverlay}>
-              <Text style={styles.unavailableText}>Currently Unavailable</Text>
+              <Text style={[
+                styles.unavailableText,
+                isPending && { backgroundColor: '#F59E0B', color: '#FFF' } // Orange for pending
+              ]}>
+                {statusText}
+              </Text>
             </View>
           )}
           <View style={styles.providerHeader}>

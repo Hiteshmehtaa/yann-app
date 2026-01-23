@@ -26,7 +26,8 @@ interface ProviderCardProps {
   isTopRated?: boolean;
   isAvailable?: boolean; // Added optional prop
   specialties?: string[];
-  bio?: string; // Added for offline check
+  bio?: string;
+  status?: string; // Added for pending/inactive check
   onPress: () => void;
   onCall?: () => void;
 }
@@ -40,14 +41,23 @@ export const ProviderCard = React.memo<ProviderCardProps>(({
   price,
   isVerified = false,
   isTopRated = false,
-  isAvailable = true, // Default to true
+  isAvailable: isAvailableProp = true, // Default to true
   specialties,
   bio,
+  status, // Pass status
   onPress,
   onCall,
   ...props
 }) => {
-  const isOffline = !isAvailable || (props.bio && props.bio.includes('[OFFLINE]'));
+  const bioOffline = (props.bio && props.bio.includes('[OFFLINE]'));
+  const isAvailable = props.status === 'active' || (!props.status && !bioOffline);
+  const isPending = props.status === 'pending';
+
+  let statusText = 'Currently Unavailable';
+  if (isPending) statusText = 'Approval Pending';
+  else if (props.status === 'inactive' || bioOffline) statusText = 'Currently Offline';
+
+  const isOffline = !isAvailable;
 
   return (
     <TouchableOpacity
@@ -59,14 +69,18 @@ export const ProviderCard = React.memo<ProviderCardProps>(({
       {isOffline && (
         <View style={styles.offlineOverlay}>
           <View style={styles.offlineMessageContainer}>
-            <Text style={styles.offlineTitle}>Currently Unavailable</Text>
-            <Text style={styles.offlineSubtitle}>Please try again later</Text>
+            <Text style={[styles.offlineTitle, isPending && { color: COLORS.warning }]}>
+              {statusText}
+            </Text>
+            <Text style={styles.offlineSubtitle}>
+              {isPending ? 'Verified soon' : 'Please try again later'}
+            </Text>
           </View>
         </View>
       )}
 
       {/* Top Badges */}
-      <View style={[styles.badges, !isAvailable && { opacity: 0.5 }]}>
+      <View style={[styles.badges, !computedIsAvailable && { opacity: 0.5 }]}>
         {isVerified && (
           <View style={[styles.badge, { backgroundColor: `${COLORS.success}15` }]}>
             <VerifiedBadgeIcon size={12} color={COLORS.success} />
@@ -82,7 +96,7 @@ export const ProviderCard = React.memo<ProviderCardProps>(({
       </View>
 
       {/* Provider Info */}
-      <View style={[styles.content, !isAvailable && { opacity: 0.4 }]}>
+      <View style={[styles.content, !computedIsAvailable && { opacity: 0.4 }]}>
         {/* Avatar and Name */}
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
@@ -135,7 +149,7 @@ export const ProviderCard = React.memo<ProviderCardProps>(({
             <Text style={styles.price}>{price}</Text>
           </View>
 
-          {onCall && isAvailable && ( // Hide call button if unavailable
+          {onCall && computedIsAvailable && ( // Hide call button if unavailable
             <TouchableOpacity
               onPress={onCall}
               style={styles.callButton}
