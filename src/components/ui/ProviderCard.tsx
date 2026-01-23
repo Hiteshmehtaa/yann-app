@@ -50,14 +50,14 @@ export const ProviderCard = React.memo<ProviderCardProps>(({
   ...props
 }) => {
   const bioOffline = (bio && bio.includes('[OFFLINE]'));
-  const isAvailable = status === 'active' || (!status && !bioOffline);
+  const computedIsAvailable = status === 'active' || (!status && !bioOffline);
   const isPending = status === 'pending';
 
   let statusText = 'Currently Unavailable';
   if (isPending) statusText = 'Approval Pending';
   else if (status === 'inactive' || bioOffline) statusText = 'Currently Offline';
 
-  const isOffline = !isAvailable;
+  const isOffline = !computedIsAvailable;
 
   return (
     <TouchableOpacity
