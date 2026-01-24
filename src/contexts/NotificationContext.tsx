@@ -6,14 +6,30 @@ import { apiService } from '../services/api';
 
 export interface AppNotification {
   id: string;
-  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'payment_required' | 'general';
+  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'booking_expired' | 'booking_request' | 'booking_request_reminder' | 'payment_required' | 'general';
   title: string;
   message: string;
   otp?: string;
   bookingId?: string;
   completionAmount?: number;
+  expiresAt?: string;
+  serviceName?: string;
+  customerName?: string;
+  totalPrice?: number;
   timestamp: string; // ISO string for storage
   read: boolean;
+}
+
+// Booking request data for provider incoming request modal
+export interface BookingRequestData {
+  bookingId: string;
+  serviceName: string;
+  customerName: string;
+  customerAddress?: string;
+  totalPrice: number;
+  bookingDate?: string;
+  bookingTime?: string;
+  expiresAt: string;
 }
 
 interface NotificationContextType {
@@ -25,6 +41,9 @@ interface NotificationContextType {
   refreshNotifications: () => Promise<void>;
   paymentModalData: { bookingId: string; completionAmount: number; notificationId: string } | null;
   setPaymentModalData: (data: { bookingId: string; completionAmount: number; notificationId: string } | null) => void;
+  // Booking request for providers
+  incomingBookingRequest: BookingRequestData | null;
+  setIncomingBookingRequest: (data: BookingRequestData | null) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -32,6 +51,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [paymentModalData, setPaymentModalData] = useState<{ bookingId: string; completionAmount: number; notificationId: string } | null>(null);
+  const [incomingBookingRequest, setIncomingBookingRequest] = useState<BookingRequestData | null>(null);
   const { user } = useAuth();
 
   const STORAGE_KEY = `yann_notifications_${user?.id || 'guest'}`;
@@ -73,6 +93,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         otp: data.otp as string | undefined,
         bookingId: data.bookingId as string | undefined,
         completionAmount: data.completionAmount as number | undefined,
+        expiresAt: data.expiresAt as string | undefined,
+        serviceName: data.serviceName as string | undefined,
+        customerName: data.customerName as string | undefined,
+        totalPrice: data.totalPrice as number | undefined,
         timestamp: new Date().toISOString(),
         read: false,
       };
@@ -84,6 +108,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           bookingId: data.bookingId as string,
           completionAmount: data.completionAmount as number,
           notificationId: notifId
+        });
+      }
+
+      // BOOKING REQUEST TRIGGER: Show incoming request modal for providers
+      if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId && data.expiresAt) {
+        setIncomingBookingRequest({
+          bookingId: data.bookingId as string,
+          serviceName: data.serviceName as string || 'Service',
+          customerName: data.customerName as string || 'Customer',
+          totalPrice: data.totalPrice as number || 0,
+          expiresAt: data.expiresAt as string,
         });
       }
 
@@ -224,7 +259,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         clearAll,
         refreshNotifications: loadNotifications,
         paymentModalData,
-        setPaymentModalData
+        setPaymentModalData,
+        incomingBookingRequest,
+        setIncomingBookingRequest
       }}
     >
       {children}

@@ -108,19 +108,30 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [dynamicServiceCategories, setDynamicServiceCategories] = useState(SERVICE_CATEGORIES);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [openExperienceCategory, setOpenExperienceCategory] = useState<string | null>(null);
+  const [serviceLimitMap, setServiceLimitMap] = useState<Record<string, any>>({});
 
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
-    experience: '',
     services: [] as string[],
     serviceRates: [] as { serviceName: string; price: string }[],
+    categoryExperience: {} as Record<string, string>,
     workingHours: {
       startTime: '09:00',
       endTime: '17:00',
     },
   });
+
+  const EXPERIENCE_OPTIONS = Array.from({ length: 31 }, (_, i) => i.toString());
+  const DEFAULT_MAX_BY_CATEGORY: Record<string, number> = {
+    cleaning: 5000,
+    laundry: 2000,
+    pujari: 25000,
+    driver: 2000,
+    other: 10000,
+  };
 
   // Load services from DB on mount
   useEffect(() => {
@@ -133,6 +144,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       const response = await apiService.getAllServices();
 
       if (response.data && response.data.length > 0) {
+        const limitMap: Record<string, any> = {};
         // Group services by category
         const categoriesMap: Record<string, string[]> = {};
 
@@ -142,6 +154,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             categoriesMap[category] = [];
           }
           categoriesMap[category].push(service.title);
+          limitMap[service.title] = {
+            category,
+            experiencePriceLimits: service.experiencePriceLimits || [],
+            maxPrice: service.maxPrice || 0,
+          };
         }
 
         // Build category structure
@@ -153,6 +170,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         }));
 
         setDynamicServiceCategories(newCategories as any);
+        setServiceLimitMap(limitMap);
       }
     } catch (error) {
       console.log('Using fallback services');
@@ -184,6 +202,42 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 
   const updateField = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateCategoryExperience = (categoryId: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      categoryExperience: {
+        ...prev.categoryExperience,
+        [categoryId]: value,
+      }
+    }));
+  };
+
+  const getMaxPriceForService = (serviceName: string) => {
+    const meta = serviceLimitMap[serviceName] || {};
+    const categoryId = meta.category ||
+      dynamicServiceCategories.find(category => category.services.includes(serviceName))?.id ||
+      'other';
+
+    const expValue = formData.categoryExperience[categoryId];
+    const years = Number(expValue || 0);
+
+    const experienceLimits = meta.experiencePriceLimits || [];
+    if (Array.isArray(experienceLimits) && experienceLimits.length > 0) {
+      const matched = experienceLimits.find((limit: any) => {
+        const min = Number(limit.minYears || 0);
+        const max = limit.maxYears === null || limit.maxYears === undefined ? null : Number(limit.maxYears);
+        return years >= min && (max === null || years < max);
+      });
+      if (matched && Number(matched.maxPrice) > 0) {
+        return Number(matched.maxPrice);
+      }
+    }
+
+    const configuredMax = Number(meta.maxPrice || 0);
+    if (configuredMax > 0) return configuredMax;
+    return DEFAULT_MAX_BY_CATEGORY[categoryId] || 0;
   };
 
   const toggleService = (service: string) => {
@@ -224,14 +278,22 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         Alert.alert('Error', 'Please enter a valid email address');
         return;
       }
-      if (!formData.experience.trim()) {
-        Alert.alert('Error', 'Please enter your years of experience');
-        return;
-      }
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (formData.services.length === 0) {
         Alert.alert('Error', 'Please select at least one service');
+        return;
+      }
+      const missingCategoryExperience = dynamicServiceCategories.find(category => {
+        const hasSelectedService = formData.services.some(service =>
+          category.services.includes(service)
+        );
+        if (!hasSelectedService) return false;
+        const value = formData.categoryExperience[category.id];
+        return value === undefined || value === '';
+      });
+      if (missingCategoryExperience) {
+        Alert.alert('Error', `Please select experience for ${missingCategoryExperience.name}`);
         return;
       }
       setCurrentStep(3);
@@ -239,6 +301,16 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       const missingPrices = formData.serviceRates.filter(r => !r.price || Number.parseFloat(r.price) <= 0);
       if (missingPrices.length > 0) {
         Alert.alert('Error', 'Please enter valid prices for all selected services');
+        return;
+      }
+      const overLimit = formData.serviceRates.find(rate => {
+        const maxAllowed = getMaxPriceForService(rate.serviceName);
+        const priceValue = Number(rate.price || 0);
+        return maxAllowed > 0 && priceValue > maxAllowed;
+      });
+      if (overLimit) {
+        const maxAllowed = getMaxPriceForService(overLimit.serviceName);
+        Alert.alert('Error', `Maximum price for ${overLimit.serviceName} is ₹${maxAllowed}`);
         return;
       }
       setCurrentStep(4);
@@ -268,12 +340,21 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    if (!formData.experience) {
-      Alert.alert('Error', 'Please enter your years of experience');
-      return;
-    }
     if (formData.services.length === 0) {
       Alert.alert('Error', 'Please select at least one service');
+      return;
+    }
+
+    const missingCategoryExperience = dynamicServiceCategories.find(category => {
+      const hasSelectedService = formData.services.some(service =>
+        category.services.includes(service)
+      );
+      if (!hasSelectedService) return false;
+      const value = formData.categoryExperience[category.id];
+      return value === undefined || value === '';
+    });
+    if (missingCategoryExperience) {
+      Alert.alert('Error', `Please select experience for ${missingCategoryExperience.name}`);
       return;
     }
 
@@ -286,12 +367,23 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    const overLimit = formData.serviceRates.find(rate => {
+      const maxAllowed = getMaxPriceForService(rate.serviceName);
+      const priceValue = Number(rate.price || 0);
+      return maxAllowed > 0 && priceValue > maxAllowed;
+    });
+    if (overLimit) {
+      const maxAllowed = getMaxPriceForService(overLimit.serviceName);
+      Alert.alert('Error', `Maximum price for ${overLimit.serviceName} is ₹${maxAllowed}`);
+      return;
+    }
+
     try {
       setIsLoading(true);
 
       // Extract categories from selected services
       const selectedCategories: string[] = [];
-      for (const category of SERVICE_CATEGORIES) {
+      for (const category of dynamicServiceCategories) {
         const hasServiceInCategory = formData.services.some(service =>
           category.services.includes(service)
         );
@@ -300,17 +392,29 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         }
       }
 
+      const experienceByService = formData.services.map(serviceName => {
+        const category = dynamicServiceCategories.find(cat => cat.services.includes(serviceName));
+        const years = category ? Number(formData.categoryExperience[category.id] || 0) : 0;
+        return { serviceName, years };
+      });
+
+      const derivedExperience = Math.max(
+        0,
+        ...selectedCategories.map(categoryId => Number(formData.categoryExperience[categoryId] || 0))
+      );
+
       // Match exact website format
       const payload = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        experience: Number(formData.experience),
+        experience: derivedExperience,
         services: formData.services,
         serviceRates: formData.serviceRates.map(rate => ({
           serviceName: rate.serviceName,
           price: Number(rate.price)
         })),
+        serviceExperiences: experienceByService,
         selectedCategories: selectedCategories,
         workingHours: formData.workingHours,
       };
@@ -447,32 +551,6 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>YEARS OF EXPERIENCE</Text>
-        <View style={[
-          styles.inputContainer,
-          focusedField === 'experience' && styles.inputFocused
-        ]}>
-          <View style={styles.inputIcon}>
-            <Ionicons
-              name="briefcase"
-              size={20}
-              color={focusedField === 'experience' ? COLORS.primary : COLORS.textTertiary}
-            />
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter years"
-            placeholderTextColor={COLORS.textTertiary}
-            value={formData.experience}
-            onChangeText={(value) => updateField('experience', value)}
-            keyboardType="numeric"
-            editable={!isLoading}
-            onFocus={() => setFocusedField('experience')}
-            onBlur={() => setFocusedField(null)}
-          />
-        </View>
-      </View>
     </View>
   );
 
@@ -488,11 +566,56 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           {dynamicServiceCategories.map(category => (
             <View key={category.id} style={styles.categoryCard}>
               <View style={styles.categoryHeader}>
-                <View style={styles.categoryIconContainer}>
-                  <Ionicons name={category.icon} size={18} color={COLORS.primary} />
+                <View style={styles.categoryHeaderLeft}>
+                  <View style={styles.categoryIconContainer}>
+                    <Ionicons name={category.icon} size={18} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.categoryName}>{category.name}</Text>
                 </View>
-                <Text style={styles.categoryName}>{category.name}</Text>
+                <TouchableOpacity
+                  style={styles.experienceDropdown}
+                  onPress={() =>
+                    setOpenExperienceCategory(prev => (prev === category.id ? null : category.id))
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.experienceDropdownText}>
+                    Exp: {formData.categoryExperience[category.id] ?? 'Select'}
+                    {formData.categoryExperience[category.id] !== undefined && formData.categoryExperience[category.id] !== '' ? ' yrs' : ''}
+                  </Text>
+                  <Ionicons
+                    name={openExperienceCategory === category.id ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={COLORS.textSecondary}
+                  />
+                </TouchableOpacity>
               </View>
+              {openExperienceCategory === category.id && (
+                <View style={styles.experienceOptions}>
+                  {EXPERIENCE_OPTIONS.map(option => (
+                    <TouchableOpacity
+                      key={option}
+                      style={[
+                        styles.experienceOption,
+                        formData.categoryExperience[category.id] === option && styles.experienceOptionActive,
+                      ]}
+                      onPress={() => {
+                        updateCategoryExperience(category.id, option);
+                        setOpenExperienceCategory(null);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.experienceOptionText,
+                          formData.categoryExperience[category.id] === option && styles.experienceOptionTextActive,
+                        ]}
+                      >
+                        {option} yrs
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               <View style={styles.servicesGrid}>
                 {category.services.map(service => (
                   <TouchableOpacity
@@ -550,6 +673,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             />
             <Text style={styles.priceUnit}>per service</Text>
           </View>
+          {getMaxPriceForService(rate.serviceName) > 0 && (
+            <Text style={styles.maxPriceInfo}>
+              Max allowed: ₹{getMaxPriceForService(rate.serviceName)} (based on your experience)
+            </Text>
+          )}
         </View>
       ))}
     </View>
@@ -950,6 +1078,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textTertiary,
   },
+  maxPriceInfo: {
+    marginTop: 6,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
   categoryCard: {
     backgroundColor: COLORS.white,
     borderRadius: RADIUS.medium,
@@ -962,7 +1095,12 @@ const styles = StyleSheet.create({
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  categoryHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   categoryIconContainer: {
     width: 32,
@@ -977,6 +1115,49 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
+  },
+  experienceDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    gap: 6,
+  },
+  experienceDropdownText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  experienceOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  experienceOption: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.background,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  experienceOptionActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  experienceOptionText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  experienceOptionTextActive: {
+    color: '#FFF',
   },
   servicesGrid: {
     flexDirection: 'row',
