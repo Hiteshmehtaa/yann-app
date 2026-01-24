@@ -73,6 +73,7 @@ import { SafetyPolicyScreen } from '../screens/legal/SafetyPolicyScreen';
 
 // Global Components
 import { GlobalPaymentModal } from '../components/GlobalPaymentModal';
+import { GlobalBookingRequestModal } from '../components/GlobalBookingRequestModal';
 
 // Navigation Types
 type RootStackParamList = {
@@ -403,6 +404,9 @@ export function AppNavigator() {
       
       {/* Global Payment Modal - Shows automatically when job is completed */}
       {isAuthenticated && !isProvider && <GlobalPaymentModal />}
+      
+      {/* Global Booking Request Modal - Shows for providers when new booking request arrives */}
+      {isAuthenticated && isProvider && <GlobalBookingRequestModal />}
     </NavigationContainer>
   );
 }

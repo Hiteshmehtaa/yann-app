@@ -690,6 +690,53 @@ class ApiService {
   }
 
   // ====================================================================
+  // BOOKING REQUEST FLOW (3-minute timer system)
+  // ====================================================================
+
+  /**
+   * POST /api/bookings/request
+   * Send booking request to provider with 3-minute timer
+   */
+  async sendBookingRequest(bookingId: string, providerId: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/request', { bookingId, providerId });
+    return response.data;
+  }
+
+  /**
+   * GET /api/bookings/request
+   * Check booking request status (for polling)
+   */
+  async checkBookingRequestStatus(bookingId: string, customerId?: string): Promise<ApiResponse> {
+    const params = new URLSearchParams({ bookingId });
+    if (customerId) params.append('customerId', customerId);
+    const response = await this.client.get(`/bookings/request?${params.toString()}`);
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/respond
+   * Provider responds to booking request (accept/reject)
+   */
+  async respondToBookingRequest(bookingId: string, providerId: string, action: 'accept' | 'reject', reason?: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/respond', { 
+      bookingId, 
+      providerId, 
+      action,
+      reason 
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/buzzer
+   * Send buzzer notification to provider (called periodically)
+   */
+  async sendProviderBuzzer(bookingId: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/buzzer', { bookingId });
+    return response.data;
+  }
+
+  // ====================================================================
   // PAYMENT ENDPOINTS
   // ====================================================================
 
