@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { COLORS, SHADOWS, RADIUS } from '../../utils/theme';
 import { apiService } from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
@@ -38,6 +39,7 @@ type Props = {
 export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => {
     const { bookingId, providerId, providerName, serviceName, experienceRange } = route.params;
     const insets = useSafeAreaInsets();
+    const { setPaymentModalData } = useNotifications();
 
     console.log('📍 BookingWaitingScreen params:', { 
         bookingId, 
@@ -145,13 +147,36 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                         }, 1500);
                     } else if (bookingStatus === 'pending_payment') {
                         // Provider accepted, waiting for initial payment
-                        // Don't navigate - let the payment modal from notification handle it
+                        // Manually trigger payment modal if notification didn't
                         setStatus('accepted');
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         clearInterval(pollInterval);
                         
-                        console.log('💰 Waiting for payment modal to appear...');
-                        // The GlobalPaymentModal will show automatically from the notification
+                        console.log('💰 Booking pending payment detected, triggering modal manually');
+                        
+                        // Calculate payment details
+                        const totalPrice = response.data.totalPrice || 0;
+                        const initialPaymentAmount = Math.round(totalPrice * 0.25);
+                        const expiresAt = response.data.paymentTimer?.expiresAt || new Date(Date.now() + 3 * 60 * 1000).toISOString();
+                        
+                        // Trigger payment modal directly
+                        setPaymentModalData({
+                            type: 'initial',
+                            bookingId: bookingId,
+                            initialPaymentAmount: initialPaymentAmount,
+                            totalPrice: totalPrice,
+                            providerName: currentProviderName,
+                            serviceName: serviceName,
+                            expiresAt: expiresAt,
+                            notificationId: Date.now().toString()
+                        });
+                        
+                        console.log('✅ Payment modal triggered with data:', {
+                            bookingId,
+                            initialPaymentAmount,
+                            totalPrice,
+                            expiresAt
+                        });
                     } else if (bookingStatus === 'rejected' || bookingStatus === 'cancelled') {
                         // Provider rejected
                         setStatus('rejected');
