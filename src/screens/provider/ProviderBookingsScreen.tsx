@@ -150,7 +150,7 @@ export const ProviderBookingsScreen = () => {
           scheduledTime: b.bookingTime || b.scheduledTime || 'N/A',
           address: b.customerAddress || b.address || 'N/A',
           latitude: b.latitude, longitude: b.longitude,
-          status: statusOverride || b.status || 'pending',
+          status: statusOverride || (b.status === 'pending_end' ? 'in_progress' : b.status) || 'pending',
           amount: b.totalPrice || b.basePrice || b.amount || 0,
           paymentStatus: b.paymentStatus || 'pending', paymentMethod: b.paymentMethod || 'cash',
           walletPaymentStage: b.walletPaymentStage || null, escrowDetails: b.escrowDetails || null,
