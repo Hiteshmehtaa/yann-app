@@ -29,6 +29,17 @@ class ApiService {
   private readonly client: AxiosInstance;
   private baseUrlUpdateInterval: NodeJS.Timeout | null = null;
 
+  private normalizeUserVerification(user: any): User {
+    const isVerified = user?.isVerified ?? user?.aadhaarVerified ?? false;
+    const aadhaarVerified = user?.aadhaarVerified ?? user?.isVerified ?? false;
+
+    return {
+      ...user,
+      isVerified,
+      aadhaarVerified,
+    } as User;
+  }
+
   constructor() {
     this.client = axios.create({
       baseURL: 'https://yann-care.vercel.app/api', // Initial default
@@ -854,7 +865,7 @@ class ApiService {
       // });
       console.log('✅ Provider profile loaded. Has bio:', !!providerData.bio);
 
-      return { user: { ...providerData, role: 'provider' } as User };
+      return { user: this.normalizeUserVerification({ ...providerData, role: 'provider' }) };
     }
 
     const response = await this.client.get('/homeowner/me');
@@ -862,7 +873,7 @@ class ApiService {
     // Website response: { success, homeowner: {...} }
     const userData = response.data.homeowner || response.data.user || response.data.data;
 
-    return { user: userData };
+    return { user: this.normalizeUserVerification(userData) };
   }
 
   /**
@@ -879,10 +890,15 @@ class ApiService {
    * POST /api/verification/initiate
    * Initiate Aadhaar verification via Meon Tech (DigiLocker)
    */
-  async verifyIdentity(userId: string, userType: 'homeowner' | 'provider'): Promise<{ success: boolean; url: string; message?: string }> {
+  async verifyIdentity(
+    userId: string,
+    userType: 'homeowner' | 'provider',
+    redirectUrl?: string
+  ): Promise<{ success: boolean; url: string; message?: string }> {
     const response = await this.client.post('/verification/initiate', {
       userId,
-      userType
+      userType,
+      redirectUrl,
     });
     return response.data;
   }
@@ -1397,6 +1413,7 @@ class ApiService {
     userId: string;
     userType: 'homeowner' | 'provider';
     aadhaarNumber: string;
+    redirectUrl?: string;
   }): Promise<ApiResponse<{ verificationUrl: string; requestId: string; expiresAt: string }>> {
     const response = await this.client.post('/aadhaar/initiate', data);
     return response.data;

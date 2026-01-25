@@ -71,6 +71,16 @@
               "scheme": "https",
               "host": "www.yann.app",
               "pathPrefix": "/provider"
+            },
+            {
+              "scheme": "https",
+              "host": "yann.app",
+              "pathPrefix": "/verification-success"
+            },
+            {
+              "scheme": "https",
+              "host": "www.yann.app",
+              "pathPrefix": "/verification-success"
             }
           ],
           "category": [

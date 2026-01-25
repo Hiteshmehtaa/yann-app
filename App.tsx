@@ -12,7 +12,10 @@ import { OfflineIndicator } from './src/components/OfflineIndicator';
 import { AnimatedSplash } from './src/components/AnimatedSplash';
 import { OnboardingScreen, isOnboardingCompleted } from './src/screens/onboarding/OnboardingScreen';
 import { offlineStorage } from './src/utils/offlineStorage';
+import * as WebBrowser from 'expo-web-browser';
 import './src/i18n'; // Initialize i18n
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
