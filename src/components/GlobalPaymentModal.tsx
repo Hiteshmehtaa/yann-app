@@ -4,6 +4,7 @@ import { CompletionPaymentModal } from './CompletionPaymentModal';
 import { InitialPaymentModal } from './InitialPaymentModal';
 import { useNotifications } from '../contexts/NotificationContext';
 import { apiService } from '../services/api';
+import { navigationRef } from '../navigation/AppNavigator';
 import type { Booking } from '../types';
 
 /**
@@ -106,6 +107,11 @@ export const GlobalPaymentModal: React.FC = () => {
     setBooking(null);
     // Refresh notifications
     refreshNotifications();
+    
+    // Navigate to bookings list
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('MainTabs' as never, { screen: 'BookingsList' } as never);
+    }
   };
 
   const handleTimeout = () => {

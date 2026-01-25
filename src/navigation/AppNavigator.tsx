@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform, View, StyleSheet } from 'react-native';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { COLORS } from '../utils/theme';
 import { FloatingTabBar } from '../components/ui/FloatingTabBar';
 import { TopBar } from '../components/ui/TopBar';
+
+// Create navigation ref for use outside of components
+export const navigationRef = createNavigationContainerRef();
 
 // Screen transition configuration
 const screenTransitionConfig = {
@@ -335,7 +338,7 @@ export function AppNavigator() {
   const isProvider = user?.role === 'provider';
 
   return (
-    <NavigationContainer theme={PremiumTheme} linking={linking as any}>
+    <NavigationContainer ref={navigationRef} theme={PremiumTheme} linking={linking as any}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
