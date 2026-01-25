@@ -11,7 +11,6 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LogoutConfirmModal } from '../../components/LogoutConfirmModal';
@@ -24,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
 import { shareProviderProfile } from '../../utils/shareUtils';
+import * as Linking from 'expo-linking';
 
 // Reusing global theme constants or defining similar ones matching Member Profile
 const COLORS = {
@@ -62,6 +62,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const hasFetchedRef = useRef(false);
+  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified);
 
   // Refresh profile data
   const fetchProfile = useCallback(async () => {
@@ -206,7 +207,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleVerification = async () => {
-    if (user?.isVerified) {
+    if (isIdentityVerified) {
       Alert.alert('Verified', 'Your identity is already verified.');
       return;
     }
@@ -214,10 +215,25 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
       const userId = user?.id || user?._id;
       if (!userId) return;
 
-      const response = await apiService.verifyIdentity(userId, 'provider');
+      const redirectUrl = Linking.createURL('verification-success');
+      const response = await apiService.verifyIdentity(userId, 'provider', redirectUrl);
 
       if (response.success && response.url) {
-        await WebBrowser.openBrowserAsync(response.url);
+        try {
+          const result = await WebBrowser.openAuthSessionAsync(response.url, redirectUrl, {
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          });
+
+          if (result.type === 'success') {
+            const profileResponse = await apiService.getProfile('provider');
+            if (profileResponse.user) {
+              updateUser(profileResponse.user);
+            }
+            Alert.alert('Verified', 'Aadhaar verification completed successfully.');
+          }
+        } catch (authError) {
+          await WebBrowser.openBrowserAsync(response.url);
+        }
       } else {
         Alert.alert('Error', response.message || 'Failed to initiate verification');
       }
@@ -242,7 +258,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
     {
       icon: 'shield-checkmark-outline',
       title: 'Verify Identity',
-      subtitle: user?.isVerified ? 'Verified Partner' : 'Complete KYC Verification',
+      subtitle: isIdentityVerified ? 'Verified Partner' : 'Complete KYC Verification',
       onPress: handleVerification,
     },
     {
@@ -340,7 +356,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
                   <Ionicons name="briefcase" size={12} color="#FFF" />
                   <Text style={styles.roleText}>PARTNER</Text>
                 </View>
-                {user?.isVerified && (
+                {isIdentityVerified && (
                   <View style={[styles.roleBadge, { backgroundColor: COLORS.success }]}>
                     <Ionicons name="shield-checkmark" size={12} color="#FFF" />
                     <Text style={styles.roleText}>VERIFIED</Text>

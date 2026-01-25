@@ -26,6 +26,7 @@ import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } 
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { useResponsive } from '../../hooks/useResponsive';
 import { StatsCard } from '../../components/ui/StatsCard';
 import { Badge } from '../../components/ui/Badge';
@@ -58,6 +59,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   });
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified);
 
   // Get correct role display based on user.role
   const getRoleDisplay = () => {
@@ -130,10 +132,30 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [user?.role]);
 
+  const fetchProfile = useCallback(async () => {
+    try {
+      if (!user?.id && !user?._id && !user?.email) {
+        return;
+      }
+
+      const role = user?.role || 'homeowner';
+      const response = await apiService.getProfile(role);
+      if (response.user) {
+        const hasValidData = response.user.id || response.user._id || response.user.email || response.user.name;
+        if (hasValidData) {
+          updateUser(response.user);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  }, [user?.id, user?._id, user?.email, user?.role, updateUser]);
+
   useFocusEffect(
     useCallback(() => {
       fetchUserStats();
-    }, [fetchUserStats])
+      fetchProfile();
+    }, [fetchUserStats, fetchProfile])
   );
 
   useEffect(() => {
@@ -153,8 +175,8 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchUserStats().then(() => setRefreshing(false));
-  }, [fetchUserStats]);
+    Promise.all([fetchUserStats(), fetchProfile()]).finally(() => setRefreshing(false));
+  }, [fetchUserStats, fetchProfile]);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
@@ -215,7 +237,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleVerification = async () => {
     console.log('Verify button pressed');
-    if (user?.isVerified) {
+    if (isIdentityVerified) {
       console.log('User already verified');
       Alert.alert('Verified', 'Your identity is already verified.');
       return;
@@ -229,12 +251,28 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
 
-      const response = await apiService.verifyIdentity(userId, user.role || 'homeowner');
+      const redirectUrl = Linking.createURL('verification-success');
+      const response = await apiService.verifyIdentity(userId, user.role || 'homeowner', redirectUrl);
       console.log('Verification response:', response);
 
       if (response.success && response.url) {
         console.log('Opening browser:', response.url);
-        await WebBrowser.openBrowserAsync(response.url);
+        try {
+          const result = await WebBrowser.openAuthSessionAsync(response.url, redirectUrl, {
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          });
+
+          if (result.type === 'success') {
+            const role = user?.role || 'homeowner';
+            const profileResponse = await apiService.getProfile(role);
+            if (profileResponse.user) {
+              updateUser(profileResponse.user);
+            }
+            Alert.alert('Verified', 'Aadhaar verification completed successfully.');
+          }
+        } catch (authError) {
+          await WebBrowser.openBrowserAsync(response.url);
+        }
       } else {
         console.error('Verification failed:', response.message);
         Alert.alert('Error', response.message || 'Failed to initiate verification');
@@ -266,7 +304,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     {
       icon: 'shield-checkmark-outline',
       title: t('profile.verifyAadhaar'),
-      subtitle: user?.isVerified ? t('profile.verified') : t('profile.notVerified'),
+      subtitle: isIdentityVerified ? t('profile.verified') : t('profile.notVerified'),
       onPress: () => handleVerification(),
     },
     {

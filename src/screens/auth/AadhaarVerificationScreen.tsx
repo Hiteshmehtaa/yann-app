@@ -16,13 +16,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Linking from 'expo-linking';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,33 +37,40 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
+      const redirectUrl = Linking.createURL('verification-success');
       const response = await apiService.initiateAadhaarVerification({
         userId: (user?._id || user?.id) as string,
         userType: user?.role === 'provider' ? 'provider' : 'homeowner',
         aadhaarNumber,
+        redirectUrl,
       });
 
       if (response.success && response.data?.verificationUrl) {
-        // Open verification URL in system browser
-        const result = await WebBrowser.openBrowserAsync(response.data.verificationUrl, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-          controlsColor: COLORS.primary,
-        });
+        try {
+          const result = await WebBrowser.openAuthSessionAsync(response.data.verificationUrl, redirectUrl, {
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+            controlsColor: COLORS.primary,
+          });
 
-        // When browser closes, show success message
-        if (result.type === 'dismiss' || result.type === 'cancel') {
-          Alert.alert(
-            'Verification Status',
-            user?.role === 'provider'
-              ? 'If you completed verification, your profile is now under admin review.'
-              : 'If you completed verification, you can now book services!',
-            [
-              {
-                text: 'OK',
-                onPress: () => navigation.goBack(),
-              },
-            ]
-          );
+          if (result.type === 'success') {
+            const role = user?.role === 'provider' ? 'provider' : 'homeowner';
+            const profileResponse = await apiService.getProfile(role);
+            if (profileResponse.user) {
+              updateUser(profileResponse.user);
+            }
+            Alert.alert(
+              'Verified',
+              role === 'provider'
+                ? 'Verification completed. Your profile is now under admin review.'
+                : 'Verification completed. You can now book services!',
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
+          }
+        } catch (authError) {
+          await WebBrowser.openBrowserAsync(response.data.verificationUrl, {
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+            controlsColor: COLORS.primary,
+          });
         }
       } else {
         Alert.alert('Error', response.message || 'Failed to initiate verification');
