@@ -290,9 +290,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             serviceName: serviceName || 'Service',
             customerName: response.data.customerName || 'Customer',
             customerAddress: response.data.customerAddress,
+            customerPhone: response.data.customerPhone,
             totalPrice: totalPrice || 0,
             bookingDate: response.data.bookingDate,
             bookingTime: response.data.bookingTime,
+            notes: response.data.notes,
             expiresAt: expiresAt
           });
 
@@ -323,9 +325,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           serviceName: pendingRequest.serviceName,
           customerName: pendingRequest.customerName,
           customerAddress: pendingRequest.customerAddress,
+          customerPhone: pendingRequest.customerPhone,
           totalPrice: pendingRequest.totalPrice,
           bookingDate: pendingRequest.bookingDate,
           bookingTime: pendingRequest.bookingTime,
+          notes: pendingRequest.notes,
           expiresAt: pendingRequest.expiresAt
         });
 
