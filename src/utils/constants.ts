@@ -55,16 +55,28 @@ async function pingBackend(url: string): Promise<boolean> {
 
 /**
  * Detect which backend is available
- * PRODUCTION ONLY - Always use production backend
+ * Tries localhost first, falls back to production
  */
 async function detectActiveBackend(): Promise<string> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🔍 BACKEND CONFIGURATION');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🏠 Local URL:', LOCAL_API_URL);
   console.log('🌐 Production URL:', PRODUCTION_API_URL);
-  console.log('✅ Using production backend only');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
+  // Try local backend first
+  const localAvailable = await pingBackend(LOCAL_API_URL);
+
+  if (localAvailable) {
+    console.log('✅ Using LOCAL backend');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    cachedApiUrl = LOCAL_API_URL;
+    return LOCAL_API_URL;
+  }
+
+  // Fall back to production
+  console.log('⚠️ Local backend not available, using PRODUCTION');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   cachedApiUrl = PRODUCTION_API_URL;
   return PRODUCTION_API_URL;
 }
