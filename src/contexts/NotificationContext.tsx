@@ -118,21 +118,33 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         read: false,
       };
 
-      console.log('📥 Notification received:', {
+      console.log('📥 Notification received - FULL DATA:', JSON.stringify({
         type: data.type,
         bookingId: data.bookingId,
         initialPaymentAmount: data.initialPaymentAmount,
         completionAmount: data.completionAmount,
-        expiresAt: data.expiresAt
-      });
+        expiresAt: data.expiresAt,
+        providerName: data.providerName,
+        serviceName: data.serviceName,
+        totalPrice: data.totalPrice
+      }, null, 2));
 
       // INSTANT PAYMENT TRIGGER: Show payment modal based on type
       if (data.type === 'payment_required' && data.bookingId) {
+        console.log('✅ Payment required notification detected');
         const notifId = (data.notificationId as string) || newNotification.id;
         
         if (data.initialPaymentAmount && data.expiresAt) {
           // Initial payment (25%) with timer
-          console.log('💰 Showing initial payment modal');
+          console.log('💰 TRIGGERING initial payment modal with data:', {
+            bookingId: data.bookingId,
+            initialPaymentAmount: data.initialPaymentAmount,
+            totalPrice: data.totalPrice,
+            providerName: data.providerName,
+            serviceName: data.serviceName,
+            expiresAt: data.expiresAt
+          });
+          
           setPaymentModalData({
             type: 'initial',
             bookingId: data.bookingId as string,
@@ -143,6 +155,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             expiresAt: data.expiresAt as string,
             notificationId: notifId
           });
+          
+          console.log('✅ Payment modal data SET');
         } else if (data.completionAmount) {
           // Completion payment (75%)
           console.log('💰 Showing completion payment modal');

@@ -16,9 +16,13 @@ export const GlobalPaymentModal: React.FC = () => {
 
   // Fetch booking details when payment modal data is set
   useEffect(() => {
+    console.log('🔔 GlobalPaymentModal - paymentModalData changed:', paymentModalData);
+    
     if (paymentModalData?.bookingId) {
+      console.log('📋 Fetching booking details for:', paymentModalData.bookingId);
       fetchBookingDetails(paymentModalData.bookingId);
     } else {
+      console.log('❌ No paymentModalData, clearing booking');
       setBooking(null);
     }
   }, [paymentModalData]);
@@ -26,20 +30,42 @@ export const GlobalPaymentModal: React.FC = () => {
   const fetchBookingDetails = async (bookingId: string) => {
     try {
       setIsLoading(true);
+      console.log('🔍 Fetching booking:', bookingId);
       const response = await apiService.getMyBookings();
+      
+      console.log('📦 Bookings response:', {
+        success: response.success,
+        count: response.data?.length || 0,
+        bookingIds: response.data?.map((b: any) => b._id || b.id)
+      });
       
       if (response.success && response.data) {
         const foundBooking = response.data.find((b: any) => b._id === bookingId || b.id === bookingId);
         if (foundBooking) {
+          console.log('✅ Booking found:', foundBooking._id);
           setBooking(foundBooking as Booking);
         } else {
+          console.log('❌ Booking NOT found in response. Trying direct fetch...');
+          // Try fetching the booking directly by ID
+          try {
+            const directResponse = await apiService.getBookingStatus(bookingId);
+            if (directResponse.success && directResponse.data) {
+              console.log('✅ Booking found via direct fetch');
+              setBooking(directResponse.data as Booking);
+              return;
+            }
+          } catch (err) {
+            console.error('Direct fetch failed:', err);
+          }
+          
           // Clear modal data if booking not found (might be old/deleted)
+          console.log('❌ Could not find booking, clearing modal');
           setPaymentModalData(null);
           setBooking(null);
         }
       }
     } catch (error) {
-      console.error('Failed to fetch booking details:', error);
+      console.error('❌ Failed to fetch booking details:', error);
       setPaymentModalData(null);
       setBooking(null);
     } finally {
@@ -72,11 +98,23 @@ export const GlobalPaymentModal: React.FC = () => {
   };
 
   if (!paymentModalData || !booking || isLoading) {
+    console.log('🚫 Modal not showing:', {
+      hasModalData: !!paymentModalData,
+      hasBooking: !!booking,
+      isLoading
+    });
     return null;
   }
 
+  console.log('✅ SHOWING PAYMENT MODAL:', {
+    type: paymentModalData.type,
+    bookingId: booking._id,
+    serviceName: booking.serviceName
+  });
+
   // Show initial payment modal (25%)
   if (paymentModalData.type === 'initial') {
+    console.log('💰 Rendering InitialPaymentModal');
     return (
       <InitialPaymentModal
         visible={true}
