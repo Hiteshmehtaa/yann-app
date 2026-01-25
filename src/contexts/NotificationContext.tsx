@@ -130,11 +130,30 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }, null, 2));
 
       // INSTANT PAYMENT TRIGGER: Show payment modal based on type
-      if (data.type === 'payment_required' && data.bookingId) {
-        console.log('✅ Payment required notification detected');
+      if ((data.type === 'payment_required' || data.type === 'completion_payment_required') && data.bookingId) {
+        console.log('✅ Payment notification detected, type:', data.type);
         const notifId = (data.notificationId as string) || newNotification.id;
         
-        if (data.initialPaymentAmount && data.expiresAt) {
+        if (data.type === 'completion_payment_required' && data.completionAmount) {
+          // Completion payment (75%)
+          console.log('💰 TRIGGERING completion payment modal with data:', {
+            bookingId: data.bookingId,
+            completionAmount: data.completionAmount,
+            totalPrice: data.totalPrice,
+            serviceName: data.serviceName
+          });
+          
+          setPaymentModalData({
+            type: 'completion',
+            bookingId: data.bookingId as string,
+            completionAmount: data.completionAmount as number,
+            totalPrice: data.totalPrice as number,
+            serviceName: data.serviceName as string,
+            notificationId: notifId
+          });
+          
+          console.log('✅ Completion payment modal data SET');
+        } else if (data.initialPaymentAmount && data.expiresAt) {
           // Initial payment (25%) with timer
           console.log('💰 TRIGGERING initial payment modal with data:', {
             bookingId: data.bookingId,
@@ -157,17 +176,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           });
           
           console.log('✅ Payment modal data SET');
-        } else if (data.completionAmount) {
-          // Completion payment (75%)
-          console.log('💰 Showing completion payment modal');
-          setPaymentModalData({
-            type: 'completion',
-            bookingId: data.bookingId as string,
-            completionAmount: data.completionAmount as number,
-            notificationId: notifId
-          });
         } else {
-          console.log('⚠️ payment_required notification but no payment amount found');
+          console.log('⚠️ payment notification but no payment details found');
         }
       }
 
