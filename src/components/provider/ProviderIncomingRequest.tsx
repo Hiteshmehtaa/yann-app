@@ -12,7 +12,7 @@ import {
   AppState,
   AppStateStatus,
   ScrollView,
-} from 'react';
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
