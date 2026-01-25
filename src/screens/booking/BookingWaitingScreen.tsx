@@ -153,11 +153,18 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                         clearInterval(pollInterval);
                         
                         console.log('💰 Booking pending payment detected, triggering modal manually');
+                        console.log('📊 Booking data:', JSON.stringify(response.data, null, 2));
                         
                         // Calculate payment details
                         const totalPrice = response.data.totalPrice || 0;
-                        const initialPaymentAmount = Math.round(totalPrice * 0.25);
+                        const initialPaymentAmount = Math.round(totalPrice * 0.25 * 100) / 100; // Proper rounding to 2 decimals
                         const expiresAt = response.data.paymentTimer?.expiresAt || new Date(Date.now() + 3 * 60 * 1000).toISOString();
+                        
+                        console.log('💵 Payment calculation:', {
+                            totalPrice,
+                            initialPaymentAmount,
+                            percentage: '25%'
+                        });
                         
                         // Trigger payment modal directly
                         setPaymentModalData({

@@ -1286,7 +1286,10 @@ class ApiService {
     bookingId: string;
     serviceName: string;
   }>> {
-    const response = await this.client.post('/bookings/pay-initial', { bookingId });
+    const response = await this.client.post('/bookings/pay-initial', { 
+      bookingId,
+      paymentMethod: 'wallet'
+    });
     return response.data;
   }
 
