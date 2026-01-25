@@ -26,9 +26,11 @@ export interface BookingRequestData {
   serviceName: string;
   customerName: string;
   customerAddress?: string;
+  customerPhone?: string;
   totalPrice: number;
   bookingDate?: string;
   bookingTime?: string;
+  notes?: string;
   expiresAt: string;
 }
 
