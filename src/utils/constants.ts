@@ -64,7 +64,7 @@ async function detectActiveBackend(): Promise<string> {
   console.log('🌐 Production URL:', PRODUCTION_API_URL);
   console.log('✅ Using production backend only');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-  
+
   cachedApiUrl = PRODUCTION_API_URL;
   return PRODUCTION_API_URL;
 }
@@ -495,10 +495,15 @@ export const BOOKING_STATUS = {
 // Status Colors
 export const STATUS_COLORS = {
   pending: '#F59E0B',
+  awaiting_response: '#F59E0B',
+  pending_payment: '#F59E0B',
   accepted: '#10B981',
+  in_progress: '#3B82F6',
   rejected: '#EF4444',
+  awaiting_completion_payment: '#F97316',  // Orange - action needed from member
   completed: '#06B6D4',
   cancelled: '#6B7280',
+  expired: '#6B7280',
 };
 
 // Storage Keys

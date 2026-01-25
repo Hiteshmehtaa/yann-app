@@ -95,8 +95,8 @@ export interface Booking {
   basePrice: number;
   extras?: Extra[];
   totalPrice: number;
-  paymentMethod: 'cash' | 'upi' | 'card' | 'online';
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  paymentMethod: 'cash' | 'upi' | 'card' | 'online' | 'wallet';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'partial';
   billingType: 'one-time' | 'monthly' | 'hourly' | 'daily';
   quantity: number;
   notes?: string;
@@ -104,12 +104,21 @@ export interface Booking {
   assignedProvider?: string;
   providerName?: string;
   residentRequest?: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
+  status: 'pending' | 'awaiting_response' | 'pending_payment' | 'accepted' | 'in_progress' | 'rejected' | 'awaiting_completion_payment' | 'completed' | 'cancelled' | 'expired';
   negotiation?: Negotiation;
   createdAt: Date;
   updatedAt: Date;
   hasBeenRated?: boolean;
   completedAt?: Date;
+  walletPaymentStage?: 'none' | 'initial_25_held' | 'initial_25_released' | 'completion_75_pending' | 'awaiting_completion_payment' | 'completed';
+  escrowDetails?: {
+    initialAmount?: number;
+    completionAmount?: number;
+    initialPaidAt?: Date;
+    completionPaidAt?: Date;
+    isInitialPaid?: boolean;
+    isCompletionPaid?: boolean;
+  };
 }
 
 export interface Extra {

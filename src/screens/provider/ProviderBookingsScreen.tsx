@@ -322,6 +322,7 @@ export const ProviderBookingsScreen = () => {
       case 'pending': return COLORS.warning;
       case 'accepted': return COLORS.primary;
       case 'in_progress': return COLORS.info;
+      case 'awaiting_completion_payment': return '#F97316'; // Orange - waiting for member payment
       case 'completed': return COLORS.success;
       case 'cancelled':
       case 'rejected': return COLORS.error;
@@ -334,6 +335,7 @@ export const ProviderBookingsScreen = () => {
       case 'pending': return 'New Request';
       case 'accepted': return 'Scheduled';
       case 'in_progress': return 'In Progress';
+      case 'awaiting_completion_payment': return 'Awaiting Payment';
       case 'completed': return 'Completed';
       case 'rejected': return 'Rejected';
       case 'cancelled': return 'Cancelled';

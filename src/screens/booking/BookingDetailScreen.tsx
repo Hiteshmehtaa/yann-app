@@ -37,8 +37,8 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Poll for booking status updates (to detect completion and trigger payment modal)
     useEffect(() => {
-        // Only poll if booking is in progress
-        if (booking.status !== 'in_progress' && booking.status !== 'accepted') {
+        // Only poll if booking is in progress or awaiting completion payment
+        if (booking.status !== 'in_progress' && booking.status !== 'accepted' && booking.status !== 'awaiting_completion_payment') {
             return;
         }
 
@@ -47,7 +47,7 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         const pollInterval = setInterval(async () => {
             try {
                 const response = await apiService.getBookingStatus(booking._id);
-                
+
                 if (response.success && response.data) {
                     const updatedBooking = response.data;
                     console.log('📊 Booking status poll:', {
@@ -67,8 +67,8 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         !updatedBooking.escrowDetails?.isCompletionPaid
                     ) {
                         console.log('💰 COMPLETION PAYMENT NEEDED - Triggering modal');
-                        
-                        const completionAmount = updatedBooking.escrowDetails?.completionAmount || 
+
+                        const completionAmount = updatedBooking.escrowDetails?.completionAmount ||
                             Math.round(updatedBooking.totalPrice * 0.75 * 100) / 100;
 
                         // Trigger completion payment modal
@@ -83,7 +83,7 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
                         // Stop polling after triggering modal
                         clearInterval(pollInterval);
-                        
+
                         console.log('✅ Completion payment modal triggered');
                     }
                 }
@@ -101,9 +101,12 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     // Check if booking needs 75% completion payment
     const needsCompletionPayment = () => {
         return (
-            booking.status === 'completed' &&
+            (booking.status === 'awaiting_completion_payment' || booking.status === 'completed') &&
             (booking.paymentMethod as string) === 'wallet' &&
-            (booking as any).walletPaymentStage === 'initial_25_released'
+            ((booking as any).walletPaymentStage === 'awaiting_completion_payment' ||
+                (booking as any).walletPaymentStage === 'initial_25_held' ||
+                (booking as any).walletPaymentStage === 'initial_25_released') &&
+            !(booking as any).escrowDetails?.isCompletionPaid
         );
     };
 
