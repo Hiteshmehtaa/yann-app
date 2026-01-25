@@ -63,7 +63,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [paymentModalData, setPaymentModalData] = useState<{ bookingId: string; completionAmount: number; notificationId: string } | null>(null);
+  const [paymentModalData, setPaymentModalData] = useState<PaymentModalData | null>(null);
   const [incomingBookingRequest, setIncomingBookingRequest] = useState<BookingRequestData | null>(null);
   const { user } = useAuth();
 
@@ -92,14 +92,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const subscription = Notifications.addNotificationReceivedListener(notification => {
       const data = notification.request.content.data;
 
-      // Filter notifications: Only accept if recipientId matches current user or if generic (no recipientId)
+      // Filter: Only accept if recipientId matches current user
       const recipientId = data.recipientId;
       const currentUserId = user.id || user._id;
-      
-      // Convert both to strings for comparison (MongoDB ObjectIds vs strings)
+
       if (recipientId && currentUserId && String(recipientId) !== String(currentUserId)) {
-        console.log(`🚫 Filtering notification: recipientId=${recipientId}, currentUserId=${currentUserId}`);
-        return;
+        return; // Silent filter - not for this user
       }
 
       const newNotification: AppNotification = {
@@ -118,31 +116,23 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         read: false,
       };
 
-      console.log('📥 Notification received - FULL DATA:', JSON.stringify({
-        type: data.type,
-        bookingId: data.bookingId,
-        initialPaymentAmount: data.initialPaymentAmount,
-        completionAmount: data.completionAmount,
-        expiresAt: data.expiresAt,
-        providerName: data.providerName,
-        serviceName: data.serviceName,
-        totalPrice: data.totalPrice
-      }, null, 2));
-
-      // INSTANT PAYMENT TRIGGER: Show payment modal based on type
+      // PAYMENT MODAL TRIGGER - Log ONLY payment-related
       if ((data.type === 'payment_required' || data.type === 'completion_payment_required') && data.bookingId) {
-        console.log('✅ Payment notification detected, type:', data.type);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('💳 PAYMENT NOTIFICATION RECEIVED');
+        console.log('   Type:', data.type);
+        console.log('   BookingId:', data.bookingId);
+        console.log('   InitialAmount:', data.initialPaymentAmount || 'N/A');
+        console.log('   CompletionAmount:', data.completionAmount || 'N/A');
+        console.log('   ExpiresAt:', data.expiresAt || 'N/A');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
         const notifId = (data.notificationId as string) || newNotification.id;
-        
+
         if (data.type === 'completion_payment_required' && data.completionAmount) {
-          // Completion payment (75%)
-          console.log('💰 TRIGGERING completion payment modal with data:', {
-            bookingId: data.bookingId,
-            completionAmount: data.completionAmount,
-            totalPrice: data.totalPrice,
-            serviceName: data.serviceName
-          });
-          
+          // 75% Completion payment
+          console.log('🟢 TRIGGERING 75% COMPLETION MODAL');
+
           setPaymentModalData({
             type: 'completion',
             bookingId: data.bookingId as string,
@@ -151,19 +141,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             serviceName: data.serviceName as string,
             notificationId: notifId
           });
-          
-          console.log('✅ Completion payment modal data SET');
+
+          console.log('✅ 75% modal data SET');
         } else if (data.initialPaymentAmount && data.expiresAt) {
-          // Initial payment (25%) with timer
-          console.log('💰 TRIGGERING initial payment modal with data:', {
-            bookingId: data.bookingId,
-            initialPaymentAmount: data.initialPaymentAmount,
-            totalPrice: data.totalPrice,
-            providerName: data.providerName,
-            serviceName: data.serviceName,
-            expiresAt: data.expiresAt
-          });
-          
+          // 25% Initial payment
+          console.log('🟢 TRIGGERING 25% INITIAL MODAL');
+
           setPaymentModalData({
             type: 'initial',
             bookingId: data.bookingId as string,
@@ -174,14 +157,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             expiresAt: data.expiresAt as string,
             notificationId: notifId
           });
-          
-          console.log('✅ Payment modal data SET');
+
+          console.log('✅ 25% modal data SET');
         } else {
-          console.log('⚠️ payment notification but no payment details found');
+          console.log('⚠️ Payment notification missing required fields');
+          console.log('   Has initialPaymentAmount:', !!data.initialPaymentAmount);
+          console.log('   Has completionAmount:', !!data.completionAmount);
+          console.log('   Has expiresAt:', !!data.expiresAt);
         }
       }
 
-      // BOOKING REQUEST TRIGGER: Show incoming request modal for providers
+      // BOOKING REQUEST for providers (no logging needed)
       if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId && data.expiresAt) {
         setIncomingBookingRequest({
           bookingId: data.bookingId as string,
@@ -192,7 +178,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
       }
 
-      // Add to state and save to storage
+      // Add to state and save
       setNotifications(prev => {
         const updated = [newNotification, ...prev];
         saveNotifications(updated);
@@ -209,13 +195,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      
+
       console.log('📲 Notification tapped, data:', data);
 
       // Filter by recipientId
       const recipientId = data.recipientId;
       const currentUserId = user.id || user._id;
-      
+
       if (recipientId && currentUserId && String(recipientId) !== String(currentUserId)) {
         console.log(`🚫 Filtering tapped notification: not for current user`);
         return;
@@ -238,9 +224,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           completionAmount: data.completionAmount,
           expiresAt: data.expiresAt
         });
-        
+
         const notifId = data.notificationId as string || Date.now().toString();
-        
+
         if (data.type === 'completion_payment_required' && data.completionAmount) {
           // Completion payment (75%)
           console.log('💰 Showing completion payment modal from tap');
@@ -277,7 +263,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Check for pending booking requests on mount (for providers)
   useEffect(() => {
     if (!user) return;
-    
+
     // Only for providers
     if (user.role === 'provider' || user.audience === 'provider') {
       checkPendingBookingRequests();
@@ -288,15 +274,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const checkPendingBookingRequest = async (bookingId: string) => {
     try {
       const response = await apiService.getBookingStatus(bookingId);
-      
+
       if (response.success && response.data) {
         const { status, remainingSeconds, serviceName, provider, totalPrice, isExpired } = response.data;
-        
+
         // Only show modal if still awaiting response and not expired
         if (status === 'awaiting_response' && !isExpired && remainingSeconds > 0) {
           // Calculate new expiresAt based on remainingSeconds
           const expiresAt = new Date(Date.now() + remainingSeconds * 1000).toISOString();
-          
+
           setIncomingBookingRequest({
             bookingId: bookingId,
             serviceName: serviceName || 'Service',
@@ -307,7 +293,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             bookingTime: response.data.bookingTime,
             expiresAt: expiresAt
           });
-          
+
           console.log('✅ Showing booking request modal with timer:', remainingSeconds, 'seconds remaining');
         } else {
           console.log('⏰ Booking request expired or already responded to');
@@ -323,13 +309,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       const userId = user?.id || user?._id;
       if (!userId) return;
-      
+
       const response = await apiService.getProviderPendingRequests(userId);
-      
+
       if (response.success && response.data && response.data.length > 0) {
         // Show the first pending request (most recent)
         const pendingRequest = response.data[0];
-        
+
         setIncomingBookingRequest({
           bookingId: pendingRequest.bookingId,
           serviceName: pendingRequest.serviceName,
@@ -340,7 +326,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           bookingTime: pendingRequest.bookingTime,
           expiresAt: pendingRequest.expiresAt
         });
-        
+
         console.log('✅ Found pending booking request on app open:', pendingRequest.bookingId);
       }
     } catch (error) {
@@ -382,7 +368,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         const paymentRequiredNotif = mappedNotifications.find(
           n => n.type === 'payment_required' && !n.read && n.bookingId
         );
-        
+
         if (paymentRequiredNotif && !paymentModalData) {
           // Determine if it's initial or completion payment based on data
           if (paymentRequiredNotif.completionAmount) {

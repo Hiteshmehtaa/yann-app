@@ -17,19 +17,20 @@ export const GlobalPaymentModal: React.FC = () => {
 
   // Fetch booking details when payment modal data is set
   useEffect(() => {
-    if (__DEV__) {
-      console.log('🔔 GlobalPaymentModal - paymentModalData changed:', paymentModalData);
-    }
-    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('💳 PAYMENT MODAL STATE CHANGE');
+    console.log('   paymentModalData:', paymentModalData ? {
+      type: paymentModalData.type,
+      bookingId: paymentModalData.bookingId,
+      initialAmount: paymentModalData.initialPaymentAmount,
+      completionAmount: paymentModalData.completionAmount
+    } : 'NULL');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
     if (paymentModalData?.bookingId) {
-      if (__DEV__) {
-        console.log('📋 Fetching booking details for:', paymentModalData.bookingId);
-      }
+      console.log('📋 Fetching booking for modal:', paymentModalData.bookingId);
       fetchBookingDetails(paymentModalData.bookingId);
     } else {
-      if (__DEV__) {
-        console.log('❌ No paymentModalData, clearing booking');
-      }
       setBooking(null);
     }
   }, [paymentModalData]);
@@ -37,54 +38,33 @@ export const GlobalPaymentModal: React.FC = () => {
   const fetchBookingDetails = async (bookingId: string) => {
     try {
       setIsLoading(true);
-      if (__DEV__) {
-        console.log('🔍 Fetching booking:', bookingId);
-      }
       const response = await apiService.getMyBookings();
 
-      if (__DEV__) {
-        console.log('📦 Bookings response:', {
-          success: response.success,
-          count: response.data?.length || 0,
-          bookingIds: response.data?.map((b: any) => b._id || b.id)
-        });
-      }
-      
       if (response.success && response.data) {
         const foundBooking = response.data.find((b: any) => b._id === bookingId || b.id === bookingId);
         if (foundBooking) {
-          if (__DEV__) {
-            console.log('✅ Booking found:', foundBooking._id);
-          }
+          console.log('✅ Booking found for modal:', foundBooking._id, 'status:', foundBooking.status);
           setBooking(foundBooking as Booking);
         } else {
-          if (__DEV__) {
-            console.log('❌ Booking NOT found in response. Trying direct fetch...');
-          }
-          // Try fetching the booking directly by ID
+          console.log('⚠️ Booking NOT in list, trying direct fetch...');
           try {
             const directResponse = await apiService.getBookingStatus(bookingId);
             if (directResponse.success && directResponse.data) {
-              if (__DEV__) {
-                console.log('✅ Booking found via direct fetch');
-              }
+              console.log('✅ Booking found via direct fetch');
               setBooking(directResponse.data as Booking);
               return;
             }
           } catch (err) {
             console.error('Direct fetch failed:', err);
           }
-          
-          // Clear modal data if booking not found (might be old/deleted)
-          if (__DEV__) {
-            console.log('❌ Could not find booking, clearing modal');
-          }
+
+          console.log('❌ Booking not found anywhere, closing modal');
           setPaymentModalData(null);
           setBooking(null);
         }
       }
     } catch (error) {
-      console.error('❌ Failed to fetch booking details:', error);
+      console.error('❌ Failed to fetch booking:', error);
       setPaymentModalData(null);
       setBooking(null);
     } finally {
@@ -93,7 +73,7 @@ export const GlobalPaymentModal: React.FC = () => {
   };
 
   const handleClose = () => {
-    // Mark notification as read when user dismisses
+    console.log('🔴 Payment modal CLOSED by user');
     if (paymentModalData?.notificationId) {
       markAsRead(paymentModalData.notificationId);
     }
@@ -102,49 +82,43 @@ export const GlobalPaymentModal: React.FC = () => {
   };
 
   const handlePaymentSuccess = () => {
-    // Close modal immediately
+    console.log('✅ Payment SUCCESS - closing modal');
     setPaymentModalData(null);
     setBooking(null);
-    // Refresh notifications
     refreshNotifications();
-    
-    // Navigate to bookings list
+
     if (navigationRef.isReady()) {
       navigationRef.navigate('MainTabs' as never, { screen: 'BookingsList' } as never);
     }
   };
 
   const handleTimeout = () => {
-    console.log('⏰ Payment timer expired, booking auto-cancelled');
+    console.log('⏰ Payment TIMEOUT - modal closing');
     setPaymentModalData(null);
     setBooking(null);
     refreshNotifications();
   };
 
+  // Check if modal should show
   if (!paymentModalData || !booking || isLoading) {
-    if (__DEV__) {
-      console.log('🚫 Modal not showing:', {
-        hasModalData: !!paymentModalData,
-        hasBooking: !!booking,
-        isLoading
-      });
+    if (paymentModalData && !booking && !isLoading) {
+      console.log('⏳ Waiting for booking data...');
     }
     return null;
   }
 
-  if (__DEV__) {
-    console.log('✅ SHOWING PAYMENT MODAL:', {
-      type: paymentModalData.type,
-      bookingId: booking._id,
-      serviceName: booking.serviceName
-    });
-  }
+  // SHOW MODAL
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🟢 SHOWING PAYMENT MODAL');
+  console.log('   Type:', paymentModalData.type === 'initial' ? '25% INITIAL' : '75% COMPLETION');
+  console.log('   Booking:', booking._id);
+  console.log('   Service:', booking.serviceName);
+  console.log('   Total:', booking.totalPrice);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Show initial payment modal (25%)
   if (paymentModalData.type === 'initial') {
-    if (__DEV__) {
-      console.log('💰 Rendering InitialPaymentModal');
-    }
+    console.log('💰 Rendering 25% INITIAL Payment Modal');
     return (
       <InitialPaymentModal
         visible={true}
@@ -162,6 +136,7 @@ export const GlobalPaymentModal: React.FC = () => {
   }
 
   // Show completion payment modal (75%)
+  console.log('💰 Rendering 75% COMPLETION Payment Modal');
   return (
     <CompletionPaymentModal
       visible={true}
