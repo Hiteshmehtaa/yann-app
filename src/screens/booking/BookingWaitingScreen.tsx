@@ -131,18 +131,27 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                         console.log('🚫 Rejected providers:', response.data.rejectedProviderIds);
                     }
 
-                    if (bookingStatus === 'accepted' || bookingStatus === 'pending_payment') {
-                        // Provider accepted!
+                    if (bookingStatus === 'accepted') {
+                        // Provider accepted! (COD or payment already completed)
                         setStatus('accepted');
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         clearInterval(pollInterval);
 
-                        // Navigate to payment screen or booking detail
+                        // Navigate to booking detail
                         setTimeout(() => {
                             navigation.replace('BookingDetail', {
                                 booking: response.data,
                             });
                         }, 1500);
+                    } else if (bookingStatus === 'pending_payment') {
+                        // Provider accepted, waiting for initial payment
+                        // Don't navigate - let the payment modal from notification handle it
+                        setStatus('accepted');
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        clearInterval(pollInterval);
+                        
+                        console.log('💰 Waiting for payment modal to appear...');
+                        // The GlobalPaymentModal will show automatically from the notification
                     } else if (bookingStatus === 'rejected' || bookingStatus === 'cancelled') {
                         // Provider rejected
                         setStatus('rejected');
@@ -284,7 +293,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                         {currentProviderName} has accepted your booking
                     </Text>
                     <Text style={styles.statusDescription}>
-                        Redirecting to payment...
+                        Payment modal will appear shortly...
                     </Text>
                 </View>
             </View>
