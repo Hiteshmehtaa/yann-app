@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Toast } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
@@ -49,7 +49,8 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
   const [showEmailSent, setShowEmailSent] = useState(false);
   const { sendProviderOTP } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
-  
+  const insets = useSafeAreaInsets();
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
 
@@ -100,8 +101,8 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
       setShowEmailSent(true);
       setTimeout(() => {
         setShowEmailSent(false);
-        navigation.navigate('VerifyOTP', { 
-          identifier: trimmedIdentifier, 
+        navigation.navigate('VerifyOTP', {
+          identifier: trimmedIdentifier,
           isPartner: true,
           identifierType: getInputType(trimmedIdentifier) === 'email' ? 'email' : 'phone'
         });
@@ -116,29 +117,33 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
   const inputType = getInputType(identifier);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
-      
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={true}
           alwaysBounceVertical={true}
         >
           {/* Back Button */}
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <Ionicons name="arrow-back" size={22} color={THEME.text} />
           </TouchableOpacity>
 
-          <Animated.View 
+          <Animated.View
             style={[
               styles.content,
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
@@ -147,15 +152,15 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../../public/Logo.jpg')} 
+                <Image
+                  source={require('../../../assets/Logo.jpg')}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
               </View>
               <Text style={styles.brandName}>YANN</Text>
               <View style={styles.divider} />
-              
+
               {/* Welcome Animation */}
               <LottieView
                 source={require('../../../assets/lottie/Campers-Welcome.json')}
@@ -175,10 +180,10 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.label}>EMAIL OR PHONE NUMBER</Text>
               <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons 
-                    name={inputType === 'phone' ? "call" : "mail"} 
-                    size={20} 
-                    color={isFocused ? THEME.primary : THEME.textMuted} 
+                  <Ionicons
+                    name={inputType === 'phone' ? "call" : "mail"}
+                    size={20}
+                    color={isFocused ? THEME.primary : THEME.textMuted}
                   />
                 </View>
                 <TextInput
@@ -231,7 +236,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-      
+
       <Toast
         visible={toast.visible}
         message={toast.message}
@@ -253,7 +258,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -280,7 +285,6 @@ const styles = StyleSheet.create({
     borderColor: THEME.border,
   },
   content: {
-    flex: 1,
     paddingHorizontal: 28,
     paddingTop: 20,
   },

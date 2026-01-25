@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -37,28 +37,7 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Show animated splash screen
-  if (showSplash) {
-    return (
-      <AnimatedSplash
-        isReady={isReady}
-        onAnimationComplete={() => setShowSplash(false)}
-      />
-    );
-  }
-
-  if (!isReady) {
-    return null;
-  }
-
-  if (showOnboarding) {
-    return (
-      <SafeAreaProvider>
-        <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
-      </SafeAreaProvider>
-    );
-  }
-
+  // Show animated splash screen overlay if not ready or showing splash
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -69,7 +48,24 @@ export default function App() {
                 <View style={{ flex: 1 }}>
                   <OfflineIndicator />
                   <StatusBar style="auto" />
+
+                  {/* Main App Navigator (Always rendered behind splash) */}
                   <AppNavigator />
+
+                  {/* Splash Overlay */}
+                  {showSplash && (
+                    <AnimatedSplash
+                      isReady={isReady}
+                      onAnimationComplete={() => setShowSplash(false)}
+                    />
+                  )}
+
+                  {/* Onboarding Overlay */}
+                  {showOnboarding && !showSplash && (
+                    <View style={{ ...React.StyleSheet.absoluteFillObject, zIndex: 1000, backgroundColor: '#fff' }}>
+                      <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+                    </View>
+                  )}
                 </View>
               </NotificationProvider>
             </ThemeProvider>

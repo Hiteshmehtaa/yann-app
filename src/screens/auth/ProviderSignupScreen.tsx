@@ -12,7 +12,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -611,8 +611,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* Background pattern */}
       <View style={styles.bgPattern}>
@@ -622,7 +622,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Back Button */}
       <TouchableOpacity
-        style={styles.backButton}
+        style={[styles.backButton, { top: insets.top + 16 }]}
         onPress={handleBack}
         activeOpacity={0.7}
       >
@@ -634,7 +634,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 24 }
+          ]}
           showsVerticalScrollIndicator={false}
           bounces={true}
           alwaysBounceVertical={true}
@@ -643,7 +647,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Image
-                source={require('../../../public/Logo.jpg')}
+                source={require('../../../assets/Logo.jpg')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -680,7 +684,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         </ScrollView>
 
         {/* Bottom Button */}
-        <View style={[styles.bottomBar, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : insets.bottom + 20 }]}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           {currentStep < 4 ? (
             <TouchableOpacity
               style={styles.nextButton}
@@ -719,7 +723,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </KeyboardAvoidingView>
       <LoadingSpinner visible={isLoading} />
-    </SafeAreaView>
+    </View>
   );
 };
 

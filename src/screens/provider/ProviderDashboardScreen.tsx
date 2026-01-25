@@ -369,13 +369,20 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
       {/* 1. Clean White Header */}
       <SafeAreaView edges={['top']} style={styles.header}>
         <View style={styles.headerLeft}>
+          {/* App Logo */}
+          <Image
+            source={require('../../../assets/Logo.jpg')}
+            style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
+            resizeMode="contain"
+          />
+
           <TouchableOpacity onPress={() => navigation.navigate('ProviderProfile')}>
             <Image
               source={{ uri: user?.avatar || 'https://ui-avatars.com/api/?name=User&background=random' }}
               style={styles.avatar}
             />
           </TouchableOpacity>
-          <View>
+          <View style={{ marginLeft: 12 }}>
             <Text style={styles.welcomeSub}>
               {(() => {
                 const hour = new Date().getHours();

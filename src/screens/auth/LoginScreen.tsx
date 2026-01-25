@@ -12,7 +12,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
@@ -36,7 +36,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [showEmailSent, setShowEmailSent] = useState(false);
   const { sendOTP } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
-  
+  const insets = useSafeAreaInsets();
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
 
@@ -56,6 +57,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     ]).start();
   }, []);
 
+  // ... (validation functions omitted for brevity if unchanged, but need to be careful with replace)
+  // To avoid replacing logic, I will target the return statement mostly.
+
+  // Wait, I need to keep the validation logic. I will only target the Top of the component return.
+
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -71,10 +77,10 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const detectInputType = (input: string): 'email' | 'phone' | null => {
     if (!input) return null;
     const trimmed = input.trim();
-    
+
     if (validateEmail(trimmed)) return 'email';
     if (validatePhone(trimmed)) return 'phone';
-    
+
     return null;
   };
 
@@ -96,9 +102,9 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       setShowEmailSent(true);
       setTimeout(() => {
         setShowEmailSent(false);
-        navigation.navigate('VerifyOTP', { 
+        navigation.navigate('VerifyOTP', {
           identifier,
-          identifierType: inputType 
+          identifierType: inputType
         });
       }, 1000);
     } catch (error: any) {
@@ -109,9 +115,9 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
       {/* Toast Notification */}
       <Toast
         visible={toast.visible}
@@ -134,33 +140,37 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
       )}
-      
+
       {/* Background pattern */}
       <View style={styles.bgPattern}>
         <View style={styles.patternCircle1} />
         <View style={styles.patternCircle2} />
       </View>
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={true}
           alwaysBounceVertical={true}
         >
           {/* Back Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <Ionicons name="arrow-back" size={22} color={COLORS.text} />
           </TouchableOpacity>
 
-          <Animated.View 
+          <Animated.View
             style={[
               styles.content,
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
@@ -169,14 +179,14 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../../public/Logo.jpg')} 
+                <Image
+                  source={require('../../../assets/Logo.jpg')}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
               </View>
               <Text style={styles.brandName}>YANN</Text>
-              
+
               {/* Welcome Animation - Restored */}
               <LottieView
                 source={require('../../../assets/lottie/Campers-Welcome.json')}
@@ -185,7 +195,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 style={styles.welcomeAnimation}
                 resizeMode="contain"
               />
-              
+
               <Text style={styles.title}>Welcome{'\n'}Back</Text>
               <Text style={styles.subtitle}>
                 Sign in to manage your services
@@ -197,10 +207,10 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.label}>EMAIL OR PHONE</Text>
               <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
                 <View style={styles.inputIcon}>
-                  <Ionicons 
-                    name={detectInputType(identifier) === 'phone' ? 'call' : 'mail'} 
-                    size={20} 
-                    color={isFocused ? COLORS.primary : COLORS.textTertiary} 
+                  <Ionicons
+                    name={detectInputType(identifier) === 'phone' ? 'call' : 'mail'}
+                    size={20}
+                    color={isFocused ? COLORS.primary : COLORS.textTertiary}
                   />
                 </View>
                 <TextInput
@@ -251,7 +261,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         </ScrollView>
       </KeyboardAvoidingView>
       <LoadingSpinner visible={isLoading} />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -305,7 +315,6 @@ const styles = StyleSheet.create({
     ...SHADOWS.sm,
   },
   content: {
-    flex: 1,
     paddingHorizontal: 32,
     paddingTop: 32,
   },

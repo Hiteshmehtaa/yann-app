@@ -12,7 +12,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -34,6 +34,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,8 +115,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* Background pattern */}
       <View style={styles.bgPattern}>
@@ -128,7 +129,11 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={true}
@@ -146,7 +151,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Image
-                source={require('../../../public/Logo.jpg')}
+                source={require('../../../assets/Logo.jpg')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -289,7 +294,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
         </ScrollView>
       </KeyboardAvoidingView>
       <LoadingSpinner visible={isLoading} />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -385,7 +390,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
-    flex: 1,
     marginBottom: 20,
   },
   inputGroup: {

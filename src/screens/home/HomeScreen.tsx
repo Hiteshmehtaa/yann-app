@@ -462,9 +462,13 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('SavedAddresses')}
             activeOpacity={0.7}
           >
-            <View style={[styles.locationIconBg, { backgroundColor: colors.cardBg }]}>
-              <Ionicons name="location" size={18} color={colors.primary} />
-            </View>
+            {/* Logo replaces Location Icon */}
+            <Image
+              source={require('../../../assets/Logo.jpg')}
+              style={{ width: 40, height: 40, borderRadius: 20 }}
+              resizeMode="contain"
+            />
+
             <View style={styles.locationInfo}>
               <Text style={[styles.locationLabel, { color: colors.textSecondary }]}>Current Location</Text>
               <Text style={[styles.locationAddress, { color: colors.text }]} numberOfLines={1}>

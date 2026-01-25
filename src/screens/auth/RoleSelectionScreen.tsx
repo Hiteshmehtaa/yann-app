@@ -9,7 +9,7 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,6 +21,7 @@ type Props = {
 
 export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   const { width } = useResponsive();
+  const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -41,30 +42,39 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background pattern */}
+      {/* Background pattern - Full Screen */}
       <View style={styles.bgPattern}>
         <View style={styles.patternCircle1} />
         <View style={styles.patternCircle2} />
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom + 40
+          }
+        ]}
         showsVerticalScrollIndicator={false}
         bounces={true}
       >
         <View style={styles.content}>
-          {/* Logo Section */}
+          {/* Header with Top-Left Logo (Animation Target) */}
+          <View style={styles.header}>
+            <Image
+              source={require('../../../assets/Logo.jpg')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* Logo Section - Text Only now */}
           <Animated.View style={[styles.logoSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../../../public/Logo.jpg')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
             <Text style={styles.brandName}>YANN</Text>
             <View style={styles.taglineRow}>
               <View style={styles.taglineLine} />
@@ -154,7 +164,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
           </Animated.View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -192,28 +202,22 @@ const styles = StyleSheet.create({
     opacity: 0.02,
   },
   content: {
-    flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   logoSection: {
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 28,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    ...SHADOWS.md,
+  header: {
+    paddingHorizontal: 0, // content has padding, but header is inside content. actually let's check
+    marginBottom: 40,
+    marginTop: 10,
   },
-  logoImage: {
-    width: 65,
-    height: 65,
+  headerLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   brandName: {
     fontSize: 38,
