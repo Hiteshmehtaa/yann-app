@@ -7,12 +7,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 import { apiService } from '../services/api';
 import { COLORS, RADIUS, SPACING } from '../utils/theme';
+
+const { width } = Dimensions.get('window');
 
 interface InitialPaymentModalProps {
   visible: boolean;
@@ -51,9 +55,9 @@ export const InitialPaymentModal: React.FC<InitialPaymentModalProps> = ({
       const now = new Date();
       const expires = new Date(expiresAt);
       const diff = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / 1000));
-      
+
       setRemainingSeconds(diff);
-      
+
       if (diff === 0 && !isExpired) {
         setIsExpired(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -129,98 +133,115 @@ export const InitialPaymentModal: React.FC<InitialPaymentModalProps> = ({
   if (isExpired) {
     return (
       <Modal visible={visible} transparent animationType="fade">
-        <View style={styles.overlay}>
+        <BlurView intensity={90} tint="dark" style={styles.overlay}>
           <View style={styles.container}>
-            <View style={styles.expiredHeader}>
-              <Ionicons name="time-outline" size={64} color="#EF4444" />
+            <View style={styles.expiredContent}>
+              <View style={styles.expiredIconContainer}>
+                <Ionicons name="time-outline" size={72} color="#EF4444" />
+              </View>
               <Text style={styles.expiredTitle}>Time's Up!</Text>
               <Text style={styles.expiredMessage}>
                 Payment window expired. Booking has been cancelled.
               </Text>
+              <TouchableOpacity style={styles.expiredButton} onPress={onClose}>
+                <Text style={styles.expiredButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
-        </View>
+        </BlurView>
       </Modal>
     );
   }
 
+  const completionAmount = totalAmount - initialPaymentAmount;
+
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
+      <BlurView intensity={90} tint="dark" style={styles.overlay}>
         <View style={styles.container}>
-          {/* Header with Timer */}
+          {/* Success Header */}
           <LinearGradient
-            colors={[getUrgencyColor(), getUrgencyColor() + 'DD']}
+            colors={['#10B981', '#059669']}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={styles.header}
           >
-            <View style={styles.headerTop}>
-              <View style={styles.timerBadge}>
-                <Ionicons name="timer-outline" size={20} color="#FFF" />
-                <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
-              </View>
+            <View style={styles.successBadge}>
+              <Ionicons name="checkmark-circle" size={64} color="#FFFFFF" />
             </View>
-            <Ionicons name="checkmark-circle" size={56} color="#FFFFFF" />
-            <Text style={styles.headerTitle}>Booking Accepted! 🎉</Text>
+            <Text style={styles.headerTitle}>Booking Confirmed!</Text>
             <Text style={styles.headerSubtitle}>
               {providerName} will arrive soon
             </Text>
           </LinearGradient>
 
-          {/* Payment Details */}
-          <View style={styles.content}>
-            <View style={styles.urgencyBanner}>
-              <Ionicons 
-                name={remainingSeconds < 60 ? "alert-circle" : "information-circle"} 
-                size={20} 
-                color={getUrgencyColor()} 
-              />
-              <Text style={[styles.urgencyText, { color: getUrgencyColor() }]}>
-                {remainingSeconds < 60 
-                  ? '⚡ Hurry! Time running out'
-                  : 'Complete payment to confirm booking'}
-              </Text>
-            </View>
+          {/* Timer Badge */}
+          <View style={[styles.timerBadge, { backgroundColor: getUrgencyColor() }]}>
+            <Ionicons name="timer-outline" size={18} color="#FFF" />
+            <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
+            <Text style={styles.timerLabel}>remaining</Text>
+          </View>
 
-            <View style={styles.serviceInfo}>
-              <Text style={styles.serviceLabel}>Service</Text>
+          {/* Content */}
+          <View style={styles.content}>
+            {/* Service Info Card */}
+            <View style={styles.serviceCard}>
+              <View style={styles.serviceHeader}>
+                <Ionicons name="construct" size={20} color="#6B7280" />
+                <Text style={styles.serviceLabel}>Service</Text>
+              </View>
               <Text style={styles.serviceName}>{serviceName}</Text>
             </View>
 
-            <View style={styles.providerInfo}>
-              <Text style={styles.providerLabel}>Provider</Text>
-              <Text style={styles.providerName}>{providerName}</Text>
-            </View>
+            {/* Payment Breakdown */}
+            <View style={styles.paymentCard}>
+              <Text style={styles.sectionTitle}>Payment Breakdown</Text>
 
-            <View style={styles.divider} />
-
-            <View style={styles.paymentBreakdown}>
               <View style={styles.paymentRow}>
-                <Text style={styles.paymentLabel}>Initial Payment (25%)</Text>
-                <Text style={styles.paymentAmount}>₹{initialPaymentAmount}</Text>
+                <View style={styles.paymentLeft}>
+                  <Text style={styles.paymentLabel}>Initial Payment</Text>
+                  <Text style={styles.paymentPercent}>25%</Text>
+                </View>
+                <Text style={styles.paymentAmount}>₹{initialPaymentAmount.toFixed(2)}</Text>
               </View>
+
+              <View style={styles.divider} />
+
               <View style={styles.paymentRow}>
-                <Text style={styles.paymentLabelSecondary}>Remaining (75%)</Text>
+                <View style={styles.paymentLeft}>
+                  <Text style={styles.paymentLabelSecondary}>After Completion</Text>
+                  <Text style={styles.paymentPercentSecondary}>75%</Text>
+                </View>
                 <Text style={styles.paymentAmountSecondary}>
-                  ₹{totalAmount - initialPaymentAmount}
+                  ₹{completionAmount.toFixed(2)}
                 </Text>
               </View>
-              <View style={styles.paymentRow}>
+
+              <View style={styles.divider} />
+
+              <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Booking</Text>
-                <Text style={styles.totalAmount}>₹{totalAmount}</Text>
+                <Text style={styles.totalAmount}>₹{totalAmount.toFixed(2)}</Text>
               </View>
             </View>
 
-            <View style={styles.noteBox}>
-              <Ionicons name="information-circle-outline" size={18} color="#6B7280" />
-              <Text style={styles.noteText}>
-                Pay 75% after service completion
+            {/* Info Banner */}
+            <View style={styles.infoBanner}>
+              <Ionicons name="information-circle" size={20} color="#3B82F6" />
+              <Text style={styles.infoText}>
+                Pay remaining 75% after service completion
               </Text>
             </View>
+
+            {/* Urgency Warning */}
+            {remainingSeconds < 60 && (
+              <View style={styles.urgencyBanner}>
+                <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                <Text style={styles.urgencyText}>
+                  ⚡ Hurry! Booking will be cancelled if not paid in time
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Action Buttons */}
@@ -229,25 +250,37 @@ export const InitialPaymentModal: React.FC<InitialPaymentModalProps> = ({
               style={styles.payButton}
               onPress={handlePayment}
               disabled={isPaying}
+              activeOpacity={0.8}
             >
-              {isPaying ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons name="card" size={20} color="#FFFFFF" />
-                  <Text style={styles.payButtonText}>
-                    Pay ₹{initialPaymentAmount} Now
-                  </Text>
-                </>
-              )}
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.payButtonGradient}
+              >
+                {isPaying ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="card" size={22} color="#FFFFFF" />
+                    <Text style={styles.payButtonText}>
+                      Pay ₹{initialPaymentAmount.toFixed(2)}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              activeOpacity={0.6}
+            >
               <Text style={styles.skipButtonText}>Skip for now</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </BlurView>
     </Modal>
   );
 };
@@ -255,139 +288,172 @@ export const InitialPaymentModal: React.FC<InitialPaymentModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.lg,
   },
   container: {
+    width: width * 0.92,
+    maxWidth: 440,
     backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.xl,
-    width: '100%',
-    maxWidth: 450,
+    borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
+    elevation: 20,
   },
   header: {
-    padding: SPACING.xl,
+    paddingTop: SPACING.xxl,
+    paddingBottom: SPACING.xl,
+    paddingHorizontal: SPACING.xl,
     alignItems: 'center',
   },
-  headerTop: {
-    width: '100%',
-    alignItems: 'flex-end',
+  successBadge: {
     marginBottom: SPACING.md,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 6,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.95)',
+    textAlign: 'center',
   },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
+    marginTop: -20,
     gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   timerText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    fontVariant: ['tabular-nums'],
   },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: SPACING.sm,
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    fontWeight: '500',
+  timerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 4,
-    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   content: {
     padding: SPACING.xl,
+    gap: SPACING.md,
   },
-  urgencyBanner: {
+  serviceCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  serviceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.lg,
     gap: 8,
-  },
-  urgencyText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  serviceInfo: {
-    marginBottom: SPACING.md,
+    marginBottom: 8,
   },
   serviceLabel: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#9CA3AF',
-    marginBottom: 4,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   serviceName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#111827',
+    letterSpacing: 0.2,
   },
-  providerInfo: {
-    marginBottom: SPACING.lg,
+  paymentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: SPACING.lg,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
-  providerLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#9CA3AF',
-    marginBottom: 4,
-  },
-  providerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4B5563',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: SPACING.md,
-  },
-  paymentBreakdown: {
-    gap: SPACING.sm,
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
     marginBottom: SPACING.md,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   paymentRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 8,
+  },
+  paymentLeft: {
+    flex: 1,
   },
   paymentLabel: {
     fontSize: 15,
     fontWeight: '600',
     color: '#111827',
+    marginBottom: 2,
+  },
+  paymentPercent: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
   },
   paymentAmount: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#10B981',
+    fontVariant: ['tabular-nums'],
   },
   paymentLabelSecondary: {
     fontSize: 14,
     fontWeight: '500',
     color: '#6B7280',
+    marginBottom: 2,
+  },
+  paymentPercentSecondary: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
   paymentAmountSecondary: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#6B7280',
+    fontVariant: ['tabular-nums'],
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 8,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
   },
   totalLabel: {
     fontSize: 16,
@@ -395,23 +461,44 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   totalAmount: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#111827',
+    fontVariant: ['tabular-nums'],
   },
-  noteBox: {
+  infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#EFF6FF',
     padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    gap: 8,
+    borderRadius: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
-  noteText: {
+  infoText: {
     flex: 1,
     fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontWeight: '600',
+    color: '#1E40AF',
+    lineHeight: 18,
+  },
+  urgencyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: SPACING.md,
+    borderRadius: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  urgencyText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+    lineHeight: 18,
   },
   actions: {
     padding: SPACING.xl,
@@ -419,26 +506,29 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   payButton: {
-    backgroundColor: '#10B981',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  payButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: RADIUS.lg,
-    gap: 8,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    paddingVertical: 18,
+    gap: 10,
   },
   payButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   skipButton: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   skipButtonText: {
@@ -446,33 +536,47 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
   },
-  expiredHeader: {
+  // Expired State
+  expiredContent: {
     padding: SPACING.xxl,
     alignItems: 'center',
+  },
+  expiredIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xl,
   },
   expiredTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#EF4444',
-    marginTop: SPACING.md,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#DC2626',
+    marginBottom: SPACING.sm,
   },
   expiredMessage: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
     color: '#6B7280',
-    marginTop: SPACING.sm,
     textAlign: 'center',
+    marginBottom: SPACING.xl,
+    lineHeight: 24,
   },
-  closeButton: {
-    margin: SPACING.xl,
-    backgroundColor: '#EF4444',
-    paddingVertical: 14,
-    borderRadius: RADIUS.lg,
-    alignItems: 'center',
+  expiredButton: {
+    backgroundColor: '#DC2626',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 16,
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  closeButtonText: {
-    fontSize: 16,
+  expiredButtonText: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
   },
