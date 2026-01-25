@@ -19,6 +19,7 @@ import { STATUS_COLORS } from '../../utils/constants';
 import { RatingModal } from '../../components/RatingModal';
 import { JobTimer } from '../../components/JobTimer';
 import { apiService } from '../../services/api';
+import { useNotifications } from '../../contexts/NotificationContext';
 import type { Booking } from '../../types';
 
 type Props = {
@@ -32,6 +33,70 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isPayingCompletion, setIsPayingCompletion] = useState(false);
+    const { setPaymentModalData } = useNotifications();
+
+    // Poll for booking status updates (to detect completion and trigger payment modal)
+    useEffect(() => {
+        // Only poll if booking is in progress
+        if (booking.status !== 'in_progress' && booking.status !== 'accepted') {
+            return;
+        }
+
+        console.log('🔄 Starting booking status polling for completion detection');
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await apiService.getBookingStatus(booking._id);
+                
+                if (response.success && response.data) {
+                    const updatedBooking = response.data;
+                    console.log('📊 Booking status poll:', {
+                        status: updatedBooking.status,
+                        walletStage: updatedBooking.walletPaymentStage
+                    });
+
+                    // Update local booking state
+                    setBooking(updatedBooking as Booking);
+
+                    // Check if job just completed and needs 75% payment
+                    if (
+                        updatedBooking.status === 'completed' &&
+                        updatedBooking.paymentMethod === 'wallet' &&
+                        updatedBooking.walletPaymentStage === 'initial_25_held' &&
+                        updatedBooking.escrowDetails?.isInitialPaid &&
+                        !updatedBooking.escrowDetails?.isCompletionPaid
+                    ) {
+                        console.log('💰 COMPLETION PAYMENT NEEDED - Triggering modal');
+                        
+                        const completionAmount = updatedBooking.escrowDetails?.completionAmount || 
+                            Math.round(updatedBooking.totalPrice * 0.75 * 100) / 100;
+
+                        // Trigger completion payment modal
+                        setPaymentModalData({
+                            type: 'completion',
+                            bookingId: updatedBooking._id,
+                            completionAmount: completionAmount,
+                            totalPrice: updatedBooking.totalPrice,
+                            serviceName: updatedBooking.serviceName,
+                            notificationId: Date.now().toString()
+                        });
+
+                        // Stop polling after triggering modal
+                        clearInterval(pollInterval);
+                        
+                        console.log('✅ Completion payment modal triggered');
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling booking status:', error);
+            }
+        }, 3000); // Poll every 3 seconds
+
+        return () => {
+            console.log('🛑 Stopping booking status polling');
+            clearInterval(pollInterval);
+        };
+    }, [booking.status, booking._id]);
 
     // Check if booking needs 75% completion payment
     const needsCompletionPayment = () => {
