@@ -132,7 +132,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }
+            { paddingTop: insets.top + 24, paddingBottom: Math.max(insets.bottom + 120, 120) }
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -304,7 +304,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   bgPattern: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     overflow: 'hidden',
     zIndex: -1,
   },

@@ -32,6 +32,19 @@ export interface BookingRequestData {
   expiresAt: string;
 }
 
+// Payment modal data (support both initial and completion payments)
+export interface PaymentModalData {
+  type: 'initial' | 'completion';
+  bookingId: string;
+  initialPaymentAmount?: number; // For initial payment (25%)
+  completionAmount?: number; // For completion payment (75%)
+  totalPrice?: number;
+  providerName?: string;
+  serviceName?: string;
+  expiresAt?: string; // For initial payment timer
+  notificationId: string;
+}
+
 interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
@@ -39,8 +52,8 @@ interface NotificationContextType {
   markAllAsRead: () => Promise<void>;
   clearAll: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
-  paymentModalData: { bookingId: string; completionAmount: number; notificationId: string } | null;
-  setPaymentModalData: (data: { bookingId: string; completionAmount: number; notificationId: string } | null) => void;
+  paymentModalData: PaymentModalData | null;
+  setPaymentModalData: (data: PaymentModalData | null) => void;
   // Booking request for providers
   incomingBookingRequest: BookingRequestData | null;
   setIncomingBookingRequest: (data: BookingRequestData | null) => void;
@@ -72,7 +85,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, [user]);
 
-  // Listen for incoming notifications
+  // Listen for incoming notifications (app in foreground)
   useEffect(() => {
     if (!user) return;
 
@@ -81,7 +94,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // Filter notifications: Only accept if recipientId matches current user or if generic (no recipientId)
       const recipientId = data.recipientId;
-      if (recipientId && user && recipientId !== user.id) {
+      const currentUserId = user.id || user._id;
+      
+      // Convert both to strings for comparison (MongoDB ObjectIds vs strings)
+      if (recipientId && currentUserId && String(recipientId) !== String(currentUserId)) {
+        console.log(`🚫 Filtering notification: recipientId=${recipientId}, currentUserId=${currentUserId}`);
         return;
       }
 
@@ -101,14 +118,43 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         read: false,
       };
 
-      // INSTANT PAYMENT TRIGGER: If payment required, show modal immediately!
-      if (newNotification.type === 'payment_required' && data.bookingId && data.completionAmount) {
+      console.log('📥 Notification received:', {
+        type: data.type,
+        bookingId: data.bookingId,
+        initialPaymentAmount: data.initialPaymentAmount,
+        completionAmount: data.completionAmount,
+        expiresAt: data.expiresAt
+      });
+
+      // INSTANT PAYMENT TRIGGER: Show payment modal based on type
+      if (data.type === 'payment_required' && data.bookingId) {
         const notifId = (data.notificationId as string) || newNotification.id;
-        setPaymentModalData({
-          bookingId: data.bookingId as string,
-          completionAmount: data.completionAmount as number,
-          notificationId: notifId
-        });
+        
+        if (data.initialPaymentAmount && data.expiresAt) {
+          // Initial payment (25%) with timer
+          console.log('💰 Showing initial payment modal');
+          setPaymentModalData({
+            type: 'initial',
+            bookingId: data.bookingId as string,
+            initialPaymentAmount: data.initialPaymentAmount as number,
+            totalPrice: data.totalPrice as number,
+            providerName: data.providerName as string,
+            serviceName: data.serviceName as string,
+            expiresAt: data.expiresAt as string,
+            notificationId: notifId
+          });
+        } else if (data.completionAmount) {
+          // Completion payment (75%)
+          console.log('💰 Showing completion payment modal');
+          setPaymentModalData({
+            type: 'completion',
+            bookingId: data.bookingId as string,
+            completionAmount: data.completionAmount as number,
+            notificationId: notifId
+          });
+        } else {
+          console.log('⚠️ payment_required notification but no payment amount found');
+        }
       }
 
       // BOOKING REQUEST TRIGGER: Show incoming request modal for providers
@@ -132,6 +178,146 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     return () => subscription.remove();
   }, [user]);
+
+  // Listen for notification taps (when user opens app from notification)
+  useEffect(() => {
+    if (!user) return;
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      
+      console.log('📲 Notification tapped, data:', data);
+
+      // Filter by recipientId
+      const recipientId = data.recipientId;
+      const currentUserId = user.id || user._id;
+      
+      if (recipientId && currentUserId && String(recipientId) !== String(currentUserId)) {
+        console.log(`🚫 Filtering tapped notification: not for current user`);
+        return;
+      }
+
+      // BOOKING REQUEST: Show incoming request modal (only for providers)
+      if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId) {
+        // Only check if user is a provider
+        if (user.role === 'provider' || user.audience === 'provider') {
+          // Fetch fresh booking data to get timer info
+          checkPendingBookingRequest(data.bookingId as string);
+        }
+      }
+
+      // PAYMENT REQUIRED: Show payment modal
+      if (data.type === 'payment_required' && data.bookingId) {
+        console.log('💰 Payment required notification tapped:', {
+          initialPaymentAmount: data.initialPaymentAmount,
+          completionAmount: data.completionAmount,
+          expiresAt: data.expiresAt
+        });
+        
+        const notifId = data.notificationId as string || Date.now().toString();
+        
+        if (data.initialPaymentAmount && data.expiresAt) {
+          // Initial payment (25%)
+          console.log('💰 Showing initial payment modal from tap');
+          setPaymentModalData({
+            type: 'initial',
+            bookingId: data.bookingId as string,
+            initialPaymentAmount: data.initialPaymentAmount as number,
+            totalPrice: data.totalPrice as number,
+            providerName: data.providerName as string,
+            serviceName: data.serviceName as string,
+            expiresAt: data.expiresAt as string,
+            notificationId: notifId
+          });
+        } else if (data.completionAmount) {
+          // Completion payment (75%)
+          console.log('💰 Showing completion payment modal from tap');
+          setPaymentModalData({
+            type: 'completion',
+            bookingId: data.bookingId as string,
+            completionAmount: data.completionAmount as number,
+            notificationId: notifId
+          });
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, [user]);
+
+  // Check for pending booking requests on mount (for providers)
+  useEffect(() => {
+    if (!user) return;
+    
+    // Only for providers
+    if (user.role === 'provider' || user.audience === 'provider') {
+      checkPendingBookingRequests();
+    }
+  }, [user]);
+
+  // Check for a specific pending booking request (when notification tapped)
+  const checkPendingBookingRequest = async (bookingId: string) => {
+    try {
+      const response = await apiService.getBookingStatus(bookingId);
+      
+      if (response.success && response.data) {
+        const { status, remainingSeconds, serviceName, provider, totalPrice, isExpired } = response.data;
+        
+        // Only show modal if still awaiting response and not expired
+        if (status === 'awaiting_response' && !isExpired && remainingSeconds > 0) {
+          // Calculate new expiresAt based on remainingSeconds
+          const expiresAt = new Date(Date.now() + remainingSeconds * 1000).toISOString();
+          
+          setIncomingBookingRequest({
+            bookingId: bookingId,
+            serviceName: serviceName || 'Service',
+            customerName: response.data.customerName || 'Customer',
+            customerAddress: response.data.customerAddress,
+            totalPrice: totalPrice || 0,
+            bookingDate: response.data.bookingDate,
+            bookingTime: response.data.bookingTime,
+            expiresAt: expiresAt
+          });
+          
+          console.log('✅ Showing booking request modal with timer:', remainingSeconds, 'seconds remaining');
+        } else {
+          console.log('⏰ Booking request expired or already responded to');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check pending booking request:', error);
+    }
+  };
+
+  // Check for any pending booking requests assigned to this provider
+  const checkPendingBookingRequests = async () => {
+    try {
+      const userId = user?.id || user?._id;
+      if (!userId) return;
+      
+      const response = await apiService.getProviderPendingRequests(userId);
+      
+      if (response.success && response.data && response.data.length > 0) {
+        // Show the first pending request (most recent)
+        const pendingRequest = response.data[0];
+        
+        setIncomingBookingRequest({
+          bookingId: pendingRequest.bookingId,
+          serviceName: pendingRequest.serviceName,
+          customerName: pendingRequest.customerName,
+          customerAddress: pendingRequest.customerAddress,
+          totalPrice: pendingRequest.totalPrice,
+          bookingDate: pendingRequest.bookingDate,
+          bookingTime: pendingRequest.bookingTime,
+          expiresAt: pendingRequest.expiresAt
+        });
+        
+        console.log('✅ Found pending booking request on app open:', pendingRequest.bookingId);
+      }
+    } catch (error) {
+      console.error('Failed to check pending booking requests:', error);
+    }
+  };
 
   const loadNotifications = async () => {
     try {
@@ -165,15 +351,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         // CHECK FOR PAYMENT REQUIRED: Trigger payment modal if there's an unread payment_required notification
         const paymentRequiredNotif = mappedNotifications.find(
-          n => n.type === 'payment_required' && !n.read && n.bookingId && n.completionAmount
+          n => n.type === 'payment_required' && !n.read && n.bookingId
         );
         
         if (paymentRequiredNotif && !paymentModalData) {
-          setPaymentModalData({
-            bookingId: paymentRequiredNotif.bookingId!,
-            completionAmount: paymentRequiredNotif.completionAmount!,
-            notificationId: paymentRequiredNotif.id
-          });
+          // Determine if it's initial or completion payment based on data
+          if (paymentRequiredNotif.completionAmount) {
+            // Completion payment (75%)
+            setPaymentModalData({
+              type: 'completion',
+              bookingId: paymentRequiredNotif.bookingId!,
+              completionAmount: paymentRequiredNotif.completionAmount!,
+              notificationId: paymentRequiredNotif.id
+            });
+          }
+          // Note: Initial payment (25%) should come from real-time notification with timer
         }
 
         setNotifications(prevNotifications => {

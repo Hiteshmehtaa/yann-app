@@ -40,6 +40,7 @@ import { ServiceDetailScreen } from '../screens/booking/ServiceDetailScreen';
 import { BookingsListScreen } from '../screens/booking/BookingsListScreen';
 import { BookingDetailScreen } from '../screens/booking/BookingDetailScreen';
 import { BookingFormScreen } from '../screens/booking/BookingFormScreen';
+import { BookingWaitingScreen } from '../screens/booking/BookingWaitingScreen';
 import { ProviderPublicProfileScreen } from '../screens/booking/ProviderPublicProfileScreen';
 
 // Profile Screens
@@ -87,6 +88,7 @@ type RootStackParamList = {
   ProviderTabs: { screen?: string; params?: any } | undefined;
   ServiceDetail: { service: any };
   BookingForm: { service: any; selectedProvider?: any; selectedAddress?: any };
+  BookingWaiting: { bookingId: string; providerId: string; providerName: string; serviceName: string; experienceRange?: any };
   ProviderPublicProfile: { provider: any; service?: any };
   // Provider screens
   ProviderEditProfile: undefined;
@@ -373,6 +375,7 @@ export function AppNavigator() {
                 <Stack.Screen name="BookingsList" component={BookingsListScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingDetail" component={BookingDetailScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingForm" component={BookingFormScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="BookingWaiting" component={BookingWaitingScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Wallet" component={WalletScreen as any} options={screenTransitionConfig} />

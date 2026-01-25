@@ -473,11 +473,20 @@ class ApiService {
    * Website uses this when filtering providers
    * Returns providers sorted by price
    */
-  async getProvidersByService(serviceName: string): Promise<ApiResponse<ServiceProviderListItem[]>> {
+  async getProvidersByService(serviceName: string, filters?: any): Promise<ApiResponse<ServiceProviderListItem[]>> {
     try {
-      const response = await this.client.get('/provider/by-service', {
-        params: { service: serviceName },
-      });
+      const params: any = { service: serviceName };
+      
+      // Add filters if provided
+      if (filters) {
+        if (filters.experienceMin !== undefined) params.experienceMin = filters.experienceMin;
+        if (filters.experienceMax !== undefined) params.experienceMax = filters.experienceMax;
+        if (filters.excludeProviderId) params.excludeProviderId = filters.excludeProviderId;
+      }
+
+      console.log('📊 Fetching providers with filters:', params);
+      
+      const response = await this.client.get('/provider/by-service', { params });
 
       // Response: { success, data: providers[], providers: providers[], meta: { total, service } }
       const providers = response?.data?.data || response?.data?.providers || response?.data || [];
@@ -491,6 +500,8 @@ class ApiService {
           meta: { total: 0, service: serviceName },
         };
       }
+
+      console.log(`✅ Found ${providers.length} providers matching filters`);
 
       return {
         success: providers.length > 0,
@@ -703,6 +714,15 @@ class ApiService {
   }
 
   /**
+   * POST /api/bookings/reassign
+   * Reassign a rejected booking to a new provider
+   */
+  async reassignBooking(bookingId: string, newProviderId: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/reassign', { bookingId, newProviderId });
+    return response.data;
+  }
+
+  /**
    * GET /api/bookings/request
    * Check booking request status (for polling)
    */
@@ -714,15 +734,31 @@ class ApiService {
   }
 
   /**
+   * Alias for checkBookingRequestStatus (clearer naming)
+   */
+  async getBookingStatus(bookingId: string, customerId?: string): Promise<ApiResponse> {
+    return this.checkBookingRequestStatus(bookingId, customerId);
+  }
+
+  /**
+   * GET /api/bookings/pending-requests
+   * Get all pending booking requests for a provider
+   */
+  async getProviderPendingRequests(providerId: string): Promise<ApiResponse> {
+    const response = await this.client.get(`/bookings/pending-requests?providerId=${providerId}`);
+    return response.data;
+  }
+
+  /**
    * POST /api/bookings/respond
    * Provider responds to booking request (accept/reject)
    */
   async respondToBookingRequest(bookingId: string, providerId: string, action: 'accept' | 'reject', reason?: string): Promise<ApiResponse> {
-    const response = await this.client.post('/bookings/respond', { 
-      bookingId, 
-      providerId, 
+    const response = await this.client.post('/bookings/respond', {
+      bookingId,
+      providerId,
       action,
-      reason 
+      reason
     });
     return response.data;
   }
@@ -766,6 +802,18 @@ class ApiService {
     razorpay_signature: string;
   }): Promise<ApiResponse> {
     const response = await this.client.post('/payment/verify', data);
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/pay-initial
+   * Process 25% initial payment after provider accepts
+   */
+  async payInitialBookingAmount(bookingId: string, paymentMethod: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/pay-initial', {
+      bookingId,
+      paymentMethod
+    });
     return response.data;
   }
 
@@ -1225,6 +1273,20 @@ class ApiService {
    */
   async requestAutoRefund(): Promise<ApiResponse<{ refundAmount: number; transactionCount: number; newBalance: number }>> {
     const response = await this.client.post('/wallet/refund');
+    return response.data;
+  }
+
+  /**
+   * POST /api/bookings/pay-initial
+   * Pay the initial 25% payment after partner accepts (for wallet payments)
+   */
+  async payInitialAmount(bookingId: string): Promise<ApiResponse<{
+    amount: number;
+    newBalance: number;
+    bookingId: string;
+    serviceName: string;
+  }>> {
+    const response = await this.client.post('/bookings/pay-initial', { bookingId });
     return response.data;
   }
 

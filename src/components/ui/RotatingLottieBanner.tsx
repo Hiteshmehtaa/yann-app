@@ -267,7 +267,11 @@ const styles = StyleSheet.create({
         overflow: 'hidden', // clipped to bounds
     },
     layer: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
         borderRadius: 24,
         overflow: 'hidden',
         // backgroundColor: '#FFFFFF', // Transparent

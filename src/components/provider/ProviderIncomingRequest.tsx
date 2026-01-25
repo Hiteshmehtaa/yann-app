@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, SHADOWS, RADIUS } from '../../utils/theme';
 import { apiService } from '../../services/api';
+import { playBookingRequestBuzzer, stopBuzzer, playSuccessSound, playErrorSound } from '../../utils/soundNotifications';
 
 const { width, height } = Dimensions.get('window');
 
@@ -66,28 +67,45 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
   // Calculate remaining time from expiresAt
   useEffect(() => {
-    if (visible && requestData?.expiresAt) {
-      const updateRemaining = () => {
-        const now = new Date();
-        const expires = new Date(requestData.expiresAt);
-        const remaining = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / 1000));
-        setRemainingSeconds(remaining);
-
-        if (remaining <= 0) {
-          // Timer expired - auto dismiss
-          stopAllEffects();
-          onDismiss();
-        }
-      };
-
-      updateRemaining();
-      timerRef.current = setInterval(updateRemaining, 1000);
-
-      return () => {
-        if (timerRef.current) clearInterval(timerRef.current);
-      };
+    if (!visible || !requestData?.expiresAt) {
+      console.log('⏱️ Timer NOT started. visible:', visible, 'expiresAt:', requestData?.expiresAt);
+      return;
     }
-  }, [visible, requestData?.expiresAt]);
+
+    console.log('⏱️ Timer started. expiresAt:', requestData.expiresAt);
+    const expiresAt = new Date(requestData.expiresAt);
+    
+    const updateRemaining = () => {
+      const now = new Date();
+      const remaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+      console.log('⏱️ Timer tick - Remaining:', remaining, 'seconds');
+      setRemainingSeconds(remaining);
+
+      if (remaining <= 0) {
+        console.log('⏱️ Timer expired - auto dismissing');
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        stopAllEffects();
+        onDismiss();
+      }
+    };
+
+    // Initial update
+    updateRemaining();
+    
+    // Set interval
+    timerRef.current = setInterval(updateRemaining, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        console.log('⏱️ Timer cleanup');
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [visible, requestData?.expiresAt, onDismiss]);
 
   // Start buzzer/vibration when visible
   useEffect(() => {
@@ -154,20 +172,36 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     }
   }, [visible]);
 
-  const startBuzzerEffects = () => {
-    // Start vibration pattern
+  const startBuzzerEffects = async () => {
+    // Play buzzer sound with haptic feedback
+    try {
+      await playBookingRequestBuzzer();
+    } catch (error) {
+      console.log('Sound notification failed, using fallback:', error);
+    }
+
+    // Start vibration pattern as backup
     if (Platform.OS !== 'web') {
       Vibration.vibrate(VIBRATION_PATTERN);
       vibrationRef.current = setInterval(() => {
         Vibration.vibrate(VIBRATION_PATTERN);
+        // Replay buzzer periodically
+        playBookingRequestBuzzer().catch(console.log);
       }, VIBRATION_INTERVAL);
     }
 
-    // Fallback to haptic feedback since expo-av might not be installed
+    // Fallback to haptic feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   };
 
-  const stopAllEffects = () => {
+  const stopAllEffects = async () => {
+    // Stop buzzer sound
+    try {
+      await stopBuzzer();
+    } catch (error) {
+      console.log('Failed to stop buzzer:', error);
+    }
+
     // Stop vibration
     if (Platform.OS !== 'web') {
       Vibration.cancel();
@@ -189,6 +223,9 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     setIsAccepting(true);
     stopAllEffects();
+    
+    // Play success sound
+    await playSuccessSound();
 
     try {
       const response = await apiService.respondToBookingRequest(
@@ -218,6 +255,9 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     setIsRejecting(true);
     stopAllEffects();
+    
+    // Play error sound
+    await playErrorSound();
 
     try {
       const response = await apiService.respondToBookingRequest(
@@ -292,9 +332,52 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
               <Ionicons name="notifications" size={28} color="#FFF" />
             </View>
             <Text style={styles.headerTitle}>New Booking Request!</Text>
-            <View style={[styles.timerBadge, { backgroundColor: getUrgencyColor() }]}>
-              <Ionicons name="time-outline" size={14} color="#FFF" />
-              <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
+          </View>
+
+          {/* Elegant Professional Timer */}
+          <View style={styles.timerSection}>
+            <View style={styles.timerWrapper}>
+              {/* Outer glow ring */}
+              <View style={[styles.glowRing, { borderColor: getUrgencyColor() + '30' }]} />
+              
+              {/* Main timer card */}
+              <View style={styles.timerCard}>
+                <View style={styles.timerTop}>
+                  <Text style={styles.timerTitle}>Response Time</Text>
+                  <View style={[styles.statusDot, { backgroundColor: getUrgencyColor() }]} />
+                </View>
+                
+                <View style={styles.timeDisplay}>
+                  <View style={styles.timeUnit}>
+                    <Text style={styles.timeNumber}>{Math.floor(remainingSeconds / 60)}</Text>
+                    <Text style={styles.timeLabel}>min</Text>
+                  </View>
+                  <Text style={styles.timeSeparator}>:</Text>
+                  <View style={styles.timeUnit}>
+                    <Text style={styles.timeNumber}>{String(remainingSeconds % 60).padStart(2, '0')}</Text>
+                    <Text style={styles.timeLabel}>sec</Text>
+                  </View>
+                </View>
+                
+                {/* Elegant progress bar */}
+                <View style={styles.progressTrack}>
+                  <View 
+                    style={[
+                      styles.progressBar, 
+                      { 
+                        width: `${(remainingSeconds / 180) * 100}%`,
+                        backgroundColor: getUrgencyColor()
+                      }
+                    ]} 
+                  />
+                </View>
+                
+                <Text style={[styles.warningText, { color: getUrgencyColor() }]}>
+                  {remainingSeconds <= 60 
+                    ? '⚡ Urgent - Auto-reject imminent' 
+                    : 'Auto-rejects if no response'}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -376,11 +459,18 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
           </View>
 
           {/* Urgency Message */}
-          <Text style={[styles.urgencyText, { color: getUrgencyColor() }]}>
-            {remainingSeconds <= 60 
-              ? '⚠️ Less than 1 minute left! Respond now!' 
-              : 'Customer is waiting for your response'}
-          </Text>
+          <View style={styles.urgencyContainer}>
+            <Ionicons 
+              name={remainingSeconds <= 60 ? "warning" : "information-circle"} 
+              size={20} 
+              color={getUrgencyColor()} 
+            />
+            <Text style={[styles.urgencyText, { color: getUrgencyColor() }]}>
+              {remainingSeconds <= 60 
+                ? 'Less than 1 minute! Will auto-reject if no response' 
+                : 'Booking will auto-reject if not accepted in time'}
+            </Text>
+          </View>
         </Animated.View>
       </BlurView>
     </Modal>
@@ -431,6 +521,179 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
+  },
+  largeTimerContainer: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xl,
+    marginBottom: SPACING.md,
+  },
+  timerSection: {
+    marginBottom: SPACING.lg,
+    paddingHorizontal: SPACING.xs,
+  },
+  timerWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  glowRing: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: RADIUS.large,
+    borderWidth: 2,
+    opacity: 0.3,
+  },
+  timerCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    ...SHADOWS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  timerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  timerTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  timeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginBottom: SPACING.md,
+  },
+  timeUnit: {
+    alignItems: 'center',
+  },
+  timeNumber: {
+    fontSize: 64,
+    fontWeight: '300',
+    color: COLORS.text,
+    lineHeight: 64,
+    fontVariant: ['tabular-nums'],
+  },
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  timeSeparator: {
+    fontSize: 48,
+    fontWeight: '200',
+    color: COLORS.textTertiary,
+    marginHorizontal: SPACING.sm,
+    marginBottom: 12,
+  },
+  progressTrack: {
+    height: 4,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: SPACING.md,
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  warningText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  circularTimer: {
+    width: 160,
+    height: 160,
+    marginBottom: SPACING.md,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circularBg: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderWidth: 8,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  circularProgress: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    overflow: 'hidden',
+  },
+  circularProgressHalf: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 8,
+    borderColor: 'transparent',
+    borderTopColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  circularInner: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    ...SHADOWS.md,
+  },
+  timerMinutes: {
+    fontSize: 44,
+    fontWeight: '800',
+    color: COLORS.text,
+    fontVariant: ['tabular-nums'],
+  },
+  timerSeparator: {
+    fontSize: 44,
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+    marginHorizontal: 2,
+  },
+  timerSeconds: {
+    fontSize: 44,
+    fontWeight: '800',
+    color: COLORS.text,
+    fontVariant: ['tabular-nums'],
+  },
+  urgencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: RADIUS.full,
+  },
+  urgencyBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   timerBadge: {
     flexDirection: 'row',
@@ -526,9 +789,20 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
+  urgencyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: RADIUS.medium,
+  },
   urgencyText: {
-    fontSize: 12,
+    fontSize: 13,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
+    flex: 1,
   },
 });

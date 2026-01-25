@@ -143,7 +143,11 @@ const styles = StyleSheet.create({
         zIndex: 9999, // Ensure highly visible
     },
     shadowLayer: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
         borderRadius: 36,
         backgroundColor: '#000',
         shadowColor: '#000',
@@ -190,7 +194,11 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     bevel: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.2)',
         borderRadius: 22,

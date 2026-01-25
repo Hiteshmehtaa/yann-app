@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { CompletionPaymentModal } from './CompletionPaymentModal';
+import { InitialPaymentModal } from './InitialPaymentModal';
 import { useNotifications } from '../contexts/NotificationContext';
 import { apiService } from '../services/api';
 import type { Booking } from '../types';
 
 /**
- * Global payment modal that listens to notification context
- * and automatically shows when partner completes a job
+ * Global payment modal - handles both initial (25%) and completion (75%) payments
  */
 export const GlobalPaymentModal: React.FC = () => {
   const { paymentModalData, setPaymentModalData, refreshNotifications, markAsRead } = useNotifications();
@@ -48,7 +48,7 @@ export const GlobalPaymentModal: React.FC = () => {
   };
 
   const handleClose = () => {
-    // Mark notification as read when user dismisses (clicks "Pay Later")
+    // Mark notification as read when user dismisses
     if (paymentModalData?.notificationId) {
       markAsRead(paymentModalData.notificationId);
     }
@@ -60,7 +60,14 @@ export const GlobalPaymentModal: React.FC = () => {
     // Close modal immediately
     setPaymentModalData(null);
     setBooking(null);
-    // Refresh notifications to remove the deleted payment_required notification
+    // Refresh notifications
+    refreshNotifications();
+  };
+
+  const handleTimeout = () => {
+    console.log('⏰ Payment timer expired, booking auto-cancelled');
+    setPaymentModalData(null);
+    setBooking(null);
     refreshNotifications();
   };
 
@@ -68,6 +75,25 @@ export const GlobalPaymentModal: React.FC = () => {
     return null;
   }
 
+  // Show initial payment modal (25%)
+  if (paymentModalData.type === 'initial') {
+    return (
+      <InitialPaymentModal
+        visible={true}
+        bookingId={booking._id}
+        serviceName={booking.serviceName}
+        providerName={paymentModalData.providerName || booking.providerName || 'Provider'}
+        initialPaymentAmount={paymentModalData.initialPaymentAmount || Math.round(booking.totalPrice * 0.25)}
+        totalAmount={booking.totalPrice}
+        expiresAt={paymentModalData.expiresAt || new Date(Date.now() + 3 * 60 * 1000).toISOString()}
+        onClose={handleClose}
+        onPaymentSuccess={handlePaymentSuccess}
+        onTimeout={handleTimeout}
+      />
+    );
+  }
+
+  // Show completion payment modal (75%)
   return (
     <CompletionPaymentModal
       visible={true}

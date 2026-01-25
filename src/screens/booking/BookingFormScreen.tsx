@@ -102,6 +102,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
 
+  // Payment Modal State (for 25% initial payment after provider accepts)
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+
+  // Experience range tracking (for category-based fallback)
+  const [selectedExperienceRange, setSelectedExperienceRange] = useState<{ label: string; min: number; max: number | null } | null>(null);
+
   // UX: Scroll Reference for Progressive Flow
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -117,6 +124,31 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!selectedAddress && user?.addressBook && user.addressBook.length > 0) {
       const primary = user.addressBook.find(addr => addr.isPrimary) || user.addressBook[0];
       setSelectedAddress(primary);
+    }
+
+    // Calculate experience range from provider's experience
+    if (initialProvider?.experience) {
+      const exp = initialProvider.experience;
+      let range: { label: string; min: number; max: number | null } | null = null;
+      
+      if (exp < 5) {
+        range = { label: '0-5 Years', min: 0, max: 5 };
+      } else if (exp < 10) {
+        range = { label: '5-10 Years', min: 5, max: 10 };
+      } else if (exp < 15) {
+        range = { label: '10-15 Years', min: 10, max: 15 };
+      } else if (exp < 20) {
+        range = { label: '15-20 Years', min: 15, max: 20 };
+      } else if (exp < 25) {
+        range = { label: '20-25 Years', min: 20, max: 25 };
+      } else if (exp < 30) {
+        range = { label: '25-30 Years', min: 25, max: 30 };
+      } else {
+        range = { label: '30+ Years', min: 30, max: null };
+      }
+      
+      setSelectedExperienceRange(range);
+      console.log(`📊 Set experience range for provider with ${exp} years:`, range);
     }
 
     // Fetch wallet balance for staged payment UI
@@ -238,7 +270,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const rawBasePrice = (isHourlyService || hasOvertimeCharges) && bookingTime && endTime
     ? hourlyPricing.baseCost
     : getProviderPrice();
-  
+
   // Debug: Log raw price values
   console.log('💰 Pricing Debug:', {
     rawBasePrice,
@@ -248,10 +280,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     isHourlyService,
     hasOvertimeCharges
   });
-  
+
   // Ensure basePrice is never NaN - fallback to service price or 0
-  const basePrice = isNaN(rawBasePrice) || rawBasePrice === null || rawBasePrice === undefined 
-    ? (Number(service.price) || 0) 
+  const basePrice = isNaN(rawBasePrice) || rawBasePrice === null || rawBasePrice === undefined
+    ? (Number(service.price) || 0)
     : rawBasePrice;
 
   // Use service-specific GST rate (support both percentage and decimal formats)
@@ -259,7 +291,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const serviceGstRate = isNaN(serviceGstPercentage) ? 0.18 : serviceGstPercentage / 100;
   const gstAmount = isNaN(basePrice * serviceGstRate) ? 0 : basePrice * serviceGstRate;
   const totalPrice = isNaN(basePrice + gstAmount) ? basePrice : basePrice + gstAmount;
-  
+
   // Debug: Final pricing values
   console.log('💵 Final Pricing:', { basePrice, serviceGstRate, gstAmount, totalPrice });
 
@@ -316,60 +348,26 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   // Timer Modal Handlers
   const handleTimerAccepted = () => {
     setShowTimerModal(false);
-    setPendingBookingId(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowSuccess(true);
+
+    // Show payment modal for 25% initial payment
+    setShowPaymentModal(true);
   };
 
   const handleTimerRejected = () => {
     setShowTimerModal(false);
     setPendingBookingId(null);
-    // Navigate back to select different provider
-    Alert.alert(
-      'Provider Unavailable',
-      'The provider is unable to take your booking. Would you like to select another provider?',
-      [
-        {
-          text: 'Go Back',
-          style: 'cancel',
-          onPress: () => navigation.goBack()
-        },
-        {
-          text: 'Select Another',
-          onPress: () => {
-            navigation.navigate('ServiceDetail' as any, { 
-              service,
-              showProviderPicker: true 
-            });
-          }
-        }
-      ]
-    );
+
+    // Show category-based fallback options
+    showCategoryFallbackOptions('rejected');
   };
 
   const handleTimerTimeout = () => {
     setShowTimerModal(false);
     setPendingBookingId(null);
-    Alert.alert(
-      'Request Timed Out',
-      'The provider didn\'t respond in time. Please try selecting another provider.',
-      [
-        {
-          text: 'Go Back',
-          style: 'cancel',
-          onPress: () => navigation.goBack()
-        },
-        {
-          text: 'Select Another',
-          onPress: () => {
-            navigation.navigate('ServiceDetail' as any, { 
-              service,
-              showProviderPicker: true 
-            });
-          }
-        }
-      ]
-    );
+
+    // Show category-based fallback options
+    showCategoryFallbackOptions('timeout');
   };
 
   const handleTimerCancel = () => {
@@ -377,6 +375,71 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     setPendingBookingId(null);
     // Booking is already created, just go back
     navigation.goBack();
+  };
+
+  // Category-based fallback logic
+  const showCategoryFallbackOptions = (reason: 'rejected' | 'timeout') => {
+    const title = reason === 'rejected' ? 'Provider Unavailable' : 'Request Timed Out';
+    const message = reason === 'rejected'
+      ? 'The provider is unable to take your booking.'
+      : "The provider didn't respond in time.";
+
+    Alert.alert(
+      title,
+      `${message} Would you like to see other providers${selectedExperienceRange ? ` in the ${selectedExperienceRange.label} experience range` : ''}?`,
+      [
+        {
+          text: 'Go Back',
+          style: 'cancel',
+          onPress: () => navigation.goBack()
+        },
+        {
+          text: 'See Alternatives',
+          onPress: () => {
+            // Navigate to ServiceDetail with experience range pre-selected
+            navigation.navigate('ServiceDetail' as any, {
+              service,
+              experienceRange: selectedExperienceRange,
+              excludeProviderId: provider?.id || provider?._id
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  // Handle 25% initial payment
+  const handleInitialPayment = async () => {
+    if (!pendingBookingId) return;
+
+    setPaymentProcessing(true);
+
+    try {
+      // Process 25% payment via wallet
+      const response = await apiService.payInitialBookingAmount(pendingBookingId, 'wallet');
+
+      if (response.success) {
+        setShowPaymentModal(false);
+        setPendingBookingId(null);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // Show success animation
+        setShowSuccess(true);
+      } else {
+        throw new Error(response.message || 'Payment failed');
+      }
+    } catch (error: any) {
+      console.error('Initial payment failed:', error);
+      Alert.alert(
+        'Payment Failed',
+        error.message || 'Unable to process payment. Please try again.',
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    } finally {
+      setPaymentProcessing(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -448,20 +511,27 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         // Debug: Log payload to verify prices
         console.log('📦 Booking payload prices:', { basePrice: payload.basePrice, gstAmount: payload.gstAmount, totalPrice: payload.totalPrice });
 
-        const response = await apiService.createBookingWithWallet(payload);
+        // Create booking without payment - payment happens after provider accepts
+        const response = await apiService.createBooking(payload);
 
-        if (response.success && response.data) {
-          const bookingId = response.data._id || response.data.id;
+        if (response.success && response.booking) {
+          const bookingId = response.booking.id || response.booking._id;
           const providerId = provider?.id || provider?._id;
 
           // Send booking request to provider with 3-minute timer
           try {
             const requestResponse = await apiService.sendBookingRequest(bookingId, providerId);
+            console.log('✅ Booking request sent:', requestResponse);
             if (requestResponse.success) {
-              // Show timer modal instead of immediate success
-              setPendingBookingId(bookingId);
+              // Navigate to waiting screen instead of showing modal
               setIsLoading(false);
-              setShowTimerModal(true);
+              navigation.navigate('BookingWaiting', {
+                bookingId: bookingId,
+                providerId: providerId,
+                providerName: provider?.name || 'Provider',
+                serviceName: service.title,
+                experienceRange: selectedExperienceRange,
+              });
             } else {
               // If request sending fails, still show success (booking created)
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -475,12 +545,12 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             setShowSuccess(true);
           }
         } else {
-          throw new Error(response.message || 'Wallet payment failed');
+          throw new Error(response.message || 'Booking creation failed');
         }
       } catch (error: any) {
-        console.error('Wallet payment failed:', error);
+        console.error('Booking creation failed:', error);
         setIsLoading(false);
-        showError(error.message || 'Wallet payment failed');
+        showError(error.message || 'Booking creation failed');
       }
       return;
     }
@@ -488,17 +558,24 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     // Cash Booking Flow
     try {
       const bookingResponse = await createBookingRecord('cash');
-      if (bookingResponse?.success && bookingResponse?.data) {
-        const bookingId = bookingResponse.data._id || bookingResponse.data.id;
+      if (bookingResponse?.success && bookingResponse?.booking) {
+        const bookingId = bookingResponse.booking.id || bookingResponse.booking._id;
         const providerId = provider?.id || provider?._id;
 
         // Send booking request to provider with 3-minute timer
         try {
           const requestResponse = await apiService.sendBookingRequest(bookingId, providerId);
+          console.log('✅ Booking request sent (cash):', requestResponse);
           if (requestResponse.success) {
-            setPendingBookingId(bookingId);
+            // Navigate to waiting screen for cash bookings too
             setIsLoading(false);
-            setShowTimerModal(true);
+            navigation.navigate('BookingWaiting', {
+              bookingId: bookingId,
+              providerId: providerId,
+              providerName: provider?.name || 'Provider',
+              serviceName: service.title,
+              experienceRange: selectedExperienceRange,
+            });
           } else {
             setIsLoading(false);
             setShowSuccess(true);
@@ -899,224 +976,227 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
           </FadeInView>
 
-          {/* 3. Payment Method */}
-          <FadeInView delay={300} style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Payment Method</Text>
-            </View>
 
-            <View style={styles.cardContainerNoPadding}>
-              {/* Payment Options - Vertical Cards */}
-              <View style={{ padding: 16, gap: 12 }}>
-                {PAYMENT_METHODS.map((method: any) => {
-                  const isSelected = formData.paymentMethod === method.id;
-                  const isWallet = method.id === 'wallet';
+          {/* Payment Method - Hidden: Payment happens AFTER provider accepts */}
+          {false && (
+            <FadeInView delay={300} style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Payment Method</Text>
+              </View>
 
-                  return (
-                    <TouchableOpacity
-                      key={method.id}
-                      style={[
-                        {
-                          borderRadius: 16,
-                          borderWidth: 2,
-                          borderColor: isSelected ? '#3B82F6' : '#E2E8F0',
-                          backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
-                          overflow: 'hidden',
-                        },
-                        isSelected && SHADOWS.md,
-                      ]}
-                      onPress={() => {
-                        setFormData({ ...formData, paymentMethod: method.id });
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
-                        {/* Icon Container */}
-                        <View style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: 14,
-                          backgroundColor: isSelected ? '#3B82F6' : '#F1F5F9',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: 14,
-                        }}>
-                          <Ionicons
-                            name={method.icon as any}
-                            size={26}
-                            color={isSelected ? '#FFFFFF' : '#64748B'}
-                          />
-                        </View>
+              <View style={styles.cardContainerNoPadding}>
+                {/* Payment Options - Vertical Cards */}
+                <View style={{ padding: 16, gap: 12 }}>
+                  {PAYMENT_METHODS.map((method: any) => {
+                    const isSelected = formData.paymentMethod === method.id;
+                    const isWallet = method.id === 'wallet';
 
-                        {/* Text Content */}
-                        <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={{
-                              fontSize: 16,
-                              fontWeight: '700',
-                              color: isSelected ? '#1E40AF' : '#1E293B',
-                            }}>
-                              {method.label}
-                            </Text>
-                            {method.recommended && (
-                              <View style={{
-                                backgroundColor: '#10B981',
-                                paddingHorizontal: 8,
-                                paddingVertical: 3,
-                                borderRadius: 6,
-                                marginLeft: 10,
+                    return (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[
+                          {
+                            borderRadius: 16,
+                            borderWidth: 2,
+                            borderColor: isSelected ? '#3B82F6' : '#E2E8F0',
+                            backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                            overflow: 'hidden',
+                          },
+                          isSelected && SHADOWS.md,
+                        ]}
+                        onPress={() => {
+                          setFormData({ ...formData, paymentMethod: method.id });
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
+                          {/* Icon Container */}
+                          <View style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: 14,
+                            backgroundColor: isSelected ? '#3B82F6' : '#F1F5F9',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 14,
+                          }}>
+                            <Ionicons
+                              name={method.icon as any}
+                              size={26}
+                              color={isSelected ? '#FFFFFF' : '#64748B'}
+                            />
+                          </View>
+
+                          {/* Text Content */}
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                              <Text style={{
+                                fontSize: 16,
+                                fontWeight: '700',
+                                color: isSelected ? '#1E40AF' : '#1E293B',
                               }}>
-                                <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: '700' }}>
-                                  RECOMMENDED
+                                {method.label}
+                              </Text>
+                              {method.recommended && (
+                                <View style={{
+                                  backgroundColor: '#10B981',
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 3,
+                                  borderRadius: 6,
+                                  marginLeft: 10,
+                                }}>
+                                  <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: '700' }}>
+                                    RECOMMENDED
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+
+                            {method.description && (
+                              <Text style={{
+                                fontSize: 13,
+                                color: isSelected ? '#3B82F6' : '#64748B',
+                                lineHeight: 18,
+                              }}>
+                                {method.description}
+                              </Text>
+                            )}
+
+                            {/* Wallet Balance Inline for Wallet Option */}
+                            {isWallet && !loadingWallet && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                                <Text style={{ fontSize: 12, color: '#64748B' }}>Balance: </Text>
+                                <Text style={{
+                                  fontSize: 13,
+                                  fontWeight: '700',
+                                  color: walletBalance >= initialPayment ? '#10B981' : '#EF4444',
+                                }}>
+                                  ₹{walletBalance.toFixed(2)}
                                 </Text>
+                                {walletBalance < initialPayment && (
+                                  <Text style={{ fontSize: 11, color: '#EF4444', marginLeft: 6 }}>
+                                    (Need ₹{initialPayment.toFixed(0)})
+                                  </Text>
+                                )}
                               </View>
                             )}
                           </View>
 
-                          {method.description && (
-                            <Text style={{
-                              fontSize: 13,
-                              color: isSelected ? '#3B82F6' : '#64748B',
-                              lineHeight: 18,
-                            }}>
-                              {method.description}
-                            </Text>
-                          )}
-
-                          {/* Wallet Balance Inline for Wallet Option */}
-                          {isWallet && !loadingWallet && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-                              <Text style={{ fontSize: 12, color: '#64748B' }}>Balance: </Text>
-                              <Text style={{
-                                fontSize: 13,
-                                fontWeight: '700',
-                                color: walletBalance >= initialPayment ? '#10B981' : '#EF4444',
-                              }}>
-                                ₹{walletBalance.toFixed(2)}
-                              </Text>
-                              {walletBalance < initialPayment && (
-                                <Text style={{ fontSize: 11, color: '#EF4444', marginLeft: 6 }}>
-                                  (Need ₹{initialPayment.toFixed(0)})
-                                </Text>
-                              )}
-                            </View>
-                          )}
+                          {/* Selection Indicator */}
+                          <View style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            borderWidth: 2,
+                            borderColor: isSelected ? '#3B82F6' : '#CBD5E1',
+                            backgroundColor: isSelected ? '#3B82F6' : 'transparent',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                            )}
+                          </View>
                         </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-                        {/* Selection Indicator */}
+                {/* Wallet Payment Info - Staged Payment Breakdown */}
+                {formData.paymentMethod === 'wallet' && (
+                  <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                    {/* Staged Payment Breakdown */}
+                    <View style={{
+                      backgroundColor: '#F0FDF4',
+                      borderRadius: 14,
+                      padding: 14,
+                      borderWidth: 1,
+                      borderColor: '#BBF7D0',
+                    }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                        <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534', marginLeft: 8 }}>
+                          Secure Staged Payment
+                        </Text>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#3B82F6', marginRight: 8 }} />
+                          <Text style={{ fontSize: 14, color: '#374151' }}>After Provider Accepts ({initialPaymentPercentage}%)</Text>
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937' }}>₹{initialPayment.toFixed(2)}</Text>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#94A3B8', marginRight: 8 }} />
+                          <Text style={{ fontSize: 14, color: '#6B7280' }}>After Service (75%)</Text>
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280' }}>₹{completionPayment.toFixed(2)}</Text>
+                      </View>
+                    </View>
+
+                    {/* Insufficient Balance Warning */}
+                    {hasInsufficientBalance && (
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#FEF2F2',
+                          borderRadius: 14,
+                          padding: 14,
+                          marginTop: 10,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          borderWidth: 1,
+                          borderColor: '#FECACA',
+                        }}
+                        onPress={() => navigation.navigate('MainTabs', { screen: 'Wallet' })}
+                      >
                         <View style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 12,
-                          borderWidth: 2,
-                          borderColor: isSelected ? '#3B82F6' : '#CBD5E1',
-                          backgroundColor: isSelected ? '#3B82F6' : 'transparent',
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          backgroundColor: '#FEE2E2',
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}>
-                          {isSelected && (
-                            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                          )}
+                          <Ionicons name="wallet-outline" size={20} color="#DC2626" />
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Wallet Payment Info - Staged Payment Breakdown */}
-              {formData.paymentMethod === 'wallet' && (
-                <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-                  {/* Staged Payment Breakdown */}
-                  <View style={{
-                    backgroundColor: '#F0FDF4',
-                    borderRadius: 14,
-                    padding: 14,
-                    borderWidth: 1,
-                    borderColor: '#BBF7D0',
-                  }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                      <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534', marginLeft: 8 }}>
-                        Secure Staged Payment
-                      </Text>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#3B82F6', marginRight: 8 }} />
-                        <Text style={{ fontSize: 14, color: '#374151' }}>Pay Now ({initialPaymentPercentage}%)</Text>
-                      </View>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937' }}>₹{initialPayment.toFixed(2)}</Text>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#94A3B8', marginRight: 8 }} />
-                        <Text style={{ fontSize: 14, color: '#6B7280' }}>After Service (75%)</Text>
-                      </View>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280' }}>₹{completionPayment.toFixed(2)}</Text>
-                    </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: '#DC2626' }}>
+                            Top Up Required
+                          </Text>
+                          <Text style={{ fontSize: 12, color: '#B91C1C', marginTop: 2 }}>
+                            Add ₹{(initialPayment - walletBalance).toFixed(0)} to book this service
+                          </Text>
+                        </View>
+                        <View style={{
+                          backgroundColor: '#DC2626',
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                        }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>Top Up</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
                   </View>
+                )}
 
-                  {/* Insufficient Balance Warning */}
-                  {hasInsufficientBalance && (
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#FEF2F2',
-                        borderRadius: 14,
-                        padding: 14,
-                        marginTop: 10,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        borderWidth: 1,
-                        borderColor: '#FECACA',
-                      }}
-                      onPress={() => navigation.navigate('MainTabs', { screen: 'Wallet' })}
-                    >
-                      <View style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 10,
-                        backgroundColor: '#FEE2E2',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        <Ionicons name="wallet-outline" size={20} color="#DC2626" />
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#DC2626' }}>
-                          Top Up Required
-                        </Text>
-                        <Text style={{ fontSize: 12, color: '#B91C1C', marginTop: 2 }}>
-                          Add ₹{(initialPayment - walletBalance).toFixed(0)} to book this service
-                        </Text>
-                      </View>
-                      <View style={{
-                        backgroundColor: '#DC2626',
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 8,
-                      }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#FFFFFF' }}>Top Up</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
+                <View style={{ padding: 16, paddingTop: formData.paymentMethod === 'wallet' ? 0 : 16 }}>
+                  <FloatingLabelInput
+                    label="Add Note (Gate code, etc.)"
+                    value={formData.notes}
+                    onChangeText={(t) => setFormData({ ...formData, notes: t })}
+                    multiline
+                    containerStyle={{ borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC', borderRadius: 12 }}
+                  />
                 </View>
-              )}
-
-              <View style={{ padding: 16, paddingTop: formData.paymentMethod === 'wallet' ? 0 : 16 }}>
-                <FloatingLabelInput
-                  label="Add Note (Gate code, etc.)"
-                  value={formData.notes}
-                  onChangeText={(t) => setFormData({ ...formData, notes: t })}
-                  multiline
-                  containerStyle={{ borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC', borderRadius: 12 }}
-                />
               </View>
-            </View>
-          </FadeInView>
+            </FadeInView>
+          )}
 
           {/* 4. Receipt Summary */}
           <FadeInView delay={400} style={[styles.sectionContainer, { marginBottom: 140 }]}>
@@ -1156,16 +1236,16 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               {formData.paymentMethod === 'wallet' ? (
                 <>
                   <View style={styles.totalRow}>
-                    <Text style={[styles.totalLabelReceipt, { color: '#64748B' }]}>Pay Now (25%)</Text>
-                    <Text style={[styles.totalAmountReceipt, { color: '#3B82F6' }]}>₹{initialPayment.toFixed(2)}</Text>
+                    <Text style={styles.totalLabelReceipt}>Booking Total</Text>
+                    <Text style={styles.totalAmountReceipt}>₹{totalPrice.toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.summaryRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }]}>
+                    <Text style={[styles.summaryLabel, { fontSize: 12, color: '#3B82F6' }]}>💡 Pay 25% after provider accepts</Text>
+                    <Text style={[styles.summaryValue, { fontSize: 12, color: '#3B82F6', fontWeight: '600' }]}>₹{initialPayment.toFixed(2)}</Text>
                   </View>
                   <View style={[styles.summaryRow, { marginTop: 4 }]}>
                     <Text style={[styles.summaryLabel, { fontSize: 12 }]}>After Service (75%)</Text>
                     <Text style={[styles.summaryValue, { fontSize: 12 }]}>₹{completionPayment.toFixed(2)}</Text>
-                  </View>
-                  <View style={[styles.summaryRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }]}>
-                    <Text style={[styles.summaryLabel, { fontWeight: '600' }]}>Service Total</Text>
-                    <Text style={[styles.summaryValue, { fontWeight: '600' }]}>₹{totalPrice.toFixed(2)}</Text>
                   </View>
                 </>
               ) : (
@@ -1187,12 +1267,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
         <View style={styles.bottomBarContent}>
           <View style={styles.priceBlock}>
-            <Text style={styles.totalLabelSmall}>
-              {formData.paymentMethod === 'wallet' ? 'Pay Now' : 'Total'}
-            </Text>
-            <Text style={styles.finalPrice}>
-              ₹{formData.paymentMethod === 'wallet' ? initialPayment.toFixed(2) : totalPrice.toFixed(2)}
-            </Text>
+            <Text style={styles.totalLabelSmall}>Total</Text>
+            <Text style={styles.finalPrice}>₹{totalPrice.toFixed(2)}</Text>
           </View>
 
           {/* Dynamic Book Button */}
@@ -1224,7 +1300,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             ) : (
               <>
                 <Text style={[styles.bookButtonText, (!bookingDate || !bookingTime) && { color: '#94A3B8' }]}>
-                  {!bookingDate ? 'Select Date' : !bookingTime ? 'Select Time' : formData.paymentMethod === 'cash' ? 'Book Now' : `Pay ₹${initialPayment.toFixed(2)} (25%)`}
+                  {!bookingDate ? 'Select Date' : !bookingTime ? 'Select Time' : 'Book Now'}
                 </Text>
                 {(bookingDate && bookingTime) && <Ionicons name="arrow-forward" size={20} color="#fff" />}
               </>
@@ -1262,6 +1338,160 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         onTimeout={handleTimerTimeout}
         onCancel={handleTimerCancel}
       />
+
+      {/* Payment Modal - 25% Initial Payment */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <BlurView intensity={20} tint="dark" style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{
+            width: width * 0.9,
+            backgroundColor: COLORS.cardBg,
+            borderRadius: 24,
+            padding: 24,
+            ...SHADOWS.lg,
+          }}>
+            {/* Success Icon */}
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: '#10B981',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}>
+                <Ionicons name="checkmark" size={48} color="#FFF" />
+              </View>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.text, marginBottom: 4 }}>
+                Booking Confirmed!
+              </Text>
+              <Text style={{ fontSize: 14, color: COLORS.textTertiary, textAlign: 'center' }}>
+                {provider?.name} has accepted your booking
+              </Text>
+            </View>
+
+            {/* Payment Breakdown */}
+            <View style={{
+              backgroundColor: COLORS.background,
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 20,
+            }}>
+              <Text style={{ fontSize: 12, color: COLORS.textTertiary, marginBottom: 12, fontWeight: '600' }}>
+                PAYMENT BREAKDOWN
+              </Text>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, color: COLORS.textSecondary }}>Total Amount</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: COLORS.text }}>₹{totalPrice.toFixed(2)}</Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 12 }} />
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, color: COLORS.textSecondary }}>Initial Payment (25%)</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.primary }}>₹{initialPayment.toFixed(2)}</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 13, color: COLORS.textTertiary }}>After Service (75%)</Text>
+                <Text style={{ fontSize: 13, color: COLORS.textTertiary }}>₹{completionPayment.toFixed(2)}</Text>
+              </View>
+            </View>
+
+            {/* Wallet Balance */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 12,
+              backgroundColor: walletBalance >= initialPayment ? '#F0FDF4' : '#FEF2F2',
+              borderRadius: 12,
+              marginBottom: 20,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons
+                  name="wallet"
+                  size={20}
+                  color={walletBalance >= initialPayment ? '#10B981' : '#EF4444'}
+                />
+                <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>Wallet Balance</Text>
+              </View>
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: walletBalance >= initialPayment ? '#10B981' : '#EF4444'
+              }}>
+                ₹{walletBalance.toFixed(2)}
+              </Text>
+            </View>
+
+            {/* Info Box */}
+            <View style={{
+              flexDirection: 'row',
+              padding: 12,
+              backgroundColor: '#EFF6FF',
+              borderRadius: 12,
+              marginBottom: 20,
+              gap: 10,
+            }}>
+              <Ionicons name="information-circle" size={20} color="#3B82F6" style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, fontSize: 12, color: '#1E40AF', lineHeight: 18 }}>
+                25% will be held in escrow until service completion. The remaining 75% will be charged after the service is completed.
+              </Text>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: COLORS.primary,
+                  paddingVertical: 16,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  opacity: paymentProcessing || walletBalance < initialPayment ? 0.5 : 1,
+                }}
+                onPress={handleInitialPayment}
+                disabled={paymentProcessing || walletBalance < initialPayment}
+              >
+                {paymentProcessing ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFF' }}>
+                    Pay ₹{initialPayment.toFixed(2)} Now
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {walletBalance < initialPayment && (
+                <TouchableOpacity
+                  style={{
+                    borderWidth: 1.5,
+                    borderColor: COLORS.primary,
+                    paddingVertical: 14,
+                    borderRadius: 16,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => {
+                    setShowPaymentModal(false);
+                    // Navigate to wallet top-up (this will need proper navigation setup)
+                    Alert.alert('Top Up Wallet', 'Wallet top-up feature coming soon!');
+                  }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: COLORS.primary }}>
+                    Top Up Wallet
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </BlurView>
+      </Modal>
 
     </View >
   );

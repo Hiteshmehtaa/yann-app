@@ -2,17 +2,16 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 // API Configuration
-// Enable local backend for debugging
-const USE_LOCAL_BACKEND = false; // Set to false to use production
+// Automatic backend detection - pings local server and falls back to production
 // For physical devices, use your computer's local IP address
 // For emulators/simulators, use special localhost addresses
 const getLocalhost = () => {
   const isDevice = Constants.isDevice; // true for physical device, false for simulator/emulator
-  
+
   if (isDevice) {
-    return '192.168.31.230'; // Your computer's local IP - for physical devices on same WiFi
+    return '192.168.1.11'; // Your computer's local IP - for physical devices on same WiFi
   }
-  
+
   if (Platform.OS === 'android') {
     return '10.0.2.2'; // Android emulator
   }
@@ -21,20 +20,79 @@ const getLocalhost = () => {
 const LOCAL_API_URL = `http://${getLocalhost()}:3000/api`;
 const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
 
-// Dynamic API URL
+// Dynamic API URL with caching
 let cachedApiUrl: string | null = null;
 let lastCheckTime = 0;
 const CHECK_INTERVAL = 30000; // Re-check every 30 seconds
 
+/**
+ * Ping a backend URL to check if it's available
+ * @param url - The base URL to ping (without /api)
+ * @returns true if backend responds within timeout
+ */
+async function pingBackend(url: string): Promise<boolean> {
+  try {
+    console.log(`🏓 Pinging: ${url}/health`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout (longer for Android emulator)
+
+    const response = await fetch(`${url}/health`, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+
+    clearTimeout(timeoutId);
+    const isOk = response.ok;
+    console.log(`${isOk ? '✅' : '❌'} ${url} - Status: ${response.status}`);
+    return isOk;
+  } catch (error: any) {
+    // Network error or timeout
+    console.log(`❌ ${url} - Error: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Detect which backend is available
+ * Tries local first, falls back to production
+ */
 async function detectActiveBackend(): Promise<string> {
-  if (USE_LOCAL_BACKEND) {
-    console.log('🔧 Using LOCAL backend for debugging:', LOCAL_API_URL);
+  const now = Date.now();
+
+  // Return cached URL if check was recent
+  if (cachedApiUrl && (now - lastCheckTime) < CHECK_INTERVAL) {
+    console.log('🔄 Using cached backend:', cachedApiUrl);
+    return cachedApiUrl;
+  }
+
+  lastCheckTime = now;
+
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔍 BACKEND DETECTION');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📱 Device Type:', Constants.isDevice ? 'Physical Device' : 'Emulator/Simulator');
+  console.log('📱 Platform:', Platform.OS);
+  console.log('🌐 Local URL:', LOCAL_API_URL);
+  console.log('🌐 Production URL:', PRODUCTION_API_URL);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  // Try local backend first
+  const localAvailable = await pingBackend(LOCAL_API_URL.replace('/api', ''));
+
+  if (localAvailable) {
+    console.log('✅ SUCCESS: Connected to local backend');
+    console.log('🔗 Using:', LOCAL_API_URL);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     cachedApiUrl = LOCAL_API_URL;
     return LOCAL_API_URL;
   }
-  
-  // Use production
-  console.log('🌐 Using production backend:', PRODUCTION_API_URL);
+
+  // Fall back to production
+  console.log('⚠️  Local backend unavailable');
+  console.log('🌐 Falling back to production');
+  console.log('🔗 Using:', PRODUCTION_API_URL);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   cachedApiUrl = PRODUCTION_API_URL;
   return PRODUCTION_API_URL;
 }
@@ -42,8 +100,17 @@ async function detectActiveBackend(): Promise<string> {
 // Export as a promise that resolves to the active backend URL
 export const getApiBaseUrl = detectActiveBackend;
 
-// For immediate synchronous access
-export const API_BASE_URL = cachedApiUrl || (USE_LOCAL_BACKEND ? LOCAL_API_URL : PRODUCTION_API_URL);
+// For immediate synchronous access (will be updated after first detection)
+export const API_BASE_URL = cachedApiUrl || PRODUCTION_API_URL;
+
+// Export URLs for debugging
+export const DEBUG_INFO = {
+  LOCAL_URL: LOCAL_API_URL,
+  PRODUCTION_URL: PRODUCTION_API_URL,
+  IS_DEVICE: Constants.isDevice,
+  PLATFORM: Platform.OS,
+  LOCALHOST: getLocalhost()
+};
 
 // ============================================================================
 // SERVICE CONFIGURATION - Based on Services charges.xlsx

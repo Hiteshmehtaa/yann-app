@@ -229,7 +229,7 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         <>
                             {booking.extras.map((extra, index) => (
                                 <View key={index} style={styles.priceRow}>
-                                    <Text style={styles.priceLabel}>{extra.serviceName}</Text>
+                                    <Text style={styles.priceLabel}>{extra.serviceName || 'Extra Service'}</Text>
                                     <Text style={styles.priceValue}>₹{extra.price}</Text>
                                 </View>
                             ))}
@@ -245,7 +245,7 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
                     <View style={styles.paymentMethodRow}>
                         <Text style={styles.paymentMethodLabel}>Payment Method</Text>
-                        <Text style={styles.paymentMethodValue}>{booking.paymentMethod.toUpperCase()}</Text>
+                        <Text style={styles.paymentMethodValue}>{booking.paymentMethod?.toUpperCase() || 'N/A'}</Text>
                     </View>
 
                     {/* Staged Payment Status for Wallet Payments */}

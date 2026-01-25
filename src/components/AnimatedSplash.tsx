@@ -388,7 +388,11 @@ const Particle = () => {
 
 const styles = StyleSheet.create({
     container: {
-        ...StyleSheet.absoluteFillObject, // Make it overlay
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
         zIndex: 9999, // High z-index
         justifyContent: 'center',
         alignItems: 'center',
@@ -405,7 +409,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     orbitLine: {
-        ...StyleSheet.absoluteFillObject,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
         borderRadius: 999,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.15)',

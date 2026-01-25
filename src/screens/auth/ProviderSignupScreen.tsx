@@ -110,6 +110,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [openExperienceCategory, setOpenExperienceCategory] = useState<string | null>(null);
   const [serviceLimitMap, setServiceLimitMap] = useState<Record<string, any>>({});
+  const [validationState, setValidationState] = useState<Record<string, 'valid' | 'invalid' | null>>({});
 
   const [formData, setFormData] = useState({
     name: '',
@@ -202,6 +203,14 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 
   const updateField = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Real-time validation
+    if (field === 'email' && value) {
+      setValidationState(prev => ({ ...prev, email: validateEmail(value) ? 'valid' : 'invalid' }));
+    } else if (field === 'phone' && value) {
+      setValidationState(prev => ({ ...prev, phone: validatePhone(value) ? 'valid' : 'invalid' }));
+    } else if (field === 'name' && value) {
+      setValidationState(prev => ({ ...prev, name: value.trim().length > 0 ? 'valid' : 'invalid' }));
+    }
   };
 
   const updateCategoryExperience = (categoryId: string, value: string) => {
@@ -471,7 +480,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.label}>FULL NAME</Text>
         <View style={[
           styles.inputContainer,
-          focusedField === 'name' && styles.inputFocused
+          focusedField === 'name' && styles.inputFocused,
+          validationState.name === 'valid' && styles.inputValid,
+          validationState.name === 'invalid' && styles.inputInvalid
         ]}>
           <View style={styles.inputIcon}>
             <Ionicons
@@ -491,6 +502,16 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             onFocus={() => setFocusedField('name')}
             onBlur={() => setFocusedField(null)}
           />
+          {validationState.name === 'valid' && (
+            <View style={styles.validationIcon}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            </View>
+          )}
+          {validationState.name === 'invalid' && (
+            <View style={styles.validationIcon}>
+              <Ionicons name="close-circle" size={20} color={COLORS.error} />
+            </View>
+          )}
         </View>
       </View>
 
@@ -498,7 +519,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.label}>PHONE NUMBER</Text>
         <View style={[
           styles.inputContainer,
-          focusedField === 'phone' && styles.inputFocused
+          focusedField === 'phone' && styles.inputFocused,
+          validationState.phone === 'valid' && styles.inputValid,
+          validationState.phone === 'invalid' && styles.inputInvalid
         ]}>
           <View style={styles.inputIcon}>
             <Ionicons
@@ -519,14 +542,29 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             onFocus={() => setFocusedField('phone')}
             onBlur={() => setFocusedField(null)}
           />
+          {validationState.phone === 'valid' && (
+            <View style={styles.validationIcon}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            </View>
+          )}
+          {validationState.phone === 'invalid' && (
+            <View style={styles.validationIcon}>
+              <Ionicons name="close-circle" size={20} color={COLORS.error} />
+            </View>
+          )}
         </View>
+        {validationState.phone === 'invalid' && formData.phone.length > 0 && (
+          <Text style={styles.validationError}>Please enter a valid 10-digit phone number</Text>
+        )}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>EMAIL ADDRESS</Text>
         <View style={[
           styles.inputContainer,
-          focusedField === 'email' && styles.inputFocused
+          focusedField === 'email' && styles.inputFocused,
+          validationState.email === 'valid' && styles.inputValid,
+          validationState.email === 'invalid' && styles.inputInvalid
         ]}>
           <View style={styles.inputIcon}>
             <Ionicons
@@ -548,7 +586,20 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             onFocus={() => setFocusedField('email')}
             onBlur={() => setFocusedField(null)}
           />
+          {validationState.email === 'valid' && (
+            <View style={styles.validationIcon}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            </View>
+          )}
+          {validationState.email === 'invalid' && (
+            <View style={styles.validationIcon}>
+              <Ionicons name="close-circle" size={20} color={COLORS.error} />
+            </View>
+          )}
         </View>
+        {validationState.email === 'invalid' && formData.email.length > 0 && (
+          <Text style={styles.validationError}>Please enter a valid email address</Text>
+        )}
       </View>
 
     </View>
@@ -774,17 +825,36 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image
-                source={require('../../../assets/Logo.jpg')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
+              <LinearGradient
+                colors={['#F0F4FF', '#E8EFFF']}
+                style={styles.logoGradient}
+              >
+                <Image
+                  source={require('../../../assets/Logo.jpg')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </LinearGradient>
             </View>
             <Text style={styles.brandName}>YANN</Text>
-            <Text style={styles.title}>Provider Sign Up</Text>
+            <Text style={styles.title}>Become a Service Partner</Text>
             <Text style={styles.subtitle}>
-              Join YANN as a service partner
+              Join our verified network and grow your business with YANN
             </Text>
+            <View style={styles.benefitsContainer}>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                <Text style={styles.benefitText}>Verified Customers</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                <Text style={styles.benefitText}>Regular Income</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                <Text style={styles.benefitText}>Flexible Hours</Text>
+              </View>
+            </View>
           </View>
 
           {renderStepIndicator()}
@@ -861,7 +931,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   bgPattern: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     overflow: 'hidden',
     zIndex: -1,
   },
@@ -922,6 +996,13 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
     ...SHADOWS.sm,
   },
+  logoGradient: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   logoImage: {
     width: 40,
     height: 40,
@@ -934,18 +1015,43 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: COLORS.text,
     marginBottom: 8,
     letterSpacing: -1,
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.textSecondary,
     letterSpacing: 0.2,
     textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 22,
+  },
+  benefitsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 20,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F0F4FF',
+    borderRadius: 20,
+  },
+  benefitText: {
+    fontSize: 11,
+    color: COLORS.text,
+    fontWeight: '600',
   },
   stepIndicator: {
     flexDirection: 'row',
@@ -1038,6 +1144,23 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: COLORS.primary,
     backgroundColor: '#F8FAFF',
+  },
+  inputValid: {
+    borderColor: COLORS.success,
+    backgroundColor: '#F0FDF4',
+  },
+  inputInvalid: {
+    borderColor: COLORS.error,
+    backgroundColor: '#FEF2F2',
+  },
+  validationIcon: {
+    paddingRight: 16,
+  },
+  validationError: {
+    fontSize: 12,
+    color: COLORS.error,
+    marginTop: 6,
+    marginLeft: 4,
   },
   inputIcon: {
     width: 50,
