@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
-  Image,
   Vibration,
   Platform,
   AppState,
   AppStateStatus,
-} from 'react-native';
+  ScrollView,
+} from 'react';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,9 +28,11 @@ interface BookingRequestData {
   serviceName: string;
   customerName: string;
   customerAddress?: string;
-  totalPrice: number;
+  customerPhone?: string;
   bookingDate?: string;
   bookingTime?: string;
+  totalPrice: number;
+  notes?: string;
   expiresAt: string;
 }
 
@@ -59,11 +61,8 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
   const [isRejecting, setIsRejecting] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0.5)).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const vibrationRef = useRef<NodeJS.Timeout | null>(null);
-  const appStateRef = useRef(AppState.currentState);
 
   // Calculate remaining time from expiresAt
   useEffect(() => {
@@ -74,11 +73,10 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     console.log('⏱️ Timer started. expiresAt:', requestData.expiresAt);
     const expiresAt = new Date(requestData.expiresAt);
-    
+
     const updateRemaining = () => {
       const now = new Date();
       const remaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
-      console.log('⏱️ Timer tick - Remaining:', remaining, 'seconds');
       setRemainingSeconds(remaining);
 
       if (remaining <= 0) {
@@ -94,7 +92,7 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     // Initial update
     updateRemaining();
-    
+
     // Set interval
     timerRef.current = setInterval(updateRemaining, 1000);
 
@@ -124,50 +122,23 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
   useEffect(() => {
     if (visible) {
       const pulse = Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.05,
-              duration: 600,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 600,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(glowAnim, {
-              toValue: 1,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(glowAnim, {
-              toValue: 0.5,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-          ]),
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.02,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
         ])
       );
       pulse.start();
 
-      // Shake animation for urgency
-      const shake = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shakeAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
-          Animated.timing(shakeAnim, { toValue: -5, duration: 50, useNativeDriver: true }),
-          Animated.timing(shakeAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
-          Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-          Animated.delay(3000), // Pause between shakes
-        ])
-      );
-      shake.start();
-
       return () => {
         pulse.stop();
-        shake.stop();
       };
     }
   }, [visible]);
@@ -223,7 +194,7 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     setIsAccepting(true);
     stopAllEffects();
-    
+
     // Play success sound
     await playSuccessSound();
 
@@ -255,7 +226,7 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     setIsRejecting(true);
     stopAllEffects();
-    
+
     // Play error sound
     await playErrorSound();
 
@@ -294,6 +265,17 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     return '#EF4444'; // Red
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   if (!visible || !requestData) return null;
 
   return (
@@ -303,173 +285,169 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
       animationType="fade"
       statusBarTranslucent
     >
-      <BlurView intensity={30} tint="dark" style={styles.overlay}>
+      <BlurView intensity={95} tint="dark" style={styles.overlay}>
         <Animated.View
           style={[
             styles.container,
             {
-              transform: [
-                { scale: pulseAnim },
-                { translateX: shakeAnim }
-              ]
+              transform: [{ scale: pulseAnim }]
             }
           ]}
         >
-          {/* Glowing Border Effect */}
-          <Animated.View
-            style={[
-              styles.glowBorder,
-              { 
-                borderColor: getUrgencyColor(),
-                opacity: glowAnim 
-              }
-            ]}
-          />
-
-          {/* Header with Timer */}
-          <View style={styles.header}>
-            <View style={styles.bellContainer}>
-              <Ionicons name="notifications" size={28} color="#FFF" />
+          {/* Header */}
+          <LinearGradient
+            colors={[getUrgencyColor(), getUrgencyColor() + 'DD']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.header}
+          >
+            <View style={styles.headerContent}>
+              <View style={styles.iconBadge}>
+                <Ionicons name="notifications" size={28} color="#FFF" />
+              </View>
+              <Text style={styles.headerTitle}>New Booking Request</Text>
+              <View style={styles.timerBadge}>
+                <Ionicons name="timer-outline" size={16} color="#FFF" />
+                <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
+              </View>
             </View>
-            <Text style={styles.headerTitle}>New Booking Request!</Text>
-          </View>
+          </LinearGradient>
 
-          {/* Elegant Professional Timer */}
-          <View style={styles.timerSection}>
-            <View style={styles.timerWrapper}>
-              {/* Outer glow ring */}
-              <View style={[styles.glowRing, { borderColor: getUrgencyColor() + '30' }]} />
-              
-              {/* Main timer card */}
-              <View style={styles.timerCard}>
-                <View style={styles.timerTop}>
-                  <Text style={styles.timerTitle}>Response Time</Text>
-                  <View style={[styles.statusDot, { backgroundColor: getUrgencyColor() }]} />
-                </View>
-                
-                <View style={styles.timeDisplay}>
-                  <View style={styles.timeUnit}>
-                    <Text style={styles.timeNumber}>{Math.floor(remainingSeconds / 60)}</Text>
-                    <Text style={styles.timeLabel}>min</Text>
-                  </View>
-                  <Text style={styles.timeSeparator}>:</Text>
-                  <View style={styles.timeUnit}>
-                    <Text style={styles.timeNumber}>{String(remainingSeconds % 60).padStart(2, '0')}</Text>
-                    <Text style={styles.timeLabel}>sec</Text>
+          {/* Content */}
+          <ScrollView
+            style={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.content}>
+              {/* Service Info */}
+              <View style={styles.serviceCard}>
+                <View style={styles.serviceHeader}>
+                  <Ionicons name="construct" size={24} color="#3B82F6" />
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceLabel}>Service</Text>
+                    <Text style={styles.serviceName}>{requestData.serviceName}</Text>
                   </View>
                 </View>
-                
-                {/* Elegant progress bar */}
-                <View style={styles.progressTrack}>
-                  <View 
-                    style={[
-                      styles.progressBar, 
-                      { 
-                        width: `${(remainingSeconds / 180) * 100}%`,
-                        backgroundColor: getUrgencyColor()
-                      }
-                    ]} 
-                  />
+              </View>
+
+              {/* Customer Info */}
+              <View style={styles.infoCard}>
+                <Text style={styles.cardTitle}>Customer Details</Text>
+
+                <View style={styles.infoRow}>
+                  <Ionicons name="person" size={20} color="#6B7280" />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Name</Text>
+                    <Text style={styles.infoValue}>{requestData.customerName}</Text>
+                  </View>
                 </View>
-                
-                <Text style={[styles.warningText, { color: getUrgencyColor() }]}>
-                  {remainingSeconds <= 60 
-                    ? '⚡ Urgent - Auto-reject imminent' 
-                    : 'Auto-rejects if no response'}
-                </Text>
+
+                {requestData.customerPhone && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="call" size={20} color="#6B7280" />
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Phone</Text>
+                      <Text style={styles.infoValue}>{requestData.customerPhone}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {requestData.customerAddress && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="location" size={20} color="#6B7280" />
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Address</Text>
+                      <Text style={styles.infoValue}>{requestData.customerAddress}</Text>
+                    </View>
+                  </View>
+                )}
               </View>
+
+              {/* Booking Details */}
+              <View style={styles.infoCard}>
+                <Text style={styles.cardTitle}>Booking Details</Text>
+
+                {requestData.bookingDate && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="calendar" size={20} color="#6B7280" />
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Date</Text>
+                      <Text style={styles.infoValue}>{formatDate(requestData.bookingDate)}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {requestData.bookingTime && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="time" size={20} color="#6B7280" />
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Time</Text>
+                      <Text style={styles.infoValue}>{requestData.bookingTime}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {requestData.notes && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="document-text" size={20} color="#6B7280" />
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Notes</Text>
+                      <Text style={styles.infoValue}>{requestData.notes}</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Price */}
+              <View style={styles.priceCard}>
+                <Text style={styles.priceLabel}>Earning Potential</Text>
+                <Text style={styles.priceValue}>₹{requestData.totalPrice.toFixed(2)}</Text>
+              </View>
+
+              {/* Urgency Warning */}
+              {remainingSeconds <= 60 && (
+                <View style={styles.urgencyBanner}>
+                  <Ionicons name="warning" size={20} color="#DC2626" />
+                  <Text style={styles.urgencyText}>
+                    ⚡ Less than 1 minute! Auto-reject imminent
+                  </Text>
+                </View>
+              )}
             </View>
-          </View>
-
-          {/* Customer & Service Info */}
-          <View style={styles.infoSection}>
-            <View style={styles.infoRow}>
-              <Ionicons name="person-outline" size={20} color={COLORS.textTertiary} />
-              <Text style={styles.infoLabel}>Customer:</Text>
-              <Text style={styles.infoValue}>{requestData.customerName}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Ionicons name="construct-outline" size={20} color={COLORS.textTertiary} />
-              <Text style={styles.infoLabel}>Service:</Text>
-              <Text style={styles.infoValue}>{requestData.serviceName}</Text>
-            </View>
-
-            {requestData.bookingDate && (
-              <View style={styles.infoRow}>
-                <Ionicons name="calendar-outline" size={20} color={COLORS.textTertiary} />
-                <Text style={styles.infoLabel}>Date:</Text>
-                <Text style={styles.infoValue}>{requestData.bookingDate}</Text>
-              </View>
-            )}
-
-            {requestData.bookingTime && (
-              <View style={styles.infoRow}>
-                <Ionicons name="time-outline" size={20} color={COLORS.textTertiary} />
-                <Text style={styles.infoLabel}>Time:</Text>
-                <Text style={styles.infoValue}>{requestData.bookingTime}</Text>
-              </View>
-            )}
-
-            {requestData.customerAddress && (
-              <View style={styles.infoRow}>
-                <Ionicons name="location-outline" size={20} color={COLORS.textTertiary} />
-                <Text style={styles.infoLabel}>Address:</Text>
-                <Text style={[styles.infoValue, { flex: 1 }]} numberOfLines={2}>
-                  {requestData.customerAddress}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Price */}
-          <View style={styles.priceContainer}>
-            <Text style={styles.priceLabel}>Earning Potential</Text>
-            <Text style={styles.priceValue}>₹{requestData.totalPrice.toFixed(2)}</Text>
-          </View>
+          </ScrollView>
 
           {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
+          <View style={styles.actions}>
             <TouchableOpacity
-              style={[styles.rejectButton, isRejecting && styles.buttonDisabled]}
+              style={[styles.rejectButton, (isAccepting || isRejecting) && styles.buttonDisabled]}
               onPress={handleReject}
               disabled={isAccepting || isRejecting}
+              activeOpacity={0.8}
             >
-              <Ionicons name="close" size={24} color="#EF4444" />
+              <Ionicons name="close-circle" size={22} color="#DC2626" />
               <Text style={styles.rejectButtonText}>
                 {isRejecting ? 'Declining...' : 'Decline'}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.acceptButton, isAccepting && styles.buttonDisabled]}
+              style={[styles.acceptButton, (isAccepting || isRejecting) && styles.buttonDisabled]}
               onPress={handleAccept}
               disabled={isAccepting || isRejecting}
+              activeOpacity={0.8}
             >
               <LinearGradient
                 colors={['#10B981', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.acceptGradient}
               >
-                <Ionicons name="checkmark" size={24} color="#FFF" />
+                <Ionicons name="checkmark-circle" size={22} color="#FFF" />
                 <Text style={styles.acceptButtonText}>
-                  {isAccepting ? 'Accepting...' : 'Accept'}
+                  {isAccepting ? 'Accepting...' : 'Accept Booking'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
-
-          {/* Urgency Message */}
-          <View style={styles.urgencyContainer}>
-            <Ionicons 
-              name={remainingSeconds <= 60 ? "warning" : "information-circle"} 
-              size={20} 
-              color={getUrgencyColor()} 
-            />
-            <Text style={[styles.urgencyText, { color: getUrgencyColor() }]}>
-              {remainingSeconds <= 60 
-                ? 'Less than 1 minute! Will auto-reject if no response' 
-                : 'Booking will auto-reject if not accepted in time'}
-            </Text>
           </View>
         </Animated.View>
       </BlurView>
@@ -482,327 +460,220 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: SPACING.lg,
   },
   container: {
-    width: width * 0.92,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.xlarge,
-    padding: SPACING.lg,
-    position: 'relative',
+    width: width * 0.94,
+    maxWidth: 480,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     overflow: 'hidden',
-    ...SHADOWS.lg,
-  },
-  glowBorder: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: RADIUS.xlarge,
-    borderWidth: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 24,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  bellContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  largeTimerContainer: {
-    alignItems: 'center',
     paddingVertical: SPACING.xl,
-    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.lg,
   },
-  timerSection: {
-    marginBottom: SPACING.lg,
-    paddingHorizontal: SPACING.xs,
-  },
-  timerWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-  },
-  glowRing: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: RADIUS.large,
-    borderWidth: 2,
-    opacity: 0.3,
-  },
-  timerCard: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.large,
-    padding: SPACING.lg,
-    ...SHADOWS.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-  },
-  timerTop: {
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SPACING.md,
   },
-  timerTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  timeDisplay: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
-  },
-  timeUnit: {
+  iconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  timeNumber: {
-    fontSize: 64,
-    fontWeight: '300',
-    color: COLORS.text,
-    lineHeight: 64,
-    fontVariant: ['tabular-nums'],
-  },
-  timeLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 4,
-  },
-  timeSeparator: {
-    fontSize: 48,
-    fontWeight: '200',
-    color: COLORS.textTertiary,
-    marginHorizontal: SPACING.sm,
-    marginBottom: 12,
-  },
-  progressTrack: {
-    height: 4,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: SPACING.md,
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  warningText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginLeft: SPACING.md,
     letterSpacing: 0.3,
-  },
-  circularTimer: {
-    width: 160,
-    height: 160,
-    marginBottom: SPACING.md,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circularBg: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderWidth: 8,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  circularProgress: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    overflow: 'hidden',
-  },
-  circularProgressHalf: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 8,
-    borderColor: 'transparent',
-    borderTopColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  circularInner: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    ...SHADOWS.md,
-  },
-  timerMinutes: {
-    fontSize: 44,
-    fontWeight: '800',
-    color: COLORS.text,
-    fontVariant: ['tabular-nums'],
-  },
-  timerSeparator: {
-    fontSize: 44,
-    fontWeight: '700',
-    color: COLORS.textTertiary,
-    marginHorizontal: 2,
-  },
-  timerSeconds: {
-    fontSize: 44,
-    fontWeight: '800',
-    color: COLORS.text,
-    fontVariant: ['tabular-nums'],
-  },
-  urgencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: RADIUS.full,
-  },
-  urgencyBadgeText: {
-    fontSize: 14,
-    fontWeight: '700',
   },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    gap: 6,
   },
   timerText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+    fontVariant: ['tabular-nums'],
+  },
+  scrollContent: {
+    maxHeight: height * 0.6,
+  },
+  content: {
+    padding: SPACING.lg,
+    gap: SPACING.md,
+  },
+  serviceCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    padding: SPACING.lg,
+    borderWidth: 1.5,
+    borderColor: '#DBEAFE',
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  serviceInfo: {
+    flex: 1,
+  },
+  serviceLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  serviceName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1E40AF',
+    letterSpacing: 0.2,
+  },
+  infoCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: SPACING.md,
+  },
+  cardTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFF',
-  },
-  infoSection: {
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
+    alignItems: 'flex-start',
+    gap: SPACING.md,
+  },
+  infoContent: {
+    flex: 1,
   },
   infoLabel: {
-    fontSize: 13,
-    color: COLORS.textTertiary,
-    width: 70,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 2,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#111827',
+    lineHeight: 22,
   },
-  priceContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
+  priceCard: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 16,
+    padding: SPACING.lg,
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
   },
   priceLabel: {
-    fontSize: 12,
-    color: COLORS.textTertiary,
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#059669',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   priceValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#10B981',
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#047857',
+    fontVariant: ['tabular-nums'],
   },
-  buttonContainer: {
+  urgencyBanner: {
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: SPACING.md,
+    borderRadius: 12,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
+  },
+  urgencyText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+    lineHeight: 18,
+  },
+  actions: {
+    flexDirection: 'row',
+    padding: SPACING.lg,
     gap: SPACING.md,
-    marginBottom: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   rejectButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.large,
+    paddingVertical: 16,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: '#FEE2E2',
     backgroundColor: '#FEF2F2',
-    gap: SPACING.xs,
+    gap: 8,
   },
   rejectButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#EF4444',
+    fontWeight: '700',
+    color: '#DC2626',
   },
   acceptButton: {
     flex: 1.5,
-    borderRadius: RADIUS.large,
+    borderRadius: 14,
     overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   acceptGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    gap: SPACING.xs,
+    paddingVertical: 16,
+    gap: 8,
   },
   acceptButtonText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  urgencyContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.xs,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: RADIUS.medium,
-  },
-  urgencyText: {
-    fontSize: 13,
-    textAlign: 'center',
-    fontWeight: '600',
-    flex: 1,
   },
 });
