@@ -9,6 +9,7 @@ import {
   Animated,
   Image,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +45,9 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [providers, setProviders] = useState<ServiceProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedExperienceRange, setSelectedExperienceRange] = useState<{ label: string; min: number; max: number | null } | null>(null);
+  const [experienceModalOpen, setExperienceModalOpen] = useState(false);
+  const [providerModalOpen, setProviderModalOpen] = useState(false);
 
   // Animations
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -108,6 +112,31 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     };
     loadData();
   }, [service.title]);
+
+  const EXPERIENCE_RANGES = [
+    { label: '0-5 years', min: 0, max: 5 },
+    { label: '5-10 years', min: 5, max: 10 },
+    { label: '10-15 years', min: 10, max: 15 },
+    { label: '15-20 years', min: 15, max: 20 },
+    { label: '20-25 years', min: 20, max: 25 },
+    { label: '25-30 years', min: 25, max: 30 },
+    { label: '30+ years', min: 30, max: null },
+  ];
+
+  const filteredProviders = providers.filter((p: any) => {
+    if (!selectedExperienceRange) return true;
+    const exp = Number(p.experience || 0);
+    const { min, max } = selectedExperienceRange;
+    return exp >= min && (max === null || exp < max);
+  });
+
+  const onlineProviders = filteredProviders.filter((p: any) => p.status === 'active');
+
+  useEffect(() => {
+    if (selectedProvider && !filteredProviders.find(p => p._id === selectedProvider._id)) {
+      setSelectedProvider(null);
+    }
+  }, [selectedExperienceRange, providers.length]);
 
   // Derived Values
   const startPrice = providers.length > 0
@@ -277,14 +306,21 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
             <View style={styles.providerInfo}>
               <View style={styles.nameRow}>
-                <Text style={[styles.providerName, { color: colors.text }]}>{item.name}</Text>
+                <Text style={[styles.providerName, { color: isAvailable ? colors.text : colors.textTertiary }]}>{item.name}</Text>
                 {index === 0 && (
                   <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
                     <Text style={styles.badgeText}>TOP RATED</Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>{item.experience} years exp • {item.totalReviews} jobs</Text>
+              <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>
+                {item.experience} years exp • {item.totalReviews} jobs
+              </Text>
+              {!isAvailable && (
+                <Text style={[styles.providerOfflineText, { color: colors.textTertiary }]}>
+                  Currently offline • available later
+                </Text>
+              )}
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={14} color="#FFD700" />
                 <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
@@ -357,17 +393,29 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Animated.View style={[styles.contentArea, { opacity: contentFade, transform: [{ translateY: contentFade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }]}>
             {activeTab === 'providers' && (
               <View style={{ gap: 16 }}>
+                <View style={styles.filterRow}>
+                  <TouchableOpacity
+                    style={[styles.filterChip, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
+                    onPress={() => setExperienceModalOpen(true)}
+                  >
+                    <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.filterChipText, { color: colors.textSecondary }]}>
+                      {selectedExperienceRange ? selectedExperienceRange.label : 'Experience'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
                 {isLoading ? (
                   <View style={{ gap: 12 }}>
                     {[1, 2, 3].map(i => <SkeletonLoader key={i} height={100} variant="rect" />)}
                   </View>
-                ) : providers.length === 0 ? (
+                ) : filteredProviders.length === 0 ? (
                   <View style={styles.emptyState}>
                     <Ionicons name="search" size={32} color={colors.textTertiary} />
-                    <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No providers currently available.</Text>
+                    <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No providers match this experience range.</Text>
                   </View>
                 ) : (
-                  providers.map((p, i) => renderProvider(p, i))
+                  filteredProviders.map((p, i) => renderProvider(p, i))
                 )}
               </View>
             )}
@@ -418,21 +466,89 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Button
             title="View Profile"
             onPress={() => {
-              if (providers.length > 1 && !selectedProvider) return; // Maybe show toast?
-              const providerToView = selectedProvider || providers[0];
+              if (filteredProviders.length > 1 && !selectedProvider) return; // Maybe show toast?
+              const providerToView = selectedProvider || filteredProviders[0];
               if (!providerToView || !providerToView._id) return;
               navigation.navigate('ProviderPublicProfile', {
                 provider: providerToView,
                 service: service
               });
             }}
-            disabled={!selectedProvider && providers.length > 1 || providers.length === 0}
-            variant={(!selectedProvider && providers.length > 1) ? "ghost" : "primary"}
+            disabled={!selectedProvider && filteredProviders.length > 1 || filteredProviders.length === 0}
+            variant={(!selectedProvider && filteredProviders.length > 1) ? "ghost" : "primary"}
             icon={<Ionicons name="arrow-forward" size={18} color="#FFF" />}
             size="medium"
           />
         </View>
       </BlurView>
+
+      {/* Experience Selector Modal */}
+      <Modal
+        visible={experienceModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExperienceModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}
+            >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Select Experience Range</Text>
+            {EXPERIENCE_RANGES.map((range) => (
+              <TouchableOpacity
+                key={range.label}
+                style={[styles.modalItem, { borderColor: colors.border }]}
+                onPress={() => {
+                  setSelectedExperienceRange(range);
+                  setExperienceModalOpen(false);
+                }}
+              >
+                <Text style={[styles.modalItemText, { color: colors.text }]}>{range.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.modalItem, { borderColor: colors.border }]}
+              onPress={() => {
+                setSelectedExperienceRange(null);
+                setExperienceModalOpen(false);
+              }}
+            >
+              <Text style={[styles.modalItemText, { color: colors.text }]}>All experience levels</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Provider Selector Modal */}
+      <Modal
+        visible={providerModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProviderModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}
+            >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Select Provider</Text>
+            {onlineProviders.length === 0 ? (
+              <Text style={[styles.modalEmptyText, { color: colors.textTertiary }]}>No online providers available.</Text>
+            ) : (
+              onlineProviders.map((p: any) => (
+                <TouchableOpacity
+                  key={p._id}
+                  style={[styles.modalItem, { borderColor: colors.border }]}
+                  onPress={() => {
+                    setSelectedProvider(p);
+                    setProviderModalOpen(false);
+                  }}
+                >
+                  <Text style={[styles.modalItemText, { color: colors.text }]}>{p.name}</Text>
+                  <Text style={[styles.modalItemSubtext, { color: colors.textTertiary }]}>₹{p.priceForService}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </View>
+      </Modal>
     </View >
   );
 };
@@ -516,6 +632,67 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     fontSize: 13,
     fontWeight: '600',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 6,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  providerOfflineText: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 16,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  modalItem: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  modalItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalItemSubtext: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  modalEmptyText: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 10,
   },
   dotSeparator: {
     width: 4,

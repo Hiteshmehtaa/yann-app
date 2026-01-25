@@ -34,6 +34,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { PAYMENT_METHODS } from '../../utils/constants';
 import { COLORS, SPACING, SHADOWS } from '../../utils/theme';
+import { BookingTimerModal } from '../../components/BookingTimerModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -96,6 +97,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   // Wallet balance for staged payment UI
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [loadingWallet, setLoadingWallet] = useState(true);
+
+  // Booking Timer Modal State (3-minute provider response window)
+  const [showTimerModal, setShowTimerModal] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
 
   // UX: Scroll Reference for Progressive Flow
   const scrollViewRef = useRef<ScrollView>(null);
@@ -230,15 +235,33 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Base price calculation
   // For hourly services OR services with overtime charges, calculate based on duration
-  const basePrice = (isHourlyService || hasOvertimeCharges) && bookingTime && endTime
+  const rawBasePrice = (isHourlyService || hasOvertimeCharges) && bookingTime && endTime
     ? hourlyPricing.baseCost
     : getProviderPrice();
+  
+  // Debug: Log raw price values
+  console.log('💰 Pricing Debug:', {
+    rawBasePrice,
+    providerPrice: getProviderPrice(),
+    hourlyPricing,
+    servicePrice: service.price,
+    isHourlyService,
+    hasOvertimeCharges
+  });
+  
+  // Ensure basePrice is never NaN - fallback to service price or 0
+  const basePrice = isNaN(rawBasePrice) || rawBasePrice === null || rawBasePrice === undefined 
+    ? (Number(service.price) || 0) 
+    : rawBasePrice;
 
   // Use service-specific GST rate (support both percentage and decimal formats)
   const serviceGstPercentage = service.gstPercentage ?? (service.gstRate ? service.gstRate * 100 : 18);
-  const serviceGstRate = serviceGstPercentage / 100;
-  const gstAmount = basePrice * serviceGstRate;
-  const totalPrice = basePrice + gstAmount;
+  const serviceGstRate = isNaN(serviceGstPercentage) ? 0.18 : serviceGstPercentage / 100;
+  const gstAmount = isNaN(basePrice * serviceGstRate) ? 0 : basePrice * serviceGstRate;
+  const totalPrice = isNaN(basePrice + gstAmount) ? basePrice : basePrice + gstAmount;
+  
+  // Debug: Final pricing values
+  console.log('💵 Final Pricing:', { basePrice, serviceGstRate, gstAmount, totalPrice });
 
   // Calculate booked duration for overtime services
   const calculateBookedHours = (): number => {
@@ -288,6 +311,72 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       index: 0,
       routes: [{ name: 'MainTabs', params: { screen: 'BookingsList' } }],
     });
+  };
+
+  // Timer Modal Handlers
+  const handleTimerAccepted = () => {
+    setShowTimerModal(false);
+    setPendingBookingId(null);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowSuccess(true);
+  };
+
+  const handleTimerRejected = () => {
+    setShowTimerModal(false);
+    setPendingBookingId(null);
+    // Navigate back to select different provider
+    Alert.alert(
+      'Provider Unavailable',
+      'The provider is unable to take your booking. Would you like to select another provider?',
+      [
+        {
+          text: 'Go Back',
+          style: 'cancel',
+          onPress: () => navigation.goBack()
+        },
+        {
+          text: 'Select Another',
+          onPress: () => {
+            navigation.navigate('ServiceDetail' as any, { 
+              service,
+              showProviderPicker: true 
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const handleTimerTimeout = () => {
+    setShowTimerModal(false);
+    setPendingBookingId(null);
+    Alert.alert(
+      'Request Timed Out',
+      'The provider didn\'t respond in time. Please try selecting another provider.',
+      [
+        {
+          text: 'Go Back',
+          style: 'cancel',
+          onPress: () => navigation.goBack()
+        },
+        {
+          text: 'Select Another',
+          onPress: () => {
+            navigation.navigate('ServiceDetail' as any, { 
+              service,
+              showProviderPicker: true 
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const handleTimerCancel = () => {
+    setShowTimerModal(false);
+    setPendingBookingId(null);
+    // Booking is already created, just go back
+    navigation.goBack();
   };
 
   const handleSubmit = async () => {
@@ -350,19 +439,41 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             ? endTime.toTimeString().substring(0, 5)
             : undefined,
           notes: formData.notes,
-          basePrice: basePrice, // Fixed: was baseAmount
-          gstAmount: gstAmount,
-          totalPrice: totalPrice,
+          basePrice: isNaN(basePrice) ? 0 : basePrice,
+          gstAmount: isNaN(gstAmount) ? 0 : gstAmount,
+          totalPrice: isNaN(totalPrice) ? (isNaN(basePrice) ? 0 : basePrice) : totalPrice,
           ...(hasOvertimeCharges && bookedHours > 0 ? { bookedHours } : {}),
         };
 
+        // Debug: Log payload to verify prices
+        console.log('📦 Booking payload prices:', { basePrice: payload.basePrice, gstAmount: payload.gstAmount, totalPrice: payload.totalPrice });
+
         const response = await apiService.createBookingWithWallet(payload);
 
-        if (response.success) {
-          // Success haptic feedback
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          setIsLoading(false);
-          setShowSuccess(true);
+        if (response.success && response.data) {
+          const bookingId = response.data._id || response.data.id;
+          const providerId = provider?.id || provider?._id;
+
+          // Send booking request to provider with 3-minute timer
+          try {
+            const requestResponse = await apiService.sendBookingRequest(bookingId, providerId);
+            if (requestResponse.success) {
+              // Show timer modal instead of immediate success
+              setPendingBookingId(bookingId);
+              setIsLoading(false);
+              setShowTimerModal(true);
+            } else {
+              // If request sending fails, still show success (booking created)
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              setIsLoading(false);
+              setShowSuccess(true);
+            }
+          } catch (requestError) {
+            console.log('Request sending failed, showing success anyway:', requestError);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setIsLoading(false);
+            setShowSuccess(true);
+          }
         } else {
           throw new Error(response.message || 'Wallet payment failed');
         }
@@ -376,9 +487,31 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Cash Booking Flow
     try {
-      await createBookingRecord('cash');
-      setIsLoading(false);
-      setShowSuccess(true);
+      const bookingResponse = await createBookingRecord('cash');
+      if (bookingResponse?.success && bookingResponse?.data) {
+        const bookingId = bookingResponse.data._id || bookingResponse.data.id;
+        const providerId = provider?.id || provider?._id;
+
+        // Send booking request to provider with 3-minute timer
+        try {
+          const requestResponse = await apiService.sendBookingRequest(bookingId, providerId);
+          if (requestResponse.success) {
+            setPendingBookingId(bookingId);
+            setIsLoading(false);
+            setShowTimerModal(true);
+          } else {
+            setIsLoading(false);
+            setShowSuccess(true);
+          }
+        } catch (requestError) {
+          console.log('Request sending failed:', requestError);
+          setIsLoading(false);
+          setShowSuccess(true);
+        }
+      } else {
+        setIsLoading(false);
+        setShowSuccess(true);
+      }
     } catch (error: any) {
       console.error('Booking failed:', error);
       setIsLoading(false);
@@ -425,10 +558,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       paymentMethod: method,
       notes: formData.notes,
 
-      amount: totalPrice,
-      baseAmount: basePrice,
-      gstAmount: gstAmount,
-      totalPrice: totalPrice,
+      amount: isNaN(totalPrice) ? (isNaN(basePrice) ? 0 : basePrice) : totalPrice,
+      baseAmount: isNaN(basePrice) ? 0 : basePrice,
+      gstAmount: isNaN(gstAmount) ? 0 : gstAmount,
+      totalPrice: isNaN(totalPrice) ? (isNaN(basePrice) ? 0 : basePrice) : totalPrice,
 
       // Add booked hours for overtime services
       ...(hasOvertimeCharges && bookedHours > 0 ? { bookedHours } : {}),
@@ -436,6 +569,9 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       paymentDetails,
       status: 'pending'
     };
+
+    // Debug: Log createBookingRecord payload
+    console.log('📦 createBookingRecord prices:', { amount: payload.amount, baseAmount: payload.baseAmount, gstAmount: payload.gstAmount, totalPrice: payload.totalPrice });
 
     const response = await apiService.createBooking(payload);
     return response;
@@ -1108,6 +1244,24 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
       </Modal>
+
+      {/* Booking Timer Modal - 3 minute provider response window */}
+      <BookingTimerModal
+        visible={showTimerModal}
+        bookingId={pendingBookingId || ''}
+        customerId={(user as any)?._id || user?.id}
+        provider={{
+          id: provider?.id || provider?._id || '',
+          name: provider?.name || 'Provider',
+          profileImage: provider?.profileImage || provider?.avatar,
+        }}
+        serviceName={service.title}
+        totalPrice={totalPrice}
+        onAccepted={handleTimerAccepted}
+        onRejected={handleTimerRejected}
+        onTimeout={handleTimerTimeout}
+        onCancel={handleTimerCancel}
+      />
 
     </View >
   );
