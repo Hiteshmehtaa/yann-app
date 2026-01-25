@@ -44,6 +44,9 @@ const isIncomeTransaction = (type: string) => {
     'wallet_credit',
     'escrow_refund',      // Refund to user when rejected
     'escrow_release',     // Credit to provider on acceptance
+    'booking_initial_payment', // 25% initial payment for providers
+    'booking_completion_payment', // 75% completion payment for providers
+    'completion_payment', // Service completion payment
     'withdrawal_rejected' // Returned funds on rejected withdrawal
   ].includes(type);
 };
@@ -58,6 +61,8 @@ const getTransactionInfo = (type: string): { label: string; icon: string } => {
     escrow_hold: { label: 'Booking Deposit (25%)', icon: 'lock-closed' },
     escrow_release: { label: 'Booking Payment Received', icon: 'lock-open' },
     escrow_refund: { label: 'Deposit Refunded', icon: 'refresh-circle' },
+    booking_initial_payment: { label: 'Initial Payment (25%)', icon: 'cash' },
+    booking_completion_payment: { label: 'Completion Payment (75%)', icon: 'checkmark-circle' },
     completion_payment: { label: 'Service Payment (75%)', icon: 'checkmark-circle' },
     withdrawal_request: { label: 'Withdrawal Pending', icon: 'hourglass' },
     withdrawal_completed: { label: 'Withdrawal Completed', icon: 'checkmark-done-circle' },

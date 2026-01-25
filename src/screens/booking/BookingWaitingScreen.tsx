@@ -122,10 +122,15 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
             try {
                 // Check booking request status from backend
                 const response = await apiService.checkBookingRequestStatus(bookingId);
-                console.log('📊 Booking status poll:', response);
+                console.log('📊 Booking status poll:', {
+                    success: response.success,
+                    status: response.data?.status,
+                    bookingId: response.data?._id || response.data?.id
+                });
                 
                 if (response.success && response.data) {
                     const bookingStatus = response.data.status;
+                    console.log(`📌 Current booking status: ${bookingStatus}`);
 
                     // Update rejected provider IDs if available
                     if (response.data.rejectedProviderIds && response.data.rejectedProviderIds.length > 0) {
