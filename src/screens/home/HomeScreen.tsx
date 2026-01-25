@@ -311,21 +311,19 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
 
 
-  // Search filtering & Dynamic "Coming Soon" Update
+  // Search filtering & Dynamic Provider Count Update
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       let filtered = services.map(s => {
-        // Dynamic Coming Soon Logic
+        // Dynamic Provider Count Logic
         const count = partnerCounts[s.title] || 0;
         const providerCount = typeof count === 'number' ? count : (count as any)?.providerCount || 0;
 
-        // Correct Logic: If we have fetched initial data, trust the providerCount (even if 0)
-        // This ensures services are marked 'Coming Soon' if DB returns 0 providers
-        const isNowComingSoon = hasFetchedInitial && providerCount === 0;
-
+        // DON'T mark as coming soon based on provider count
+        // Services are always clickable, even with 0 providers
         return {
           ...s,
-          isComingSoon: isNowComingSoon,
+          isComingSoon: s.isComingSoon || false, // Use the original value from SERVICES constant
           partnerCount: providerCount
         };
       });
@@ -339,9 +337,11 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       }
 
       const sorted = filtered.sort((a, b) => {
-        // Sort by availability first
-        if (!a.isComingSoon && b.isComingSoon) return -1;
-        if (a.isComingSoon && !b.isComingSoon) return 1;
+        // Sort by provider count (services with providers first)
+        const countA = a.partnerCount || 0;
+        const countB = b.partnerCount || 0;
+        if (countA > 0 && countB === 0) return -1;
+        if (countA === 0 && countB > 0) return 1;
 
         // Then by popularity
         if (a.popular && !b.popular) return -1;
