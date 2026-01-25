@@ -231,8 +231,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
 
       // PAYMENT REQUIRED: Show payment modal
-      if (data.type === 'payment_required' && data.bookingId) {
-        console.log('💰 Payment required notification tapped:', {
+      if ((data.type === 'payment_required' || data.type === 'completion_payment_required') && data.bookingId) {
+        console.log('💰 Payment notification tapped:', {
+          type: data.type,
           initialPaymentAmount: data.initialPaymentAmount,
           completionAmount: data.completionAmount,
           expiresAt: data.expiresAt
@@ -240,7 +241,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         
         const notifId = data.notificationId as string || Date.now().toString();
         
-        if (data.initialPaymentAmount && data.expiresAt) {
+        if (data.type === 'completion_payment_required' && data.completionAmount) {
+          // Completion payment (75%)
+          console.log('💰 Showing completion payment modal from tap');
+          setPaymentModalData({
+            type: 'completion',
+            bookingId: data.bookingId as string,
+            completionAmount: data.completionAmount as number,
+            totalPrice: data.totalPrice as number,
+            serviceName: data.serviceName as string,
+            notificationId: notifId
+          });
+        } else if (data.initialPaymentAmount && data.expiresAt) {
           // Initial payment (25%)
           console.log('💰 Showing initial payment modal from tap');
           setPaymentModalData({
@@ -253,15 +265,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             expiresAt: data.expiresAt as string,
             notificationId: notifId
           });
-        } else if (data.completionAmount) {
-          // Completion payment (75%)
-          console.log('💰 Showing completion payment modal from tap');
-          setPaymentModalData({
-            type: 'completion',
-            bookingId: data.bookingId as string,
-            completionAmount: data.completionAmount as number,
-            notificationId: notifId
-          });
+        } else {
+          console.log('⚠️ Payment notification but missing required data');
         }
       }
     });
