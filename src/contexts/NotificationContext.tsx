@@ -6,7 +6,7 @@ import { apiService } from '../services/api';
 
 export interface AppNotification {
   id: string;
-  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'booking_expired' | 'booking_request' | 'booking_request_reminder' | 'payment_required' | 'general';
+  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'booking_expired' | 'booking_request' | 'booking_request_reminder' | 'payment_required' | 'completion_payment_required' | 'general';
   title: string;
   message: string;
   otp?: string;
