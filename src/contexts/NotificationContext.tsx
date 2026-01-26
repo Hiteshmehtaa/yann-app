@@ -377,7 +377,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         // CHECK FOR PAYMENT REQUIRED: Trigger payment modal if there's an unread payment_required notification
         const paymentRequiredNotif = mappedNotifications.find(
-          n => n.type === 'payment_required' && !n.read && n.bookingId
+          n => (n.type === 'payment_required' || n.type === 'completion_payment_required') && !n.read && n.bookingId
         );
 
         if (paymentRequiredNotif && !paymentModalData) {
