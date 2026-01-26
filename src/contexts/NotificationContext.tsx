@@ -175,7 +175,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           bookingId: data.bookingId as string,
           serviceName: data.serviceName as string || 'Service',
           customerName: data.customerName as string || 'Customer',
+          customerAddress: data.customerAddress as string,
+          customerPhone: data.customerPhone as string,
           totalPrice: data.totalPrice as number || 0,
+          bookingDate: data.bookingDate as string,
+          bookingTime: data.bookingTime as string,
+          notes: data.notes as string,
           expiresAt: data.expiresAt as string,
         });
       }
