@@ -7,9 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   StatusBar,
-  Platform,
+  Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,14 +21,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY } from '../../utils/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
-import { EmptyStateAnimation } from '../../components/animations';
 import { EmptyState } from '../../components/EmptyState';
 import { TabBar } from '../../components/ui/TabBar';
 import { CountdownTimer } from '../../components/ui/CountdownTimer';
 import { RatingModal } from '../../components/RatingModal';
-import { CompletionPaymentModal } from '../../components/CompletionPaymentModal';
-import { Alert } from 'react-native';
 import { storage } from '../../utils/storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 // Gradient presets for status
 const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
@@ -63,8 +61,9 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('ongoing');
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedBookingForRating, setSelectedBookingForRating] = useState<Booking | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<Booking | null>(null);
+
+  // Global Notification Context for Payment Modal
+  const { setPaymentModalData, paymentModalData } = useNotifications();
 
   const handleRateBooking = (booking: Booking) => {
     setSelectedBookingForRating(booking);
@@ -166,36 +165,32 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
 
   // Auto-show payment modal for newly completed bookings needing payment
   React.useEffect(() => {
+    // Prevent interfering if modal is already open
+    if (paymentModalData) return;
+
     const completedBookingNeedingPayment = bookings.find(
       booking =>
         booking.status === 'completed' &&
         (booking.paymentMethod as string) === 'wallet' &&
-        (booking as any).walletPaymentStage === 'initial_25_released' &&
-        !showPaymentModal
+        (booking as any).walletPaymentStage === 'initial_25_released'
     );
 
-    if (completedBookingNeedingPayment && !selectedBookingForPayment) {
-      setSelectedBookingForPayment(completedBookingNeedingPayment);
-      setShowPaymentModal(true);
+    if (completedBookingNeedingPayment) {
+      // Trigger Global Modal instead of local one
+      console.log('💸 Triggering Global Payment Modal from List');
+      setPaymentModalData({
+        type: 'completion',
+        bookingId: completedBookingNeedingPayment._id,
+        notificationId: 'list-auto-trigger', // Dummy ID
+        completionAmount: (completedBookingNeedingPayment as any).escrowDetails?.completionAmount || completedBookingNeedingPayment.totalPrice * 0.75
+      });
     }
-  }, [bookings]);
+  }, [bookings, paymentModalData]);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
     fetchBookings(false);
   }, []);
-
-  const getStatusStyle = (status: string) => {
-    return {
-      backgroundColor: STATUS_COLORS[status as keyof typeof STATUS_COLORS] + '15',
-    };
-  };
-
-  const getStatusTextStyle = (status: string) => {
-    return {
-      color: STATUS_COLORS[status as keyof typeof STATUS_COLORS],
-    };
-  };
 
   const renderBookingCard = ({ item }: { item: Booking }) => {
     const formattedDate = item.bookingDate
@@ -375,10 +370,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         )}
       </View>
-    ); // EmptyState needs to handle its own theme inside or be passed colors? EmptyState component usually uses internal styles. Assuming it needs updates if it's external.
-    // Actually EmptyState is likely a component using theme internally if updated, or accepts props.
-    // Looking at imports: import { EmptyState } from '../../components/EmptyState';
-    // We should check that component too.
+    );
   };
 
   if (isLoading) {
@@ -465,31 +457,6 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         providerName={(selectedBookingForRating as any)?.providerName || 'Provider'}
         serviceName={selectedBookingForRating?.serviceName || 'Service'}
       />
-
-      {/* Completion Payment Modal */}
-      {selectedBookingForPayment && (
-        <CompletionPaymentModal
-          visible={showPaymentModal}
-          bookingId={selectedBookingForPayment._id}
-          serviceName={selectedBookingForPayment.serviceName}
-          completionAmount={(selectedBookingForPayment as any).escrowDetails?.completionAmount || selectedBookingForPayment.totalPrice * 0.75}
-          totalAmount={selectedBookingForPayment.totalPrice}
-          onClose={() => {
-            setShowPaymentModal(false);
-            setSelectedBookingForPayment(null);
-          }}
-          onPaymentSuccess={() => {
-            // Update local state
-            setBookings(prev => prev.map(b =>
-              b._id === selectedBookingForPayment._id
-                ? { ...b, walletPaymentStage: 'completed', paymentStatus: 'paid' } as any
-                : b
-            ));
-            // Refresh list to get latest data
-            fetchBookings(false);
-          }}
-        />
-      )}
     </SafeAreaView>
   );
 };

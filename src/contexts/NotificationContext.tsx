@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
@@ -25,6 +26,7 @@ export interface BookingRequestData {
   bookingId: string;
   serviceName: string;
   customerName: string;
+  customerProfileImage?: string; // Added field
   customerAddress?: string;
   customerPhone?: string;
   totalPrice: number;
@@ -175,6 +177,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           bookingId: data.bookingId as string,
           serviceName: data.serviceName as string || 'Service',
           customerName: data.customerName as string || 'Customer',
+          customerProfileImage: data.customerProfileImage as string, // Map Image
           customerAddress: data.customerAddress as string,
           customerPhone: data.customerPhone as string,
           totalPrice: data.totalPrice as number || 0,
@@ -294,6 +297,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             bookingId: bookingId,
             serviceName: serviceName || 'Service',
             customerName: response.data.customerName || 'Customer',
+            customerProfileImage: response.data.customerProfileImage, // Map Image from status check
             customerAddress: response.data.customerAddress,
             customerPhone: response.data.customerPhone,
             totalPrice: totalPrice || 0,
@@ -387,7 +391,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             setPaymentModalData({
               type: 'completion',
               bookingId: paymentRequiredNotif.bookingId!,
-              completionAmount: paymentRequiredNotif.completionAmount!,
+              completionAmount: Number(paymentRequiredNotif.completionAmount),
               notificationId: paymentRequiredNotif.id
             });
           }
@@ -428,6 +432,176 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
     }
   };
+
+  /**
+   * GLOBAL ACTIVE JOB POLLING
+   * Polls every 5s to check if any active job has been completed
+   */
+  useEffect(() => {
+    if (!user) return;
+
+    // Safety check: Don't poll if we already have a payment modal open
+    if (paymentModalData) return;
+
+    let pollInterval: NodeJS.Timeout;
+
+    const checkActiveJobs = async () => {
+      try {
+        const response = await apiService.getMyBookings();
+        if (response.success && response.data) {
+          // Find any booking that is active OR awaiting completion payment
+          const activeOrJustFinishedBooking = response.data.find((b: any) =>
+            b.status === 'in_progress' ||
+            b.status === 'awaiting_completion_payment' ||
+            (b.status === 'completed' && b.paymentMethod === 'wallet' && !b.escrowDetails?.isCompletionPaid)
+          );
+
+          if (activeOrJustFinishedBooking) {
+            // Check if we need to show completion modal
+            if (
+              activeOrJustFinishedBooking.status === 'completed' ||
+              activeOrJustFinishedBooking.status === 'awaiting_completion_payment'
+            ) {
+              // Double check it's a wallet payment needing completion
+              if (
+                activeOrJustFinishedBooking.paymentMethod === 'wallet' &&
+                !activeOrJustFinishedBooking.escrowDetails?.isCompletionPaid
+              ) {
+                console.log('🔥 GLOBAL POLLER: Found completed job needing payment!');
+                console.log('   Booking ID:', activeOrJustFinishedBooking._id);
+
+                const completionAmount = activeOrJustFinishedBooking.escrowDetails?.completionAmount ||
+                  Number((activeOrJustFinishedBooking.totalPrice * 0.75).toFixed(2));
+
+                console.log('🔥 GLOBAL POLLER: Found completed job needing payment!');
+                console.log('   Booking ID:', activeOrJustFinishedBooking._id);
+                console.log('   Status:', activeOrJustFinishedBooking.status);
+                console.log('   Paid:', activeOrJustFinishedBooking.paymentStatus);
+
+                // STRICT CHECK: Verify we haven't already paid
+                if (activeOrJustFinishedBooking.paymentStatus === 'paid' ||
+                  activeOrJustFinishedBooking.walletPaymentStage === 'completed' ||
+                  (activeOrJustFinishedBooking.escrowDetails?.isCompletionPaid === true)) {
+                  console.log('   🛑 Already paid, skipping modal.');
+                  return;
+                }
+
+                // Verify valid amounts
+                if (!completionAmount || !activeOrJustFinishedBooking.totalPrice) {
+                  return;
+                }
+
+                setPaymentModalData({
+                  type: 'completion',
+                  bookingId: activeOrJustFinishedBooking._id,
+                  completionAmount: completionAmount,
+                  totalPrice: activeOrJustFinishedBooking.totalPrice,
+                  serviceName: activeOrJustFinishedBooking.serviceName,
+                  notificationId: 'poll_' + Date.now().toString()
+                });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Silent fail
+      }
+    };
+
+    /**
+     * PROVIDER: CHECK PENDING REQUESTS
+     * Checks if there are any pending booking requests for this provider
+     */
+    /**
+     * PROVIDER: CHECK PENDING REQUESTS
+     * Checks if there are any pending booking requests for this provider
+     * Uses dedicated endpoint for reliability
+     */
+    const checkPendingRequests = async () => {
+      // Only for providers
+      if (user.role !== 'provider') return;
+      if (incomingBookingRequest) return; // Already showing one
+
+      try {
+        const userId = user.id || user._id;
+        // Use the dedicated pending requests endpoint which is much more reliable
+        // than fetching all bookings and filtering client-side
+        const response = await apiService.getProviderPendingRequests(userId);
+
+        if (response.success && response.data && response.data.length > 0) {
+          // Get the most recent pending request
+          const pendingBooking = response.data[0];
+          console.log('🔥 FOUND PENDING REQUEST ON RESUME:', pendingBooking.bookingId);
+
+          // Calculate actual expiry from backend data
+          let expiresAtString = pendingBooking.expiresAt;
+
+          if (!expiresAtString && pendingBooking.requestTimer?.expiresAt) {
+            expiresAtString = pendingBooking.requestTimer.expiresAt;
+          }
+
+          // Fallback: If no explicit expiry, assume 3 mins from creation
+          if (!expiresAtString && pendingBooking.createdAt) {
+            const createdTime = new Date(pendingBooking.createdAt).getTime();
+            expiresAtString = new Date(createdTime + 3 * 60 * 1000).toISOString();
+          }
+
+          // Start timer check: If already expired, don't show modal
+          if (expiresAtString) {
+            const remainingMs = new Date(expiresAtString).getTime() - Date.now();
+            if (remainingMs <= 0) {
+              console.log('❌ Pending request already expired, ignoring.');
+              return;
+            }
+          } else {
+            // If we absolutely cannot determine expiry, default to "now + 3 mins" 
+            // to show the modal (better to show than hide)
+            expiresAtString = new Date(Date.now() + 180000).toISOString();
+          }
+
+          setIncomingBookingRequest({
+            bookingId: pendingBooking.bookingId,
+            serviceName: pendingBooking.serviceName,
+            customerName: pendingBooking.customerName || 'Customer',
+            customerProfileImage: pendingBooking.customerProfileImage,
+            customerAddress: pendingBooking.customerAddress || 'Address hidden',
+            customerPhone: pendingBooking.customerPhone,
+            totalPrice: pendingBooking.totalPrice,
+            bookingDate: pendingBooking.bookingDate,
+            bookingTime: pendingBooking.bookingTime,
+            notes: pendingBooking.notes,
+            expiresAt: expiresAtString
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check pending requests:', error);
+      }
+    };
+
+    // Initial check
+    checkActiveJobs();
+    checkPendingRequests();
+
+    // Poll every 5 seconds
+    pollInterval = setInterval(() => {
+      checkActiveJobs();
+      checkPendingRequests();
+    }, 5000);
+
+    // AppState Listener for Resume
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('📱 App Resumed - Checking for critical modals...');
+        checkActiveJobs();
+        checkPendingRequests();
+      }
+    });
+
+    return () => {
+      clearInterval(pollInterval);
+      subscription.remove();
+    };
+  }, [user, paymentModalData, incomingBookingRequest]);
 
   const saveNotifications = async (newNotifications: AppNotification[]) => {
     try {

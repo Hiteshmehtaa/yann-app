@@ -353,6 +353,8 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
     return '';
   };
 
+  // Removed blocking loading spinner to prevent overlap with app splash
+  /*
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -361,6 +363,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
       </View>
     );
   }
+  */
 
   return (
     <View style={styles.container}>

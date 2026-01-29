@@ -1,679 +1,634 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
-  Vibration,
-  Platform,
-  AppState,
-  AppStateStatus,
-  ScrollView,
+    View,
+    Text,
+    StyleSheet,
+    Modal,
+    TouchableOpacity,
+    Animated,
+    Dimensions,
+    Vibration,
+    Platform,
+    ScrollView,
+    Image, // Added Image import
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { COLORS, SPACING, SHADOWS, RADIUS } from '../../utils/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '../../services/api';
 import { playBookingRequestBuzzer, stopBuzzer, playSuccessSound, playErrorSound } from '../../utils/soundNotifications';
+import { COLORS } from '../../utils/theme';
 
 const { width, height } = Dimensions.get('window');
 
+// Premium Palette - Aligned with App Theme
+const THEME_STYLES = {
+    primary: COLORS.primary, // #3B82F6
+    secondary: COLORS.textSecondary,
+    accent: COLORS.primary,
+    success: COLORS.success,
+    danger: COLORS.error,
+    surface: COLORS.white,
+    background: COLORS.background,
+    border: COLORS.border,
+};
+
 interface BookingRequestData {
-  bookingId: string;
-  serviceName: string;
-  customerName: string;
-  customerAddress?: string;
-  customerPhone?: string;
-  bookingDate?: string;
-  bookingTime?: string;
-  totalPrice: number;
-  notes?: string;
-  expiresAt: string;
+    bookingId: string;
+    serviceName: string;
+    customerName: string;
+    customerProfileImage?: string; // Added field
+    customerAddress?: string;
+    customerPhone?: string;
+    bookingDate?: string;
+    bookingTime?: string;
+    totalPrice: number;
+    notes?: string;
+    expiresAt: string;
 }
 
 interface ProviderIncomingRequestProps {
-  visible: boolean;
-  requestData: BookingRequestData | null;
-  providerId: string;
-  onAccept: () => void;
-  onReject: () => void;
-  onDismiss: () => void;
+    visible: boolean;
+    requestData: BookingRequestData | null;
+    providerId: string;
+    onAccept: () => void;
+    onReject: () => void;
+    onDismiss: () => void;
 }
 
-const VIBRATION_PATTERN = [0, 500, 200, 500, 200, 500, 500]; // Buzz pattern
-const VIBRATION_INTERVAL = 5000; // Repeat every 5 seconds
+const VIBRATION_PATTERN = [0, 1000, 1000, 1000, 1000, 1000, 1000]; // 1s vibrate, 1s pause loop
+const VIBRATION_INTERVAL = 6000; // Repeat whole pattern every 6s
 
 export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = ({
-  visible,
-  requestData,
-  providerId,
-  onAccept,
-  onReject,
-  onDismiss,
+    visible,
+    requestData,
+    providerId,
+    onAccept,
+    onReject,
+    onDismiss,
 }) => {
-  const [remainingSeconds, setRemainingSeconds] = useState(180);
-  const [isAccepting, setIsAccepting] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
-
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const vibrationRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Calculate remaining time from expiresAt
-  useEffect(() => {
-    if (!visible || !requestData?.expiresAt) {
-      console.log('⏱️ Timer NOT started. visible:', visible, 'expiresAt:', requestData?.expiresAt);
-      return;
-    }
-
-    console.log('⏱️ Timer started. expiresAt:', requestData.expiresAt);
-    const expiresAt = new Date(requestData.expiresAt);
-
-    const updateRemaining = () => {
-      const now = new Date();
-      const remaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
-      setRemainingSeconds(remaining);
-
-      if (remaining <= 0) {
-        console.log('⏱️ Timer expired - auto dismissing');
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
+    // Strict Timer Initialization
+    const [remainingSeconds, setRemainingSeconds] = useState(() => {
+        if (requestData?.expiresAt) {
+            const expires = new Date(requestData.expiresAt);
+            const now = new Date();
+            return Math.max(0, Math.floor((expires.getTime() - now.getTime()) / 1000));
         }
-        stopAllEffects();
-        onDismiss();
-      }
-    };
-
-    // Initial update
-    updateRemaining();
-
-    // Set interval
-    timerRef.current = setInterval(updateRemaining, 1000);
-
-    return () => {
-      if (timerRef.current) {
-        console.log('⏱️ Timer cleanup');
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [visible, requestData?.expiresAt, onDismiss]);
-
-  // Start buzzer/vibration when visible
-  useEffect(() => {
-    if (visible && requestData) {
-      startBuzzerEffects();
-    } else {
-      stopAllEffects();
-    }
-
-    return () => {
-      stopAllEffects();
-    };
-  }, [visible, requestData]);
-
-  // Pulse animation
-  useEffect(() => {
-    if (visible) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.02,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
-
-      return () => {
-        pulse.stop();
-      };
-    }
-  }, [visible]);
-
-  const startBuzzerEffects = async () => {
-    // Play buzzer sound with haptic feedback
-    try {
-      await playBookingRequestBuzzer();
-    } catch (error) {
-      console.log('Sound notification failed, using fallback:', error);
-    }
-
-    // Start vibration pattern as backup
-    if (Platform.OS !== 'web') {
-      Vibration.vibrate(VIBRATION_PATTERN);
-      vibrationRef.current = setInterval(() => {
-        Vibration.vibrate(VIBRATION_PATTERN);
-        // Replay buzzer periodically
-        playBookingRequestBuzzer().catch(console.log);
-      }, VIBRATION_INTERVAL);
-    }
-
-    // Fallback to haptic feedback
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-  };
-
-  const stopAllEffects = async () => {
-    // Stop buzzer sound
-    try {
-      await stopBuzzer();
-    } catch (error) {
-      console.log('Failed to stop buzzer:', error);
-    }
-
-    // Stop vibration
-    if (Platform.OS !== 'web') {
-      Vibration.cancel();
-    }
-    if (vibrationRef.current) {
-      clearInterval(vibrationRef.current);
-      vibrationRef.current = null;
-    }
-
-    // Stop timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  const handleAccept = async () => {
-    if (isAccepting || isRejecting || !requestData) return;
-
-    setIsAccepting(true);
-    stopAllEffects();
-
-    // Play success sound
-    await playSuccessSound();
-
-    try {
-      const response = await apiService.respondToBookingRequest(
-        requestData.bookingId,
-        providerId,
-        'accept'
-      );
-
-      if (response.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onAccept();
-      } else {
-        throw new Error(response.message || 'Failed to accept');
-      }
-    } catch (error: any) {
-      console.error('Accept failed:', error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // Still call onAccept to dismiss modal
-      onAccept();
-    } finally {
-      setIsAccepting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (isAccepting || isRejecting || !requestData) return;
-
-    setIsRejecting(true);
-    stopAllEffects();
-
-    // Play error sound
-    await playErrorSound();
-
-    try {
-      const response = await apiService.respondToBookingRequest(
-        requestData.bookingId,
-        providerId,
-        'reject',
-        'Provider declined'
-      );
-
-      if (response.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        onReject();
-      } else {
-        throw new Error(response.message || 'Failed to reject');
-      }
-    } catch (error: any) {
-      console.error('Reject failed:', error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      onReject();
-    } finally {
-      setIsRejecting(false);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getUrgencyColor = () => {
-    if (remainingSeconds > 120) return '#10B981'; // Green
-    if (remainingSeconds > 60) return '#F59E0B'; // Orange
-    return '#EF4444'; // Red
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+        return 180;
     });
-  };
 
-  if (!visible || !requestData) return null;
+    const [isAccepting, setIsAccepting] = useState(false);
+    const [isRejecting, setIsRejecting] = useState(false);
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-    >
-      <BlurView intensity={95} tint="dark" style={styles.overlay}>
-        <Animated.View
-          style={[
-            styles.container,
-            {
-              transform: [{ scale: pulseAnim }]
+    // Animations
+    const slideAnim = useRef(new Animated.Value(500)).current; // Slide up
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const vibrationRef = useRef<NodeJS.Timeout | null>(null);
+    const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // 1. Timer Logic
+    useEffect(() => {
+        if (!visible || !requestData?.expiresAt) return;
+
+        const stopAllEffects = async () => {
+            try { await stopBuzzer(); } catch (e) { }
+
+            // Cancel vibration
+            if (Platform.OS !== 'web') {
+                Vibration.cancel(); // Stops native loop on Android and current vibe on iOS
             }
-          ]}
+
+            // Clear manual intervals
+            if (vibrationRef.current) {
+                clearInterval(vibrationRef.current);
+                vibrationRef.current = null;
+            }
+            if (audioIntervalRef.current) {
+                clearInterval(audioIntervalRef.current);
+                audioIntervalRef.current = null;
+            }
+        };
+
+        const expiresAt = new Date(requestData.expiresAt);
+
+        const updateRemaining = () => {
+            const now = new Date();
+            const remaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+            setRemainingSeconds(remaining);
+
+            if (remaining <= 0) {
+                if (timerRef.current) {
+                    clearInterval(timerRef.current);
+                    timerRef.current = null;
+                }
+                stopAllEffects();
+                onDismiss();
+            }
+        };
+
+        updateRemaining();
+        timerRef.current = setInterval(updateRemaining, 1000);
+
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+        };
+    }, [visible, requestData?.expiresAt, onDismiss]);
+
+    // 2. Sound & Haptics
+    useEffect(() => {
+        // Wrap async call in function
+        const startEffects = async () => {
+            if (visible && requestData) {
+                await startBuzzerEffects();
+                // Entrance Animation
+                Animated.parallel([
+                    Animated.spring(slideAnim, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                        damping: 20,
+                        stiffness: 150,
+                    }),
+                    Animated.timing(fadeAnim, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver: true,
+                    })
+                ]).start();
+            } else {
+                await stopAllEffects();
+                slideAnim.setValue(500);
+                fadeAnim.setValue(0);
+            }
+        };
+
+        startEffects();
+
+        return () => { stopAllEffects(); };
+    }, [visible, requestData]);
+
+    const startBuzzerEffects = async () => {
+        try {
+            await playBookingRequestBuzzer();
+        } catch (e) { console.log('Buzzer error', e); }
+
+        if (Platform.OS === 'android') {
+            // Android supports native looping: vibrate(pattern, repeatIndex)
+            // repeatIndex is the index in pattern to start repeating from
+            Vibration.vibrate([0, 1000, 1000], true);
+        } else {
+            // iOS manual loop
+            Vibration.vibrate(1000);
+            vibrationRef.current = setInterval(() => {
+                Vibration.vibrate(1000);
+            }, 2000);
+        }
+
+        // Start buzzer sound loop separately
+        playBookingRequestBuzzer().catch(() => { });
+        if (Platform.OS === 'android') {
+            // Replay sound every 2 seconds matching the vibration cycle
+            audioIntervalRef.current = setInterval(() => {
+                playBookingRequestBuzzer().catch(() => { });
+            }, 2000);
+        }
+    };
+
+    const stopAllEffects = async () => {
+        try { await stopBuzzer(); } catch (e) { }
+
+        // Cancel vibration
+        if (Platform.OS !== 'web') {
+            Vibration.cancel(); // Stops native loop on Android and current vibe on iOS
+        }
+
+        // Clear manual intervals
+        if (vibrationRef.current) {
+            clearInterval(vibrationRef.current);
+            vibrationRef.current = null;
+        }
+        if (audioIntervalRef.current) {
+            clearInterval(audioIntervalRef.current);
+            audioIntervalRef.current = null;
+        }
+    };
+
+    const handleAction = async (type: 'accept' | 'reject') => {
+        if (isAccepting || isRejecting || !requestData) return;
+
+        if (type === 'accept') setIsAccepting(true);
+        else setIsRejecting(true);
+
+        stopAllEffects();
+
+        try {
+            if (type === 'accept') await playSuccessSound();
+            else await playErrorSound();
+
+            const response = await apiService.respondToBookingRequest(
+                requestData.bookingId,
+                providerId,
+                type,
+                type === 'reject' ? 'Provider declined' : undefined
+            );
+
+            if (response.success) {
+                Haptics.notificationAsync(
+                    type === 'accept'
+                        ? Haptics.NotificationFeedbackType.Success
+                        : Haptics.NotificationFeedbackType.Warning
+                );
+                type === 'accept' ? onAccept() : onReject();
+            } else {
+                throw new Error(response.message);
+            }
+        } catch (error) {
+            console.error(`${type} failed:`, error);
+            // Still close modal on error to prevent being stuck
+            type === 'accept' ? onAccept() : onReject();
+        } finally {
+            setIsAccepting(false);
+            setIsRejecting(false);
+        }
+    };
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'Today';
+        const date = new Date(dateString);
+        const today = new Date();
+        const isToday = date.getDate() === today.getDate() &&
+            date.getMonth() === today.getMonth() &&
+            date.getFullYear() === today.getFullYear();
+
+        if (isToday) return 'Today';
+
+        return date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    if (!visible || !requestData) return null;
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="none"
+            statusBarTranslucent
         >
-          {/* Header */}
-          <LinearGradient
-            colors={[getUrgencyColor(), getUrgencyColor() + 'DD']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.header}
-          >
-            <View style={styles.headerContent}>
-              <View style={styles.iconBadge}>
-                <Ionicons name="notifications" size={28} color="#FFF" />
-              </View>
-              <Text style={styles.headerTitle}>New Booking Request</Text>
-              <View style={styles.timerBadge}>
-                <Ionicons name="timer-outline" size={16} color="#FFF" />
-                <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
-              </View>
-            </View>
-          </LinearGradient>
+            <BlurView intensity={50} tint="dark" style={styles.overlay}>
+                <Animated.View
+                    style={[
+                        styles.container,
+                        {
+                            transform: [{ translateY: slideAnim }],
+                            opacity: fadeAnim
+                        }
+                    ]}
+                >
+                    {/* Header Badge */}
+                    <View style={styles.header}>
+                        <LinearGradient
+                            colors={[COLORS.primaryLight, '#EBF5FF']}
+                            style={styles.badge}
+                        >
+                            <View style={[styles.badgeDot, { backgroundColor: COLORS.primary }]} />
+                            <Text style={[styles.badgeText, { color: COLORS.primary }]}>NEW REQUEST</Text>
+                        </LinearGradient>
 
-          {/* Content */}
-          <ScrollView
-            style={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.content}>
-              {/* Service Info */}
-              <View style={styles.serviceCard}>
-                <View style={styles.serviceHeader}>
-                  <Ionicons name="construct" size={24} color="#3B82F6" />
-                  <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceLabel}>Service</Text>
-                    <Text style={styles.serviceName}>{requestData.serviceName}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Customer Info */}
-              <View style={styles.infoCard}>
-                <Text style={styles.cardTitle}>Customer Details</Text>
-
-                <View style={styles.infoRow}>
-                  <Ionicons name="person" size={20} color="#6B7280" />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Name</Text>
-                    <Text style={styles.infoValue}>{requestData.customerName}</Text>
-                  </View>
-                </View>
-
-                {requestData.customerPhone && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="call" size={20} color="#6B7280" />
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Phone</Text>
-                      <Text style={styles.infoValue}>{requestData.customerPhone}</Text>
+                        <View style={[styles.timerContainer, remainingSeconds < 60 && styles.timerUrgent]}>
+                            <Ionicons name="time-outline" size={14} color={remainingSeconds < 60 ? COLORS.error : COLORS.textSecondary} />
+                            <Text style={[styles.timerText, remainingSeconds < 60 && styles.textUrgent]}>
+                                {formatTime(remainingSeconds)}
+                            </Text>
+                        </View>
                     </View>
-                  </View>
-                )}
 
-                {requestData.customerAddress && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="location" size={20} color="#6B7280" />
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Address</Text>
-                      <Text style={styles.infoValue}>{requestData.customerAddress}</Text>
+                    {/* Price Hero */}
+                    <View style={styles.heroSection}>
+                        <Text style={styles.heroLabel}>Estimated Earning</Text>
+                        <Text style={styles.heroPrice}>₹{requestData.totalPrice.toFixed(0)}</Text>
+                        <Text style={styles.serviceName}>{requestData.serviceName}</Text>
                     </View>
-                  </View>
-                )}
-              </View>
 
-              {/* Booking Details */}
-              <View style={styles.infoCard}>
-                <Text style={styles.cardTitle}>Booking Details</Text>
+                    {/* Divider */}
+                    <View style={styles.divider} />
 
-                {requestData.bookingDate && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="calendar" size={20} color="#6B7280" />
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Date</Text>
-                      <Text style={styles.infoValue}>{formatDate(requestData.bookingDate)}</Text>
+                    {/* Details List */}
+                    <ScrollView
+                        style={styles.detailsContainer}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 24 }}
+                    >
+                        {/* Customer */}
+                        <View style={styles.row}>
+                            <View style={[styles.iconBox, requestData.customerProfileImage && { backgroundColor: 'transparent', overflow: 'hidden' }]}>
+                                {requestData.customerProfileImage ? (
+                                    <Image
+                                        source={{ uri: requestData.customerProfileImage }}
+                                        style={{ width: '100%', height: '100%', borderRadius: 12 }}
+                                    />
+                                ) : (
+                                    <Ionicons name="person" size={18} color={COLORS.primary} />
+                                )}
+                            </View>
+                            <View style={styles.rowContent}>
+                                <Text style={styles.rowLabel}>Customer</Text>
+                                <Text style={styles.rowValue}>{requestData.customerName}</Text>
+                            </View>
+                        </View>
+
+                        {/* Location */}
+                        <View style={styles.row}>
+                            <View style={styles.iconBox}>
+                                <Ionicons name="location" size={18} color={COLORS.primary} />
+                            </View>
+                            <View style={styles.rowContent}>
+                                <Text style={styles.rowLabel}>Location</Text>
+                                <Text style={styles.rowValue} numberOfLines={2}>
+                                    {requestData.customerAddress || 'No address provided'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Time */}
+                        <View style={styles.row}>
+                            <View style={styles.iconBox}>
+                                <Ionicons name="calendar" size={18} color={COLORS.primary} />
+                            </View>
+                            <View style={styles.rowContent}>
+                                <Text style={styles.rowLabel}>Schedule</Text>
+                                <Text style={styles.rowValue}>
+                                    {formatDate(requestData.bookingDate)} • {requestData.bookingTime}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Notes */}
+                        {requestData.notes && (
+                            <View style={styles.noteBox}>
+                                <Text style={styles.noteTitle}>Note from customer:</Text>
+                                <Text style={styles.noteText}>{requestData.notes}</Text>
+                            </View>
+                        )}
+                    </ScrollView>
+
+                    {/* Actions - Fixed at Bottom */}
+                    <View style={styles.actionContainer}>
+                        <TouchableOpacity
+                            style={styles.declineButton}
+                            onPress={() => handleAction('reject')}
+                            disabled={isAccepting || isRejecting}
+                        >
+                            <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.acceptButtonWrapper}
+                            onPress={() => handleAction('accept')}
+                            disabled={isAccepting || isRejecting}
+                            activeOpacity={0.9}
+                        >
+                            <LinearGradient
+                                colors={['#3B82F6', '#2563EB']} // Primary Gradient
+                                style={styles.acceptButton}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                            >
+                                {isAccepting ? (
+                                    <Text style={styles.acceptText}>Accepting...</Text>
+                                ) : (
+                                    <>
+                                        <Text style={styles.acceptText}>Accept Job</Text>
+                                        <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
+                                    </>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
                     </View>
-                  </View>
-                )}
 
-                {requestData.bookingTime && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="time" size={20} color="#6B7280" />
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Time</Text>
-                      <Text style={styles.infoValue}>{requestData.bookingTime}</Text>
-                    </View>
-                  </View>
-                )}
-
-                {requestData.notes && (
-                  <View style={styles.infoRow}>
-                    <Ionicons name="document-text" size={20} color="#6B7280" />
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>Notes</Text>
-                      <Text style={styles.infoValue}>{requestData.notes}</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* Price */}
-              <View style={styles.priceCard}>
-                <Text style={styles.priceLabel}>Earning Potential</Text>
-                <Text style={styles.priceValue}>₹{requestData.totalPrice.toFixed(2)}</Text>
-              </View>
-
-              {/* Urgency Warning */}
-              {remainingSeconds <= 60 && (
-                <View style={styles.urgencyBanner}>
-                  <Ionicons name="warning" size={20} color="#DC2626" />
-                  <Text style={styles.urgencyText}>
-                    ⚡ Less than 1 minute! Auto-reject imminent
-                  </Text>
-                </View>
-              )}
-            </View>
-          </ScrollView>
-
-          {/* Action Buttons */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.rejectButton, (isAccepting || isRejecting) && styles.buttonDisabled]}
-              onPress={handleReject}
-              disabled={isAccepting || isRejecting}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="close-circle" size={22} color="#DC2626" />
-              <Text style={styles.rejectButtonText}>
-                {isRejecting ? 'Declining...' : 'Decline'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.acceptButton, (isAccepting || isRejecting) && styles.buttonDisabled]}
-              onPress={handleAccept}
-              disabled={isAccepting || isRejecting}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#10B981', '#059669']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.acceptGradient}
-              >
-                <Ionicons name="checkmark-circle" size={22} color="#FFF" />
-                <Text style={styles.acceptButtonText}>
-                  {isAccepting ? 'Accepting...' : 'Accept Booking'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </BlurView>
-    </Modal>
-  );
+                </Animated.View>
+            </BlurView>
+        </Modal>
+    );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.lg,
-  },
-  container: {
-    width: width * 0.94,
-    maxWidth: 480,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 24,
-  },
-  header: {
-    paddingVertical: SPACING.xl,
-    paddingHorizontal: SPACING.lg,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginLeft: SPACING.md,
-    letterSpacing: 0.3,
-  },
-  timerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    gap: 6,
-  },
-  timerText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-    fontVariant: ['tabular-nums'],
-  },
-  scrollContent: {
-    maxHeight: height * 0.6,
-  },
-  content: {
-    padding: SPACING.lg,
-    gap: SPACING.md,
-  },
-  serviceCard: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
-    padding: SPACING.lg,
-    borderWidth: 1.5,
-    borderColor: '#DBEAFE',
-  },
-  serviceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  serviceInfo: {
-    flex: 1,
-  },
-  serviceLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  serviceName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1E40AF',
-    letterSpacing: 0.2,
-  },
-  infoCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: SPACING.md,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.md,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
-    lineHeight: 22,
-  },
-  priceCard: {
-    backgroundColor: '#ECFDF5',
-    borderRadius: 16,
-    padding: SPACING.lg,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#A7F3D0',
-  },
-  priceLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#059669',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  priceValue: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#047857',
-    fontVariant: ['tabular-nums'],
-  },
-  urgencyBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    padding: SPACING.md,
-    borderRadius: 12,
-    gap: 10,
-    borderWidth: 1.5,
-    borderColor: '#FEE2E2',
-  },
-  urgencyText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#DC2626',
-    lineHeight: 18,
-  },
-  actions: {
-    flexDirection: 'row',
-    padding: SPACING.lg,
-    gap: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  rejectButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FEE2E2',
-    backgroundColor: '#FEF2F2',
-    gap: 8,
-  },
-  rejectButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#DC2626',
-  },
-  acceptButton: {
-    flex: 1.5,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  acceptGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
-  },
-  acceptButtonText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
+    overlay: {
+        flex: 1,
+        justifyContent: 'flex-end', // Bottom sheet style
+        backgroundColor: 'rgba(0,0,0,0.6)',
+    },
+    container: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 24,
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        maxHeight: height * 0.85,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 25,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    badge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.primaryLight,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 100,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+    },
+    badgeDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: COLORS.primary,
+    },
+    badgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.primary,
+        letterSpacing: 0.5,
+    },
+    timerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#F1F5F9', // Slate 100
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 100,
+    },
+    timerUrgent: {
+        backgroundColor: '#FEF2F2',
+    },
+    timerText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#71717A',
+        fontVariant: ['tabular-nums'],
+    },
+    textUrgent: {
+        color: '#EF4444',
+    },
+    heroSection: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    heroLabel: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+        marginBottom: 4,
+        fontWeight: '500',
+    },
+    heroPrice: {
+        fontSize: 48,
+        fontWeight: '800',
+        color: COLORS.text, // Slate 900
+        letterSpacing: -1,
+        marginBottom: 8,
+    },
+    serviceName: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: COLORS.primary,
+        textAlign: 'center',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#F3F4F6',
+        marginBottom: 24,
+    },
+    detailsContainer: {
+        flexGrow: 0,
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center', // Changed from flex-start to align icons better
+        marginBottom: 20,
+        gap: 16,
+    },
+    iconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: COLORS.primaryLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    rowContent: {
+        flex: 1,
+    },
+    rowLabel: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        marginBottom: 2,
+        fontWeight: '500',
+    },
+    rowValue: {
+        fontSize: 16,
+        color: COLORS.text,
+        fontWeight: '600',
+    },
+    distanceText: {
+        fontSize: 12,
+        color: '#71717A',
+        marginTop: 2,
+    },
+    ratingBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFBEB',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginTop: 4,
+        gap: 2,
+    },
+    ratingText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#B45309',
+    },
+    noteBox: {
+        backgroundColor: '#FEFCE8', // Light yellow
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FEF08A',
+        marginBottom: 20,
+    },
+    noteTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#854D0E',
+        marginBottom: 4,
+    },
+    noteText: {
+        fontSize: 14,
+        color: '#854D0E',
+    },
+    actionContainer: {
+        flexDirection: 'row',
+        gap: 16,
+        marginTop: 8,
+    },
+    declineButton: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#F1F5F9', // Slate 100
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    acceptButtonWrapper: {
+        flex: 1,
+        height: 64,
+        borderRadius: 32,
+        overflow: 'hidden',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    acceptButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    acceptText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
 });

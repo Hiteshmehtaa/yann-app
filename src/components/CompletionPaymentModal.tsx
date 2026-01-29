@@ -7,11 +7,14 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { apiService } from '../services/api';
-import { COLORS, RADIUS, SPACING } from '../utils/theme';
+import { COLORS, RADIUS, SPACING, SHADOWS, TYPOGRAPHY } from '../utils/theme';
+
+const { width } = Dimensions.get('window');
 
 interface CompletionPaymentModalProps {
   visible: boolean;
@@ -41,8 +44,8 @@ export const CompletionPaymentModal: React.FC<CompletionPaymentModalProps> = ({
 
       if (response.success) {
         Alert.alert(
-          'Payment Successful! 🎉',
-          `₹${completionAmount} has been paid to the service provider.`,
+          'Payment Successful',
+          `₹${completionAmount} has been paid successfully.`,
           [
             {
               text: 'OK',
@@ -69,55 +72,41 @@ export const CompletionPaymentModal: React.FC<CompletionPaymentModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <BlurView intensity={40} tint="dark" style={styles.overlay}>
         <View style={styles.container}>
           {/* Header */}
-          <LinearGradient
-            colors={['#10B981', '#059669']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.header}
-          >
-            <Ionicons name="checkmark-circle" size={48} color="#FFFFFF" />
-            <Text style={styles.headerTitle}>Job Completed! ✨</Text>
-            <Text style={styles.headerSubtitle}>Complete your payment</Text>
-          </LinearGradient>
+          <View style={styles.header}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="checkmark" size={32} color={COLORS.primary} />
+            </View>
+            <Text style={styles.title}>Payment Required</Text>
+            <Text style={styles.subtitle}>Job Completed</Text>
+          </View>
 
-          {/* Payment Details */}
-          <View style={styles.content}>
-            <View style={styles.serviceInfo}>
-              <Text style={styles.serviceLabel}>Service</Text>
-              <Text style={styles.serviceName}>{serviceName}</Text>
+          {/* Amount Display */}
+          <View style={styles.amountContainer}>
+            <Text style={styles.currency}>₹</Text>
+            <Text style={styles.amount}>{completionAmount.toLocaleString()}</Text>
+            <Text style={styles.amountLabel}>Remaining Balance (75%)</Text>
+          </View>
+
+          {/* Details */}
+          <View style={styles.detailsContainer}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Service</Text>
+              <Text style={styles.detailValue}>{serviceName}</Text>
             </View>
 
             <View style={styles.divider} />
 
-            <View style={styles.paymentBreakdown}>
-              <View style={styles.paymentRow}>
-                <Text style={styles.paymentLabel}>Initial Payment (25%)</Text>
-                <View style={styles.paidBadge}>
-                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                  <Text style={styles.paidText}>₹{totalAmount * 0.25}</Text>
-                </View>
-              </View>
-
-              <View style={[styles.paymentRow, styles.highlightRow]}>
-                <Text style={styles.paymentLabelBold}>Remaining Payment (75%)</Text>
-                <Text style={styles.amountHighlight}>₹{completionAmount}</Text>
-              </View>
-
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total Service Cost</Text>
-                <Text style={styles.totalAmount}>₹{totalAmount}</Text>
-              </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Total Amount</Text>
+              <Text style={styles.detailValue}>₹{totalAmount.toLocaleString()}</Text>
             </View>
 
-            {/* Info Message */}
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={20} color="#3B82F6" />
-              <Text style={styles.infoText}>
-                The service provider has successfully completed the job. Please pay the remaining amount to settle this booking.
-              </Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Paid (25%)</Text>
+              <Text style={styles.detailValueSuccess}>- ₹{(totalAmount - completionAmount).toLocaleString()}</Text>
             </View>
           </View>
 
@@ -129,21 +118,11 @@ export const CompletionPaymentModal: React.FC<CompletionPaymentModalProps> = ({
               disabled={isPaying}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={isPaying ? ['#94A3B8', '#64748B'] : ['#10B981', '#059669']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.payButtonGradient}
-              >
-                {isPaying ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons name="wallet" size={20} color="#FFFFFF" />
-                    <Text style={styles.payButtonText}>Pay ₹{completionAmount}</Text>
-                  </>
-                )}
-              </LinearGradient>
+              {isPaying ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.payButtonText}>Pay Now</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -155,7 +134,7 @@ export const CompletionPaymentModal: React.FC<CompletionPaymentModalProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </BlurView>
     </Modal>
   );
 };
@@ -163,161 +142,120 @@ export const CompletionPaymentModal: React.FC<CompletionPaymentModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.lg,
+    backgroundColor: 'rgba(0,0,0,0.7)', // Dark overlay
   },
   container: {
-    width: '100%',
+    width: width * 0.9,
     maxWidth: 400,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderRadius: RADIUS.xlarge,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    padding: SPACING.xl,
+    ...SHADOWS.lg,
   },
   header: {
-    padding: SPACING.xl,
     alignItems: 'center',
+    marginBottom: SPACING.xl,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: SPACING.md,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: SPACING.xs,
-  },
-  content: {
-    padding: SPACING.xl,
-  },
-  serviceInfo: {
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.primary + '15', // 15% opacity
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
   },
-  serviceLabel: {
-    fontSize: 12,
+  title: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.textSecondary,
+    fontWeight: '500',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
-  serviceName: {
-    fontSize: 18,
+  amountContainer: {
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+  },
+  currency: {
+    fontSize: 24,
+    color: COLORS.text,
+    position: 'absolute',
+    top: 8,
+    left: '25%', // Approximate centering adjustment
+    opacity: 0.6,
+  },
+  amount: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: COLORS.text,
+    letterSpacing: -1,
+  },
+  amountLabel: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  detailsContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.medium,
+    padding: SPACING.lg,
+    marginBottom: SPACING.xl,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xs,
+  },
+  detailLabel: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+  },
+  detailValue: {
+    fontSize: TYPOGRAPHY.size.sm,
     fontWeight: '600',
     color: COLORS.text,
-    marginTop: SPACING.xs,
+  },
+  detailValueSuccess: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '600',
+    color: COLORS.success,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
-    marginBottom: SPACING.lg,
-  },
-  paymentBreakdown: {
-    marginBottom: SPACING.lg,
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-  },
-  highlightRow: {
-    backgroundColor: '#F0FDF4',
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.medium,
-    marginTop: SPACING.sm,
-  },
-  paymentLabel: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  paymentLabelBold: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  paidBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  paidText: {
-    fontSize: 14,
-    color: '#10B981',
-    fontWeight: '600',
-  },
-  amountHighlight: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#10B981',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: SPACING.md,
-    marginTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  totalAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: '#EFF6FF',
-    padding: SPACING.md,
-    borderRadius: RADIUS.medium,
-    gap: SPACING.sm,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#1E40AF',
-    lineHeight: 18,
+    backgroundColor: COLORS.divider,
+    marginVertical: SPACING.sm,
   },
   actions: {
-    padding: SPACING.xl,
-    paddingTop: 0,
     gap: SPACING.md,
   },
   payButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
     borderRadius: RADIUS.large,
-    overflow: 'hidden',
-  },
-  payButtonGradient: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: SPACING.md,
-    gap: SPACING.sm,
+    ...SHADOWS.md,
   },
   payButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '700',
+    color: COLORS.white,
   },
   laterButton: {
-    padding: SPACING.md,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   laterButtonText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: TYPOGRAPHY.size.md,
     fontWeight: '600',
+    color: COLORS.textSecondary,
   },
 });

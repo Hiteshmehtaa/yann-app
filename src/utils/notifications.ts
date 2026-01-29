@@ -27,6 +27,17 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
             vibrationPattern: [0, 250, 250, 250],
             lightColor: '#FF231F7C',
         });
+
+        // Add channel for booking requests (matches backend)
+        await Notifications.setNotificationChannelAsync('booking_requests', {
+            name: 'Booking Requests',
+            sound: 'buzzer.mp3', // This requires the file to be bundled in res/raw for custom sounds, but will fall back
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 500, 200, 500],
+            lightColor: '#FF231F7C',
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: true,
+        });
     }
 
     if (Device.isDevice) {

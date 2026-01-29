@@ -17,6 +17,10 @@ import './src/i18n'; // Initialize i18n
 
 WebBrowser.maybeCompleteAuthSession();
 
+import { initializeBuzzerSound } from './src/utils/soundNotifications';
+
+// ... existing imports ...
+
 export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -24,6 +28,9 @@ export default function App() {
 
   useEffect(() => {
     async function initialize() {
+      // Initialize audio system
+      await initializeBuzzerSound();
+
       // Check onboarding status
       const completed = await isOnboardingCompleted();
       setShowOnboarding(!completed);

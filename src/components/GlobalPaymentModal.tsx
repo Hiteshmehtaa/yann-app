@@ -44,6 +44,21 @@ export const GlobalPaymentModal: React.FC = () => {
         const foundBooking = response.data.find((b: any) => b._id === bookingId || b.id === bookingId);
         if (foundBooking) {
           console.log('✅ Booking found for modal:', foundBooking._id, 'status:', foundBooking.status);
+
+          // STRICT CHECK: Verify if payment is actually needed
+          if (paymentModalData.type === 'completion') {
+            const isActuallyPaid = foundBooking.paymentStatus === 'paid' ||
+              foundBooking.walletPaymentStage === 'completed' ||
+              (foundBooking.escrowDetails?.isCompletionPaid === true);
+
+            if (isActuallyPaid) {
+              console.log('🛑 Payment already done! Closing modal.');
+              setPaymentModalData(null);
+              setBooking(null);
+              return;
+            }
+          }
+
           setBooking(foundBooking as Booking);
         } else {
           console.log('⚠️ Booking NOT in list, trying direct fetch...');

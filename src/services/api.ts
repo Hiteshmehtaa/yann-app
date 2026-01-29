@@ -236,14 +236,22 @@ class ApiService {
 
     // console.log('✅ Mapped provider data:', userData);
 
-    // Save marker for cookie-based auth
-    await storage.saveToken('cookie-based-auth-provider');
+    // Use actual JWT token from backend response
+    const token = response.data.token;
+
+    // Save token for cookie-based auth
+    if (token) {
+      await storage.saveToken(token);
+    } else {
+      // Fallback only if no token received (legacy behavior)
+      await storage.saveToken('cookie-based-auth-provider');
+    }
 
     return {
       success: response.data.success,
       message: response.data.message,
       user: userData,
-      token: 'cookie-based-auth-provider',
+      token: token || 'cookie-based-auth-provider',
     };
   }
 
@@ -487,7 +495,7 @@ class ApiService {
   async getProvidersByService(serviceName: string, filters?: any): Promise<ApiResponse<ServiceProviderListItem[]>> {
     try {
       const params: any = { service: serviceName };
-      
+
       // Add filters if provided
       if (filters) {
         if (filters.experienceMin !== undefined) params.experienceMin = filters.experienceMin;
@@ -496,7 +504,7 @@ class ApiService {
       }
 
       console.log('📊 Fetching providers with filters:', params);
-      
+
       const response = await this.client.get('/provider/by-service', { params });
 
       // Response: { success, data: providers[], providers: providers[], meta: { total, service } }
@@ -1302,7 +1310,7 @@ class ApiService {
     bookingId: string;
     serviceName: string;
   }>> {
-    const response = await this.client.post('/bookings/pay-initial', { 
+    const response = await this.client.post('/bookings/pay-initial', {
       bookingId,
       paymentMethod: 'wallet'
     });

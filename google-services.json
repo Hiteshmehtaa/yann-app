@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "370748859377",
+    "project_id": "yann-home-f55c5",
+    "storage_bucket": "yann-home-f55c5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370748859377:android:759fcb0481e14849c0da50",
+        "android_client_info": {
+          "package_name": "com.yanncare.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAvaoLaXnSCmKz7NHRYhADEXeLIack9jU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -28,23 +28,26 @@ export async function initializeBuzzerSound() {
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
       shouldDuckAndroid: true,
+      // Ensure Android plays even if other audio is active
+      interruptionModeAndroid: Audio.InterruptionModeAndroid?.DoNotMix ?? 1,
+      playThroughEarpieceAndroid: false,
     });
 
     // Sound file is optional - app works with haptic feedback only
     // To enable sound: add booking-request.mp3 to /assets/sounds/
     console.log('✅ Audio system initialized (sound file optional)');
-    
+
     // Uncomment when sound file is added:
-    // try {
-    //   const { sound } = await Audio.Sound.createAsync(
-    //     require('../../assets/sounds/booking-request.mp3'),
-    //     { shouldPlay: false, isLooping: false, volume: 1.0 }
-    //   );
-    //   buzzerSound = sound;
-    //   console.log('✅ Buzzer sound loaded');
-    // } catch (fileError) {
-    //   console.log('⚠️ Sound file not found. Using haptic feedback only.');
-    // }
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/booking-request.mp3'),
+        { shouldPlay: false, isLooping: false, volume: 1.0 }
+      );
+      buzzerSound = sound;
+      console.log('✅ Buzzer sound loaded');
+    } catch (fileError) {
+      console.log('⚠️ Sound file not found. Using haptic feedback only.');
+    }
   } catch (error) {
     console.error('❌ Failed to initialize audio system:', error);
     // Fallback to haptic feedback only
@@ -56,38 +59,66 @@ export async function initializeBuzzerSound() {
  */
 export async function playBookingRequestBuzzer() {
   try {
-    // Play sound if available
-    if (buzzerSound && !isPlaying) {
-      isPlaying = true;
-      await buzzerSound.replayAsync();
-      
-      // Auto-reset playing flag after sound duration
-      setTimeout(() => {
-        isPlaying = false;
-      }, 2000); // Adjust based on sound duration
+    console.log('🔔 Attempting to play buzzer sound...');
+
+    // Ensure audio mode is set before playing
+    if (Audio) {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+        interruptionModeAndroid: Audio.InterruptionModeAndroid?.DoNotMix ?? 1,
+        playThroughEarpieceAndroid: false,
+      });
     }
 
-    // Always provide haptic feedback
+    // Play sound if available
+    if (Audio) {
+      try {
+        // Unload existing sound if any to prevent state issues
+        if (buzzerSound) {
+          try { await buzzerSound.unloadAsync(); } catch (e) { }
+        }
+
+        // Create and load the sound fresh every time to ensure it works
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/booking-request.mp3'),
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+
+        buzzerSound = sound;
+        isPlaying = true;
+        console.log('✅ Buzzer playing successfully');
+      } catch (e) {
+        console.log('Error playing sound:', e);
+      }
+    }
+
+    // Auto-reset playing flag/stop after 30 seconds (or when modal closes)
+    // The modal component calls stopBuzzer() on unmount/dismiss
+
+    // Always provide haptic feedback as backup
     if (Platform.OS === 'ios') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      
-      // Additional vibration pattern
-      setTimeout(async () => {
+
+      // Loop haptics a few times
+      const interval = setInterval(async () => {
+        if (!isPlaying) clearInterval(interval);
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }, 200);
-      
-      setTimeout(async () => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }, 400);
+      }, 1000);
+
+      // Clear interval after 10s if not stopped
+      setTimeout(() => clearInterval(interval), 10000);
+
     } else {
-      // Android vibration pattern
+      // Android
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      setTimeout(async () => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }, 150);
-      setTimeout(async () => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }, 300);
+      // Loop haptics
+      const interval = setInterval(async () => {
+        if (!isPlaying) clearInterval(interval);
+        await Haptics.vibrateAsync();
+      }, 1000);
+      setTimeout(() => clearInterval(interval), 10000);
     }
   } catch (error) {
     console.error('❌ Failed to play buzzer:', error);
