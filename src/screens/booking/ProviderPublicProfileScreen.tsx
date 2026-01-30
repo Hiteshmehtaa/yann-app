@@ -92,19 +92,42 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const { toast, showSuccess, showInfo, hideToast } = useToast();
 
-  const handleBookService = (service: any) => {
+  const handleBookService = (serviceObj: any) => {
     haptics.selection();
     setShowServiceModal(false);
-    navigation.navigate('BookingForm', {
-      service: service, // { title: '...' }
+
+    // Determine if this is a driver service
+    // If we have full service object (from params), use that category
+    // If not (from modal selection), check service title or provider type
+    const isDriver =
+      serviceObj?.category?.toLowerCase() === 'driver' ||
+      serviceObj?.title?.toLowerCase().includes('driver') ||
+      (provider as any).driverServiceDetails?.vehicleTypes?.length > 0;
+
+    navigation.navigate(isDriver ? 'DriverBooking' : 'BookingForm', {
+      service: {
+        ...serviceObj,
+        category: isDriver ? 'driver' : (serviceObj.category || 'general'),
+        // Ensure price is set if available from provider rates
+        price: getPriceForService(serviceObj.title) || serviceObj.price
+      },
       selectedProvider: provider
     });
+  };
+
+  const getPriceForService = (serviceName: string) => {
+    if (!provider.serviceRates) return 0;
+    if (Array.isArray(provider.serviceRates)) {
+      return provider.serviceRates.find(r => r.serviceName === serviceName)?.price || 0;
+    }
+    return (provider.serviceRates as any)[serviceName] || 0;
   };
 
   const handleBookPress = () => {
     haptics.heavy();
     if (route.params.service) {
-      navigation.navigate('BookingForm', {
+      const isDriver = route.params.service.category?.toLowerCase() === 'driver';
+      navigation.navigate(isDriver ? 'DriverBooking' : 'BookingForm', {
         service: route.params.service,
         selectedProvider: provider
       });

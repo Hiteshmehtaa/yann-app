@@ -94,26 +94,13 @@ export const SERVICES = [
   // =========== DRIVERS (18% GST, Overtime YES) ===========
   {
     id: 1,
-    title: 'Full-Day Personal Driver',
-    description: 'Professional full-day driver service',
+    title: 'Personal Driver',
+    description: 'Professional driver for your vehicle (In-city & Outstation)',
     category: 'driver',
     price: 'Varies',
     icon: '🚗',
     popular: true,
-    features: ['Licensed drivers', 'Flexible hours', 'Background verified'],
-    hasOvertimeCharges: true,
-    gstRate: 0.18,
-    platformCommission: 0.10,
-  },
-  {
-    id: 2,
-    title: 'Outstation Driving Service',
-    description: 'Driver for outstation trips',
-    category: 'driver',
-    price: 'Varies',
-    icon: '🛣️',
-    popular: true,
-    features: ['Long distance', 'Experienced drivers', 'Safe travel'],
+    features: ['Licensed drivers', 'Flexible hours', 'Background verified', 'In-city & Outstation'],
     hasOvertimeCharges: true,
     gstRate: 0.18,
     platformCommission: 0.10,
@@ -523,6 +510,15 @@ export const getServiceGstRate = (title: string): number => {
   const service = getServiceConfig(title);
   return service?.gstRate ?? 0.18; // Default to 18% if not found
 };
+
+// Driver Constants
+export const VEHICLE_TYPES = ['hatchback', 'sedan', 'suv', 'luxury', 'van'];
+export const TRANSMISSION_TYPES = ['manual', 'automatic'];
+export const TRIP_PREFERENCES = [
+  { id: 'incity', label: 'In-City' },
+  { id: 'outstation', label: 'Outstation' },
+  { id: 'both', label: 'Both' }
+];
 
 // Helper function to check if service has overtime charges
 export const hasOvertimeCharges = (title: string): boolean => {

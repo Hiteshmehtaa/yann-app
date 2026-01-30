@@ -45,6 +45,7 @@ import { BookingDetailScreen } from '../screens/booking/BookingDetailScreen';
 import { BookingFormScreen } from '../screens/booking/BookingFormScreen';
 import { BookingWaitingScreen } from '../screens/booking/BookingWaitingScreen';
 import { ProviderPublicProfileScreen } from '../screens/booking/ProviderPublicProfileScreen';
+import { DriverBookingScreen } from '../screens/booking/DriverBookingScreen';
 
 // Profile Screens
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
@@ -91,6 +92,7 @@ type RootStackParamList = {
   ProviderTabs: { screen?: string; params?: any } | undefined;
   ServiceDetail: { service: any };
   BookingForm: { service: any; selectedProvider?: any; selectedAddress?: any };
+  DriverBooking: { service: any; selectedProvider: any; selectedAddress?: any };
   BookingWaiting: { bookingId: string; providerId: string; providerName: string; serviceName: string; experienceRange?: any };
   ProviderPublicProfile: { provider: any; service?: any };
   // Provider screens
@@ -377,7 +379,9 @@ export function AppNavigator() {
                 <Stack.Screen name="ProviderPublicProfile" component={ProviderPublicProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingsList" component={BookingsListScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingDetail" component={BookingDetailScreen as any} options={screenTransitionConfig} />
+
                 <Stack.Screen name="BookingForm" component={BookingFormScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="DriverBooking" component={DriverBookingScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingWaiting" component={BookingWaitingScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
@@ -407,10 +411,10 @@ export function AppNavigator() {
           </>
         )}
       </Stack.Navigator>
-      
+
       {/* Global Payment Modal - Shows automatically when job is completed */}
       {isAuthenticated && !isProvider && <GlobalPaymentModal />}
-      
+
       {/* Global Booking Request Modal - Shows for providers when new booking request arrives */}
       {isAuthenticated && isProvider && <GlobalBookingRequestModal />}
     </NavigationContainer>

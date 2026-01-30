@@ -130,7 +130,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     if (initialProvider?.experience) {
       const exp = initialProvider.experience;
       let range: { label: string; min: number; max: number | null } | null = null;
-      
+
       if (exp < 5) {
         range = { label: '0-5 Years', min: 0, max: 5 };
       } else if (exp < 10) {
@@ -146,7 +146,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       } else {
         range = { label: '30+ Years', min: 30, max: null };
       }
-      
+
       setSelectedExperienceRange(range);
       console.log(`📊 Set experience range for provider with ${exp} years:`, range);
     }

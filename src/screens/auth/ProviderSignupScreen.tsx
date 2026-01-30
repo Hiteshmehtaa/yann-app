@@ -123,7 +123,19 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       startTime: '09:00',
       endTime: '17:00',
     },
+    // Driver specific fields
+    vehicleTypes: [] as string[],
+    transmissionTypes: [] as string[],
+    tripPreference: 'both',
   });
+
+  const VEHICLE_TYPES = ['hatchback', 'sedan', 'suv', 'luxury', 'van'];
+  const TRANSMISSION_TYPES = ['manual', 'automatic'];
+  const TRIP_PREFERENCES = [
+    { id: 'incity', label: 'In-City' },
+    { id: 'outstation', label: 'Outstation' },
+    { id: 'both', label: 'Both' }
+  ];
 
   const EXPERIENCE_OPTIONS = Array.from({ length: 31 }, (_, i) => i.toString());
   const DEFAULT_MAX_BY_CATEGORY: Record<string, number> = {
@@ -426,6 +438,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         serviceExperiences: experienceByService,
         selectedCategories: selectedCategories,
         workingHours: formData.workingHours,
+        driverServiceDetails: {
+          vehicleTypes: formData.vehicleTypes,
+          transmissionTypes: formData.transmissionTypes,
+          tripPreference: formData.tripPreference
+        }
       };
 
       await apiService.registerProvider(payload);
@@ -696,12 +713,93 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         </>
       )}
 
-      <View style={styles.selectedCount}>
-        <Text style={styles.selectedCountText}>
-          {formData.services.length} service{formData.services.length === 1 ? '' : 's'} selected
-        </Text>
-      </View>
-    </View>
+
+
+      {/* Driver Specific Options */}
+      {
+        formData.services.some(s =>
+          dynamicServiceCategories.find(c => c.id === 'driver')?.services.includes(s)
+        ) && (
+          <View style={styles.driverSection}>
+            <Text style={styles.sectionHeader}>Driver Details</Text>
+
+            {/* Vehicle Types */}
+            <Text style={styles.subLabel}>Vehicles you can drive</Text>
+            <View style={styles.chipContainer}>
+              {VEHICLE_TYPES.map(type => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.chip,
+                    formData.vehicleTypes.includes(type) && styles.chipActive
+                  ]}
+                  onPress={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      vehicleTypes: prev.vehicleTypes.includes(type)
+                        ? prev.vehicleTypes.filter(t => t !== type)
+                        : [...prev.vehicleTypes, type]
+                    }));
+                  }}
+                >
+                  <Text style={[
+                    styles.chipText,
+                    formData.vehicleTypes.includes(type) && styles.chipTextActive
+                  ]}>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Transmission */}
+            <Text style={styles.subLabel}>Transmission</Text>
+            <View style={styles.chipContainer}>
+              {TRANSMISSION_TYPES.map(type => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.chip,
+                    formData.transmissionTypes.includes(type) && styles.chipActive
+                  ]}
+                  onPress={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      transmissionTypes: prev.transmissionTypes.includes(type)
+                        ? prev.transmissionTypes.filter(t => t !== type)
+                        : [...prev.transmissionTypes, type]
+                    }));
+                  }}
+                >
+                  <Text style={[
+                    styles.chipText,
+                    formData.transmissionTypes.includes(type) && styles.chipTextActive
+                  ]}>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Trip Preference */}
+            <Text style={styles.subLabel}>Trip Preference</Text>
+            <View style={styles.segmentContainer}>
+              {TRIP_PREFERENCES.map(pref => (
+                <TouchableOpacity
+                  key={pref.id}
+                  style={[
+                    styles.segment,
+                    formData.tripPreference === pref.id && styles.segmentActive
+                  ]}
+                  onPress={() => setFormData(prev => ({ ...prev, tripPreference: pref.id }))}
+                >
+                  <Text style={[
+                    styles.segmentText,
+                    formData.tripPreference === pref.id && styles.segmentTextActive
+                  ]}>{pref.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )
+      }
+    </View >
   );
 
   const renderStep3 = () => (
@@ -1409,5 +1507,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  driverSection: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+  },
+  subLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  chipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  chipText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.medium,
+    padding: 4,
+    marginBottom: 20,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: RADIUS.small,
+  },
+  segmentActive: {
+    backgroundColor: COLORS.white,
+    ...SHADOWS.sm,
+  },
+  segmentText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  segmentTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 });

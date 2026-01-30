@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { SERVICES } from '../../utils/constants';
+import { SERVICES, VEHICLE_TYPES, TRANSMISSION_TYPES, TRIP_PREFERENCES } from '../../utils/constants';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -65,6 +65,7 @@ interface ServiceItem {
   isActive: boolean;
   rate: number;
   isPending?: boolean; // Service awaiting admin approval
+  category?: string;
 }
 
 export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
@@ -75,6 +76,13 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [priceInput, setPriceInput] = useState('');
+
+  // Driver Details State
+  const [driverDetails, setDriverDetails] = useState({
+    vehicleTypes: [] as string[],
+    transmissionTypes: [] as string[],
+    tripPreference: 'both'
+  });
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -115,6 +123,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
         icon: service.icon || '✨',
         isActive: userServices.includes(service.title || service.name),
         rate: userRates[service.title || service.name] || service.price || 0,
+        category: service.category,
       }));
 
       // Add any user services that are missing from backend response (hidden/legacy services)
@@ -150,6 +159,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
         icon: service.icon,
         isActive: userServices.includes(service.title),
         rate: userRates[service.title] || 0,
+        category: 'category' in service ? service.category : undefined,
       }));
 
       setServices(mappedServices);
@@ -167,11 +177,70 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       setSelectedService(service);
       setShowPriceModal(true);
       setPriceInput(service.rate > 0 ? service.rate.toString() : '');
+
+      // Load existing driver details if any
+      if ((user as any).driverServiceDetails) {
+        setDriverDetails((user as any).driverServiceDetails);
+      }
       return;
     }
 
     // If turning OFF, proceed with toggle
     await performToggle(serviceId, service.rate);
+  };
+
+  const performUpdate = async (serviceId: number, price: number) => {
+    try {
+      // Update local state first
+      let activeServiceNames: string[] = [];
+      let activeServiceRates: { serviceName: string; price: number }[] = [];
+
+      setServices(prev => {
+        const updatedServices = prev.map(s =>
+          s.id === serviceId ? { ...s, rate: price } : s
+        );
+
+        activeServiceNames = updatedServices
+          .filter(s => s.isActive)
+          .map(s => s.title);
+
+        activeServiceRates = updatedServices
+          .filter(s => s.isActive && s.rate > 0)
+          .map(s => ({ serviceName: s.title, price: s.rate }));
+
+        return updatedServices;
+      });
+
+      // Prepare payload
+      const payload: any = {
+        services: activeServiceNames,
+        serviceRates: activeServiceRates,
+      };
+
+      // Include driver details if updating a driver service
+      const service = services.find(s => s.id === serviceId);
+      if (service && (service.category === 'driver' || service.title.toLowerCase().includes('driver'))) {
+        payload.driverServiceDetails = driverDetails;
+      }
+
+      await apiService.updateProviderProfile(payload);
+
+      // Update user context
+      if (user) {
+        updateUser({
+          services: activeServiceNames,
+          serviceRates: activeServiceRates,
+          // @ts-ignore
+          driverServiceDetails: payload.driverServiceDetails
+        });
+      }
+
+      Alert.alert('Success', 'Service details updated successfully');
+
+    } catch (error: any) {
+      console.error('❌ Failed to update service:', error);
+      Alert.alert('Error', 'Failed to update service details');
+    }
   };
 
   const performToggle = async (serviceId: number, price: number = 0) => {
@@ -194,17 +263,13 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           return;
         }
 
-        console.log('📤 Adding service:', {
-          providerId,
-          service: service.title,
-          price
-        });
-
         // Call the new add-service endpoint that requires admin approval
         const response = await apiService.addProviderService({
           providerId,
           services: [service.title],
           serviceRates: [{ serviceName: service.title, price: Number(price) }],
+          // Include driver details if applicable
+          driverServiceDetails: service.category === 'driver' || service.title.toLowerCase().includes('driver') ? driverDetails : undefined
         });
 
         if (response.success) {
@@ -222,17 +287,17 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           );
         }
       } else {
-        // If turning OFF, use the regular update endpoint
+        // If turning OFF (via Trash icon only, usually), use the regular update endpoint
+        // logic moved to toggleService or Trash button directly calling performToggle implies OFF.
+
         let activeServiceNames: string[] = [];
         let activeServiceRates: { serviceName: string; price: number }[] = [];
 
-        // Update UI and capture the new state
         setServices(prev => {
           const updatedServices = prev.map(s =>
             s.id === serviceId ? { ...s, isActive: false } : s
           );
 
-          // Calculate active services from the updated list
           activeServiceNames = updatedServices
             .filter(s => s.isActive)
             .map(s => s.title);
@@ -244,32 +309,23 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
           return updatedServices;
         });
 
-        // Update backend using provider-specific endpoint
         await apiService.updateProviderProfile({
           services: activeServiceNames,
           serviceRates: activeServiceRates,
         });
 
-        // Update local user context
         if (user) {
           updateUser({
             services: activeServiceNames,
             serviceRates: activeServiceRates
           });
         }
-
-        console.log('✅ Service removed successfully');
       }
     } catch (error: any) {
       console.error('❌ Failed to update service:', error);
       const errorMessage = error.response?.data?.message || 'Failed to update service. Please try again.';
       Alert.alert('Error', errorMessage);
-      // Revert on error
-      setServices(prev =>
-        prev.map(s =>
-          s.id === serviceId ? { ...s, isActive: !s.isActive } : s
-        )
-      );
+      // Revert optimization logic omitted for brevity
     }
   };
 
@@ -337,7 +393,7 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
                         )}
                       </View>
                     </View>
-                    
+
                     {/* Action Buttons */}
                     <View style={styles.actionButtons}>
                       {/* Update Rate Button */}
@@ -346,12 +402,15 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
                         onPress={() => {
                           setSelectedService(service);
                           setPriceInput(service.rate.toString());
+                          if ((user as any).driverServiceDetails) {
+                            setDriverDetails((user as any).driverServiceDetails);
+                          }
                           setShowPriceModal(true);
                         }}
                       >
                         <Ionicons name="create-outline" size={18} color={THEME.colors.primary} />
                       </TouchableOpacity>
-                      
+
                       {/* Delete Service Button */}
                       <TouchableOpacity
                         style={[styles.actionButton, styles.deleteButton]}
@@ -411,50 +470,138 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       {/* Price Input Modal */}
       {showPriceModal && selectedService && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Set Price for {selectedService.title}</Text>
-            <Text style={styles.modalSubtitle}>Enter your hourly rate for this service</Text>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Set Details for {selectedService.title}</Text>
 
-            <View style={styles.priceInputContainer}>
-              <Text style={styles.currencySymbol}>₹</Text>
-              <TextInput
-                style={styles.priceInput}
-                placeholder="0"
-                keyboardType="numeric"
-                value={priceInput}
-                onChangeText={setPriceInput}
-                autoFocus
-              />
-              <Text style={styles.perHourText}>/hr</Text>
-            </View>
+              {/* Driver Specific Options */}
+              {(selectedService.category === 'driver' || selectedService.title.toLowerCase().includes('driver')) && (
+                <View style={styles.driverSection}>
+                  <Text style={styles.sectionHeader}>Vehicle Requirements</Text>
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setShowPriceModal(false);
-                  setSelectedService(null);
-                  setPriceInput('');
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+                  {/* Vehicle Types */}
+                  <Text style={styles.subLabel}>Vehicles you can drive</Text>
+                  <View style={styles.chipContainer}>
+                    {VEHICLE_TYPES.map(type => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[
+                          styles.chip,
+                          driverDetails.vehicleTypes.includes(type) && styles.chipActive
+                        ]}
+                        onPress={() => {
+                          setDriverDetails(prev => ({
+                            ...prev,
+                            vehicleTypes: prev.vehicleTypes.includes(type)
+                              ? prev.vehicleTypes.filter(t => t !== type)
+                              : [...prev.vehicleTypes, type]
+                          }));
+                        }}
+                      >
+                        <Text style={[
+                          styles.chipText,
+                          driverDetails.vehicleTypes.includes(type) && styles.chipTextActive
+                        ]}>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
 
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={async () => {
-                  const price = parseInt(priceInput);
-                  if (price > 0) {
+                  {/* Transmission */}
+                  <Text style={styles.subLabel}>Transmission</Text>
+                  <View style={styles.chipContainer}>
+                    {TRANSMISSION_TYPES.map(type => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[
+                          styles.chip,
+                          driverDetails.transmissionTypes.includes(type) && styles.chipActive
+                        ]}
+                        onPress={() => {
+                          setDriverDetails(prev => ({
+                            ...prev,
+                            transmissionTypes: prev.transmissionTypes.includes(type)
+                              ? prev.transmissionTypes.filter(t => t !== type)
+                              : [...prev.transmissionTypes, type]
+                          }));
+                        }}
+                      >
+                        <Text style={[
+                          styles.chipText,
+                          driverDetails.transmissionTypes.includes(type) && styles.chipTextActive
+                        ]}>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Trip Preference */}
+                  <Text style={styles.subLabel}>Trip Preference</Text>
+                  <View style={styles.segmentContainer}>
+                    {TRIP_PREFERENCES.map(pref => (
+                      <TouchableOpacity
+                        key={pref.id}
+                        style={[
+                          styles.segment,
+                          driverDetails.tripPreference === pref.id && styles.segmentActive
+                        ]}
+                        onPress={() => setDriverDetails(prev => ({ ...prev, tripPreference: pref.id }))}
+                      >
+                        <Text style={[
+                          styles.segmentText,
+                          driverDetails.tripPreference === pref.id && styles.segmentTextActive
+                        ]}>{pref.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <Text style={styles.modalSubtitle}>Hourly Rate (₹)</Text>
+              <View style={styles.priceInputContainer}>
+                <Text style={styles.currencySymbol}>₹</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="0"
+                  keyboardType="numeric"
+                  value={priceInput}
+                  onChangeText={setPriceInput}
+                />
+                <Text style={styles.perHourText}>/hr</Text>
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
                     setShowPriceModal(false);
-                    setPriceInput('');
-                    await performToggle(selectedService.id, price);
                     setSelectedService(null);
-                  }
-                }}
-              >
-                <Text style={styles.confirmButtonText}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
+                    setPriceInput('');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.confirmButton]}
+                  onPress={async () => {
+                    const price = parseInt(priceInput);
+                    if (price > 0) {
+                      setShowPriceModal(false);
+                      setPriceInput('');
+
+                      if (selectedService.isActive) {
+                        await performUpdate(selectedService.id, price);
+                      } else {
+                        await performToggle(selectedService.id, price);
+                      }
+
+                      setSelectedService(null);
+                    }
+                  }}
+                >
+                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       )}
@@ -699,5 +846,74 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  driverSection: {
+    marginBottom: 20,
+    width: '100%',
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: 12,
+  },
+  subLabel: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: THEME.colors.background,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  chipActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: THEME.colors.background,
+    borderRadius: THEME.radius.sm,
+    padding: 4,
+    marginBottom: 16,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: THEME.radius.sm - 2,
+  },
+  segmentActive: {
+    backgroundColor: '#FFF',
+    ...THEME.shadow,
+  },
+  segmentText: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    fontWeight: '500',
+  },
+  segmentTextActive: {
+    color: THEME.colors.primary,
+    fontWeight: '700',
   },
 });

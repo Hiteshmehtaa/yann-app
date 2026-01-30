@@ -1400,6 +1400,7 @@ class ApiService {
     providerId: string;
     services: string[];
     serviceRates: Array<{ serviceName: string; price: number }>;
+    driverServiceDetails?: any;
   }): Promise<ApiResponse<{
     provider: any;
     addedServices: string[];
