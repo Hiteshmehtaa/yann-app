@@ -9,13 +9,13 @@
     "newArchEnabled": true,
     "scheme": "yann",
     "splash": {
-      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1e3a8a"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "7",
       "associatedDomains": [
         "applinks:yann.app",

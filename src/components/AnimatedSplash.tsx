@@ -21,7 +21,6 @@ interface AnimatedSplashProps {
     isReady: boolean;
 }
 
-SplashScreen.preventAutoHideAsync();
 
 export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
     onAnimationComplete,
@@ -34,7 +33,7 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
     const rotationAnim1 = useRef(new Animated.Value(0)).current;
     const rotationAnim2 = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0)).current;
-    const opacityAnim = useRef(new Animated.Value(0)).current; // Controls background/content fade
+    const opacityAnim = useRef(new Animated.Value(1)).current; // Start FULLY VISIBLE for seamless transition
     const logoPulse = useRef(new Animated.Value(1)).current;
 
     // Movement Animation (Progress 0 -> 1)
@@ -58,14 +57,8 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
 
         // 1. Entrance Sequence
         Animated.sequence([
-            // Fade in main container
+            // Scale up main container (Bounce)
             Animated.parallel([
-                Animated.timing(opacityAnim, {
-                    toValue: 1,
-                    duration: 600,
-                    useNativeDriver: true,
-                    easing: Easing.out(Easing.cubic),
-                }),
                 Animated.spring(scaleAnim, {
                     toValue: 1,
                     friction: 8,

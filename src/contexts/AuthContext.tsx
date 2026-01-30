@@ -50,6 +50,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Only refresh from server if we have valid cached data with at least an ID
         const hasValidData = savedUser.id || savedUser._id || savedUser.email;
 
+        // Register for push notifications on app launch to ensure we have a valid token
+        // This handles cases where token expired or wasn't registered during login
+        if (hasValidData) {
+          registerForPushNotificationsAsync().then(async (pushToken) => {
+            if (pushToken) {
+              try {
+                const role = savedUser.role === 'provider' ? 'provider' : 'homeowner';
+                await apiService.savePushToken(pushToken, role);
+                console.log('📱 Push token refreshed on app launch:', pushToken);
+                setupNotificationListeners();
+              } catch (err) {
+                console.error('Failed to save push token on launch:', err);
+              }
+            }
+          }).catch(err => {
+            console.error('Failed to register push notifications on launch:', err);
+          });
+        }
+
         if (hasValidData) {
           // Optionally refresh user data from server
           try {

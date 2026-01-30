@@ -170,7 +170,15 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
           const avatarLen = response.data.avatar ? response.data.avatar.length : 0;
           console.log(`✅ Upload returned avatar length: ${avatarLen}`);
 
-          console.log('🔄 Fetching fresh profile...');
+          // Update local state IMMEDIATELY with the uploaded data
+          // This ensures the UI reflects the change even if the profile fetch fails or is cached
+          const newAvatar = response.data.avatar || response.data.profileImage;
+          if (newAvatar) {
+            console.log('🔄 Updating local user state immediately with new avatar');
+            updateUser({ ...user, avatar: newAvatar, profileImage: newAvatar });
+          }
+
+          console.log('🔄 Fetching fresh profile to sync...');
           // Fetch fresh profile data from server to ensure avatar is persisted
           const profileResponse = await apiService.getProfile('provider');
           console.log('✅ Profile response:', {
