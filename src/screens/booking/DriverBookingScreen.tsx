@@ -51,7 +51,10 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
     const [notes, setNotes] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
-    const [providerDetails, setProviderDetails] = useState(selectedProvider);
+    const [isSearching, setIsSearching] = useState(false);
+    const [providerDetails, setProviderDetails] = useState(selectedProvider || null);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [showResults, setShowResults] = useState(false);
 
     // Constants
     const MIN_DURATION = 3;
@@ -67,7 +70,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 if (res.success) setProviderDetails(res.data);
             });
         }
-    }, []);
+    }, [selectedProvider]);
 
     // Price Calculation
     const calculateTotal = () => {
@@ -90,7 +93,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
 
     const prices = calculateTotal();
 
-    const handleBook = async () => {
+    const handleSearch = async () => {
         // Validation
         if (tripType === 'incity' && !pickupAddress) {
             Alert.alert('Missing Info', 'Please enter pickup location');
@@ -100,8 +103,56 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
             Alert.alert('Vehicle Details', 'Please select vehicle type and transmission');
             return;
         }
+
+        setIsSearching(true);
+        try {
+            const res = await apiService.searchProviders({
+                service: 'Driver',
+                vehicleType,
+                transmission,
+                tripType
+            });
+
+            if (res.success && res.data) {
+                if (res.data.length === 0) {
+                    Alert.alert('No Drivers Found', 'We could not find any drivers matching your specific requirements at the moment.');
+                } else {
+                    setSearchResults(res.data);
+                    setShowResults(true);
+                }
+            } else {
+                Alert.alert('No Drivers Found', 'We could not find any drivers matching your specific requirements at the moment.');
+            }
+        } catch (error) {
+            showError('Failed to search drivers');
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleSelectProvider = (provider: any) => {
+        setProviderDetails(provider);
+        setShowResults(false);
+    };
+
+    const handleBook = async () => {
+        if (!providerDetails) {
+            Alert.alert('Select Driver', 'Please find and select a driver first');
+            return;
+        }
+
+        // Validation
+        if (tripType === 'incity' && !pickupAddress) {
+            Alert.alert('Missing Info', 'Please enter pickup location');
+            return;
+        }
         if (serviceType === 'oneway' && !distanceKm) {
             Alert.alert('Distance Required', 'Please estimate the one-way distance for fare calculation');
+            return;
+        }
+
+        if (!user) {
+            Alert.alert('Authentication Error', 'You must be logged in to book');
             return;
         }
 
@@ -117,7 +168,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
             // Customer Info
             customerId: user.id || user._id,
             customerName: user.name,
-            customerPhone: user.phone,
+            customerPhone: user.phone || '',
             customerAddress: pickupAddress, // Use pickup as primary address
 
             // Dates
@@ -146,9 +197,10 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
 
         try {
             const response = await apiService.createBooking(payload);
-            if (response.success) {
+            if (response.success && response.data) {
                 // Send Request to Provider (Trigger Notification)
-                const bookingId = response.booking.id || response.booking._id;
+                const bookingData = response.data as any;
+                const bookingId = bookingData.id || bookingData._id || bookingData.bookingId;
                 await apiService.sendBookingRequest(bookingId, payload.providerId);
 
                 navigation.reset({
@@ -179,7 +231,13 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                         <Ionicons name="arrow-back" size={24} color="#FFF" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Request Personal Driver</Text>
-                    <View style={{ width: 40 }} />
+                    <TouchableOpacity
+                        style={[styles.backButton, { opacity: providerDetails ? 1 : 0 }]}
+                        onPress={() => setProviderDetails(null)}
+                        disabled={!providerDetails}
+                    >
+                        <Ionicons name="close" size={24} color="#FFF" />
+                    </TouchableOpacity>
                 </View>
 
                 {/* Toggle Trip Type */}
@@ -200,6 +258,28 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
             </LinearGradient>
 
             <ScrollView contentContainerStyle={styles.content}>
+
+                {/* Selected Provider Card */}
+                {providerDetails && (
+                    <View style={styles.selectedProviderCard}>
+                        <View style={styles.providerInfo}>
+                            <Image
+                                source={{ uri: providerDetails.profileImage || 'https://via.placeholder.com/100' }}
+                                style={styles.providerImage}
+                            />
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.providerName}>{providerDetails.name}</Text>
+                                <View style={styles.ratingRow}>
+                                    <Ionicons name="star" size={14} color="#FBBF24" />
+                                    <Text style={styles.ratingText}>{providerDetails.rating || 'New'}</Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity onPress={() => setProviderDetails(null)}>
+                                <Text style={styles.changeText}>Change</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
 
                 {/* Route Details */}
                 <View style={styles.card}>
@@ -326,23 +406,85 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                     </View>
                 </View>
 
+                {/* Results Modal / List Overlay */}
+                {showResults && (
+                    <View style={styles.resultsContainer}>
+                        <View style={styles.resultsHeader}>
+                            <Text style={styles.resultsTitle}>Matching Drivers</Text>
+                            <TouchableOpacity onPress={() => setShowResults(false)}>
+                                <Ionicons name="close-circle" size={28} color={COLORS.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.resultsList}>
+                            {searchResults.map((provider) => (
+                                <TouchableOpacity
+                                    key={provider._id}
+                                    style={styles.providerCard}
+                                    onPress={() => handleSelectProvider(provider)}
+                                >
+                                    <Image
+                                        source={{ uri: provider.profileImage || 'https://via.placeholder.com/100' }}
+                                        style={styles.resultImage}
+                                    />
+                                    <View style={styles.resultInfo}>
+                                        <Text style={styles.resultName}>{provider.name}</Text>
+                                        <View style={styles.resultMeta}>
+                                            <Ionicons name="star" size={14} color="#FBBF24" />
+                                            <Text style={styles.resultRating}>{provider.rating || 'New'}</Text>
+                                            <Text style={styles.resultDot}>•</Text>
+                                            <Text style={styles.resultExp}>
+                                                {provider.experience || 0} yrs exp
+                                            </Text>
+                                        </View>
+                                        <View style={styles.capabilities}>
+                                            <Text style={styles.capabilityTag}>
+                                                {provider.driverServiceDetails?.tripPreference === 'both' ? 'In-city & Outstation' : provider.driverServiceDetails?.tripPreference}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.selectBtn}>
+                                        <Text style={styles.selectBtnText}>Select</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
             </ScrollView>
 
             {/* Footer / Price Breakdown */}
             <View style={styles.footer}>
-                <View style={styles.priceRow}>
-                    <Text style={styles.totalLabel}>Total Estimate</Text>
-                    <Text style={styles.totalPrice}>₹{prices.total.toFixed(0)}</Text>
-                </View>
-                <Text style={styles.breakdownText}>
-                    {duration} hrs x ₹{HOURLY_RATE} + ₹{prices.returnFare} return fare + GST
-                </Text>
+                {!providerDetails ? (
+                    <TouchableOpacity
+                        style={[styles.bookButton, { backgroundColor: COLORS.primary }]}
+                        onPress={handleSearch}
+                        disabled={isSearching}
+                    >
+                        {isSearching ? <LoadingSpinner visible={true} color="#FFF" /> : (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="search" size={20} color="#FFF" />
+                                <Text style={styles.bookButtonText}>Find Drivers</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                ) : (
+                    <>
+                        <View style={styles.priceRow}>
+                            <Text style={styles.totalLabel}>Total Estimate</Text>
+                            <Text style={styles.totalPrice}>₹{prices.total.toFixed(0)}</Text>
+                        </View>
+                        <Text style={styles.breakdownText}>
+                            {duration} hrs x ₹{HOURLY_RATE} + ₹{prices.returnFare} return fare + GST
+                        </Text>
 
-                <TouchableOpacity style={styles.bookButton} onPress={handleBook} disabled={isLoading}>
-                    {isLoading ? <LoadingSpinner color="#FFF" /> : (
-                        <Text style={styles.bookButtonText}>Request Driver</Text>
-                    )}
-                </TouchableOpacity>
+                        <TouchableOpacity style={styles.bookButton} onPress={handleBook} disabled={isLoading}>
+                            {isLoading ? <LoadingSpinner visible={true} color="#FFF" /> : (
+                                <Text style={styles.bookButtonText}>Request Driver</Text>
+                            )}
+                        </TouchableOpacity>
+                    </>
+                )}
             </View>
         </View>
     );
@@ -378,7 +520,6 @@ const styles = StyleSheet.create({
     optionCardActive: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
     optionText: { marginTop: 8, fontSize: 14, fontWeight: '600', color: '#64748B' },
     optionTextActive: { color: '#FFF' },
-    optionTextActive: { color: '#FFF' },
     infoBox: { flexDirection: 'row', gap: 8, marginTop: 12, backgroundColor: '#EFF6FF', padding: 12, borderRadius: 8 },
     infoNote: { fontSize: 13, color: '#1E40AF', flex: 1, lineHeight: 18 },
 
@@ -395,5 +536,32 @@ const styles = StyleSheet.create({
     breakdownText: { fontSize: 12, color: '#94A3B8', marginBottom: 16 },
 
     bookButton: { backgroundColor: '#1e3a8a', paddingVertical: 16, borderRadius: 16, alignItems: 'center', shadowColor: '#1e3a8a', shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    bookButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+    bookButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+    // Selected Provider Card
+    selectedProviderCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOWS.sm, borderWidth: 1, borderColor: COLORS.primary },
+    providerInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    providerImage: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F1F5F9' },
+    providerName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    ratingText: { fontSize: 13, fontWeight: '600', color: '#475569' },
+    changeText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
+
+    // Results Modal
+    resultsContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#F1F5F9', zIndex: 20, paddingTop: 50 },
+    resultsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20 },
+    resultsTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B' },
+    resultsList: { paddingHorizontal: 20 },
+    providerCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, ...SHADOWS.sm },
+    resultImage: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F1F5F9', marginRight: 12 },
+    resultInfo: { flex: 1 },
+    resultName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+    resultMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+    resultRating: { fontSize: 13, fontWeight: '600', color: '#475569' },
+    resultDot: { color: '#CBD5E1' },
+    resultExp: { fontSize: 13, color: '#64748B' },
+    capabilities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    capabilityTag: { fontSize: 11, color: COLORS.primary, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
+    selectBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+    selectBtnText: { color: '#FFF', fontSize: 13, fontWeight: '600' }
 });

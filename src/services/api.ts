@@ -468,6 +468,36 @@ class ApiService {
   }
 
   /**
+   * GET /api/providers/search
+   * Search providers with detailed filters (including driver specifics)
+   */
+  async searchProviders(filters: {
+    service?: string;
+    vehicleType?: string;
+    transmission?: string;
+    tripType?: string;
+    limit?: number;
+    page?: number;
+  }): Promise<ApiResponse<ServiceProviderListItem[]>> {
+    try {
+      const response = await this.client.get('/providers/search', { params: filters });
+      return {
+        success: true,
+        message: 'Search completed',
+        data: response.data.data || [],
+        meta: response.data.meta
+      };
+    } catch (error: any) {
+      console.log('Provider search failed:', error?.message || '');
+      return {
+        success: false,
+        message: 'Search failed',
+        data: []
+      };
+    }
+  }
+
+  /**
    * GET /api/providers/[id]
    * Get specific provider by ID
    * Website uses this for provider profile pages
