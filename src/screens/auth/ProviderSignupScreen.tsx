@@ -188,7 +188,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         const categoriesMap: Record<string, string[]> = {};
 
         for (const service of response.data) {
-          const category = service.category || 'other';
+          const category = (service.category || 'other').toLowerCase();
           if (!categoriesMap[category]) {
             categoriesMap[category] = [];
           }
@@ -213,6 +213,27 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       }
     } catch (error) {
       console.log('Using fallback services');
+      // Fallback data
+      setDynamicServiceCategories([
+        {
+          id: 'driver',
+          name: 'Driver',
+          icon: 'car-outline',
+          services: ['Full-Day Personal Driver', 'Outstation Driving Service', 'Driver']
+        },
+        {
+          id: 'pujari',
+          name: 'Pujari',
+          icon: 'flame-outline',
+          services: ['Lakshmi Puja', 'Ganesh Puja at Home']
+        },
+        {
+          id: 'cleaning',
+          name: 'Cleaning',
+          icon: 'home-outline',
+          services: ['Deep House Cleaning', 'Regular House Cleaning']
+        }
+      ] as any);
     } finally {
       setIsLoadingServices(false);
     }
@@ -754,9 +775,10 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       )}
 
       {/* Driver Specific Options */}
-      {formData.services.some(s =>
-        dynamicServiceCategories.find(c => c.id === 'driver')?.services.includes(s)
-      ) && (
+      {formData.services.some(s => {
+        const cat = dynamicServiceCategories.find(c => c.services.includes(s));
+        return cat && cat.id.toLowerCase() === 'driver';
+      }) && (
           <View style={styles.driverSectionCard}>
             <View style={styles.sectionHeaderContainer}>
               <View style={styles.sectionIcon}>
@@ -1028,49 +1050,245 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           )}
 
-          {currentStep === 2 && renderStep2()}
+          {currentStep === 2 && (
+            <View style={styles.animatableContent}>
+              <Text style={styles.stepTitle}>Select Services</Text>
+              <Text style={styles.stepSubtitle}>Choose the services you want to provide</Text>
+
+              {isLoadingServices ? (
+                <LoadingSpinner visible={true} />
+              ) : (
+                <>
+                  {dynamicServiceCategories.map(category => (
+                    <View key={category.id} style={styles.categoryCard}>
+                      <View style={styles.categoryHeader}>
+                        <View style={styles.categoryHeaderLeft}>
+                          <View style={styles.categoryIconContainer}>
+                            <Ionicons name={category.icon} size={20} color={COLORS.primary} />
+                          </View>
+                          <Text style={styles.categoryName}>{category.name}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.experienceDropdown}
+                          onPress={() =>
+                            setOpenExperienceCategory(prev => (prev === category.id ? null : category.id))
+                          }
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.experienceDropdownText}>
+                            {formData.categoryExperience[category.id]
+                              ? `${formData.categoryExperience[category.id]} yrs exp`
+                              : 'add experience'}
+                          </Text>
+                          <Ionicons
+                            name={openExperienceCategory === category.id ? 'chevron-up' : 'chevron-down'}
+                            size={16}
+                            color={COLORS.primary}
+                          />
+                        </TouchableOpacity>
+                      </View>
+
+                      {openExperienceCategory === category.id && (
+                        <View style={styles.experienceOptionsContainer}>
+                          <Text style={styles.experienceLabel}>Years of Experience:</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.experienceScroll}>
+                            {EXPERIENCE_OPTIONS.map(option => (
+                              <TouchableOpacity
+                                key={option}
+                                style={[
+                                  styles.experienceOption,
+                                  formData.categoryExperience[category.id] === option && styles.experienceOptionActive,
+                                ]}
+                                onPress={() => {
+                                  updateCategoryExperience(category.id, option);
+                                  setOpenExperienceCategory(null);
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.experienceOptionText,
+                                    formData.categoryExperience[category.id] === option && styles.experienceOptionTextActive,
+                                  ]}
+                                >
+                                  {option}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
+
+                      <View style={styles.servicesGrid}>
+                        {category.services.map(service => {
+                          const isSelected = formData.services.includes(service);
+                          return (
+                            <TouchableOpacity
+                              key={service}
+                              style={[
+                                styles.serviceChip,
+                                isSelected && styles.serviceChipActive,
+                              ]}
+                              onPress={() => toggleService(service)}
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={[
+                                  styles.serviceChipText,
+                                  isSelected && styles.serviceChipTextActive,
+                                ]}
+                              >
+                                {service}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.checkIconContainer}>
+                                  <Ionicons name="checkmark" size={10} color="#FFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      {/* Driver Specific Options - Embed directly in Driver Category Card */}
+                      {category.id.toLowerCase() === 'driver' && formData.services.some(s => category.services.includes(s)) && (
+                        <View style={styles.driverSectionCard}>
+                          <View style={styles.sectionHeaderContainer}>
+                            <View style={styles.sectionIcon}>
+                              <Ionicons name="car-sport" size={20} color={COLORS.white} />
+                            </View>
+                            <Text style={styles.sectionHeaderTitle}>Driver Details</Text>
+                          </View>
+
+                          {/* Vehicle Types */}
+                          <View style={styles.driverOptionGroup}>
+                            <Text style={styles.subLabel}>What vehicles do you drive?</Text>
+                            <View style={styles.chipContainer}>
+                              {VEHICLE_TYPES.map(type => (
+                                <TouchableOpacity
+                                  key={type.id}
+                                  style={[
+                                    styles.chip,
+                                    formData.vehicleTypes.includes(type.id) && styles.chipActive
+                                  ]}
+                                  onPress={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      vehicleTypes: prev.vehicleTypes.includes(type.id)
+                                        ? prev.vehicleTypes.filter(t => t !== type.id)
+                                        : [...prev.vehicleTypes, type.id]
+                                    }));
+                                  }}
+                                >
+                                  <Text style={[
+                                    styles.chipText,
+                                    formData.vehicleTypes.includes(type.id) && styles.chipTextActive
+                                  ]}>{type.label}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+
+                          {/* Transmission */}
+                          <View style={styles.driverOptionGroup}>
+                            <Text style={styles.subLabel}>What kind of vehicles do you drive?</Text>
+                            <View style={styles.chipContainer}>
+                              {TRANSMISSION_TYPES.map(type => (
+                                <TouchableOpacity
+                                  key={type.id}
+                                  style={[
+                                    styles.chip,
+                                    formData.transmissionTypes.includes(type.id) && styles.chipActive
+                                  ]}
+                                  onPress={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      transmissionTypes: prev.transmissionTypes.includes(type.id)
+                                        ? prev.transmissionTypes.filter(t => t !== type.id)
+                                        : [...prev.transmissionTypes, type.id]
+                                    }));
+                                  }}
+                                >
+                                  <Text style={[
+                                    styles.chipText,
+                                    formData.transmissionTypes.includes(type.id) && styles.chipTextActive
+                                  ]}>{type.label}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+
+                          {/* Trip Preference */}
+                          <View style={styles.driverOptionGroup}>
+                            <Text style={styles.subLabel}>Where do you offer your services?</Text>
+                            <View style={styles.segmentContainer}>
+                              {TRIP_PREFERENCES.map(pref => (
+                                <TouchableOpacity
+                                  key={pref.id}
+                                  style={[
+                                    styles.segment,
+                                    formData.tripPreference === pref.id && styles.segmentActive
+                                  ]}
+                                  onPress={() => setFormData(prev => ({ ...prev, tripPreference: pref.id }))}
+                                >
+                                  <Text style={[
+                                    styles.segmentText,
+                                    formData.tripPreference === pref.id && styles.segmentTextActive
+                                  ]}>{pref.label}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          </View>
+                        </View>
+                      )}
+
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
+          )}
           {currentStep === 3 && renderStep3()}
           {currentStep === 4 && renderStep4()}
-        </ScrollView>
 
-        {/* Bottom Button */}
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-          {currentStep < 4 ? (
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={handleNext}
-              disabled={isLoading}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.buttonGradient}
+          {/* Scrollable Bottom Button */}
+          <View style={{ padding: 24, paddingBottom: 40 }}>
+            {currentStep < 4 ? (
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={handleNext}
+                disabled={isLoading}
+                activeOpacity={0.8}
               >
-                <Text style={styles.buttonText}>CONTINUE</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={handleSubmit}
-              disabled={isLoading}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.buttonGradient}
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonText}>CONTINUE</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={handleSubmit}
+                disabled={isLoading}
+                activeOpacity={0.8}
               >
-                <Text style={styles.buttonText}>COMPLETE REGISTRATION</Text>
-                <Ionicons name="checkmark" size={18} color="#FFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </View>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonText}>COMPLETE REGISTRATION</Text>
+                  <Ionicons name="checkmark" size={18} color="#FFF" />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
       <LoadingSpinner visible={isLoading} />
     </View>
