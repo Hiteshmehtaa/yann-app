@@ -1700,6 +1700,80 @@ class ApiService {
       throw error;
     }
   }
+
+  // ====================================================================
+  // LOCATION SERVICES (Google Places API Proxy)
+  // ====================================================================
+
+  /**
+   * GET /api/location/autocomplete
+   * Search for places using Google Places Autocomplete
+   */
+  async searchPlaces(input: string, location?: { latitude: number; longitude: number }): Promise<ApiResponse<any[]>> {
+    try {
+      const params: any = { input };
+      if (location) {
+        params.latitude = location.latitude;
+        params.longitude = location.longitude;
+      }
+
+      const response = await this.client.get('/location/autocomplete', { params });
+      return {
+        success: true,
+        message: 'Places found',
+        data: response.data.predictions || response.data.data || [],
+      };
+    } catch (error: any) {
+      console.error('Place search error:', error);
+      return {
+        success: false,
+        message: 'Search failed',
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * GET /api/location/details
+   * Get place details including coordinates
+   */
+  async getPlaceDetails(placeId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.get('/location/details', { params: { placeId } });
+      return {
+        success: true,
+        message: 'Place details retrieved',
+        data: response.data.result || response.data.data,
+      };
+    } catch (error: any) {
+      console.error('Place details error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/location/reverse-geocode
+   * Convert coordinates to address
+   */
+  async reverseGeocode(latitude: number, longitude: number): Promise<ApiResponse<string>> {
+    try {
+      const response = await this.client.get('/location/reverse-geocode', {
+        params: { latitude, longitude }
+      });
+      return {
+        success: true,
+        message: 'Address found',
+        data: response.data.address || response.data.data,
+      };
+    } catch (error: any) {
+      console.error('Reverse geocode error:', error);
+      return {
+        success: false,
+        message: 'Address not found',
+        data: 'Unknown location',
+      };
+    }
+  }
 }
 
 export const apiService = new ApiService();

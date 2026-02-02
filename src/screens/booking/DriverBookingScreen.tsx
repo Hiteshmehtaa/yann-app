@@ -1,567 +1,1210 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
     TouchableOpacity,
     StatusBar,
     Dimensions,
     TextInput,
     Alert,
-    Image,
-    Platform,
-    KeyboardAvoidingView
+    FlatList,
+    Keyboard,
+    ActivityIndicator,
+    Animated,
+    Platform
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import Slider from '@react-native-community/slider';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import * as Location from 'expo-location';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { COLORS, RADIUS, SHADOWS } from '../../utils/theme';
-import { useToast } from '../../hooks/useToast';
-import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { COLORS, RADIUS, SHADOWS, SPACING } from '../../utils/theme';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDuWW76Kch_KG5n9vxNwSq3GfJCSSZuBOg';
+
+// Custom Map Style (Uber-like theme)
+const customMapStyle = [
+    {
+        "featureType": "all",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#f5f5f5" }]
+    },
+    {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#c9e6ff" }]
+    },
+    {
+        "featureType": "road",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#ffffff" }]
+    },
+    {
+        "featureType": "road.highway",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#ffd666" }]
+    },
+    {
+        "featureType": "poi",
+        "elementType": "labels.text.fill",
+        "stylers": [{ "color": "#757575" }]
+    },
+    {
+        "featureType": "poi.park",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#e5f5e0" }]
+    }
+];
 
 // Types
 type TripType = 'incity' | 'outstation';
-type ServiceType = 'oneway' | 'roundtrip';
 type Transmission = 'manual' | 'automatic';
-type VehicleType = 'hatchback' | 'sedan' | 'suv' | 'luxury' | 'van';
+type VehicleType = 'hatchback' | 'sedan' | 'suv' | 'luxury';
+
+interface PlaceSuggestion {
+    description: string;
+    place_id: string;
+    distance?: number;
+    structured_formatting: {
+        main_text: string;
+        secondary_text: string;
+    };
+}
+
+interface LocationCoords {
+    latitude: number;
+    longitude: number;
+}
 
 export const DriverBookingScreen = ({ navigation, route }: any) => {
-    const { service, selectedProvider, selectedAddress: initialAddress } = route.params;
+    const { service } = route.params;
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
-    const { showError } = useToast();
+    const mapRef = useRef<MapView>(null);
+    const bottomSheetRef = useRef<BottomSheet>(null);
 
-    // State
-    const [tripType, setTripType] = useState<TripType>('incity');
-    const [serviceType, setServiceType] = useState<ServiceType>('roundtrip');
-    const [duration, setDuration] = useState(3); // Minimum 3 hours
-    const [pickupAddress, setPickupAddress] = useState(initialAddress?.fullAddress || user?.addressBook?.[0]?.fullAddress || '');
+    // Location State
+    const [pickupAddress, setPickupAddress] = useState('');
     const [dropAddress, setDropAddress] = useState('');
+    const [pickupCoords, setPickupCoords] = useState<LocationCoords | null>(null);
+    const [dropCoords, setDropCoords] = useState<LocationCoords | null>(null);
+    const [currentLocation, setCurrentLocation] = useState<LocationCoords | null>(null);
+
+    // Autocomplete State
+    const [activeInput, setActiveInput] = useState<'pickup' | 'drop' | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+
+    // Wizard State
+    const [currentStep, setCurrentStep] = useState(1);
+    const [tripType, setTripType] = useState<TripType | null>(null);
     const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
     const [transmission, setTransmission] = useState<Transmission | null>(null);
-    const [distanceKm, setDistanceKm] = useState<string>(''); // Manually entered for now if needed, or estimated
-    const [notes, setNotes] = useState('');
 
-    const [isLoading, setIsLoading] = useState(false);
+    // UI State
     const [isSearching, setIsSearching] = useState(false);
-    const [providerDetails, setProviderDetails] = useState(selectedProvider || null);
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [showResults, setShowResults] = useState(false);
+    const [mapRegion, setMapRegion] = useState<Region>({
+        latitude: 28.6139,
+        longitude: 77.2090,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+    });
 
-    // Constants
-    const MIN_DURATION = 3;
-    const MAX_DURATION = 12;
-    const HOURLY_RATE = Number(service.price) || 200; // Fallback
-    const RETURN_FARE_PER_KM = 2;
+    const slideAnim = useRef(new Animated.Value(0)).current;
+    const snapPoints = useMemo(() => ['45%', '70%', '90%'], []);
 
-    // Effects
+    // Get current location on mount
     useEffect(() => {
-        // Refresh provider details to get latest capabilities
-        if (selectedProvider?.id) {
-            apiService.getProviderById(selectedProvider.id).then(res => {
-                if (res.success) setProviderDetails(res.data);
+        (async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Location access is required for booking');
+                return;
+            }
+
+            let location = await Location.getCurrentPositionAsync({});
+            const coords = {
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+            };
+            setCurrentLocation(coords);
+            setPickupCoords(coords);
+            setMapRegion({
+                ...coords,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
             });
-        }
-    }, [selectedProvider]);
 
-    // Price Calculation
-    const calculateTotal = () => {
-        const baseCost = duration * HOURLY_RATE;
-        let returnFare = 0;
+            // Reverse geocode to get address
+            const address = await reverseGeocode(coords);
+            setPickupAddress(address);
+        })();
+    }, []);
 
-        if (serviceType === 'oneway' && distanceKm) {
-            returnFare = Number(distanceKm) * RETURN_FARE_PER_KM;
-        }
+    // Debounced autocomplete search
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (searchQuery.length >= 2) {
+                fetchPlaceSuggestions(searchQuery);
+            } else {
+                setSuggestions([]);
+            }
+        }, 300);
 
-        const total = baseCost + returnFare;
-        const gst = total * 0.18; // 18% GST
-        return {
-            baseCost,
-            returnFare,
-            gst,
-            total: total + gst
-        };
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery]);
+
+    // Calculate distance between two coordinates (Haversine formula)
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     };
 
-    const prices = calculateTotal();
+    // Fetch place suggestions using backend API proxy
+    const fetchPlaceSuggestions = async (input: string) => {
+        setIsLoadingSuggestions(true);
+        try {
+            const location = currentLocation || pickupCoords;
+            const response = await apiService.searchPlaces(input, location || undefined);
 
-    const handleSearch = async () => {
-        // Validation
-        if (tripType === 'incity' && !pickupAddress) {
-            Alert.alert('Missing Info', 'Please enter pickup location');
+            if (response.success && response.data) {
+                setSuggestions(response.data);
+            } else {
+                setSuggestions([]);
+            }
+        } catch (error) {
+            console.error('Error fetching suggestions:', error);
+            setSuggestions([]);
+        } finally {
+            setIsLoadingSuggestions(false);
+        }
+    };
+
+    // Get coordinates from place_id using backend API
+    const getPlaceCoordinates = async (placeId: string): Promise<LocationCoords | null> => {
+        try {
+            const response = await apiService.getPlaceDetails(placeId);
+            if (response.success && response.data?.geometry) {
+                return {
+                    latitude: response.data.geometry.location.lat,
+                    longitude: response.data.geometry.location.lng,
+                };
+            }
+        } catch (error) {
+            console.error('Error getting place coordinates:', error);
+        }
+        return null;
+    };
+
+    // Reverse geocode coordinates to address using backend API
+    const reverseGeocode = async (coords: LocationCoords): Promise<string> => {
+        try {
+            const response = await apiService.reverseGeocode(coords.latitude, coords.longitude);
+            if (response.success && response.data) {
+                return response.data;
+            }
+        } catch (error) {
+            console.error('Error reverse geocoding:', error);
+        }
+        return 'Unknown location';
+    };
+
+    // Handle suggestion selection
+    const handleSelectSuggestion = async (suggestion: PlaceSuggestion) => {
+        const coords = await getPlaceCoordinates(suggestion.place_id);
+        if (coords) {
+            if (activeInput === 'pickup') {
+                setPickupAddress(suggestion.description);
+                setPickupCoords(coords);
+            } else {
+                setDropAddress(suggestion.description);
+                setDropCoords(coords);
+            }
+
+            // Update map region
+            if (pickupCoords && dropCoords) {
+                const p = activeInput === 'pickup' ? coords : pickupCoords;
+                const d = activeInput === 'drop' ? coords : dropCoords;
+
+                const midLat = (p.latitude + d.latitude) / 2;
+                const midLng = (p.longitude + d.longitude) / 2;
+                const latDelta = Math.abs(p.latitude - d.latitude) * 2.5;
+                const lngDelta = Math.abs(p.longitude - d.longitude) * 2.5;
+
+                mapRef.current?.animateToRegion({
+                    latitude: midLat,
+                    longitude: midLng,
+                    latitudeDelta: Math.max(latDelta, 0.05),
+                    longitudeDelta: Math.max(lngDelta, 0.05),
+                }, 1000);
+            } else {
+                mapRef.current?.animateToRegion({
+                    ...coords,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                }, 1000);
+            }
+        }
+
+        setActiveInput(null);
+        setSearchQuery('');
+        setSuggestions([]);
+        Keyboard.dismiss();
+    };
+
+    // Handle map press to set location
+    const handleMapPress = async (event: any) => {
+        const coords = event.nativeEvent.coordinate;
+        const address = await reverseGeocode(coords);
+
+        if (!pickupCoords) {
+            setPickupCoords(coords);
+            setPickupAddress(address);
+        } else if (!dropCoords) {
+            setDropCoords(coords);
+            setDropAddress(address);
+        } else {
+            // Update drop location
+            setDropCoords(coords);
+            setDropAddress(address);
+        }
+    };
+
+    // Animate to next step
+    const goToNextStep = () => {
+        if (currentStep < 3) {
+            Animated.spring(slideAnim, {
+                toValue: -width,
+                useNativeDriver: true,
+                tension: 50,
+                friction: 8,
+            }).start(() => {
+                setCurrentStep(currentStep + 1);
+                slideAnim.setValue(0);
+            });
+        }
+    };
+
+    // Go to previous step
+    const goToPreviousStep = () => {
+        if (currentStep > 1) {
+            Animated.spring(slideAnim, {
+                toValue: width,
+                useNativeDriver: true,
+                tension: 50,
+                friction: 8,
+            }).start(() => {
+                setCurrentStep(currentStep - 1);
+                slideAnim.setValue(0);
+            });
+        }
+    };
+
+    // Swipe gesture for navigation
+    const swipeGesture = Gesture.Pan()
+        .onEnd((event) => {
+            if (event.translationX > 100 && currentStep > 1) {
+                goToPreviousStep();
+            } else if (event.translationX < -100 && currentStep < 3) {
+                if (
+                    (currentStep === 1 && tripType) ||
+                    (currentStep === 2 && vehicleType)
+                ) {
+                    goToNextStep();
+                }
+            }
+        });
+
+    // Handle find drivers
+    const handleFindDrivers = async () => {
+        if (!tripType || !vehicleType || !transmission) {
+            Alert.alert('Missing Details', 'Please complete all steps');
             return;
         }
-        if (!vehicleType || !transmission) {
-            Alert.alert('Vehicle Details', 'Please select vehicle type and transmission');
+
+        if (!pickupCoords || !dropCoords) {
+            Alert.alert('Missing Locations', 'Please set both pickup and drop locations');
             return;
         }
 
         setIsSearching(true);
         try {
-            const res = await apiService.searchProviders({
-                service: 'Driver',
+            const searchParams = {
+                tripType,
                 vehicleType,
                 transmission,
-                tripType
-            });
+                pickupLocation: pickupCoords,
+                dropLocation: dropCoords,
+                pickupAddress,
+                dropAddress,
+            };
 
-            if (res.success && res.data) {
-                if (res.data.length === 0) {
-                    Alert.alert('No Drivers Found', 'We could not find any drivers matching your specific requirements at the moment.');
-                } else {
-                    setSearchResults(res.data);
-                    setShowResults(true);
-                }
-            } else {
-                Alert.alert('No Drivers Found', 'We could not find any drivers matching your specific requirements at the moment.');
-            }
+            // Navigate to driver list screen
+            navigation.navigate('DriverList', { searchParams });
         } catch (error) {
-            showError('Failed to search drivers');
+            Alert.alert('Error', 'Failed to search for drivers');
         } finally {
             setIsSearching(false);
         }
     };
 
-    const handleSelectProvider = (provider: any) => {
-        setProviderDetails(provider);
-        setShowResults(false);
+    // Render location search modal
+    const renderLocationSearch = () => {
+        if (!activeInput) return null;
+
+        return (
+            <View style={styles.searchModal}>
+                <View style={[styles.searchHeader, { paddingTop: insets.top + 10 }]}>
+                    <TouchableOpacity onPress={() => {
+                        setActiveInput(null);
+                        setSearchQuery('');
+                        setSuggestions([]);
+                    }}>
+                        <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+                    </TouchableOpacity>
+                    <Text style={styles.searchHeaderTitle}>
+                        {activeInput === 'pickup' ? 'Pickup Location' : 'Drop Location'}
+                    </Text>
+                </View>
+
+                <View style={styles.searchInputContainer}>
+                    <Ionicons name="search" size={20} color={COLORS.textSecondary} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search for a location..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoFocus
+                        placeholderTextColor={COLORS.textTertiary}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={20} color={COLORS.textTertiary} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {isLoadingSuggestions && (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="small" color={COLORS.primary} />
+                        <Text style={styles.loadingText}>Searching...</Text>
+                    </View>
+                )}
+
+                <FlatList
+                    data={suggestions}
+                    keyExtractor={(item) => item.place_id}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.suggestionItem}
+                            onPress={() => handleSelectSuggestion(item)}
+                        >
+                            <View style={styles.suggestionIcon}>
+                                <Ionicons name="location" size={20} color={COLORS.primary} />
+                            </View>
+                            <View style={styles.suggestionTextContainer}>
+                                <Text style={styles.suggestionMainText}>
+                                    {item.structured_formatting.main_text}
+                                </Text>
+                                <View style={styles.suggestionSecondaryRow}>
+                                    <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
+                                        {item.structured_formatting.secondary_text}
+                                    </Text>
+                                    {item.distance && (
+                                        <Text style={styles.distanceText}>
+                                            • {item.distance.toFixed(1)} km
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                        !isLoadingSuggestions && searchQuery.length >= 2 ? (
+                            <View style={styles.emptyState}>
+                                <Ionicons name="search-outline" size={48} color={COLORS.textTertiary} />
+                                <Text style={styles.emptyText}>No locations found</Text>
+                            </View>
+                        ) : null
+                    }
+                    contentContainerStyle={styles.suggestionsList}
+                    keyboardShouldPersistTaps="handled"
+                />
+            </View>
+        );
     };
 
-    const handleBook = async () => {
-        if (!providerDetails) {
-            Alert.alert('Select Driver', 'Please find and select a driver first');
-            return;
-        }
+    // Render wizard steps
+    const renderWizardStep = () => {
+        switch (currentStep) {
+            case 1:
+                return (
+                    <View style={styles.stepContainer}>
+                        <View style={styles.stepHeader}>
+                            <Text style={styles.stepTitle}>Choose Trip Type</Text>
+                            <Text style={styles.stepSubtitle}>Select your journey preference</Text>
+                        </View>
 
-        // Validation
-        if (tripType === 'incity' && !pickupAddress) {
-            Alert.alert('Missing Info', 'Please enter pickup location');
-            return;
-        }
-        if (serviceType === 'oneway' && !distanceKm) {
-            Alert.alert('Distance Required', 'Please estimate the one-way distance for fare calculation');
-            return;
-        }
+                        <View style={styles.optionsRow}>
+                            <TouchableOpacity
+                                style={[styles.optionCard, tripType === 'incity' && styles.optionCardActive]}
+                                onPress={() => {
+                                    setTripType('incity');
+                                    setTimeout(goToNextStep, 300);
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={tripType === 'incity'
+                                        ? [COLORS.primary, '#2563EB']
+                                        : ['#F8FAFC', '#F1F5F9']}
+                                    style={styles.optionGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    <View style={[styles.optionIconBg, tripType === 'incity' && styles.optionIconBgActive]}>
+                                        <Ionicons
+                                            name="business"
+                                            size={28}
+                                            color={tripType === 'incity' ? '#FFF' : COLORS.primary}
+                                        />
+                                    </View>
+                                    <Text style={[styles.optionText, tripType === 'incity' && styles.optionTextActive]}>
+                                        In-City
+                                    </Text>
+                                    <Text style={[styles.optionSubtext, tripType === 'incity' && styles.optionSubtextActive]}>
+                                        Within city limits
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
 
-        if (!user) {
-            Alert.alert('Authentication Error', 'You must be logged in to book');
-            return;
-        }
+                            <TouchableOpacity
+                                style={[styles.optionCard, tripType === 'outstation' && styles.optionCardActive]}
+                                onPress={() => {
+                                    setTripType('outstation');
+                                    setTimeout(goToNextStep, 300);
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={tripType === 'outstation'
+                                        ? ['#8B5CF6', '#7C3AED']
+                                        : ['#F8FAFC', '#F1F5F9']}
+                                    style={styles.optionGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    <View style={[styles.optionIconBg, tripType === 'outstation' && styles.optionIconBgActive]}>
+                                        <Ionicons
+                                            name="map"
+                                            size={28}
+                                            color={tripType === 'outstation' ? '#FFF' : '#8B5CF6'}
+                                        />
+                                    </View>
+                                    <Text style={[styles.optionText, tripType === 'outstation' && styles.optionTextActive]}>
+                                        Outstation
+                                    </Text>
+                                    <Text style={[styles.optionSubtext, tripType === 'outstation' && styles.optionSubtextActive]}>
+                                        Long distance travel
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                );
 
-        setIsLoading(true);
+            case 2:
+                return (
+                    <View style={styles.stepContainer}>
+                        <View style={styles.stepHeader}>
+                            <TouchableOpacity onPress={goToPreviousStep} style={styles.backBtn}>
+                                <Ionicons name="chevron-back" size={20} color={COLORS.textSecondary} />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.stepTitle}>Select Vehicle</Text>
+                                <Text style={styles.stepSubtitle}>Choose your preferred car type</Text>
+                            </View>
+                        </View>
 
-        // Construct Payload
-        const payload = {
-            serviceId: service.id || service._id,
-            serviceName: 'Driver Service', // Explicit name
-            serviceCategory: 'driver',
-            providerId: providerDetails._id || providerDetails.id,
+                        <View style={styles.vehicleGrid}>
+                            {[
+                                { type: 'hatchback', icon: 'car-sport', label: 'Hatchback', desc: 'Compact & economical' },
+                                { type: 'sedan', icon: 'car', label: 'Sedan', desc: 'Comfortable & spacious' },
+                                { type: 'suv', icon: 'car-sport-outline', label: 'SUV', desc: 'Premium & roomy' },
+                                { type: 'luxury', icon: 'diamond', label: 'Luxury', desc: 'Elite experience' },
+                            ].map((vehicle) => (
+                                <TouchableOpacity
+                                    key={vehicle.type}
+                                    style={[
+                                        styles.vehicleCard,
+                                        vehicleType === vehicle.type && styles.vehicleCardActive
+                                    ]}
+                                    onPress={() => {
+                                        setVehicleType(vehicle.type as VehicleType);
+                                        setTimeout(goToNextStep, 300);
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={[
+                                        styles.vehicleIconBg,
+                                        vehicleType === vehicle.type && styles.vehicleIconBgActive
+                                    ]}>
+                                        <Ionicons
+                                            name={vehicle.icon as any}
+                                            size={24}
+                                            color={vehicleType === vehicle.type ? COLORS.primary : '#64748B'}
+                                        />
+                                    </View>
+                                    <Text style={[styles.vehicleText, vehicleType === vehicle.type && styles.vehicleTextActive]}>
+                                        {vehicle.label}
+                                    </Text>
+                                    <Text style={[styles.vehicleDesc, vehicleType === vehicle.type && styles.vehicleDescActive]}>
+                                        {vehicle.desc}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                );
 
-            // Customer Info
-            customerId: user.id || user._id,
-            customerName: user.name,
-            customerPhone: user.phone || '',
-            customerAddress: pickupAddress, // Use pickup as primary address
+            case 3:
+                return (
+                    <View style={styles.stepContainer}>
+                        <View style={styles.stepHeader}>
+                            <TouchableOpacity onPress={goToPreviousStep} style={styles.backBtn}>
+                                <Ionicons name="chevron-back" size={20} color={COLORS.textSecondary} />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.stepTitle}>Transmission</Text>
+                                <Text style={styles.stepSubtitle}>Select gear type preference</Text>
+                            </View>
+                        </View>
 
-            // Dates
-            bookingDate: new Date().toISOString(), // Immediate Booking
-            bookingTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+                        <View style={styles.optionsRow}>
+                            <TouchableOpacity
+                                style={[styles.optionCard, transmission === 'manual' && styles.optionCardActive]}
+                                onPress={() => setTransmission('manual')}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={transmission === 'manual'
+                                        ? ['#10B981', '#059669']
+                                        : ['#F8FAFC', '#F1F5F9']}
+                                    style={styles.optionGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    <View style={[styles.optionIconBg, transmission === 'manual' && styles.optionIconBgActive]}>
+                                        <Ionicons
+                                            name="settings"
+                                            size={28}
+                                            color={transmission === 'manual' ? '#FFF' : '#10B981'}
+                                        />
+                                    </View>
+                                    <Text style={[styles.optionText, transmission === 'manual' && styles.optionTextActive]}>
+                                        Manual
+                                    </Text>
+                                    <Text style={[styles.optionSubtext, transmission === 'manual' && styles.optionSubtextActive]}>
+                                        Traditional control
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
 
-            // Driver Specifics
-            driverTripDetails: {
-                tripType,
-                serviceType,
-                pickupLocation: { address: pickupAddress },
-                dropLocation: { address: dropAddress },
-                vehicleType,
-                transmission,
-                distanceKm: Number(distanceKm) || 0,
-                returnFare: prices.returnFare
-            },
+                            <TouchableOpacity
+                                style={[styles.optionCard, transmission === 'automatic' && styles.optionCardActive]}
+                                onPress={() => setTransmission('automatic')}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={transmission === 'automatic'
+                                        ? ['#F59E0B', '#D97706']
+                                        : ['#F8FAFC', '#F1F5F9']}
+                                    style={styles.optionGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    <View style={[styles.optionIconBg, transmission === 'automatic' && styles.optionIconBgActive]}>
+                                        <Ionicons
+                                            name="flash"
+                                            size={28}
+                                            color={transmission === 'automatic' ? '#FFF' : '#F59E0B'}
+                                        />
+                                    </View>
+                                    <Text style={[styles.optionText, transmission === 'automatic' && styles.optionTextActive]}>
+                                        Automatic
+                                    </Text>
+                                    <Text style={[styles.optionSubtext, transmission === 'automatic' && styles.optionSubtextActive]}>
+                                        Effortless driving
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
 
-            // Pricing
-            basePrice: HOURLY_RATE,
-            quantity: duration, // Used as hours
-            totalPrice: prices.total,
-            notes,
-            billingType: 'hourly'
-        };
+                        {transmission && (
+                            <TouchableOpacity
+                                style={styles.findDriversButton}
+                                onPress={handleFindDrivers}
+                                disabled={isSearching}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={['#10B981', '#059669']}
+                                    style={styles.findDriversGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                >
+                                    {isSearching ? (
+                                        <ActivityIndicator color="#FFF" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="search" size={22} color="#FFF" />
+                                            <Text style={styles.findDriversText}>Find Drivers</Text>
+                                        </>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                );
 
-        try {
-            const response = await apiService.createBooking(payload);
-            if (response.success && response.data) {
-                // Send Request to Provider (Trigger Notification)
-                const bookingData = response.data as any;
-                const bookingId = bookingData.id || bookingData._id || bookingData.bookingId;
-                await apiService.sendBookingRequest(bookingId, payload.providerId);
-
-                navigation.reset({
-                    index: 0,
-                    routes: [{
-                        name: 'BookingWaiting',
-                        params: {
-                            bookingId,
-                            providerId: payload.providerId,
-                            providerName: providerDetails.name
-                        }
-                    }],
-                });
-            }
-        } catch (error: any) {
-            showError(error.message || 'Booking failed');
-        } finally {
-            setIsLoading(false);
+            default:
+                return null;
         }
     };
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" />
-            <LinearGradient colors={['#1e3a8a', '#172554']} style={styles.header}>
-                <View style={[styles.headerContent, { paddingTop: insets.top }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#FFF" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Request Personal Driver</Text>
-                    <TouchableOpacity
-                        style={[styles.backButton, { opacity: providerDetails ? 1 : 0 }]}
-                        onPress={() => setProviderDetails(null)}
-                        disabled={!providerDetails}
-                    >
-                        <Ionicons name="close" size={24} color="#FFF" />
-                    </TouchableOpacity>
-                </View>
+            <StatusBar barStyle="dark-content" />
 
-                {/* Toggle Trip Type */}
-                <View style={styles.tripToggle}>
-                    <TouchableOpacity
-                        style={[styles.toggleBtn, tripType === 'incity' && styles.toggleBtnActive]}
-                        onPress={() => setTripType('incity')}
+            {/* Map Background */}
+            <MapView
+                ref={mapRef}
+                style={styles.map}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={mapRegion}
+                showsUserLocation
+                showsMyLocationButton={false}
+                onPress={handleMapPress}
+                customMapStyle={customMapStyle}
+            >
+                {pickupCoords && (
+                    <Marker
+                        coordinate={pickupCoords}
+                        pinColor={COLORS.success}
                     >
-                        <Text style={[styles.toggleText, tripType === 'incity' && styles.toggleTextActive]}>In-City</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.toggleBtn, tripType === 'outstation' && styles.toggleBtnActive]}
-                        onPress={() => setTripType('outstation')}
-                    >
-                        <Text style={[styles.toggleText, tripType === 'outstation' && styles.toggleTextActive]}>Outstation</Text>
-                    </TouchableOpacity>
-                </View>
-            </LinearGradient>
-
-            <ScrollView contentContainerStyle={styles.content}>
-
-                {/* Selected Provider Card */}
-                {providerDetails && (
-                    <View style={styles.selectedProviderCard}>
-                        <View style={styles.providerInfo}>
-                            <Image
-                                source={{ uri: providerDetails.profileImage || 'https://via.placeholder.com/100' }}
-                                style={styles.providerImage}
-                            />
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.providerName}>{providerDetails.name}</Text>
-                                <View style={styles.ratingRow}>
-                                    <Ionicons name="star" size={14} color="#FBBF24" />
-                                    <Text style={styles.ratingText}>{providerDetails.rating || 'New'}</Text>
-                                </View>
-                            </View>
-                            <TouchableOpacity onPress={() => setProviderDetails(null)}>
-                                <Text style={styles.changeText}>Change</Text>
-                            </TouchableOpacity>
+                        <View style={styles.customMarker}>
+                            <View style={[styles.markerDot, { backgroundColor: COLORS.success }]} />
+                            <View style={[styles.markerPulse, { borderColor: COLORS.success }]} />
                         </View>
-                    </View>
+                    </Marker>
                 )}
-
-                {/* Route Details */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Route</Text>
-
-                    <View style={styles.inputRow}>
-                        <Ionicons name="location" size={20} color="#3B82F6" />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Pickup Location"
-                            value={pickupAddress}
-                            onChangeText={setPickupAddress}
-                        />
-                    </View>
-                    <View style={styles.divider} />
-                    <View style={styles.inputRow}>
-                        <Ionicons name="flag" size={20} color="#EF4444" />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Drop Location"
-                            value={dropAddress}
-                            onChangeText={setDropAddress}
-                        />
-                    </View>
-
-                    {serviceType === 'oneway' && (
-                        <View style={[styles.inputRow, { marginTop: 12, backgroundColor: '#F8FAFF' }]}>
-                            <Ionicons name="speedometer-outline" size={20} color="#64748B" />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Approx Distance (km) for Fare"
-                                keyboardType="numeric"
-                                value={distanceKm}
-                                onChangeText={setDistanceKm}
-                            />
+                {dropCoords && (
+                    <Marker
+                        coordinate={dropCoords}
+                        pinColor={COLORS.error}
+                    >
+                        <View style={styles.customMarker}>
+                            <View style={[styles.markerDot, { backgroundColor: COLORS.error }]} />
+                            <View style={[styles.markerPulse, { borderColor: COLORS.error }]} />
                         </View>
-                    )}
-                </View>
-
-                {/* Duration Slider */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Duration ({duration} Hours)</Text>
-                    <Text style={styles.subText}>Minimum 3 hours required</Text>
-                    <Slider
-                        style={{ width: '100%', height: 40 }}
-                        minimumValue={3}
-                        maximumValue={12}
-                        step={1}
-                        value={duration}
-                        onValueChange={setDuration}
-                        minimumTrackTintColor="#3B82F6"
-                        maximumTrackTintColor="#CBD5E1"
-                        thumbTintColor="#3B82F6"
+                    </Marker>
+                )}
+                {pickupCoords && dropCoords && (
+                    <Polyline
+                        coordinates={[pickupCoords, dropCoords]}
+                        strokeColor={COLORS.primary}
+                        strokeWidth={4}
+                        lineDashPattern={[1]}
                     />
-                    <View style={styles.sliderLabels}>
-                        <Text style={styles.sliderLabel}>3h</Text>
-                        <Text style={styles.sliderLabel}>12h</Text>
-                    </View>
-                </View>
-
-                {/* Trip Options */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Trip Type</Text>
-                    <View style={styles.optionRow}>
-                        <TouchableOpacity
-                            style={[styles.optionCard, serviceType === 'roundtrip' && styles.optionCardActive]}
-                            onPress={() => setServiceType('roundtrip')}
-                        >
-                            <Ionicons name="repeat" size={24} color={serviceType === 'roundtrip' ? '#FFF' : '#64748B'} />
-                            <Text style={[styles.optionText, serviceType === 'roundtrip' && styles.optionTextActive]}>Round Trip</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.optionCard, serviceType === 'oneway' && styles.optionCardActive]}
-                            onPress={() => setServiceType('oneway')}
-                        >
-                            <Ionicons name="arrow-forward" size={24} color={serviceType === 'oneway' ? '#FFF' : '#64748B'} />
-                            <Text style={[styles.optionText, serviceType === 'oneway' && styles.optionTextActive]}>One Way</Text>
-                        </TouchableOpacity>
-                    </View>
-                    {serviceType === 'oneway' && (
-                        <View style={styles.infoBox}>
-                            <Ionicons name="information-circle" size={20} color={COLORS.primary} />
-                            <Text style={styles.infoNote}>
-                                For one-way trips, a return fare of ₹{RETURN_FARE_PER_KM}/km is added to cover the driver's return travel.
-                            </Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Vehicle */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Your Vehicle Details</Text>
-                    <Text style={styles.subText}>Select the car you want our partner to drive</Text>
-
-                    {/* Transmission */}
-                    <View style={styles.chipRow}>
-                        {['manual', 'automatic'].map((t) => (
-                            <TouchableOpacity
-                                key={t}
-                                style={[styles.chip, transmission === t && styles.chipActive]}
-                                onPress={() => setTransmission(t as Transmission)}
-                            >
-                                <Text style={[styles.chipText, transmission === t && styles.chipTextActive]}>
-                                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    {/* Type */}
-                    <View style={[styles.chipRow, { marginTop: 12 }]}>
-                        {['hatchback', 'sedan', 'suv', 'luxury'].map((v) => (
-                            <TouchableOpacity
-                                key={v}
-                                style={[styles.chip, vehicleType === v && styles.chipActive]}
-                                onPress={() => setVehicleType(v as VehicleType)}
-                            >
-                                <Text style={[styles.chipText, vehicleType === v && styles.chipTextActive]}>
-                                    {v.charAt(0).toUpperCase() + v.slice(1)}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                {/* Results Modal / List Overlay */}
-                {showResults && (
-                    <View style={styles.resultsContainer}>
-                        <View style={styles.resultsHeader}>
-                            <Text style={styles.resultsTitle}>Matching Drivers</Text>
-                            <TouchableOpacity onPress={() => setShowResults(false)}>
-                                <Ionicons name="close-circle" size={28} color={COLORS.text} />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView style={styles.resultsList}>
-                            {searchResults.map((provider) => (
-                                <TouchableOpacity
-                                    key={provider._id}
-                                    style={styles.providerCard}
-                                    onPress={() => handleSelectProvider(provider)}
-                                >
-                                    <Image
-                                        source={{ uri: provider.profileImage || 'https://via.placeholder.com/100' }}
-                                        style={styles.resultImage}
-                                    />
-                                    <View style={styles.resultInfo}>
-                                        <Text style={styles.resultName}>{provider.name}</Text>
-                                        <View style={styles.resultMeta}>
-                                            <Ionicons name="star" size={14} color="#FBBF24" />
-                                            <Text style={styles.resultRating}>{provider.rating || 'New'}</Text>
-                                            <Text style={styles.resultDot}>•</Text>
-                                            <Text style={styles.resultExp}>
-                                                {provider.experience || 0} yrs exp
-                                            </Text>
-                                        </View>
-                                        <View style={styles.capabilities}>
-                                            <Text style={styles.capabilityTag}>
-                                                {provider.driverServiceDetails?.tripPreference === 'both' ? 'In-city & Outstation' : provider.driverServiceDetails?.tripPreference}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                    <View style={styles.selectBtn}>
-                                        <Text style={styles.selectBtnText}>Select</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
                 )}
+            </MapView>
 
-            </ScrollView>
+            {/* Floating Header */}
+            <View style={[styles.header, { top: insets.top + 10 }]}>
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+                </TouchableOpacity>
 
-            {/* Footer / Price Breakdown */}
-            <View style={styles.footer}>
-                {!providerDetails ? (
+                <View style={styles.locationInputsContainer}>
                     <TouchableOpacity
-                        style={[styles.bookButton, { backgroundColor: COLORS.primary }]}
-                        onPress={handleSearch}
-                        disabled={isSearching}
+                        style={styles.locationInputRow}
+                        onPress={() => setActiveInput('pickup')}
                     >
-                        {isSearching ? <LoadingSpinner visible={true} color="#FFF" /> : (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="search" size={20} color="#FFF" />
-                                <Text style={styles.bookButtonText}>Find Drivers</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                ) : (
-                    <>
-                        <View style={styles.priceRow}>
-                            <Text style={styles.totalLabel}>Total Estimate</Text>
-                            <Text style={styles.totalPrice}>₹{prices.total.toFixed(0)}</Text>
-                        </View>
-                        <Text style={styles.breakdownText}>
-                            {duration} hrs x ₹{HOURLY_RATE} + ₹{prices.returnFare} return fare + GST
+                        <View style={[styles.locationDot, { backgroundColor: COLORS.success }]} />
+                        <Text
+                            style={[styles.locationInputText, !pickupAddress && styles.locationInputPlaceholder]}
+                            numberOfLines={1}
+                        >
+                            {pickupAddress || 'Set pickup location'}
                         </Text>
+                        <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
+                    </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.bookButton} onPress={handleBook} disabled={isLoading}>
-                            {isLoading ? <LoadingSpinner visible={true} color="#FFF" /> : (
-                                <Text style={styles.bookButtonText}>Request Driver</Text>
-                            )}
-                        </TouchableOpacity>
-                    </>
-                )}
+                    <View style={styles.locationDivider} />
+
+                    <TouchableOpacity
+                        style={styles.locationInputRow}
+                        onPress={() => setActiveInput('drop')}
+                    >
+                        <View style={[styles.locationDot, { backgroundColor: COLORS.error }]} />
+                        <Text
+                            style={[styles.locationInputText, !dropAddress && styles.locationInputPlaceholder]}
+                            numberOfLines={1}
+                        >
+                            {dropAddress || 'Set drop location'}
+                        </Text>
+                        <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            {/* Bottom Sheet Wizard */}
+            <BottomSheet
+                ref={bottomSheetRef}
+                index={0}
+                snapPoints={snapPoints}
+                backgroundStyle={styles.bottomSheetBackground}
+                handleIndicatorStyle={styles.bottomSheetIndicator}
+                enablePanDownToClose={false}
+            >
+                <BottomSheetScrollView
+                    contentContainerStyle={styles.bottomSheetContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Step Indicator */}
+                    <View style={styles.stepIndicator}>
+                        {[1, 2, 3].map((step) => (
+                            <View key={step} style={styles.stepIndicatorItem}>
+                                <View
+                                    style={[
+                                        styles.stepDot,
+                                        currentStep >= step && styles.stepDotActive,
+                                    ]}
+                                >
+                                    {currentStep > step && (
+                                        <Ionicons name="checkmark" size={12} color="#FFF" />
+                                    )}
+                                </View>
+                                {step < 3 && (
+                                    <View style={[
+                                        styles.stepLine,
+                                        currentStep > step && styles.stepLineActive
+                                    ]} />
+                                )}
+                            </View>
+                        ))}
+                    </View>
+
+                    {/* Wizard Content with Swipe Gesture */}
+                    <GestureDetector gesture={swipeGesture}>
+                        <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
+                            {renderWizardStep()}
+                        </Animated.View>
+                    </GestureDetector>
+                </BottomSheetScrollView>
+            </BottomSheet>
+
+            {/* Location Search Modal */}
+            {renderLocationSearch()}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F1F5F9' },
-    header: { paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-    headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 20 },
-    headerTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-    backButton: { padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12 },
-
-    tripToggle: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 4, marginHorizontal: 20 },
-    toggleBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
-    toggleBtnActive: { backgroundColor: '#FFF', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-    toggleText: { color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
-    toggleTextActive: { color: '#1e3a8a', fontWeight: '700' },
-
-    content: { padding: 20, paddingBottom: 120 },
-    card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOWS.sm },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 12 },
-    subText: { fontSize: 12, color: '#64748B', marginBottom: 8 },
-
-    inputRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 },
-    input: { flex: 1, fontSize: 16, color: '#1E293B', paddingVertical: 8 },
-    divider: { height: 1, backgroundColor: '#E2E8F0', marginLeft: 32 },
-
-    sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginTop: -4 },
-    sliderLabel: { fontSize: 12, color: '#64748B' },
-
-    optionRow: { flexDirection: 'row', gap: 12 },
-    optionCard: { flex: 1, backgroundColor: '#F8FAFC', padding: 16, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
-    optionCardActive: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
-    optionText: { marginTop: 8, fontSize: 14, fontWeight: '600', color: '#64748B' },
-    optionTextActive: { color: '#FFF' },
-    infoBox: { flexDirection: 'row', gap: 8, marginTop: 12, backgroundColor: '#EFF6FF', padding: 12, borderRadius: 8 },
-    infoNote: { fontSize: 13, color: '#1E40AF', flex: 1, lineHeight: 18 },
-
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
-    chipActive: { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' },
-    chipText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
-    chipTextActive: { color: '#3B82F6', fontWeight: '700' },
-
-    footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', padding: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24, ...SHADOWS.md },
-    priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-    totalLabel: { fontSize: 16, color: '#64748B', fontWeight: '600' },
-    totalPrice: { fontSize: 24, color: '#1E293B', fontWeight: '800' },
-    breakdownText: { fontSize: 12, color: '#94A3B8', marginBottom: 16 },
-
-    bookButton: { backgroundColor: '#1e3a8a', paddingVertical: 16, borderRadius: 16, alignItems: 'center', shadowColor: '#1e3a8a', shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    bookButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-
-    // Selected Provider Card
-    selectedProviderCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOWS.sm, borderWidth: 1, borderColor: COLORS.primary },
-    providerInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    providerImage: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F1F5F9' },
-    providerName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    ratingText: { fontSize: 13, fontWeight: '600', color: '#475569' },
-    changeText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-
-    // Results Modal
-    resultsContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#F1F5F9', zIndex: 20, paddingTop: 50 },
-    resultsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20 },
-    resultsTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B' },
-    resultsList: { paddingHorizontal: 20 },
-    providerCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, ...SHADOWS.sm },
-    resultImage: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F1F5F9', marginRight: 12 },
-    resultInfo: { flex: 1 },
-    resultName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-    resultMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-    resultRating: { fontSize: 13, fontWeight: '600', color: '#475569' },
-    resultDot: { color: '#CBD5E1' },
-    resultExp: { fontSize: 13, color: '#64748B' },
-    capabilities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    capabilityTag: { fontSize: 11, color: COLORS.primary, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
-    selectBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
-    selectBtnText: { color: '#FFF', fontSize: 13, fontWeight: '600' }
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    map: {
+        width: width,
+        height: height,
+    },
+    customMarker: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    markerDot: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        borderWidth: 3,
+        borderColor: '#FFF',
+        ...SHADOWS.md,
+    },
+    markerPulse: {
+        position: 'absolute',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 2,
+        opacity: 0.3,
+    },
+    header: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        zIndex: 10,
+    },
+    backButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...SHADOWS.lg,
+    },
+    locationInputsContainer: {
+        flex: 1,
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        padding: 8,
+        ...SHADOWS.lg,
+    },
+    locationInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        gap: 12,
+    },
+    locationDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    locationInputText: {
+        flex: 1,
+        fontSize: 14,
+        color: COLORS.text,
+        fontWeight: '600',
+    },
+    locationInputPlaceholder: {
+        color: COLORS.textTertiary,
+        fontWeight: '400',
+    },
+    locationDivider: {
+        height: 1,
+        backgroundColor: '#F1F5F9',
+        marginHorizontal: 14,
+    },
+    searchModal: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#FFF',
+        zIndex: 100,
+    },
+    searchHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        gap: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    searchHeaderTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    searchInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        marginHorizontal: 20,
+        marginVertical: 16,
+        paddingHorizontal: 16,
+        height: 52,
+        borderRadius: 16,
+        gap: 12,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: COLORS.text,
+    },
+    suggestionsList: {
+        paddingHorizontal: 20,
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        gap: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F8FAFC',
+    },
+    suggestionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#EFF6FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    suggestionTextContainer: {
+        flex: 1,
+    },
+    suggestionMainText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: COLORS.text,
+        marginBottom: 4,
+    },
+    suggestionSecondaryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    suggestionSecondaryText: {
+        fontSize: 13,
+        color: COLORS.textSecondary,
+        flex: 1,
+    },
+    distanceText: {
+        fontSize: 12,
+        color: COLORS.primary,
+        fontWeight: '700',
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        gap: 12,
+    },
+    loadingText: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: COLORS.textSecondary,
+        marginTop: 12,
+    },
+    bottomSheetBackground: {
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        ...SHADOWS.xl,
+    },
+    bottomSheetIndicator: {
+        backgroundColor: '#E2E8F0',
+        width: 48,
+        height: 5,
+    },
+    bottomSheetContent: {
+        paddingHorizontal: 24,
+        paddingTop: 8,
+        paddingBottom: 40,
+    },
+    stepIndicator: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 32,
+        paddingHorizontal: 40,
+    },
+    stepIndicatorItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    stepDot: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#E2E8F0',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    stepDotActive: {
+        backgroundColor: COLORS.primary,
+    },
+    stepLine: {
+        flex: 1,
+        height: 2,
+        backgroundColor: '#E2E8F0',
+        marginHorizontal: 8,
+    },
+    stepLineActive: {
+        backgroundColor: COLORS.primary,
+    },
+    stepContainer: {
+        flex: 1,
+    },
+    stepHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
+        gap: 12,
+    },
+    backBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F8FAFC',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    stepTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: COLORS.text,
+        letterSpacing: -0.5,
+    },
+    stepSubtitle: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+        marginTop: 4,
+    },
+    optionsRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 24,
+    },
+    optionCard: {
+        flex: 1,
+        height: 180,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    optionCardActive: {
+        borderColor: COLORS.primary,
+        ...SHADOWS.lg,
+    },
+    optionGradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 12,
+        padding: 20,
+    },
+    optionIconBg: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    optionIconBgActive: {
+        backgroundColor: 'rgba(255,255,255,0.25)',
+    },
+    optionText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#64748B',
+        marginTop: 4,
+    },
+    optionTextActive: {
+        color: '#FFF',
+    },
+    optionSubtext: {
+        fontSize: 12,
+        color: '#94A3B8',
+        fontWeight: '500',
+    },
+    optionSubtextActive: {
+        color: 'rgba(255,255,255,0.9)',
+    },
+    vehicleGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16,
+        marginBottom: 24,
+    },
+    vehicleCard: {
+        width: (width - 72) / 2,
+        height: 140,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 20,
+        padding: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    vehicleCardActive: {
+        borderColor: COLORS.primary,
+        backgroundColor: '#EFF6FF',
+        ...SHADOWS.md,
+    },
+    vehicleIconBg: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    vehicleIconBgActive: {
+        backgroundColor: '#DBEAFE',
+    },
+    vehicleText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#64748B',
+        marginTop: 4,
+    },
+    vehicleTextActive: {
+        color: COLORS.primary,
+    },
+    vehicleDesc: {
+        fontSize: 11,
+        color: '#94A3B8',
+        textAlign: 'center',
+    },
+    vehicleDescActive: {
+        color: COLORS.textSecondary,
+    },
+    findDriversButton: {
+        height: 60,
+        borderRadius: 20,
+        overflow: 'hidden',
+        ...SHADOWS.lg,
+    },
+    findDriversGradient: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    findDriversText: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#FFF',
+        letterSpacing: 0.5,
+    },
 });
