@@ -45,7 +45,7 @@ type MenuItemType = {
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, isGuest } = useAuth();
   const { colors, toggleTheme, isDark } = useTheme();
   const { isTablet } = useResponsive();
   const [showComingSoon, setShowComingSoon] = useState(false);
@@ -87,6 +87,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   // Fetch user stats from API
   const fetchUserStats = useCallback(async () => {
+    if (isGuest) return;
     try {
       if (user?.role === 'homeowner') {
         const response = await apiService.getMyBookings();
@@ -133,6 +134,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   }, [user?.role]);
 
   const fetchProfile = useCallback(async () => {
+    if (isGuest) return;
     try {
       if (!user?.id && !user?._id && !user?.email) {
         return;
@@ -370,111 +372,202 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           { paddingBottom: isTablet ? 140 : 120 }
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={isGuest ? undefined : <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-
-          {/* Premium Profile Card */}
-          <View style={[styles.profileCard, { backgroundColor: colors.cardBg }]}>
-            {/* Avatar with Gradient Ring */}
-            <TouchableOpacity
-              onPress={handleImagePick}
-              disabled={isUploadingAvatar}
-              style={styles.avatarWrapper}
+        {isGuest ? (
+          <View style={styles.guestContainer}>
+            <LinearGradient
+              colors={['#667eea', '#764ba2']}
+              style={styles.guestHero}
             >
-              <LinearGradient
-                colors={['#667eea', '#764ba2', '#667eea']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.avatarGradientRing}
-              >
-                <View style={[styles.avatarInner, { backgroundColor: colors.cardBg }]}>
-                  {isUploadingAvatar ? (
-                    <ActivityIndicator size="large" color={colors.primary} />
-                  ) : user?.avatar || user?.profileImage ? (
-                    <Image
-                      source={{ uri: user.avatar || user.profileImage }}
-                      style={styles.avatarImage}
-                    />
-                  ) : (
-                    <LinearGradient
-                      colors={['#667eea', '#764ba2']}
-                      style={styles.avatarPlaceholder}
-                    >
-                      <Text style={styles.avatarText}>
-                        {user?.name?.charAt(0).toUpperCase() || 'U'}
-                      </Text>
-                    </LinearGradient>
-                  )}
-                </View>
-              </LinearGradient>
-              <View style={styles.cameraIconContainer}>
-                <LinearGradient
-                  colors={['#667eea', '#764ba2']}
-                  style={styles.cameraIconGradient}
-                >
-                  <Ionicons name="camera" size={14} color="#FFF" />
-                </LinearGradient>
+              <View style={styles.guestIconCircle}>
+                <Ionicons name="person" size={40} color={COLORS.primary} />
               </View>
-            </TouchableOpacity>
+              <Text style={styles.guestTitle}>Welcome Guest</Text>
+              <Text style={styles.guestSubtitle}>
+                Sign in to manage bookings, view profile details, and access exclusive features.
+              </Text>
+            </LinearGradient>
 
-            {/* User Info */}
-            <View style={styles.profileInfo}>
-              <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'User'}</Text>
-              <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'No email'}</Text>
-              <View style={styles.roleBadge}>
-                <Ionicons name={getRoleBadgeIcon()} size={12} color="#FFF" />
-                <Text style={styles.roleText}>{getRoleDisplay()}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Membership Tier Badge */}
-          {user?.role === 'homeowner' && (
-            <View style={[styles.membershipCard, { backgroundColor: colors.cardBg }]}>
-              <View style={styles.membershipBadge}>
-                <Text style={styles.membershipIcon}>{getMembershipTier().icon}</Text>
-                <View>
-                  <Text style={[styles.membershipTier, { color: colors.text }]}>{getMembershipTier().tier} Member</Text>
-                  <Text style={[styles.membershipSubtext, { color: colors.textSecondary }]}>
-                    {stats.bookingsCount} bookings completed
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Menu Items */}
-          <View style={[styles.menuContainer, { backgroundColor: colors.cardBg }]}>
-            {menuItems.map((item, index) => (
+            <View style={styles.guestActions}>
               <TouchableOpacity
-                key={item.title}
-                style={[
-                  styles.menuItem,
-                  { borderBottomColor: colors.divider },
-                  index === menuItems.length - 1 && styles.menuItemLast,
-                ]}
-                onPress={item.onPress}
-                activeOpacity={0.7}
+                style={[styles.guestButton, { backgroundColor: COLORS.primary }]}
+                onPress={() => navigation.navigate('Login')}
+              >
+                <Text style={styles.guestButtonText}>Sign In</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.guestButton, { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border }]}
+                onPress={() => navigation.navigate('Signup', { role: 'customer' })}
+              >
+                <Text style={[styles.guestButtonText, { color: COLORS.text }]}>Create Account</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Menu Items for Guest (Settings, Help only) */}
+            <View style={[styles.menuContainer, { backgroundColor: colors.cardBg, marginTop: 24 }]}>
+              <TouchableOpacity
+                style={[styles.menuItem, { borderBottomColor: colors.divider }]}
+                onPress={() => navigation.navigate('LanguageSettings')}
               >
                 <View style={styles.menuItemLeft}>
                   <View style={[styles.iconCircle, { backgroundColor: colors.gray100 }]}>
-                    <Ionicons name={item.icon} size={20} color={colors.primary} />
+                    <Ionicons name="language-outline" size={20} color={colors.primary} />
                   </View>
-                  <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
-                  {item.subtitle ? <Text style={{ marginLeft: 10, color: colors.textSecondary }}>{item.subtitle}</Text> : null}
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>{t('profile.language')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </TouchableOpacity>
-            ))}
-          </View>
 
-          {/* Logout Button */}
-          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.cardBg }]} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={[styles.logoutButtonText, { color: colors.error }]}>{t('profile.logout')}</Text>
-          </TouchableOpacity>
-        </Animated.View>
+              <TouchableOpacity
+                style={[styles.menuItem, { borderBottomColor: colors.divider, borderBottomWidth: 0 }]}
+                onPress={() => navigation.navigate('HelpSupport')}
+              >
+                <View style={styles.menuItemLeft}>
+                  <View style={[styles.iconCircle, { backgroundColor: colors.gray100 }]}>
+                    <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>{t('profile.helpCenter')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+
+            {/* Premium Profile Card */}
+            <View style={[styles.profileCard, { backgroundColor: colors.cardBg }]}>
+              {/* Avatar with Gradient Ring */}
+              <TouchableOpacity
+                onPress={handleImagePick}
+                disabled={isUploadingAvatar}
+                style={styles.avatarWrapper}
+              >
+                <LinearGradient
+                  colors={['#667eea', '#764ba2', '#667eea']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.avatarGradientRing}
+                >
+                  <View style={[styles.avatarInner, { backgroundColor: colors.cardBg }]}>
+                    {isUploadingAvatar ? (
+                      <ActivityIndicator size="large" color={colors.primary} />
+                    ) : user?.avatar || user?.profileImage ? (
+                      <Image
+                        source={{ uri: user.avatar || user.profileImage }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <LinearGradient
+                        colors={['#667eea', '#764ba2']}
+                        style={styles.avatarPlaceholder}
+                      >
+                        <Text style={styles.avatarText}>
+                          {user?.name?.charAt(0).toUpperCase() || 'U'}
+                        </Text>
+                      </LinearGradient>
+                    )}
+                  </View>
+                </LinearGradient>
+                <View style={styles.cameraIconContainer}>
+                  <LinearGradient
+                    colors={['#667eea', '#764ba2']}
+                    style={styles.cameraIconGradient}
+                  >
+                    <Ionicons name="camera" size={14} color="#FFF" />
+                  </LinearGradient>
+                </View>
+              </TouchableOpacity>
+
+              {/* User Info */}
+              <View style={styles.profileInfo}>
+                <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'User'}</Text>
+                <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'No email'}</Text>
+                <View style={styles.roleBadge}>
+                  <Ionicons name={getRoleBadgeIcon()} size={12} color="#FFF" />
+                  <Text style={styles.roleText}>{getRoleDisplay()}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Membership Tier Badge */}
+            {user?.role === 'homeowner' && (
+              <View style={[styles.membershipCard, { backgroundColor: colors.cardBg }]}>
+                <View style={styles.membershipBadge}>
+                  <Text style={styles.membershipIcon}>{getMembershipTier().icon}</Text>
+                  <View>
+                    <Text style={[styles.membershipTier, { color: colors.text }]}>{getMembershipTier().tier} Member</Text>
+                    <Text style={[styles.membershipSubtext, { color: colors.textSecondary }]}>
+                      {stats.bookingsCount} bookings completed
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Menu Items */}
+            <View style={[styles.menuContainer, { backgroundColor: colors.cardBg }]}>
+              {menuItems.map((item, index) => (
+                <TouchableOpacity
+                  key={item.title}
+                  style={[
+                    styles.menuItem,
+                    { borderBottomColor: colors.divider },
+                    index === menuItems.length - 1 && styles.menuItemLast,
+                  ]}
+                  onPress={item.onPress}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.menuItemLeft}>
+                    <View style={[styles.iconCircle, { backgroundColor: colors.gray100 }]}>
+                      <Ionicons name={item.icon} size={20} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
+                    {item.subtitle ? <Text style={{ marginLeft: 10, color: colors.textSecondary }}>{item.subtitle}</Text> : null}
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Logout Button */}
+            <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.cardBg }]} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              <Text style={[styles.logoutButtonText, { color: colors.error }]}>{t('profile.logout')}</Text>
+            </TouchableOpacity>
+
+            {/* Delete Account Button */}
+            <TouchableOpacity
+              style={[styles.logoutButton, { backgroundColor: colors.cardBg, marginTop: 12 }]}
+              onPress={() => Alert.alert(
+                'Delete Account',
+                'Are you sure you want to delete your account? This action is irreversible.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        // Call API to delete account
+                        await apiService.deleteAccount();
+                        await logout();
+                      } catch (e: any) {
+                        Alert.alert('Error', e.message || 'Failed to delete account');
+                      }
+                    }
+                  }
+                ]
+              )}
+            >
+              <Ionicons name="trash-outline" size={20} color={colors.error} />
+              <Text style={[styles.logoutButtonText, { color: colors.error }]}>Delete Account</Text>
+            </TouchableOpacity>
+
+          </Animated.View>
+        )}
       </ScrollView>
 
       <ComingSoonModal
@@ -760,5 +853,55 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  guestContainer: {
+    alignItems: 'center',
+    paddingTop: SPACING.xl,
+  },
+  guestHero: {
+    width: '100%',
+    padding: SPACING.xl,
+    borderRadius: RADIUS.large,
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+  },
+  guestIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    ...SHADOWS.md,
+  },
+  guestTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
+  },
+  guestSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  guestActions: {
+    width: '100%',
+    gap: SPACING.md,
+  },
+  guestButton: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: RADIUS.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.sm,
+  },
+  guestButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.white,
   },
 });

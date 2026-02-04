@@ -59,12 +59,10 @@ async function pingBackend(url: string): Promise<boolean> {
  */
 async function detectActiveBackend(): Promise<string> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🔍 BACKEND CONFIGURATION');
+  console.log('🌐 USING PRODUCTION BACKEND (FORCED)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🌐 Production URL:', PRODUCTION_API_URL);
-  console.log('✅ Using production backend only');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
+  // FORCE PRODUCTION - User Request
   cachedApiUrl = PRODUCTION_API_URL;
   return PRODUCTION_API_URL;
 }

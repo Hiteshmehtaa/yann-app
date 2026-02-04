@@ -76,6 +76,9 @@ import { RefundPolicyScreen } from '../screens/legal/RefundPolicyScreen';
 import { ProviderTermsScreen } from '../screens/legal/ProviderTermsScreen';
 import { SafetyPolicyScreen } from '../screens/legal/SafetyPolicyScreen';
 
+// Admin Screens
+import { AdminPushNotificationScreen } from '../screens/admin/AdminPushNotificationScreen';
+
 // Global Components
 import { GlobalPaymentModal } from '../components/GlobalPaymentModal';
 import { GlobalBookingRequestModal } from '../components/GlobalBookingRequestModal';
@@ -118,6 +121,7 @@ type RootStackParamList = {
   BookingsList: undefined;
   BookingDetail: { booking: any };
   Favorites: undefined;
+  AdminPush: undefined;
 };
 
 // Premium Apple-like Theme - Using new design system
@@ -331,7 +335,7 @@ const linking = {
 };
 
 export function AppNavigator() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, isGuest } = useAuth();
 
   if (isLoading) {
     return null;
@@ -349,7 +353,7 @@ export function AppNavigator() {
           animationDuration: 300,
         }}
       >
-        {isAuthenticated ? (
+        {isAuthenticated || isGuest ? (
           <>
             {isProvider ? (
               <>
@@ -371,6 +375,7 @@ export function AppNavigator() {
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="AdminPush" component={AdminPushNotificationScreen as any} options={screenTransitionConfig} />
               </>
             ) : (
               <>
@@ -397,6 +402,7 @@ export function AppNavigator() {
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Favorites" component={FavoritesScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="AdminPush" component={AdminPushNotificationScreen as any} options={screenTransitionConfig} />
               </>
             )}
           </>

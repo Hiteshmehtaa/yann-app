@@ -15,6 +15,8 @@ interface AuthContextType {
   sendOTP: (identifier: string) => Promise<void>;
   sendProviderOTP: (identifier: string) => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
+  isGuest: boolean;
+  continueAsGuest: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check if user is already logged in on app start
@@ -192,6 +195,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await storage.clearAll();
       setUser(null);
       setToken(null);
+      setIsGuest(false);
     }
   };
 
@@ -262,6 +266,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const continueAsGuest = async (): Promise<void> => {
+    setIsGuest(true);
+  };
+
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
@@ -278,10 +286,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     loginAsProvider,
     logout,
+    continueAsGuest,
+    isGuest,
     sendOTP,
     sendProviderOTP,
     updateUser,
-  }), [user, token, isLoading]);
+  }), [user, token, isLoading, isGuest]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

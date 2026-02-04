@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { PaperProvider } from 'react-native-paper';
@@ -39,6 +40,11 @@ export default function App() {
       const completed = await isOnboardingCompleted();
       setShowOnboarding(!completed);
       setIsReady(true);
+
+      // Since showSplash is now false by default (disabled custom splash), important to hide native splash
+      if (!showSplash) {
+        await SplashScreen.hideAsync();
+      }
     }
 
     initialize();
@@ -53,39 +59,41 @@ export default function App() {
 
   // Show animated splash screen overlay if not ready or showing splash
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <PaperProvider>
-          <AuthProvider>
-            <ThemeProvider>
-              <NotificationProvider>
-                <View style={{ flex: 1 }}>
-                  <OfflineIndicator />
-                  <StatusBar style="auto" />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <PaperProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <NotificationProvider>
+                  <View style={{ flex: 1 }}>
+                    <OfflineIndicator />
+                    <StatusBar style="auto" />
 
-                  {/* Main App Navigator (Always rendered behind splash) */}
-                  <AppNavigator />
+                    {/* Main App Navigator (Always rendered behind splash) */}
+                    <AppNavigator />
 
-                  {/* Splash Overlay */}
-                  {showSplash && (
-                    <AnimatedSplash
-                      isReady={isReady}
-                      onAnimationComplete={() => setShowSplash(false)}
-                    />
-                  )}
+                    {/* Splash Overlay */}
+                    {showSplash && (
+                      <AnimatedSplash
+                        isReady={isReady}
+                        onAnimationComplete={() => setShowSplash(false)}
+                      />
+                    )}
 
-                  {/* Onboarding Overlay */}
-                  {showOnboarding && !showSplash && (
-                    <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 1000, backgroundColor: '#fff' }}>
-                      <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
-                    </View>
-                  )}
-                </View>
-              </NotificationProvider>
-            </ThemeProvider>
-          </AuthProvider>
-        </PaperProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+                    {/* Onboarding Overlay */}
+                    {showOnboarding && !showSplash && (
+                      <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 1000, backgroundColor: '#fff' }}>
+                        <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+                      </View>
+                    )}
+                  </View>
+                </NotificationProvider>
+              </ThemeProvider>
+            </AuthProvider>
+          </PaperProvider>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

@@ -12,6 +12,12 @@ import {
   Linking,
   Platform,
   ActivityIndicator,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,6 +97,72 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const { toast, showSuccess, showInfo, hideToast } = useToast();
+
+  // UGC State
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  const reportReasons = [
+    { id: 'inappropriate_content', label: 'Inappropriate Content' },
+    { id: 'spam_scam', label: 'Spam or Scam' },
+    { id: 'offensive_behavior', label: 'Offensive Behavior' },
+    { id: 'other', label: 'Other' },
+  ];
+
+  const handleBlockPress = () => {
+    setShowOptionsModal(false);
+    Alert.alert(
+      'Block Provider',
+      `Are you sure you want to block ${provider.name}? You will no longer see their services or be able to contact them.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const providerId = (provider as any).id || provider._id;
+              await apiService.blockUser(providerId);
+              showInfo('Provider blocked');
+              navigation.goBack();
+            } catch (error) {
+              console.error('Block error:', error);
+              Alert.alert('Error', 'Failed to block provider');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportReason) {
+      Alert.alert('Required', 'Please select a reason for reporting.');
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    try {
+      const providerId = (provider as any).id || provider._id;
+      await apiService.reportUser({
+        reportedId: providerId,
+        reason: reportReason,
+        description: reportDescription,
+      });
+      setShowReportModal(false);
+      showSuccess('Report submitted. Thank you for helping keep safe.');
+      setReportReason('');
+      setReportDescription('');
+    } catch (error) {
+      console.error('Report error:', error);
+      Alert.alert('Error', 'Failed to submit report. Please try again.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
 
   const handleBookService = (serviceObj: any) => {
     haptics.selection();
@@ -335,6 +407,9 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                   <Ionicons name={isBookmarked ? "heart" : "heart-outline"} size={22} color={isBookmarked ? "#EF4444" : "#1E293B"} />
                 )}
               </Animated.View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => { haptics.light(); setShowOptionsModal(true); }}>
+              <Ionicons name="ellipsis-vertical" size={22} color="#1E293B" />
             </TouchableOpacity>
           </View>
         </View>
@@ -618,6 +693,137 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
       )
       }
 
+      {/* Options Modal (Bottom Sheet style) */}
+      <Modal
+        visible={showOptionsModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOptionsModal(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          activeOpacity={1}
+          onPress={() => setShowOptionsModal(false)}
+        >
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: insets.bottom + 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 16, textAlign: 'center' }}>More Options</Text>
+
+            <TouchableOpacity
+              style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              onPress={() => {
+                setShowOptionsModal(false);
+                setTimeout(() => setShowReportModal(true), 100);
+              }}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="flag-outline" size={20} color="#EF4444" />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#EF4444' }}>Report Provider</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              onPress={handleBlockPress}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="ban-outline" size={20} color="#64748B" />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#64748B' }}>Block Provider</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ marginTop: 16, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12 }}
+              onPress={() => setShowOptionsModal(false)}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#0F172A' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Report Modal */}
+      <Modal
+        visible={showReportModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowReportModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%', padding: 24 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: '#0F172A' }}>Report Provider</Text>
+                <TouchableOpacity onPress={() => setShowReportModal(false)}>
+                  <Ionicons name="close-circle" size={28} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#334155', marginBottom: 12 }}>Why are you reporting this?</Text>
+
+                {reportReasons.map(reason => (
+                  <TouchableOpacity
+                    key={reason.id}
+                    style={{
+                      padding: 16,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: reportReason === reason.id ? COLORS.primary : '#E2E8F0',
+                      backgroundColor: reportReason === reason.id ? '#EFF6FF' : '#fff',
+                      marginBottom: 10,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                    onPress={() => setReportReason(reason.id)}
+                  >
+                    <Text style={{ fontSize: 15, color: reportReason === reason.id ? COLORS.primary : '#64748B', fontWeight: reportReason === reason.id ? '600' : '400' }}>{reason.label}</Text>
+                    {reportReason === reason.id && <Ionicons name="radio-button-on" size={20} color={COLORS.primary} />}
+                    {reportReason !== reason.id && <Ionicons name="radio-button-off" size={20} color="#CBD5E1" />}
+                  </TouchableOpacity>
+                ))}
+
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#334155', marginTop: 16, marginBottom: 12 }}>Additional Details (Optional)</Text>
+                <TextInput
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    borderRadius: 12,
+                    padding: 16,
+                    height: 120,
+                    textAlignVertical: 'top',
+                    fontSize: 15,
+                    color: '#0F172A'
+                  }}
+                  placeholder="Describe the issue..."
+                  multiline
+                  value={reportDescription}
+                  onChangeText={setReportDescription}
+                  maxLength={500}
+                />
+                <Text style={{ textAlign: 'right', color: '#94A3B8', fontSize: 12, marginTop: 4 }}>{reportDescription.length}/500</Text>
+
+                <View style={{ height: 100 }} />
+              </ScrollView>
+
+              <View style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
+                <Button
+                  title={isSubmittingReport ? "Submitting..." : "Submit Report"}
+                  onPress={handleSubmitReport}
+                  variant="primary"
+                  size="large"
+                  disabled={!reportReason || isSubmittingReport}
+                  style={{ width: '100%', backgroundColor: !reportReason ? '#94A3B8' : '#EF4444' }} // Red for report action
+                />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       <Toast
         visible={toast.visible}
         message={toast.message}

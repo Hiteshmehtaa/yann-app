@@ -11,6 +11,7 @@ import {
   Animated,
   StatusBar,
   Image,
+  Dimensions,
 } from 'react-native';
 import { Toast } from '../../components/Toast';
 import { useToast } from '../../hooks/useToast';
@@ -18,25 +19,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
-import { AnimatedButton } from '../../components/AnimatedButton';
-// inline activity indicator used for button loading
 import { useAuth } from '../../contexts/AuthContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  COLORS,
+  SPACING,
+  TYPOGRAPHY,
+  RADIUS,
+  SHADOWS,
+  GRADIENTS,
+  LAYOUT,
+  addAlpha
+} from '../../utils/theme';
 
-// YANN Official Website Color Palette
-const THEME = {
-  bg: '#F6F7FB',
-  bgCard: '#FFFFFF',
-  bgElevated: '#FFFFFF',
-  primary: '#2E59F3',
-  primaryLight: '#4362FF',
-  accent: '#2E59F3',
-  text: '#1A1C1E',
-  textMuted: '#4A4D52',
-  textSubtle: '#9CA3AF',
-  border: '#E5E7EB',
-  shadow: 'rgba(46, 89, 243, 0.08)',
-};
+const { width } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -58,13 +54,13 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 700,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
         tension: 50,
-        friction: 8,
+        friction: 7,
         useNativeDriver: true,
       }),
     ]).start();
@@ -120,6 +116,19 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
+      {/* Background Gradient Mesh */}
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={['#F0F9FF', '#F8FAFC', '#FFFFFF']}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        {/* Decorative Elements */}
+        <View style={[styles.decorativeCircle, { top: -100, right: -50, backgroundColor: addAlpha(COLORS.primary, 0.05) }]} />
+        <View style={[styles.decorativeCircle, { bottom: 100, left: -100, width: 300, height: 300, backgroundColor: addAlpha(COLORS.accentYellow, 0.05) }]} />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
@@ -128,19 +137,19 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }
+            { paddingTop: insets.top + SPACING.md, paddingBottom: insets.bottom + SPACING.lg }
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={true}
-          alwaysBounceVertical={true}
         >
           {/* Back Button */}
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={22} color={THEME.text} />
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
 
           <Animated.View
@@ -151,86 +160,112 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
           >
             {/* Header */}
             <View style={styles.header}>
-              <View style={styles.logoContainer}>
+              <View style={[styles.logoContainer, SHADOWS.sm]}>
                 <Image
                   source={require('../../../assets/Logo.jpg')}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.brandName}>YANN</Text>
-              <View style={styles.divider} />
+              <View style={styles.brandContainer}>
+                <Text style={styles.brandName}>YANN</Text>
+                <View style={styles.partnerBadge}>
+                  <Text style={styles.partnerBadgeText}>PARTNER</Text>
+                </View>
+              </View>
 
-              {/* Welcome Animation */}
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>
+                Manage your services and grow your business
+              </Text>
+            </View>
+
+            {/* Illustration */}
+            <View style={styles.illustrationContainer}>
               <LottieView
                 source={require('../../../assets/lottie/Campers-Welcome.json')}
                 autoPlay
                 loop
                 style={styles.welcomeAnimation}
               />
-
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>
-                Continue your partner experience
-              </Text>
             </View>
 
             {/* Input Form */}
             <View style={styles.form}>
-              <Text style={styles.label}>EMAIL OR PHONE NUMBER</Text>
-              <View style={[styles.inputContainer, isFocused && styles.inputFocused]}>
-                <View style={styles.inputIcon}>
-                  <Ionicons
-                    name={inputType === 'phone' ? "call" : "mail"}
-                    size={20}
-                    color={isFocused ? THEME.primary : THEME.textMuted}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>EMAIL OR PHONE</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    isFocused && styles.inputFocused,
+                    identifier.length > 0 && !validateInput(identifier.trim()) && styles.inputError
+                  ]}
+                >
+                  <View style={[styles.inputIcon, isFocused && { backgroundColor: addAlpha(COLORS.primary, 0.1) }]}>
+                    <Ionicons
+                      name={inputType === 'phone' ? "call-outline" : "mail-outline"}
+                      size={20}
+                      color={isFocused ? COLORS.primary : COLORS.textTertiary}
+                    />
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter email or phone number"
+                    placeholderTextColor={COLORS.textTertiary}
+                    value={identifier}
+                    onChangeText={setIdentifier}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isLoading}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    selectionColor={COLORS.primary}
                   />
+                  {validateInput(identifier.trim()) && (
+                    <View style={styles.validationIcon}>
+                      <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                    </View>
+                  )}
                 </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email or Phone Number"
-                  placeholderTextColor={THEME.textSubtle}
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                />
               </View>
 
               {/* Continue Button */}
               <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
+                style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
                 onPress={handleSendOTP}
                 disabled={isLoading}
-                activeOpacity={0.85}
+                activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={[THEME.primary, THEME.primaryLight]}
+                  colors={GRADIENTS.primary}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
                 >
-                  <Text style={styles.buttonText}>CONTINUE</Text>
-                  <View style={styles.buttonIcon}>
-                    <Ionicons name="arrow-forward" size={18} color="#FFF" />
-                  </View>
+                  {isLoading ? (
+                    <Text style={styles.buttonText}>SENDING CODE...</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.buttonText}>CONTINUE</Text>
+                      <View style={styles.buttonIcon}>
+                        <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
+                      </View>
+                    </>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
 
               <Text style={styles.infoText}>
-                We'll send a verification code to your email or phone
+                We'll send a 6-digit verification code to your registered contact method.
               </Text>
             </View>
 
             {/* Sign Up Link */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>New to YANN? </Text>
+              <Text style={styles.footerText}>New to Yann Partner? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('ProviderSignup')}>
-                <Text style={styles.footerLink}>Create Partner Account</Text>
+                <Text style={styles.footerLink}>Register Now</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -247,14 +282,15 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
       {/* OTP Sent Animation Overlay */}
       {showEmailSent && (
         <View style={styles.emailSentOverlay}>
-          <View style={styles.emailSentContainer}>
+          <View style={[styles.emailSentContainer, SHADOWS.xl]}>
             <LottieView
               source={require('../../../assets/lottie/Email-Sent.json')}
               autoPlay
               loop={false}
               style={styles.emailSentAnimation}
             />
-            <Text style={styles.emailSentText}>Code Sent!</Text>
+            <Text style={styles.emailSentText}>Code Sent Successfully!</Text>
+            <Text style={styles.emailSentSubText}>Check your inbox</Text>
           </View>
         </View>
       )}
@@ -265,7 +301,13 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.bg,
+    backgroundColor: COLORS.background,
+  },
+  decorativeCircle: {
+    position: 'absolute',
+    width: 400,
+    height: 400,
+    borderRadius: 200,
   },
   keyboardView: {
     flex: 1,
@@ -274,172 +316,195 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   backButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: THEME.bgCard,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.medium,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 20,
+    marginLeft: SPACING.lg,
+    marginTop: SPACING.md,
+    ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: COLORS.border,
   },
   content: {
-    paddingHorizontal: 28,
-    paddingTop: 20,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.lg,
   },
   header: {
-    marginBottom: 48,
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
   },
   logoContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: THEME.bgCard,
+    width: 80,
+    height: 80,
+    borderRadius: RADIUS.large,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: THEME.border,
+    borderColor: COLORS.border,
   },
   logoImage: {
-    width: 50,
-    height: 50,
+    width: 56,
+    height: 56,
+  },
+  brandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
   },
   brandName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.accent,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '800',
+    color: COLORS.primary,
     letterSpacing: 4,
-    marginBottom: 20,
+    marginRight: SPACING.xs,
   },
-  divider: {
-    width: 40,
-    height: 3,
-    backgroundColor: THEME.primary,
-    borderRadius: 2,
-    marginBottom: 24,
+  partnerBadge: {
+    backgroundColor: addAlpha(COLORS.primary, 0.1),
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: addAlpha(COLORS.primary, 0.2),
   },
-  welcomeAnimation: {
-    width: 180,
-    height: 180,
-    alignSelf: 'center',
-    marginBottom: 20,
+  partnerBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: COLORS.primary,
+    letterSpacing: 1,
   },
   title: {
-    fontSize: 40,
+    fontSize: 32,
     fontWeight: '800',
-    color: THEME.text,
-    letterSpacing: -1.5,
-    lineHeight: 46,
-    marginBottom: 8,
+    color: COLORS.text,
+    letterSpacing: -1,
+    marginBottom: SPACING.xs,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: THEME.textMuted,
-    lineHeight: 24,
-    marginBottom: 8,
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  illustrationContainer: {
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+    height: 180,
+  },
+  welcomeAnimation: {
+    width: 240,
+    height: 240,
   },
   form: {
-    marginBottom: 32,
+    marginBottom: SPACING.xxl,
+  },
+  inputWrapper: {
+    marginBottom: SPACING.lg,
   },
   label: {
-    fontSize: 11,
+    fontSize: TYPOGRAPHY.size.xs,
     fontWeight: '700',
-    color: THEME.text,
-    letterSpacing: 1.5,
-    marginBottom: 12,
+    color: COLORS.textSecondary,
+    letterSpacing: 1,
+    marginBottom: SPACING.xs,
+    marginLeft: SPACING.xs,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.bgCard,
-    borderWidth: 2,
-    borderColor: THEME.border,
-    borderRadius: 16,
-    marginBottom: 28,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.medium,
+    height: 56,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    ...SHADOWS.sm,
   },
   inputFocused: {
-    borderColor: THEME.primary,
-    shadowColor: THEME.primary,
-    shadowOpacity: 0.12,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.white,
+    ...SHADOWS.md,
+    shadowColor: addAlpha(COLORS.primary, 0.3),
+  },
+  inputError: {
+    borderColor: COLORS.error,
   },
   inputIcon: {
-    width: 52,
-    height: 56,
+    width: 50,
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.bgElevated,
+    backgroundColor: COLORS.gray50,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
   },
   input: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
-    fontSize: 16,
-    color: THEME.text,
-    letterSpacing: 0.3,
+    paddingHorizontal: SPACING.md,
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '500',
+    color: COLORS.text,
+    height: '100%',
   },
-  button: {
-    borderRadius: 16,
+  validationIcon: {
+    paddingRight: SPACING.md,
+  },
+  buttonContainer: {
+    borderRadius: RADIUS.medium,
     overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: THEME.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    marginBottom: SPACING.md,
+    ...SHADOWS.primary,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 32,
+    paddingVertical: 18,
+    paddingHorizontal: SPACING.xl,
   },
   buttonText: {
-    fontSize: 15,
+    fontSize: TYPOGRAPHY.size.md,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 1.5,
+    color: COLORS.white,
+    letterSpacing: 1,
   },
   buttonIcon: {
-    marginLeft: 12,
+    marginLeft: SPACING.sm,
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
   infoText: {
-    fontSize: 14,
-    color: THEME.textSubtle,
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textTertiary,
     textAlign: 'center',
     lineHeight: 20,
+    paddingHorizontal: SPACING.md,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 32,
+    paddingBottom: SPACING.xxl,
   },
   footerText: {
-    fontSize: 15,
-    color: THEME.textMuted,
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.textSecondary,
   },
   footerLink: {
-    fontSize: 15,
-    color: THEME.primary,
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.primary,
     fontWeight: '700',
   },
   emailSentOverlay: {
@@ -448,30 +513,35 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(15, 23, 42, 0.7)', // Slate 900 with opacity
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
   emailSentContainer: {
-    backgroundColor: THEME.bgCard,
-    borderRadius: 20,
-    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.xlarge,
+    padding: SPACING.xl,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
+    width: width * 0.85,
+    maxWidth: 340,
   },
   emailSentAnimation: {
-    width: 200,
-    height: 200,
+    width: 160,
+    height: 160,
+    marginBottom: SPACING.md,
   },
   emailSentText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: THEME.text,
-    marginTop: 16,
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+    textAlign: 'center',
+  },
+  emailSentSubText: {
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
 });
+

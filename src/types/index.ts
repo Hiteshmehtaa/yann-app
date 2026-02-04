@@ -157,7 +157,7 @@ export interface Service {
   description: string;
   category: string;
   price: string;
-  icon: string;
+  icon: string | any;
   popular?: boolean;
   isNew?: boolean;
   isComingSoon?: boolean; // Whether service is coming soon (not yet available)
@@ -169,6 +169,12 @@ export interface Service {
   platformCommission?: number; // Platform commission rate (e.g., 0.10 for 10%) (default: 0.10)
   pricingModel?: 'hourly' | 'fixed'; // Pricing model: hourly for time-based services, fixed for one-time services
   gstPercentage?: number; // GST percentage (0 to 100, e.g., 18 for 18%)
+  experiencePriceLimits?: {
+    minYears: number;
+    maxYears?: number;
+    maxPrice: number;
+  }[];
+  maxPrice?: number;
 }
 
 export interface Homeowner {

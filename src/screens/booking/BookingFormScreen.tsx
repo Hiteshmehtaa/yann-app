@@ -46,6 +46,14 @@ type RootStackParamList = {
   };
   SavedAddresses: { fromBooking: boolean };
   MainTabs: { screen: string };
+  // Add missing route definition
+  BookingWaiting: {
+    bookingId: string;
+    providerId: string;
+    providerName: string;
+    serviceName: string;
+    experienceRange?: any;
+  };
 };
 
 type BookingFormScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingForm'>;
@@ -582,8 +590,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           }
         } catch (requestError) {
           console.log('Request sending failed:', requestError);
+          // Don't show success if the request failed - this is a critical failure
           setIsLoading(false);
-          setShowSuccess(true);
+          // Show error and don't navigate
+          Alert.alert('Booking Request Failed', 'We created the booking but could not notify the provider. Please try again or contact support.');
+          // Ideally we should probably cancel/delete the booking here or let the user retry
         }
       } else {
         setIsLoading(false);

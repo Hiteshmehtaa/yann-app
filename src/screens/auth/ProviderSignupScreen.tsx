@@ -19,7 +19,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
-import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
+import { SERVICES as DB_SERVICES } from '../../utils/constants';
+import {
+  COLORS,
+  SPACING,
+  RADIUS,
+  SHADOWS,
+  LAYOUT,
+  TYPOGRAPHY,
+  GRADIENTS,
+  addAlpha
+} from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = {
@@ -212,28 +222,35 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         setServiceLimitMap(limitMap);
       }
     } catch (error) {
-      console.log('Using fallback services');
-      // Fallback data
-      setDynamicServiceCategories([
-        {
-          id: 'driver',
-          name: 'Driver',
-          icon: 'car-outline',
-          services: ['Full-Day Personal Driver', 'Outstation Driving Service', 'Driver']
-        },
-        {
-          id: 'pujari',
-          name: 'Pujari',
-          icon: 'flame-outline',
-          services: ['Lakshmi Puja', 'Ganesh Puja at Home']
-        },
-        {
-          id: 'cleaning',
-          name: 'Cleaning',
-          icon: 'home-outline',
-          services: ['Deep House Cleaning', 'Regular House Cleaning']
+      console.log('Using fallback services from constants');
+
+      // Fallback data from local constants (Database source of truth)
+      const categoriesMap: Record<string, string[]> = {};
+      const limitMap: Record<string, any> = {};
+
+      DB_SERVICES.forEach((s: any) => {
+        const service = s as any;
+        const category = (service.category || 'other').toLowerCase();
+        if (!categoriesMap[category]) {
+          categoriesMap[category] = [];
         }
-      ] as any);
+        categoriesMap[category].push(service.title);
+        limitMap[service.title] = {
+          category,
+          experiencePriceLimits: service.experiencePriceLimits || [],
+          maxPrice: service.maxPrice || 0,
+        };
+      });
+
+      const fallbackCategories = Object.keys(categoriesMap).map((catKey) => ({
+        id: catKey,
+        name: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+        icon: getCategoryIcon(catKey),
+        services: categoriesMap[catKey],
+      }));
+
+      setDynamicServiceCategories(fallbackCategories as any);
+      setServiceLimitMap(limitMap);
     } finally {
       setIsLoadingServices(false);
     }
@@ -519,7 +536,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.stepIndicator}>
         {[1, 2, 3, 4].map((step, index) => {
           const isActive = currentStep >= step;
-          const isCompleted = currentStep > step;
+          const isCurrent = currentStep === step;
 
           return (
             <React.Fragment key={step}>
@@ -527,14 +544,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={[
                   styles.stepDot,
                   isActive && styles.stepDotActive,
-                  isActive && styles.stepDotShadow
                 ]}>
-                  {isCompleted ? (
-                    <Ionicons name="checkmark" size={12} color="#FFF" />
+                  {isActive ? (
+                    isCurrent ? (
+                      <Text style={[styles.stepNumber, styles.stepNumberActive]}>{step}</Text>
+                    ) : (
+                      <Ionicons name="checkmark" size={16} color="#FFF" />
+                    )
                   ) : (
-                    <Text style={[styles.stepNumber, isActive && styles.stepNumberActive]}>
-                      {step}
-                    </Text>
+                    <Text style={styles.stepNumber}>{step}</Text>
                   )}
                 </View>
                 <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]}>
@@ -542,7 +560,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                 </Text>
               </View>
               {step < 4 && (
-                <View style={[styles.stepLine, isCompleted && styles.stepLineActive]} />
+                <View style={[styles.stepLine, isActive && styles.stepLineActive]} />
               )}
             </React.Fragment>
           );
@@ -562,10 +580,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           <View style={[
             styles.inputContainer,
             focusedField === 'name' && styles.inputFocused,
-            validationState.name === 'valid' && styles.inputValid,
-            validationState.name === 'invalid' && styles.inputInvalid
+            validationState.name === 'invalid' && styles.inputError
           ]}>
-            <View style={styles.inputIcon}>
+            <View style={[styles.inputIcon, focusedField === 'name' && styles.inputIconFocused]}>
               <Ionicons
                 name="person-outline"
                 size={20}
@@ -591,15 +608,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
+        {/* Mobile Number */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>PHONE NUMBER</Text>
+          <Text style={styles.label}>MOBILE NUMBER</Text>
           <View style={[
             styles.inputContainer,
             focusedField === 'phone' && styles.inputFocused,
-            validationState.phone === 'valid' && styles.inputValid,
-            validationState.phone === 'invalid' && styles.inputInvalid
+            validationState.phone === 'invalid' && styles.inputError
           ]}>
-            <View style={styles.inputIcon}>
+            <View style={[styles.inputIcon, focusedField === 'phone' && styles.inputIconFocused]}>
               <Ionicons
                 name="call-outline"
                 size={20}
@@ -608,7 +625,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <TextInput
               style={styles.input}
-              placeholder="10-digit phone number"
+              placeholder="10-digit mobile number"
               placeholderTextColor={COLORS.textTertiary}
               value={formData.phone}
               onChangeText={(value) => updateField('phone', value)}
@@ -624,20 +641,20 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             )}
           </View>
-          {validationState.phone === 'invalid' && formData.phone.length > 0 && (
-            <Text style={styles.validationError}>Please enter a valid 10-digit phone number</Text>
+          {validationState.phone === 'invalid' && (
+            <Text style={styles.validationError}>Please enter a valid 10-digit number</Text>
           )}
         </View>
 
-        <View style={styles.inputGroup}>
+        {/* Email Address */}
+        <View style={[styles.inputGroup, { marginBottom: 0 }]}>
           <Text style={styles.label}>EMAIL ADDRESS</Text>
           <View style={[
             styles.inputContainer,
             focusedField === 'email' && styles.inputFocused,
-            validationState.email === 'valid' && styles.inputValid,
-            validationState.email === 'invalid' && styles.inputInvalid
+            validationState.email === 'invalid' && styles.inputError
           ]}>
-            <View style={styles.inputIcon}>
+            <View style={[styles.inputIcon, focusedField === 'email' && styles.inputIconFocused]}>
               <Ionicons
                 name="mail-outline"
                 size={20}
@@ -646,7 +663,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Enter email address"
+              placeholder="name@example.com"
               placeholderTextColor={COLORS.textTertiary}
               value={formData.email}
               onChangeText={(value) => updateField('email', value)}
@@ -663,7 +680,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             )}
           </View>
-          {validationState.email === 'invalid' && formData.email.length > 0 && (
+          {validationState.email === 'invalid' && (
             <Text style={styles.validationError}>Please enter a valid email address</Text>
           )}
         </View>
@@ -782,7 +799,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.driverSectionCard}>
             <View style={styles.sectionHeaderContainer}>
               <View style={styles.sectionIcon}>
-                <Ionicons name="car-sport" size={20} color={COLORS.white} />
+                <Ionicons name="car-sport" size={20} color={COLORS.primary} />
               </View>
               <Text style={styles.sectionHeaderTitle}>Driver Details</Text>
             </View>
@@ -967,10 +984,17 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background pattern */}
-      <View style={styles.bgPattern}>
-        <View style={styles.patternCircle1} />
-        <View style={styles.patternCircle2} />
+      {/* Background Gradient Mesh */}
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={['#F0F9FF', '#F8FAFC', '#FFFFFF']}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        {/* Decorative Elements */}
+        <View style={[styles.decorativeCircle, { top: -100, right: -50, backgroundColor: addAlpha(COLORS.primary, 0.05) }]} />
+        <View style={[styles.decorativeCircle, { bottom: 100, left: -100, width: 300, height: 300, backgroundColor: addAlpha(COLORS.accentYellow, 0.05) }]} />
       </View>
 
       {/* Back Button */}
@@ -983,7 +1007,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       </TouchableOpacity>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -999,36 +1023,17 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <LinearGradient
-                colors={['#F0F4FF', '#E8EFFF']}
-                style={styles.logoGradient}
-              >
-                <Image
-                  source={require('../../../assets/Logo.jpg')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </LinearGradient>
+              <Image
+                source={require('../../../assets/Logo.jpg')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.brandName}>YANN</Text>
             <Text style={styles.title}>Become a Service Partner</Text>
             <Text style={styles.subtitle}>
               Join our verified network and grow your business with YANN
             </Text>
-            <View style={styles.benefitsContainer}>
-              <View style={styles.benefitItem}>
-                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.benefitText}>Verified Customers</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.benefitText}>Regular Income</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.benefitText}>Flexible Hours</Text>
-              </View>
-            </View>
           </View>
 
           {renderStepIndicator()}
@@ -1298,7 +1303,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FC',
+    backgroundColor: COLORS.background, // Changed from #F8F9FC
   },
   bgPattern: {
     position: 'absolute',
@@ -1309,27 +1314,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: -1,
   },
-  patternCircle1: {
+  decorativeCircle: {
     position: 'absolute',
-    top: -100,
-    right: -50,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: COLORS.primary,
-    opacity: 0.05,
-    transform: [{ scale: 1.2 }],
-  },
-  patternCircle2: {
-    position: 'absolute',
-    bottom: 50,
-    left: -100,
-    width: 350,
-    height: 350,
-    borderRadius: 175,
-    backgroundColor: COLORS.accentOrange || '#FF9F43',
-    opacity: 0.04,
-    transform: [{ scale: 1.1 }],
+    width: 400,
+    height: 400,
+    borderRadius: 200,
   },
   keyboardView: {
     flex: 1,
@@ -1341,14 +1330,16 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.medium,
+    backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
     ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   header: {
     alignItems: 'center',
@@ -1357,30 +1348,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   logoContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 20,
-    backgroundColor: '#FFF',
+    width: 80,
+    height: 80,
+    borderRadius: RADIUS.large,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     ...SHADOWS.md,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    borderColor: COLORS.border,
   },
   logoGradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: RADIUS.large,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoImage: {
-    width: 40,
-    height: 40,
+    width: 56,
+    height: 56,
   },
   brandName: {
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.size.sm,
     fontWeight: '800',
     color: COLORS.primary,
     letterSpacing: 4,
@@ -1388,7 +1379,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
     color: COLORS.text,
     marginBottom: 8,
@@ -1396,7 +1387,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: TYPOGRAPHY.size.md,
     fontWeight: '500',
     color: COLORS.textSecondary,
     textAlign: 'center',
@@ -1416,10 +1407,10 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: 'rgba(74, 144, 226, 0.08)',
+    backgroundColor: addAlpha(COLORS.primary, 0.08),
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(74, 144, 226, 0.1)',
+    borderColor: addAlpha(COLORS.primary, 0.1),
   },
   benefitText: {
     fontSize: 12,
@@ -1434,11 +1425,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: 16,
-    ...SHADOWS.sm,
+    borderRadius: 20,
+    borderWidth: 0,
   },
   stepItem: {
     alignItems: 'center',
@@ -1446,19 +1437,21 @@ const styles = StyleSheet.create({
     width: 60,
   },
   stepDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F5F7FA',
+    width: 36, // Larger
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E4E7EB',
+    borderColor: COLORS.border,
     marginBottom: 6,
   },
   stepDotActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
+    ...SHADOWS.md,
+    shadowColor: addAlpha(COLORS.primary, 0.4),
   },
   stepDotShadow: {
     shadowColor: COLORS.primary,
@@ -1468,7 +1461,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   stepNumber: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: COLORS.textTertiary,
   },
@@ -1489,7 +1482,7 @@ const styles = StyleSheet.create({
   stepLine: {
     flex: 1,
     height: 2,
-    backgroundColor: '#E4E7EB',
+    backgroundColor: COLORS.border,
     marginBottom: 20, // Align with dots
     marginHorizontal: -10,
     zIndex: 1,
@@ -1514,21 +1507,20 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 24,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    backgroundColor: 'transparent', // Transparent to match Member layout
+    marginBottom: SPACING.lg,
+    padding: 0,
+    // borderRadius: 0,
+    // ...SHADOWS.md, // Removed shadow
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: SPACING.lg,
   },
   label: {
-    fontSize: 11,
+    fontSize: TYPOGRAPHY.size.xs,
     fontWeight: '700',
     color: COLORS.textTertiary,
-    marginBottom: 8,
+    marginBottom: SPACING.xs,
     marginLeft: 4,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -1536,83 +1528,92 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFC',
-    borderWidth: 1.5,
-    borderColor: '#EFF2F7',
-    borderRadius: 14,
-    height: 54,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5, // Thicker border
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.medium,
+    height: 56, // 56px (Standard Member Signup Height)
     overflow: 'hidden',
+    ...SHADOWS.sm,
   },
   inputFocused: {
     borderColor: COLORS.primary,
-    backgroundColor: '#FFF',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: COLORS.white,
+    ...SHADOWS.md,
+    shadowColor: addAlpha(COLORS.primary, 0.3),
+    borderWidth: 1.5,
+  },
+  inputIconFocused: {
+    backgroundColor: addAlpha(COLORS.primary, 0.1),
+    // opacity: 1, // Removed
+  },
+  inputError: {
+    borderColor: COLORS.error,
+    backgroundColor: addAlpha(COLORS.error, 0.02),
   },
   inputValid: {
     borderColor: COLORS.success,
-    backgroundColor: '#F6FFFA',
+    backgroundColor: addAlpha(COLORS.success, 0.02),
   },
   inputInvalid: {
     borderColor: COLORS.error,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: addAlpha(COLORS.error, 0.02),
   },
   inputIcon: {
-    width: 48,
+    width: 50,
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.gray50,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
   },
   input: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16, // Larger font
+    fontWeight: '500',
     color: COLORS.text,
     height: '100%',
-    paddingRight: 16,
+    paddingHorizontal: 16,
   },
   validationIcon: {
     marginRight: 16,
   },
   validationError: {
-    fontSize: 12,
-    color: COLORS.error,
     marginTop: 6,
     marginLeft: 4,
+    fontSize: 12,
+    color: COLORS.error,
     fontWeight: '500',
   },
   categoryCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    marginBottom: 20,
-    padding: 20,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    backgroundColor: 'transparent', // Transparent layout
+    marginBottom: SPACING.lg,
+    padding: 0,
+    // borderRadius: 0,
+    // ...SHADOWS.md,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   categoryHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   categoryIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.medium,
+    backgroundColor: addAlpha(COLORS.primary, 0.1),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: SPACING.sm,
   },
   categoryName: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.size.lg,
     fontWeight: '700',
     color: COLORS.text,
   },
@@ -1621,9 +1622,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 100,
-    backgroundColor: '#F0F4FF',
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.gray50,
     gap: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   experienceDropdownText: {
     fontSize: 12,
@@ -1631,15 +1634,18 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   experienceOptionsContainer: {
-    marginBottom: 16,
-    marginTop: -8,
+    marginBottom: SPACING.md,
+    marginTop: -4,
+    backgroundColor: COLORS.gray50,
+    padding: SPACING.md,
+    borderRadius: RADIUS.medium,
   },
   experienceLabel: {
     fontSize: 11,
     color: COLORS.textTertiary,
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: SPACING.xs,
     fontWeight: '600',
+    textTransform: 'uppercase',
   },
   experienceScroll: {
     flexDirection: 'row',
@@ -1647,20 +1653,18 @@ const styles = StyleSheet.create({
   experienceOption: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F5F7FA',
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
-    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   experienceOptionActive: {
     backgroundColor: COLORS.primary,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
+    borderColor: COLORS.primary,
+    ...SHADOWS.sm,
   },
   experienceOptionText: {
     fontSize: 12,
@@ -1668,31 +1672,29 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   experienceOptionTextActive: {
-    color: '#FFF',
+    color: COLORS.white,
   },
   servicesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   serviceChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 100,
-    backgroundColor: '#FAFBFC',
-    borderWidth: 1,
-    borderColor: '#E4E7EB',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: RADIUS.medium, // Match inputs
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    minHeight: 48,
+    ...SHADOWS.sm,
   },
   serviceChipActive: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    ...SHADOWS.sm,
   },
   serviceChipText: {
     fontSize: 13,
@@ -1700,7 +1702,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   serviceChipTextActive: {
-    color: '#FFF',
+    color: COLORS.white,
     fontWeight: '600',
     marginRight: 6,
   },
@@ -1713,22 +1715,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   driverSectionCard: {
-    backgroundColor: COLORS.text, // Dark card for driver styles (premium look)
-    borderRadius: 20,
-    padding: 24,
-    marginTop: 24,
+    backgroundColor: COLORS.white, // Light theme
+    borderRadius: RADIUS.xlarge,
+    padding: SPACING.xl,
+    marginTop: SPACING.xl,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     ...SHADOWS.md,
   },
   sectionHeaderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   sectionIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: addAlpha(COLORS.primary, 0.1), // Light primary bg
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -1736,15 +1740,15 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFF',
+    color: COLORS.text, // Dark text
   },
   driverOptionGroup: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   subLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
+    color: COLORS.textTertiary,
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -1757,51 +1761,49 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: RADIUS.medium,
+    backgroundColor: COLORS.gray50,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: COLORS.border,
   },
   chipActive: {
-    backgroundColor: '#FFF',
-    borderColor: '#FFF',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   chipText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   chipTextActive: {
-    color: COLORS.text,
+    color: COLORS.white,
     fontWeight: '700',
   },
   segmentContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 14,
+    backgroundColor: COLORS.gray50,
+    borderRadius: RADIUS.medium,
     padding: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   segment: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: RADIUS.small,
   },
   segmentActive: {
-    backgroundColor: '#FFF',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: COLORS.white,
+    ...SHADOWS.sm,
   },
   segmentText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
+    color: COLORS.textTertiary,
     fontWeight: '500',
   },
   segmentTextActive: {
-    color: COLORS.text,
+    color: COLORS.primary,
     fontWeight: '700',
   },
   priceRow: {
@@ -1812,7 +1814,7 @@ const styles = StyleSheet.create({
   },
   priceRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: COLORS.border,
   },
   priceInfo: {
     flex: 1,
@@ -1831,13 +1833,13 @@ const styles = StyleSheet.create({
   priceInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFC',
-    borderRadius: 10,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.medium,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    width: 110,
+    width: 120,
     borderWidth: 1,
-    borderColor: '#EFF2F7',
+    borderColor: COLORS.border,
   },
   currencyPrefix: {
     fontSize: 15,
@@ -1861,7 +1863,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: COLORS.border,
     marginVertical: 24,
   },
   summaryContainer: {
@@ -1894,27 +1896,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: addAlpha(COLORS.white, 0.95), // Glass-ish
     paddingHorizontal: 20,
     paddingTop: 20,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 20,
+    borderTopLeftRadius: RADIUS.xlarge,
+    borderTopRightRadius: RADIUS.xlarge,
+    ...SHADOWS.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.03)',
+    borderTopColor: COLORS.border,
   },
   nextButton: {
-    borderRadius: 16,
+    borderRadius: RADIUS.medium,
     overflow: 'hidden',
+    ...SHADOWS.lg,
     shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
   },
   buttonGradient: {
     flexDirection: 'row',
@@ -1924,7 +1919,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   buttonText: {
-    color: '#FFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,

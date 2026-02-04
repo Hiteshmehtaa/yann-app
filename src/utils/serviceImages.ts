@@ -2,17 +2,20 @@ import { ImageSourcePropType } from 'react-native';
 
 // Service icon images - Load all icons
 export const SERVICE_IMAGES: Record<string, ImageSourcePropType> = {
-    repair: require('../../assets/service-icons/repair.png'),
-    baby: require('../../assets/service-icons/baby.png'),
-    cleaning: require('../../assets/service-icons/cleaning.png'),
-    food: require('../../assets/service-icons/food.png'),
-    driver: require('../../assets/service-icons/driver.png'),
-    puja1: require('../../assets/service-icons/puja1.png'), // General puja items
-    puja2: require('../../assets/service-icons/puja2.png'), // Kalash
-    puja3: require('../../assets/service-icons/puja3.png'), // Shivling
-    puja4: require('../../assets/service-icons/puja4.png'), // Diya/Lamp
-    puja5: require('../../assets/service-icons/puja5.png'), // Ganesh
-    puja6: require('../../assets/service-icons/puja6.png'), // Lakshmi
+    // Using existing available icons as placeholders for missing ones
+    repair: require('../../assets/service-icons/Ganeshpuja.png'), // Placeholder
+    baby: require('../../assets/service-icons/Ganeshpuja.png'),   // Placeholder
+    cleaning: require('../../assets/service-icons/Ganeshpuja.png'), // Placeholder
+    food: require('../../assets/service-icons/Ganeshpuja.png'),     // Placeholder
+    driver: require('../../assets/service-icons/Ganeshpuja.png'),   // Placeholder
+
+    // Puja icons
+    puja1: require('../../assets/service-icons/Ganeshpuja.png'),
+    puja2: require('../../assets/service-icons/Ganeshpuja.png'),
+    puja3: require('../../assets/service-icons/Mahamrityunjay.png'), // Mapped to Mahamrityunjay
+    puja4: require('../../assets/service-icons/Ganeshpuja.png'),
+    puja5: require('../../assets/service-icons/Ganeshpuja.png'), // Mapped to Ganesh
+    puja6: require('../../assets/service-icons/Ganeshpuja.png'),
 };
 
 // Function to get icon image based on service title or category

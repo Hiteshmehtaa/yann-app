@@ -145,7 +145,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           description: s.description || '',
           category: s.category || 'other',
           price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-          icon: s.icon || getServiceIcon(s.category || s.title),
+          icon: require('../../../assets/service-icons/Ganeshpuja.png'),
           popular: s.popular || false,
           features: s.features || [],
           isNew,
@@ -154,7 +154,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
       // MERGE LOGIC: Combine fetched services with local SERVICES constant
       // Priority: Fetched Service > Local Service (based on matching title)
-      const mergedServices = [...SERVICES];
+      const mergedServices: Service[] = [...SERVICES];
 
       mappedFetchedServices.forEach(fetchedService => {
         const index = mergedServices.findIndex(
@@ -433,7 +433,14 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             {hasFetchedInitial ? (
               <ServiceMatrix
                 services={filteredServices}
-                onPressService={(service) => navigation.navigate('ServiceDetail', { service })}
+                onPressService={(service) => {
+                  // Direct navigation for Driver services
+                  if (service.title.toLowerCase().includes('driver')) {
+                    navigation.navigate('DriverBooking', { service });
+                  } else {
+                    navigation.navigate('ServiceDetail', { service });
+                  }
+                }}
               />
             ) : (
               <View style={styles.loadingContainer}>

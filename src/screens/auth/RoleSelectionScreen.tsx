@@ -14,12 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useResponsive } from '../../hooks/useResponsive';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
+  const { continueAsGuest } = useAuth();
   const { width } = useResponsive();
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -157,9 +159,20 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Footer */}
           <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.footerLink}>Sign In</Text>
+            <View style={styles.loginRow}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={() => continueAsGuest()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipText}>Skip & Browse Services</Text>
+              <Ionicons name="arrow-forward" size={14} color={COLORS.textSecondary} />
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -367,10 +380,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
   },
   footer: {
+    paddingTop: 12,
+    alignItems: 'center', // Center content
+  },
+  loginRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 12,
+    marginBottom: 20,
+  },
+  skipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.medium,
+    gap: 6,
+    ...SHADOWS.sm,
+  },
+  skipText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
   },
   footerText: {
     fontSize: 14,

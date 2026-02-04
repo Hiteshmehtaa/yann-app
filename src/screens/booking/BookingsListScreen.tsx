@@ -28,6 +28,7 @@ import { RatingModal } from '../../components/RatingModal';
 import { storage } from '../../utils/storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNotifications } from '../../contexts/NotificationContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Gradient presets for status
 const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
@@ -52,18 +53,20 @@ const TABS = [
   { key: 'rejected', label: 'Rejected' },
 ];
 
+
+
 export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
+  // Global Notification Context for Payment Modal
+  const { setPaymentModalData, paymentModalData } = useNotifications();
   const { isTablet } = useResponsive();
   const { colors, isDark } = useTheme();
+  const { isGuest } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('ongoing');
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedBookingForRating, setSelectedBookingForRating] = useState<Booking | null>(null);
-
-  // Global Notification Context for Payment Modal
-  const { setPaymentModalData, paymentModalData } = useNotifications();
 
   const handleRateBooking = (booking: Booking) => {
     setSelectedBookingForRating(booking);
@@ -129,6 +132,11 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
    * This returns all bookings for the authenticated homeowner
    */
   const fetchBookings = async (showLoader = true) => {
+    if (isGuest) {
+      setBookings([]);
+      setIsLoading(false);
+      return;
+    }
     if (showLoader) setIsLoading(true);
     try {
       const response = await apiService.getMyBookings();
@@ -347,6 +355,26 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         subtitle: 'Bookings declined by partners will appear here',
       },
     };
+
+    if (isGuest) {
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="lock-closed-outline" size={40} color={COLORS.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>Login Required</Text>
+          <Text style={styles.emptyText}>Sign in to view and manage your bookings</Text>
+          <TouchableOpacity
+            style={styles.browseButton}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.browseButtonText}>Sign In</Text>
+            <Ionicons name="arrow-forward" size={ICON_SIZES.medium} color={COLORS.white} />
+          </TouchableOpacity>
+        </View>
+      );
+    }
 
     const message = emptyMessages[activeTab as keyof typeof emptyMessages] || {
       title: 'No bookings yet',

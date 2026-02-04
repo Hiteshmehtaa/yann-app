@@ -318,13 +318,23 @@ class ApiService {
 
 
 
-  async logout(): Promise<void> {
+  async deleteAccount(): Promise<ApiResponse<any>> {
+    const response = await this.client.delete('/auth/delete-account');
+    return {
+      success: true,
+      message: 'Account deleted successfully',
+      data: response.data,
+    };
+  }
+
+  async logout(): Promise<ApiResponse<void>> {
     try {
       await this.client.post('/auth/logout');
     } catch (error: any) {
       console.log('Logout error (non-critical):', error?.message || '');
       // Silently handle - local cleanup will happen anyway
     }
+    return { success: true, message: 'Logged out' };
   }
 
   async markNotificationsRead(notificationIds: string[]): Promise<ApiResponse> {
@@ -1418,6 +1428,30 @@ class ApiService {
     return response.data;
   }
 
+
+  /**
+   * POST /api/user/report
+   * Report a user (provider) for inappropriate content/behavior
+   */
+  async reportUser(data: {
+    reportedId: string;
+    reason: string;
+    description?: string;
+    bookingId?: string;
+  }): Promise<ApiResponse> {
+    const response = await this.client.post('/user/report', data);
+    return response.data;
+  }
+
+  /**
+   * POST /api/user/block
+   * Block a user (provider)
+   */
+  async blockUser(blockedId: string): Promise<ApiResponse> {
+    const response = await this.client.post('/user/block', { blockedId });
+    return response.data;
+  }
+
   // ====================================================================
   // PROVIDER SERVICE MANAGEMENT ENDPOINTS
   // ====================================================================
@@ -1771,6 +1805,56 @@ class ApiService {
         success: false,
         message: 'Address not found',
         data: 'Unknown location',
+      };
+    }
+  }
+
+  /**
+   * GET /api/location/directions
+   * Get route coordinates from origin to destination
+   */
+  async getDirections(origin: string, destination: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.get('/location/directions', {
+        params: { origin, destination }
+      });
+      return {
+        success: true,
+        message: 'Directions found',
+        data: response.data.routes || response.data.data,
+      };
+    } catch (error: any) {
+      console.error('Directions error:', error);
+      return {
+        success: false,
+        message: 'Failed to fetch directions',
+        data: [],
+      };
+    }
+  }
+  /**
+   * POST /api/admin/notifications/send
+   * Send admin push notification
+   */
+  async sendAdminNotification(payload: {
+    title: string;
+    message: string;
+    target: 'all' | 'user' | 'provider';
+    recipientId?: string;
+    priority?: string;
+    data?: any;
+  }): Promise<ApiResponse<any>> {
+    try {
+      const response = await this.client.post('/admin/notifications/send', payload);
+      return {
+        success: true,
+        message: 'Notification sent',
+        data: response.data,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: getErrorMessage(error),
       };
     }
   }

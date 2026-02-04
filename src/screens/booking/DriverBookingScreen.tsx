@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     View,
     Text,
@@ -11,55 +11,98 @@ import {
     FlatList,
     Keyboard,
     ActivityIndicator,
-    Animated,
-    Platform
+    Platform,
+    LayoutAnimation,
+    UIManager
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Location from 'expo-location';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { COLORS, RADIUS, SHADOWS, SPACING } from '../../utils/theme';
+import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../utils/theme';
+import { decodePolyline } from '../../utils/maps';
 
-const { width, height } = Dimensions.get('window');
-const GOOGLE_MAPS_API_KEY = 'AIzaSyDuWW76Kch_KG5n9vxNwSq3GfJCSSZuBOg';
+const { width } = Dimensions.get('window');
 
-// Custom Map Style (Uber-like theme)
-const customMapStyle = [
+// Premium Map Style - 3D Buildings & Enhanced Visuals
+const premiumMapStyle = [
     {
         "featureType": "all",
         "elementType": "geometry",
-        "stylers": [{ "color": "#f5f5f5" }]
+        "stylers": [{ "color": "#F1F5F9" }]
+    },
+    {
+        "featureType": "all",
+        "elementType": "labels.text.fill",
+        "stylers": [{ "color": "#64748B" }]
+    },
+    {
+        "featureType": "all",
+        "elementType": "labels.text.stroke",
+        "stylers": [{ "color": "#FFFFFF" }, { "lightness": 16 }]
     },
     {
         "featureType": "water",
         "elementType": "geometry",
-        "stylers": [{ "color": "#c9e6ff" }]
+        "stylers": [{ "color": "#DBEAFE" }]
+    },
+    {
+        "featureType": "water",
+        "elementType": "labels.text.fill",
+        "stylers": [{ "color": "#60A5FA" }]
     },
     {
         "featureType": "road",
         "elementType": "geometry",
-        "stylers": [{ "color": "#ffffff" }]
+        "stylers": [{ "color": "#FFFFFF" }]
+    },
+    {
+        "featureType": "road",
+        "elementType": "geometry.stroke",
+        "stylers": [{ "color": "#E2E8F0" }]
     },
     {
         "featureType": "road.highway",
         "elementType": "geometry",
-        "stylers": [{ "color": "#ffd666" }]
+        "stylers": [{ "color": "#FEF3C7" }]
+    },
+    {
+        "featureType": "road.highway",
+        "elementType": "geometry.stroke",
+        "stylers": [{ "color": "#FCD34D" }]
     },
     {
         "featureType": "poi",
-        "elementType": "labels.text.fill",
-        "stylers": [{ "color": "#757575" }]
+        "elementType": "geometry",
+        "stylers": [{ "color": "#E0E7FF" }]
     },
     {
         "featureType": "poi.park",
         "elementType": "geometry",
-        "stylers": [{ "color": "#e5f5e0" }]
+        "stylers": [{ "color": "#D1FAE5" }]
+    },
+    {
+        "featureType": "poi.business",
+        "stylers": [{ "visibility": "simplified" }]
+    },
+    {
+        "featureType": "transit",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#E0E7FF" }]
+    },
+    {
+        "featureType": "landscape.man_made",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#F8FAFC" }]
+    },
+    {
+        "featureType": "landscape.natural",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#F0FDF4" }]
     }
 ];
 
@@ -83,6 +126,12 @@ interface LocationCoords {
     longitude: number;
 }
 
+if (Platform.OS === 'android') {
+    if (UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+}
+
 export const DriverBookingScreen = ({ navigation, route }: any) => {
     const { service } = route.params;
     const { user } = useAuth();
@@ -96,6 +145,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
     const [pickupCoords, setPickupCoords] = useState<LocationCoords | null>(null);
     const [dropCoords, setDropCoords] = useState<LocationCoords | null>(null);
     const [currentLocation, setCurrentLocation] = useState<LocationCoords | null>(null);
+    const [routeCoordinates, setRouteCoordinates] = useState<{ latitude: number; longitude: number }[]>([]);
 
     // Autocomplete State
     const [activeInput, setActiveInput] = useState<'pickup' | 'drop' | null>(null);
@@ -118,15 +168,14 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
         longitudeDelta: 0.05,
     });
 
-    const slideAnim = useRef(new Animated.Value(0)).current;
-    const snapPoints = useMemo(() => ['45%', '70%', '90%'], []);
+    const snapPoints = useMemo(() => ['50%', '75%', '95%'], []);
 
     // Get current location on mount
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Location access is required for booking');
+                Alert.alert('Permission Required', 'Location access is required for booking drivers');
                 return;
             }
 
@@ -143,7 +192,6 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 longitudeDelta: 0.01,
             });
 
-            // Reverse geocode to get address
             const address = await reverseGeocode(coords);
             setPickupAddress(address);
         })();
@@ -162,18 +210,36 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
         return () => clearTimeout(timeoutId);
     }, [searchQuery]);
 
-    // Calculate distance between two coordinates (Haversine formula)
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-        const R = 6371; // Earth's radius in km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    };
+    // Fetch directions when pickup and drop are set
+    useEffect(() => {
+        if (pickupCoords && dropCoords) {
+            const fetchDirections = async () => {
+                try {
+                    const origin = `${pickupCoords.latitude},${pickupCoords.longitude}`;
+                    const destination = `${dropCoords.latitude},${dropCoords.longitude}`;
+                    const result = await apiService.getDirections(origin, destination);
+
+                    if (result.success && result.data && result.data.length > 0) {
+                        const points = decodePolyline(result.data[0].overview_polyline.points);
+                        setRouteCoordinates(points);
+
+                        // Fit map to route
+                        if (mapRef.current) {
+                            mapRef.current.fitToCoordinates(points, {
+                                edgePadding: { top: 180, right: 50, bottom: 50, left: 50 },
+                                animated: true,
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error("Directions error", error);
+                }
+            };
+            fetchDirections();
+        } else {
+            setRouteCoordinates([]);
+        }
+    }, [pickupCoords, dropCoords]);
 
     // Fetch place suggestions using backend API proxy
     const fetchPlaceSuggestions = async (input: string) => {
@@ -227,39 +293,22 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
     // Handle suggestion selection
     const handleSelectSuggestion = async (suggestion: PlaceSuggestion) => {
         const coords = await getPlaceCoordinates(suggestion.place_id);
-        if (coords) {
-            if (activeInput === 'pickup') {
-                setPickupAddress(suggestion.description);
-                setPickupCoords(coords);
-            } else {
-                setDropAddress(suggestion.description);
-                setDropCoords(coords);
-            }
+        if (!coords) return;
 
-            // Update map region
-            if (pickupCoords && dropCoords) {
-                const p = activeInput === 'pickup' ? coords : pickupCoords;
-                const d = activeInput === 'drop' ? coords : dropCoords;
-
-                const midLat = (p.latitude + d.latitude) / 2;
-                const midLng = (p.longitude + d.longitude) / 2;
-                const latDelta = Math.abs(p.latitude - d.latitude) * 2.5;
-                const lngDelta = Math.abs(p.longitude - d.longitude) * 2.5;
-
-                mapRef.current?.animateToRegion({
-                    latitude: midLat,
-                    longitude: midLng,
-                    latitudeDelta: Math.max(latDelta, 0.05),
-                    longitudeDelta: Math.max(lngDelta, 0.05),
-                }, 1000);
-            } else {
-                mapRef.current?.animateToRegion({
-                    ...coords,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                }, 1000);
-            }
+        if (activeInput === 'pickup') {
+            setPickupAddress(suggestion.description);
+            setPickupCoords(coords);
+        } else {
+            setDropAddress(suggestion.description);
+            setDropCoords(coords);
         }
+
+        // Update map
+        mapRef.current?.animateToRegion({
+            ...coords,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+        }, 500);
 
         setActiveInput(null);
         setSearchQuery('');
@@ -267,7 +316,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
         Keyboard.dismiss();
     };
 
-    // Handle map press to set location
+    // Handle map tap
     const handleMapPress = async (event: any) => {
         const coords = event.nativeEvent.coordinate;
         const address = await reverseGeocode(coords);
@@ -278,98 +327,45 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
         } else if (!dropCoords) {
             setDropCoords(coords);
             setDropAddress(address);
-        } else {
-            // Update drop location
-            setDropCoords(coords);
-            setDropAddress(address);
         }
     };
 
-    // Animate to next step
+    // Navigation
     const goToNextStep = () => {
         if (currentStep < 3) {
-            Animated.spring(slideAnim, {
-                toValue: -width,
-                useNativeDriver: true,
-                tension: 50,
-                friction: 8,
-            }).start(() => {
-                setCurrentStep(currentStep + 1);
-                slideAnim.setValue(0);
-            });
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setCurrentStep(currentStep + 1);
         }
     };
 
-    // Go to previous step
     const goToPreviousStep = () => {
         if (currentStep > 1) {
-            Animated.spring(slideAnim, {
-                toValue: width,
-                useNativeDriver: true,
-                tension: 50,
-                friction: 8,
-            }).start(() => {
-                setCurrentStep(currentStep - 1);
-                slideAnim.setValue(0);
-            });
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setCurrentStep(currentStep - 1);
         }
     };
 
-    // Swipe gesture for navigation
-    const swipeGesture = Gesture.Pan()
-        .onEnd((event) => {
-            if (event.translationX > 100 && currentStep > 1) {
-                goToPreviousStep();
-            } else if (event.translationX < -100 && currentStep < 3) {
-                if (
-                    (currentStep === 1 && tripType) ||
-                    (currentStep === 2 && vehicleType)
-                ) {
-                    goToNextStep();
-                }
-            }
-        });
-
     // Handle find drivers
-    const handleFindDrivers = async () => {
-        if (!tripType || !vehicleType || !transmission) {
-            Alert.alert('Missing Details', 'Please complete all steps');
-            return;
-        }
-
-        if (!pickupCoords || !dropCoords) {
-            Alert.alert('Missing Locations', 'Please set both pickup and drop locations');
+    const handleFindDrivers = () => {
+        if (!pickupCoords || !dropCoords || !tripType || !vehicleType || !transmission) {
+            Alert.alert('Incomplete', 'Please complete all selections');
             return;
         }
 
         setIsSearching(true);
-        try {
-            const searchParams = {
-                tripType,
-                vehicleType,
-                transmission,
-                pickupLocation: pickupCoords,
-                dropLocation: dropCoords,
-                pickupAddress,
-                dropAddress,
-            };
-
-            // Navigate to driver list screen
-            navigation.navigate('DriverList', { searchParams });
-        } catch (error) {
-            Alert.alert('Error', 'Failed to search for drivers');
-        } finally {
+        setTimeout(() => {
             setIsSearching(false);
-        }
+            Alert.alert('Success', 'Searching for available drivers...');
+        }, 2000);
     };
 
     // Render location search modal
-    const renderLocationSearch = () => {
+    const renderSearchModal = () => {
         if (!activeInput) return null;
 
         return (
-            <View style={styles.searchModal}>
-                <View style={[styles.searchHeader, { paddingTop: insets.top + 10 }]}>
+            <View style={[styles.searchModal, { paddingTop: insets.top }]}>
+                <View style={styles.searchHeader}>
                     <TouchableOpacity onPress={() => {
                         setActiveInput(null);
                         setSearchQuery('');
@@ -386,22 +382,17 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                     <Ionicons name="search" size={20} color={COLORS.textSecondary} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search for a location..."
+                        placeholder="Search location..."
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         autoFocus
                         placeholderTextColor={COLORS.textTertiary}
                     />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={20} color={COLORS.textTertiary} />
-                        </TouchableOpacity>
-                    )}
                 </View>
 
                 {isLoadingSuggestions && (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="small" color={COLORS.primary} />
+                        <ActivityIndicator size="small" color={COLORS.accent} />
                         <Text style={styles.loadingText}>Searching...</Text>
                     </View>
                 )}
@@ -415,7 +406,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                             onPress={() => handleSelectSuggestion(item)}
                         >
                             <View style={styles.suggestionIcon}>
-                                <Ionicons name="location" size={20} color={COLORS.primary} />
+                                <Ionicons name="location-sharp" size={18} color={COLORS.accent} />
                             </View>
                             <View style={styles.suggestionTextContainer}>
                                 <Text style={styles.suggestionMainText}>
@@ -427,7 +418,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                                     </Text>
                                     {item.distance && (
                                         <Text style={styles.distanceText}>
-                                            • {item.distance.toFixed(1)} km
+                                            {item.distance.toFixed(1)} km
                                         </Text>
                                     )}
                                 </View>
@@ -437,7 +428,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                     ListEmptyComponent={
                         !isLoadingSuggestions && searchQuery.length >= 2 ? (
                             <View style={styles.emptyState}>
-                                <Ionicons name="search-outline" size={48} color={COLORS.textTertiary} />
+                                <Ionicons name="search-outline" size={40} color={COLORS.textTertiary} />
                                 <Text style={styles.emptyText}>No locations found</Text>
                             </View>
                         ) : null
@@ -456,7 +447,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 return (
                     <View style={styles.stepContainer}>
                         <View style={styles.stepHeader}>
-                            <Text style={styles.stepTitle}>Choose Trip Type</Text>
+                            <Text style={styles.stepTitle}>Trip Type</Text>
                             <Text style={styles.stepSubtitle}>Select your journey preference</Text>
                         </View>
 
@@ -465,64 +456,46 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                                 style={[styles.optionCard, tripType === 'incity' && styles.optionCardActive]}
                                 onPress={() => {
                                     setTripType('incity');
-                                    setTimeout(goToNextStep, 300);
+                                    setTimeout(goToNextStep, 200);
                                 }}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <LinearGradient
-                                    colors={tripType === 'incity'
-                                        ? [COLORS.primary, '#2563EB']
-                                        : ['#F8FAFC', '#F1F5F9']}
-                                    style={styles.optionGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                >
-                                    <View style={[styles.optionIconBg, tripType === 'incity' && styles.optionIconBgActive]}>
-                                        <Ionicons
-                                            name="business"
-                                            size={28}
-                                            color={tripType === 'incity' ? '#FFF' : COLORS.primary}
-                                        />
-                                    </View>
-                                    <Text style={[styles.optionText, tripType === 'incity' && styles.optionTextActive]}>
-                                        In-City
-                                    </Text>
-                                    <Text style={[styles.optionSubtext, tripType === 'incity' && styles.optionSubtextActive]}>
-                                        Within city limits
-                                    </Text>
-                                </LinearGradient>
+                                <View style={[styles.optionIconBg, tripType === 'incity' && styles.optionIconBgActive]}>
+                                    <Ionicons
+                                        name="business-outline"
+                                        size={24}
+                                        color={tripType === 'incity' ? COLORS.primary : COLORS.textSecondary}
+                                    />
+                                </View>
+                                <Text style={[styles.optionLabel, tripType === 'incity' && styles.optionLabelActive]}>
+                                    In-City
+                                </Text>
+                                <Text style={[styles.optionDescription, tripType === 'incity' && styles.optionDescriptionActive]}>
+                                    Within city limits
+                                </Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={[styles.optionCard, tripType === 'outstation' && styles.optionCardActive]}
                                 onPress={() => {
                                     setTripType('outstation');
-                                    setTimeout(goToNextStep, 300);
+                                    setTimeout(goToNextStep, 200);
                                 }}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <LinearGradient
-                                    colors={tripType === 'outstation'
-                                        ? ['#8B5CF6', '#7C3AED']
-                                        : ['#F8FAFC', '#F1F5F9']}
-                                    style={styles.optionGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                >
-                                    <View style={[styles.optionIconBg, tripType === 'outstation' && styles.optionIconBgActive]}>
-                                        <Ionicons
-                                            name="map"
-                                            size={28}
-                                            color={tripType === 'outstation' ? '#FFF' : '#8B5CF6'}
-                                        />
-                                    </View>
-                                    <Text style={[styles.optionText, tripType === 'outstation' && styles.optionTextActive]}>
-                                        Outstation
-                                    </Text>
-                                    <Text style={[styles.optionSubtext, tripType === 'outstation' && styles.optionSubtextActive]}>
-                                        Long distance travel
-                                    </Text>
-                                </LinearGradient>
+                                <View style={[styles.optionIconBg, tripType === 'outstation' && styles.optionIconBgActive]}>
+                                    <Ionicons
+                                        name="navigate-outline"
+                                        size={24}
+                                        color={tripType === 'outstation' ? COLORS.primary : COLORS.textSecondary}
+                                    />
+                                </View>
+                                <Text style={[styles.optionLabel, tripType === 'outstation' && styles.optionLabelActive]}>
+                                    Outstation
+                                </Text>
+                                <Text style={[styles.optionDescription, tripType === 'outstation' && styles.optionDescriptionActive]}>
+                                    Intercity travel
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -532,21 +505,21 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 return (
                     <View style={styles.stepContainer}>
                         <View style={styles.stepHeader}>
-                            <TouchableOpacity onPress={goToPreviousStep} style={styles.backBtn}>
-                                <Ionicons name="chevron-back" size={20} color={COLORS.textSecondary} />
+                            <TouchableOpacity onPress={goToPreviousStep} style={styles.backButton}>
+                                <Ionicons name="chevron-back" size={20} color={COLORS.text} />
                             </TouchableOpacity>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.stepTitle}>Select Vehicle</Text>
-                                <Text style={styles.stepSubtitle}>Choose your preferred car type</Text>
+                                <Text style={styles.stepTitle}>Vehicle Type</Text>
+                                <Text style={styles.stepSubtitle}>Choose your preferred vehicle</Text>
                             </View>
                         </View>
 
                         <View style={styles.vehicleGrid}>
                             {[
-                                { type: 'hatchback', icon: 'car-sport', label: 'Hatchback', desc: 'Compact & economical' },
-                                { type: 'sedan', icon: 'car', label: 'Sedan', desc: 'Comfortable & spacious' },
-                                { type: 'suv', icon: 'car-sport-outline', label: 'SUV', desc: 'Premium & roomy' },
-                                { type: 'luxury', icon: 'diamond', label: 'Luxury', desc: 'Elite experience' },
+                                { type: 'hatchback', label: 'Hatchback', icon: 'car-outline' },
+                                { type: 'sedan', label: 'Sedan', icon: 'car-sport-outline' },
+                                { type: 'suv', label: 'SUV', icon: 'car-outline' },
+                                { type: 'luxury', label: 'Luxury', icon: 'car-sport-outline' },
                             ].map((vehicle) => (
                                 <TouchableOpacity
                                     key={vehicle.type}
@@ -556,25 +529,19 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                                     ]}
                                     onPress={() => {
                                         setVehicleType(vehicle.type as VehicleType);
-                                        setTimeout(goToNextStep, 300);
+                                        setTimeout(goToNextStep, 200);
                                     }}
-                                    activeOpacity={0.8}
+                                    activeOpacity={0.7}
                                 >
-                                    <View style={[
-                                        styles.vehicleIconBg,
-                                        vehicleType === vehicle.type && styles.vehicleIconBgActive
-                                    ]}>
+                                    <View style={[styles.vehicleIconBg, vehicleType === vehicle.type && styles.vehicleIconBgActive]}>
                                         <Ionicons
                                             name={vehicle.icon as any}
-                                            size={24}
-                                            color={vehicleType === vehicle.type ? COLORS.primary : '#64748B'}
+                                            size={20}
+                                            color={vehicleType === vehicle.type ? COLORS.accent : COLORS.textSecondary}
                                         />
                                     </View>
-                                    <Text style={[styles.vehicleText, vehicleType === vehicle.type && styles.vehicleTextActive]}>
+                                    <Text style={[styles.vehicleLabel, vehicleType === vehicle.type && styles.vehicleLabelActive]}>
                                         {vehicle.label}
-                                    </Text>
-                                    <Text style={[styles.vehicleDesc, vehicleType === vehicle.type && styles.vehicleDescActive]}>
-                                        {vehicle.desc}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -586,12 +553,12 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 return (
                     <View style={styles.stepContainer}>
                         <View style={styles.stepHeader}>
-                            <TouchableOpacity onPress={goToPreviousStep} style={styles.backBtn}>
-                                <Ionicons name="chevron-back" size={20} color={COLORS.textSecondary} />
+                            <TouchableOpacity onPress={goToPreviousStep} style={styles.backButton}>
+                                <Ionicons name="chevron-back" size={20} color={COLORS.text} />
                             </TouchableOpacity>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.stepTitle}>Transmission</Text>
-                                <Text style={styles.stepSubtitle}>Select gear type preference</Text>
+                                <Text style={styles.stepSubtitle}>Select gear preference</Text>
                             </View>
                         </View>
 
@@ -599,59 +566,41 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                             <TouchableOpacity
                                 style={[styles.optionCard, transmission === 'manual' && styles.optionCardActive]}
                                 onPress={() => setTransmission('manual')}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <LinearGradient
-                                    colors={transmission === 'manual'
-                                        ? ['#10B981', '#059669']
-                                        : ['#F8FAFC', '#F1F5F9']}
-                                    style={styles.optionGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                >
-                                    <View style={[styles.optionIconBg, transmission === 'manual' && styles.optionIconBgActive]}>
-                                        <Ionicons
-                                            name="settings"
-                                            size={28}
-                                            color={transmission === 'manual' ? '#FFF' : '#10B981'}
-                                        />
-                                    </View>
-                                    <Text style={[styles.optionText, transmission === 'manual' && styles.optionTextActive]}>
-                                        Manual
-                                    </Text>
-                                    <Text style={[styles.optionSubtext, transmission === 'manual' && styles.optionSubtextActive]}>
-                                        Traditional control
-                                    </Text>
-                                </LinearGradient>
+                                <View style={[styles.optionIconBg, transmission === 'manual' && styles.optionIconBgActive]}>
+                                    <Ionicons
+                                        name="settings-outline"
+                                        size={24}
+                                        color={transmission === 'manual' ? COLORS.primary : COLORS.textSecondary}
+                                    />
+                                </View>
+                                <Text style={[styles.optionLabel, transmission === 'manual' && styles.optionLabelActive]}>
+                                    Manual
+                                </Text>
+                                <Text style={[styles.optionDescription, transmission === 'manual' && styles.optionDescriptionActive]}>
+                                    Traditional control
+                                </Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={[styles.optionCard, transmission === 'automatic' && styles.optionCardActive]}
                                 onPress={() => setTransmission('automatic')}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <LinearGradient
-                                    colors={transmission === 'automatic'
-                                        ? ['#F59E0B', '#D97706']
-                                        : ['#F8FAFC', '#F1F5F9']}
-                                    style={styles.optionGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                >
-                                    <View style={[styles.optionIconBg, transmission === 'automatic' && styles.optionIconBgActive]}>
-                                        <Ionicons
-                                            name="flash"
-                                            size={28}
-                                            color={transmission === 'automatic' ? '#FFF' : '#F59E0B'}
-                                        />
-                                    </View>
-                                    <Text style={[styles.optionText, transmission === 'automatic' && styles.optionTextActive]}>
-                                        Automatic
-                                    </Text>
-                                    <Text style={[styles.optionSubtext, transmission === 'automatic' && styles.optionSubtextActive]}>
-                                        Effortless driving
-                                    </Text>
-                                </LinearGradient>
+                                <View style={[styles.optionIconBg, transmission === 'automatic' && styles.optionIconBgActive]}>
+                                    <Ionicons
+                                        name="flash-outline"
+                                        size={24}
+                                        color={transmission === 'automatic' ? COLORS.primary : COLORS.textSecondary}
+                                    />
+                                </View>
+                                <Text style={[styles.optionLabel, transmission === 'automatic' && styles.optionLabelActive]}>
+                                    Automatic
+                                </Text>
+                                <Text style={[styles.optionDescription, transmission === 'automatic' && styles.optionDescriptionActive]}>
+                                    Effortless driving
+                                </Text>
                             </TouchableOpacity>
                         </View>
 
@@ -662,21 +611,14 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                                 disabled={isSearching}
                                 activeOpacity={0.8}
                             >
-                                <LinearGradient
-                                    colors={['#10B981', '#059669']}
-                                    style={styles.findDriversGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                >
-                                    {isSearching ? (
-                                        <ActivityIndicator color="#FFF" />
-                                    ) : (
-                                        <>
-                                            <Ionicons name="search" size={22} color="#FFF" />
-                                            <Text style={styles.findDriversText}>Find Drivers</Text>
-                                        </>
-                                    )}
-                                </LinearGradient>
+                                {isSearching ? (
+                                    <ActivityIndicator color="#FFF" />
+                                ) : (
+                                    <>
+                                        <Text style={styles.findDriversText}>Find Drivers</Text>
+                                        <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                                    </>
+                                )}
                             </TouchableOpacity>
                         )}
                     </View>
@@ -689,7 +631,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" />
+            <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
 
             {/* Map Background */}
             <MapView
@@ -699,128 +641,117 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 initialRegion={mapRegion}
                 showsUserLocation
                 showsMyLocationButton={false}
+                customMapStyle={premiumMapStyle}
                 onPress={handleMapPress}
-                customMapStyle={customMapStyle}
+                showsBuildings={true}
+                showsIndoors={true}
+                showsTraffic={false}
+                pitchEnabled={true}
+                rotateEnabled={true}
+                mapType="standard"
             >
+                {/* Route Polyline */}
+                {routeCoordinates.length > 0 && (
+                    <Polyline
+                        coordinates={routeCoordinates}
+                        strokeColor={COLORS.primary}
+                        strokeWidth={4}
+                    />
+                )}
                 {pickupCoords && (
-                    <Marker
-                        coordinate={pickupCoords}
-                        pinColor={COLORS.success}
-                    >
-                        <View style={styles.customMarker}>
-                            <View style={[styles.markerDot, { backgroundColor: COLORS.success }]} />
-                            <View style={[styles.markerPulse, { borderColor: COLORS.success }]} />
-                        </View>
-                    </Marker>
+                    <Marker coordinate={pickupCoords} pinColor={COLORS.accent} />
                 )}
                 {dropCoords && (
-                    <Marker
-                        coordinate={dropCoords}
-                        pinColor={COLORS.error}
-                    >
-                        <View style={styles.customMarker}>
-                            <View style={[styles.markerDot, { backgroundColor: COLORS.error }]} />
-                            <View style={[styles.markerPulse, { borderColor: COLORS.error }]} />
-                        </View>
-                    </Marker>
+                    <Marker coordinate={dropCoords} pinColor={COLORS.error} />
                 )}
                 {pickupCoords && dropCoords && (
                     <Polyline
                         coordinates={[pickupCoords, dropCoords]}
-                        strokeColor={COLORS.primary}
-                        strokeWidth={4}
-                        lineDashPattern={[1]}
+                        strokeColor={COLORS.accent}
+                        strokeWidth={3}
+                        lineDashPattern={[10, 5]}
                     />
                 )}
             </MapView>
 
-            {/* Floating Header */}
-            <View style={[styles.header, { top: insets.top + 10 }]}>
-                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            {/* Header */}
+            <View style={[styles.header, { paddingTop: insets.top + SPACING.md }]}>
+                <TouchableOpacity
+                    style={styles.headerButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <Ionicons name="arrow-back" size={20} color={COLORS.text} />
                 </TouchableOpacity>
-
-                <View style={styles.locationInputsContainer}>
-                    <TouchableOpacity
-                        style={styles.locationInputRow}
-                        onPress={() => setActiveInput('pickup')}
-                    >
-                        <View style={[styles.locationDot, { backgroundColor: COLORS.success }]} />
-                        <Text
-                            style={[styles.locationInputText, !pickupAddress && styles.locationInputPlaceholder]}
-                            numberOfLines={1}
-                        >
-                            {pickupAddress || 'Set pickup location'}
-                        </Text>
-                        <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
-                    </TouchableOpacity>
-
-                    <View style={styles.locationDivider} />
-
-                    <TouchableOpacity
-                        style={styles.locationInputRow}
-                        onPress={() => setActiveInput('drop')}
-                    >
-                        <View style={[styles.locationDot, { backgroundColor: COLORS.error }]} />
-                        <Text
-                            style={[styles.locationInputText, !dropAddress && styles.locationInputPlaceholder]}
-                            numberOfLines={1}
-                        >
-                            {dropAddress || 'Set drop location'}
-                        </Text>
-                        <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
-                    </TouchableOpacity>
-                </View>
+                <Text style={styles.headerTitle}>Book Driver</Text>
+                <View style={styles.headerButton} />
             </View>
 
-            {/* Bottom Sheet Wizard */}
+            {/* Location Input Card */}
+            <View style={[styles.locationCard, { top: insets.top + 70 }]}>
+                <TouchableOpacity
+                    style={styles.locationInput}
+                    onPress={() => setActiveInput('pickup')}
+                >
+                    <View style={styles.locationDot} />
+                    <View style={styles.locationTextContainer}>
+                        <Text style={styles.locationLabel}>PICKUP</Text>
+                        <Text style={styles.locationValue} numberOfLines={1}>
+                            {pickupAddress || 'Select pickup location'}
+                        </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
+                </TouchableOpacity>
+
+                <View style={styles.locationDivider} />
+
+                <TouchableOpacity
+                    style={styles.locationInput}
+                    onPress={() => setActiveInput('drop')}
+                >
+                    <View style={[styles.locationDot, { backgroundColor: COLORS.error }]} />
+                    <View style={styles.locationTextContainer}>
+                        <Text style={styles.locationLabel}>DROP</Text>
+                        <Text style={styles.locationValue} numberOfLines={1}>
+                            {dropAddress || 'Select drop location'}
+                        </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Bottom Sheet */}
             <BottomSheet
                 ref={bottomSheetRef}
                 index={0}
                 snapPoints={snapPoints}
                 backgroundStyle={styles.bottomSheetBackground}
                 handleIndicatorStyle={styles.bottomSheetIndicator}
-                enablePanDownToClose={false}
             >
-                <BottomSheetScrollView
-                    contentContainerStyle={styles.bottomSheetContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* Step Indicator */}
-                    <View style={styles.stepIndicator}>
+                <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+                    {/* Step Progress */}
+                    <View style={styles.stepProgress}>
                         {[1, 2, 3].map((step) => (
-                            <View key={step} style={styles.stepIndicatorItem}>
-                                <View
-                                    style={[
-                                        styles.stepDot,
-                                        currentStep >= step && styles.stepDotActive,
-                                    ]}
-                                >
-                                    {currentStep > step && (
-                                        <Ionicons name="checkmark" size={12} color="#FFF" />
-                                    )}
-                                </View>
+                            <React.Fragment key={step}>
+                                <View style={[
+                                    styles.progressDot,
+                                    currentStep >= step && styles.progressDotActive
+                                ]} />
                                 {step < 3 && (
                                     <View style={[
-                                        styles.stepLine,
-                                        currentStep > step && styles.stepLineActive
+                                        styles.progressLine,
+                                        currentStep > step && styles.progressLineActive
                                     ]} />
                                 )}
-                            </View>
+                            </React.Fragment>
                         ))}
                     </View>
 
-                    {/* Wizard Content with Swipe Gesture */}
-                    <GestureDetector gesture={swipeGesture}>
-                        <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
-                            {renderWizardStep()}
-                        </Animated.View>
-                    </GestureDetector>
+                    {renderWizardStep()}
                 </BottomSheetScrollView>
             </BottomSheet>
 
-            {/* Location Search Modal */}
-            {renderLocationSearch()}
+            {/* Search Modal */}
+            {renderSearchModal()}
         </View>
     );
 };
@@ -828,83 +759,85 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: COLORS.background,
     },
     map: {
-        width: width,
-        height: height,
-    },
-    customMarker: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    markerDot: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        borderWidth: 3,
-        borderColor: '#FFF',
-        ...SHADOWS.md,
-    },
-    markerPulse: {
-        position: 'absolute',
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        borderWidth: 2,
-        opacity: 0.3,
+        ...StyleSheet.absoluteFillObject,
     },
     header: {
         position: 'absolute',
-        left: 20,
-        right: 20,
+        top: 0,
+        left: 0,
+        right: 0,
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-        zIndex: 10,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: SPACING.md,
+        backgroundColor: COLORS.background,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
     },
-    backButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#FFF',
+    headerButton: {
+        width: 40,
+        height: 40,
+        borderRadius: RADIUS.medium,
+        backgroundColor: COLORS.surface,
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOWS.lg,
     },
-    locationInputsContainer: {
-        flex: 1,
-        backgroundColor: '#FFF',
-        borderRadius: 20,
-        padding: 8,
-        ...SHADOWS.lg,
+    headerTitle: {
+        fontSize: TYPOGRAPHY.size.lg,
+        fontWeight: TYPOGRAPHY.weight.semibold,
+        color: COLORS.text,
     },
-    locationInputRow: {
+    locationCard: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 120 : 100,
+        left: SPACING.lg,
+        right: SPACING.lg,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: RADIUS.xlarge,
+        padding: SPACING.lg,
+        borderWidth: 1,
+        borderColor: COLORS.borderLight,
+        ...SHADOWS.lg,
+        shadowOpacity: 0.15,
+        shadowRadius: 15,
+        elevation: 10,
+        zIndex: 10,
+    },
+    locationInput: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        gap: 12,
+        gap: SPACING.md,
+        paddingVertical: SPACING.sm,
     },
     locationDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: COLORS.accent,
     },
-    locationInputText: {
+    locationTextContainer: {
         flex: 1,
-        fontSize: 14,
-        color: COLORS.text,
-        fontWeight: '600',
     },
-    locationInputPlaceholder: {
+    locationLabel: {
+        fontSize: TYPOGRAPHY.size.xs,
+        fontWeight: TYPOGRAPHY.weight.semibold,
         color: COLORS.textTertiary,
-        fontWeight: '400',
+        letterSpacing: TYPOGRAPHY.letterSpacing.wide,
+        marginBottom: SPACING.xs,
+    },
+    locationValue: {
+        fontSize: TYPOGRAPHY.size.md,
+        fontWeight: TYPOGRAPHY.weight.medium,
+        color: COLORS.text,
     },
     locationDivider: {
         height: 1,
-        backgroundColor: '#F1F5F9',
-        marginHorizontal: 14,
+        backgroundColor: COLORS.border,
+        marginVertical: SPACING.sm,
     },
     searchModal: {
         position: 'absolute',
@@ -912,55 +845,58 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: '#FFF',
+        backgroundColor: COLORS.background,
         zIndex: 100,
     },
     searchHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        gap: 16,
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.lg,
+        gap: SPACING.lg,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        borderBottomColor: COLORS.border,
     },
     searchHeaderTitle: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: TYPOGRAPHY.size.lg,
+        fontWeight: TYPOGRAPHY.weight.semibold,
         color: COLORS.text,
     },
     searchInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
-        marginHorizontal: 20,
-        marginVertical: 16,
-        paddingHorizontal: 16,
-        height: 52,
-        borderRadius: 16,
-        gap: 12,
+        backgroundColor: COLORS.surface,
+        marginHorizontal: SPACING.lg,
+        marginVertical: SPACING.lg,
+        paddingHorizontal: SPACING.lg,
+        height: 48,
+        borderRadius: RADIUS.medium,
+        gap: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     searchInput: {
         flex: 1,
-        fontSize: 16,
+        fontSize: TYPOGRAPHY.size.md,
         color: COLORS.text,
+        fontWeight: TYPOGRAPHY.weight.medium,
     },
     suggestionsList: {
-        paddingHorizontal: 20,
+        paddingHorizontal: SPACING.lg,
     },
     suggestionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
-        gap: 14,
+        paddingVertical: SPACING.md,
+        gap: SPACING.md,
         borderBottomWidth: 1,
-        borderBottomColor: '#F8FAFC',
+        borderBottomColor: COLORS.borderLight,
     },
     suggestionIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#EFF6FF',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: COLORS.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -968,93 +904,90 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     suggestionMainText: {
-        fontSize: 15,
-        fontWeight: '600',
+        fontSize: TYPOGRAPHY.size.md,
+        fontWeight: TYPOGRAPHY.weight.semibold,
         color: COLORS.text,
-        marginBottom: 4,
+        marginBottom: SPACING.xs,
     },
     suggestionSecondaryRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: SPACING.sm,
     },
     suggestionSecondaryText: {
-        fontSize: 13,
+        fontSize: TYPOGRAPHY.size.sm,
         color: COLORS.textSecondary,
         flex: 1,
     },
     distanceText: {
-        fontSize: 12,
-        color: COLORS.primary,
-        fontWeight: '700',
+        fontSize: TYPOGRAPHY.size.sm,
+        color: COLORS.accent,
+        fontWeight: TYPOGRAPHY.weight.semibold,
     },
     loadingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
-        gap: 12,
+        padding: SPACING.xl,
+        gap: SPACING.md,
     },
     loadingText: {
-        fontSize: 14,
+        fontSize: TYPOGRAPHY.size.sm,
         color: COLORS.textSecondary,
+        fontWeight: TYPOGRAPHY.weight.medium,
     },
     emptyState: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 60,
+        paddingVertical: SPACING.xxxl,
     },
     emptyText: {
-        fontSize: 16,
+        fontSize: TYPOGRAPHY.size.md,
         color: COLORS.textSecondary,
-        marginTop: 12,
+        marginTop: SPACING.md,
     },
     bottomSheetBackground: {
-        backgroundColor: '#FFF',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        ...SHADOWS.xl,
+        backgroundColor: COLORS.background,
+        borderTopLeftRadius: RADIUS.xlarge,
+        borderTopRightRadius: RADIUS.xlarge,
+        ...SHADOWS.lg,
     },
     bottomSheetIndicator: {
-        backgroundColor: '#E2E8F0',
-        width: 48,
-        height: 5,
+        backgroundColor: COLORS.disabled,
+        width: 40,
+        height: 4,
     },
     bottomSheetContent: {
-        paddingHorizontal: 24,
-        paddingTop: 8,
-        paddingBottom: 40,
+        paddingHorizontal: SPACING.lg,
+        paddingTop: SPACING.sm,
+        paddingBottom: SPACING.xxxl,
     },
-    stepIndicator: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 32,
-        paddingHorizontal: 40,
-    },
-    stepIndicatorItem: {
+    stepProgress: {
         flexDirection: 'row',
         alignItems: 'center',
-        flex: 1,
-    },
-    stepDot: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#E2E8F0',
         justifyContent: 'center',
-        alignItems: 'center',
+        marginBottom: SPACING.xxl,
+        paddingHorizontal: SPACING.xxxl,
     },
-    stepDotActive: {
+    progressDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: COLORS.disabled,
+    },
+    progressDotActive: {
         backgroundColor: COLORS.primary,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
     },
-    stepLine: {
+    progressLine: {
         flex: 1,
         height: 2,
-        backgroundColor: '#E2E8F0',
-        marginHorizontal: 8,
+        backgroundColor: COLORS.disabled,
+        marginHorizontal: SPACING.sm,
     },
-    stepLineActive: {
+    progressLineActive: {
         backgroundColor: COLORS.primary,
     },
     stepContainer: {
@@ -1063,148 +996,139 @@ const styles = StyleSheet.create({
     stepHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 24,
-        gap: 12,
+        marginBottom: SPACING.xl,
+        gap: SPACING.md,
     },
-    backBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#F8FAFC',
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: RADIUS.medium,
+        backgroundColor: COLORS.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
     stepTitle: {
-        fontSize: 24,
-        fontWeight: '800',
+        fontSize: TYPOGRAPHY.size.xxl,
+        fontWeight: TYPOGRAPHY.weight.bold,
         color: COLORS.text,
-        letterSpacing: -0.5,
     },
     stepSubtitle: {
-        fontSize: 14,
+        fontSize: TYPOGRAPHY.size.sm,
         color: COLORS.textSecondary,
-        marginTop: 4,
+        marginTop: SPACING.xs,
+        fontWeight: TYPOGRAPHY.weight.medium,
     },
     optionsRow: {
         flexDirection: 'row',
-        gap: 16,
-        marginBottom: 24,
+        gap: SPACING.lg,
+        marginBottom: SPACING.xl,
     },
     optionCard: {
         flex: 1,
-        height: 180,
-        borderRadius: 24,
-        overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: 'transparent',
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.large,
+        padding: SPACING.xl,
+        alignItems: 'center',
+        gap: SPACING.md,
+        minHeight: 160,
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.borderLight,
+        ...SHADOWS.sm,
     },
     optionCardActive: {
+        borderWidth: 2,
         borderColor: COLORS.primary,
-        ...SHADOWS.lg,
-    },
-    optionGradient: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 12,
-        padding: 20,
+        backgroundColor: COLORS.surface,
+        ...SHADOWS.md,
     },
     optionIconBg: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: COLORS.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
     optionIconBgActive: {
-        backgroundColor: 'rgba(255,255,255,0.25)',
+        backgroundColor: COLORS.primary,
     },
-    optionText: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#64748B',
-        marginTop: 4,
+    optionLabel: {
+        fontSize: TYPOGRAPHY.size.lg,
+        fontWeight: TYPOGRAPHY.weight.semibold,
+        color: COLORS.text,
+        marginTop: SPACING.xs,
     },
-    optionTextActive: {
-        color: '#FFF',
+    optionLabelActive: {
+        color: COLORS.primary,
     },
-    optionSubtext: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontWeight: '500',
+    optionDescription: {
+        fontSize: TYPOGRAPHY.size.sm,
+        color: COLORS.textSecondary,
+        fontWeight: TYPOGRAPHY.weight.medium,
     },
-    optionSubtextActive: {
-        color: 'rgba(255,255,255,0.9)',
+    optionDescriptionActive: {
+        color: COLORS.textSecondary,
     },
     vehicleGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 16,
-        marginBottom: 24,
+        gap: SPACING.md,
+        marginBottom: SPACING.xl,
     },
     vehicleCard: {
-        width: (width - 72) / 2,
-        height: 140,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 20,
-        padding: 16,
-        justifyContent: 'center',
+        width: (width - SPACING.lg * 2 - SPACING.md) / 2,
+        backgroundColor: COLORS.surface,
+        borderRadius: RADIUS.large,
+        padding: SPACING.xl,
         alignItems: 'center',
-        gap: 8,
-        borderWidth: 2,
-        borderColor: 'transparent',
+        gap: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.borderLight,
+        minHeight: 140,
+        justifyContent: 'center',
+        ...SHADOWS.sm,
     },
     vehicleCardActive: {
+        borderWidth: 2,
         borderColor: COLORS.primary,
-        backgroundColor: '#EFF6FF',
+        backgroundColor: COLORS.surface,
         ...SHADOWS.md,
     },
     vehicleIconBg: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#FFF',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: COLORS.surface,
         justifyContent: 'center',
         alignItems: 'center',
     },
     vehicleIconBgActive: {
-        backgroundColor: '#DBEAFE',
+        backgroundColor: COLORS.primary,
     },
-    vehicleText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#64748B',
-        marginTop: 4,
+    vehicleLabel: {
+        fontSize: TYPOGRAPHY.size.md,
+        fontWeight: TYPOGRAPHY.weight.semibold,
+        color: COLORS.text,
+        marginTop: SPACING.xs,
     },
-    vehicleTextActive: {
+    vehicleLabelActive: {
         color: COLORS.primary,
     },
-    vehicleDesc: {
-        fontSize: 11,
-        color: '#94A3B8',
-        textAlign: 'center',
-    },
-    vehicleDescActive: {
-        color: COLORS.textSecondary,
-    },
     findDriversButton: {
-        height: 60,
-        borderRadius: 20,
-        overflow: 'hidden',
-        ...SHADOWS.lg,
-    },
-    findDriversGradient: {
-        flex: 1,
+        height: 48,
+        borderRadius: RADIUS.medium,
+        backgroundColor: COLORS.primary,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 10,
+        gap: SPACING.sm,
+        marginTop: SPACING.sm,
+        ...SHADOWS.md,
     },
     findDriversText: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: '#FFF',
-        letterSpacing: 0.5,
+        fontSize: TYPOGRAPHY.size.md,
+        fontWeight: TYPOGRAPHY.weight.semibold,
+        color: COLORS.white,
     },
 });

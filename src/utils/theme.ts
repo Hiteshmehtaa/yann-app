@@ -37,6 +37,12 @@ const lightColors = {
   gray50: '#F8FAFC',
   gray100: '#F1F5F9',
   gray200: '#E2E8F0',
+
+  // Aliases for compatibility
+  accent: '#10B981',           // Emerald 500 (Used for pickup/success)
+  surface: '#FFFFFF',          // Same as cardBg
+  borderLight: '#F1F5F9',      // Lighter border
+  disabled: '#CBD5E1',         // Slate 300
 };
 
 const darkColors = {
