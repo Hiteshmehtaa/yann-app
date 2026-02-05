@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
 import { apiService } from '../services/api';
+import { stopBuzzer } from '../utils/soundNotifications';
 
 export interface AppNotification {
   id: string;
@@ -75,6 +76,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { user } = useAuth();
 
   const ignoreBookingRequest = (bookingId: string) => {
+    console.log('🔇 Ignoring booking and STOPPING buzzer:', bookingId);
+    stopBuzzer(); // Explicitly stop sound
     ignoredBookingIds.current.add(bookingId);
     setIncomingBookingRequest(null);
   };

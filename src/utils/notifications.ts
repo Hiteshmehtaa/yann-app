@@ -29,7 +29,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
         });
 
         // Add channel for booking requests (matches backend)
-        await Notifications.setNotificationChannelAsync('booking_requests', {
+        await Notifications.setNotificationChannelAsync('booking_requests_v2', {
             name: 'Booking Requests',
             sound: null, // Use default system sound for reliability
             importance: Notifications.AndroidImportance.MAX,
