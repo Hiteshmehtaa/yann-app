@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
 import { apiService } from '../services/api';
-import { stopBuzzer } from '../utils/soundNotifications';
+import { stopBuzzer, playBookingRequestBuzzer } from '../utils/soundNotifications';
 
 export interface AppNotification {
   id: string;
@@ -342,7 +342,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         // CRITICAL: Check ignore list first to prevent race condition buzzer loop
         if (ignoredBookingIds.current.has(pendingRequest.bookingId)) {
+          console.log(`🔇 Skipping ignored booking in poller: ${pendingRequest.bookingId}`);
           return;
+        }
+
+        // Also check if we are currently displaying this exact booking
+        if (incomingBookingRequest && incomingBookingRequest.bookingId === pendingRequest.bookingId) {
+          return; // Already showing it
         }
 
         setIncomingBookingRequest({
@@ -359,6 +365,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
 
         console.log('✅ Found pending booking request on app open:', pendingRequest.bookingId);
+        // Start buzzer ONLY if not already playing and verified not ignored
+        playBookingRequestBuzzer();
       }
     } catch (error) {
       console.error('Failed to check pending booking requests:', error);
@@ -462,6 +470,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     let pollInterval: NodeJS.Timeout;
 
     const checkActiveJobs = async () => {
+      // Only homeowners check for active jobs to pay
+      if (user.role === 'provider' || (user as any).audience === 'provider') return;
+
       try {
         const response = await apiService.getMyBookings();
         if (response.success && response.data) {

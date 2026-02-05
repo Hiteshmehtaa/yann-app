@@ -218,17 +218,23 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     };
 
     const handleAction = async (type: 'accept' | 'reject') => {
-        if (isAccepting || isRejecting || !requestData) return;
+        console.log(`🖱️ handleAction triggered: ${type}`);
+        if (isAccepting || isRejecting || !requestData) {
+            console.log(`⚠️ handleAction blocked: isAccepting=${isAccepting}, isRejecting=${isRejecting}, hasData=${!!requestData}`);
+            return;
+        }
 
         if (type === 'accept') setIsAccepting(true);
         else setIsRejecting(true);
 
+        console.log('🛑 Calling stopAllEffects from handleAction');
         stopAllEffects();
 
         try {
             if (type === 'accept') await playSuccessSound();
             else await playErrorSound();
 
+            console.log(`🚀 Sending ${type} API request...`);
             const response = await apiService.respondToBookingRequest(
                 requestData.bookingId,
                 providerId,

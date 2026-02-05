@@ -145,7 +145,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           description: s.description || '',
           category: s.category || 'other',
           price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-          icon: require('../../../assets/service-icons/Ganeshpuja.png'),
+          // icon: require('../../../assets/service-icons/Ganeshpuja.png'), // REMOVED: Using dynamic lookup or local constant emojis
           popular: s.popular || false,
           features: s.features || [],
           isNew,

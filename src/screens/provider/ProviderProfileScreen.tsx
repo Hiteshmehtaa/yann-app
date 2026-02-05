@@ -400,6 +400,33 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.logoutText}>Sign Out</Text>
           </TouchableOpacity>
 
+          {/* Delete Account */}
+          <TouchableOpacity
+            style={[styles.logoutBtn, { marginTop: 12, backgroundColor: '#FEF2F2' }]}
+            onPress={() => Alert.alert(
+              'Delete Account',
+              'Are you sure you want to delete your account? This action is irreversible.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await apiService.deleteAccount();
+                      await logout();
+                    } catch (e: any) {
+                      Alert.alert('Error', e.message || 'Failed to delete account');
+                    }
+                  }
+                }
+              ]
+            )}
+          >
+            <Ionicons name="trash-outline" size={22} color={COLORS.error} />
+            <Text style={styles.logoutText}>Delete Account</Text>
+          </TouchableOpacity>
+
           <Text style={styles.versionText}>Version 1.0.0 • Yann App</Text>
 
         </Animated.View>

@@ -64,6 +64,9 @@ class ApiService {
           const token = await storage.getToken();
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            // console.log(`🔑 Attaching token to ${config.url}: ${token.substring(0, 10)}...`);
+          } else {
+            console.log(`⚠️ No token found for ${config.url} (Storage returned null)`);
           }
 
           // Add user ID header for wallet and other authenticated endpoints

@@ -15,21 +15,33 @@ export const GlobalBookingRequestModal: React.FC = () => {
   const providerId = user?._id || user?.id || '';
 
   const handleAccept = () => {
+    console.log('✅ GlobalModal: handleAccept called');
     // Booking accepted - dismiss modal and ignore future polls
     if (incomingBookingRequest) ignoreBookingRequest(incomingBookingRequest.bookingId);
-    else setIncomingBookingRequest(null);
+    else {
+      console.warn('⚠️ GlobalModal: incomingBookingRequest is null in handleAccept');
+      setIncomingBookingRequest(null);
+    }
   };
 
   const handleReject = () => {
+    console.log('❌ GlobalModal: handleReject called');
     // Booking rejected - dismiss modal and ignore future polls
     if (incomingBookingRequest) ignoreBookingRequest(incomingBookingRequest.bookingId);
-    else setIncomingBookingRequest(null);
+    else {
+      console.warn('⚠️ GlobalModal: incomingBookingRequest is null in handleReject');
+      setIncomingBookingRequest(null);
+    }
   };
 
   const handleDismiss = () => {
+    console.log('👋 GlobalModal: handleDismiss called');
     // Timer expired or manually dismissed
     if (incomingBookingRequest) ignoreBookingRequest(incomingBookingRequest.bookingId);
-    else setIncomingBookingRequest(null);
+    else {
+      console.warn('⚠️ GlobalModal: incomingBookingRequest is null in handleDismiss');
+      setIncomingBookingRequest(null);
+    }
   };
 
   return (

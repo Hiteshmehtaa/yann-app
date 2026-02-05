@@ -116,7 +116,7 @@ export async function playBookingRequestBuzzer() {
       // Loop haptics
       const interval = setInterval(async () => {
         if (!isPlaying) clearInterval(interval);
-        await Haptics.vibrateAsync();
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       }, 1000);
       setTimeout(() => clearInterval(interval), 10000);
     }
@@ -130,9 +130,19 @@ export async function playBookingRequestBuzzer() {
  */
 export async function stopBuzzer() {
   try {
-    if (buzzerSound && isPlaying) {
-      await buzzerSound.stopAsync();
+    console.log('🛑 stopBuzzer called');
+    if (buzzerSound) {
+      try {
+        await buzzerSound.stopAsync();
+        await buzzerSound.unloadAsync();
+      } catch (e) {
+        console.log('Error stopping/unloading sound:', e);
+      }
+      buzzerSound = null;
       isPlaying = false;
+      console.log('✅ Buzzer stopped and unloaded');
+    } else {
+      console.log('⚠️ No buzzerSound instance to stop');
     }
   } catch (error) {
     console.error('❌ Failed to stop buzzer:', error);

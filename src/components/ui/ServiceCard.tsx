@@ -131,17 +131,20 @@ export const ServiceCard = React.memo<ServiceCardProps>(({
           {/* Image/Icon Container */}
           <View style={[
             styles.imageContainer,
-            { backgroundColor: 'transparent' }
+            { backgroundColor: isComingSoon ? 'transparent' : (iconImage ? 'transparent' : 'rgba(59, 130, 246, 0.1)') }
           ]}>
             {iconImage ? (
               <Image
                 source={iconImage}
                 style={[
                   styles.serviceImage,
-                  isComingSoon && { opacity: 0.3, tintColor: isDark ? '#888' : '#bbb' } // Gray out image
+                  isComingSoon && { opacity: 0.3, tintColor: isDark ? '#888' : '#bbb' }
                 ]}
-                resizeMode="contain"
+                resizeMode="cover"
               />
+            ) : icon && typeof icon === 'string' && icon.length < 5 ? (
+              // Render Emoji (length check avoids vector icon names if passed by mistake)
+              <Text style={{ fontSize: 32, opacity: isComingSoon ? 0.5 : 1 }}>{icon}</Text>
             ) : (
               <ServiceIcon
                 size={40}
@@ -217,11 +220,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden', // Clip the zoomed-in image
   },
   serviceImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
+    width: '125%', // Zoom in by 25% to reduce whitespace
+    height: '125%',
   },
   title: {
     fontSize: 14,

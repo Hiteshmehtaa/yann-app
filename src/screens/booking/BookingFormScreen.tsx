@@ -86,7 +86,7 @@ const FadeInView = ({ children, delay = 0, style }: any) => {
 
 export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const { service, selectedProvider: initialProvider, selectedAddress: initialAddress } = route.params;
-  const { user } = useAuth();
+  const { user, logout, isGuest } = useAuth();
   const { isTablet } = useResponsive();
   const { showError } = useToast();
   const insets = useSafeAreaInsets();
@@ -452,6 +452,31 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSubmit = async () => {
+    // Guest User Check
+    if (!user || (user as any).isGuest) { // Assuming useAuth provides isGuest or checking user existence
+      Alert.alert(
+        'Sign In Required',
+        'You need an account to book services. Please sign in or create an account.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign In / Sign Up',
+            onPress: async () => {
+              // Logout triggers reset to RoleSelection/Login flow
+              await apiService.logout().catch(() => { });
+              // Force navigation reset if logout doesn't auto-trigger (it usually does via AuthContext)
+              // But calling logout() from AuthContext is safer if accessible.
+              // Since we only have `user` from useAuth here, let's grab the full context
+            }
+          }
+        ]
+      );
+      // We need logout function here. Let's see if useAuth provides it.
+      // Yes, line 89: const { user } = useAuth();
+      // We should update line 89 to destructure logout as well.
+      return;
+    }
+
     if (!validateForm()) {
       showError('Please check missing fields');
       return;

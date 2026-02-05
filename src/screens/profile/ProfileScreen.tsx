@@ -392,14 +392,14 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.guestActions}>
               <TouchableOpacity
                 style={[styles.guestButton, { backgroundColor: COLORS.primary }]}
-                onPress={() => navigation.navigate('Login')}
+                onPress={() => logout()}
               >
                 <Text style={styles.guestButtonText}>Sign In</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.guestButton, { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border }]}
-                onPress={() => navigation.navigate('Signup', { role: 'customer' })}
+                onPress={() => logout()}
               >
                 <Text style={[styles.guestButtonText, { color: COLORS.text }]}>Create Account</Text>
               </TouchableOpacity>
