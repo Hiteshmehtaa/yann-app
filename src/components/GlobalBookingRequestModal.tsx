@@ -9,24 +9,27 @@ import { useAuth } from '../contexts/AuthContext';
  * with continuous buzzer when a new booking request arrives
  */
 export const GlobalBookingRequestModal: React.FC = () => {
-  const { incomingBookingRequest, setIncomingBookingRequest } = useNotifications();
+  const { incomingBookingRequest, setIncomingBookingRequest, ignoreBookingRequest } = useNotifications();
   const { user } = useAuth();
 
   const providerId = user?._id || user?.id || '';
 
   const handleAccept = () => {
-    // Booking accepted - dismiss modal
-    setIncomingBookingRequest(null);
+    // Booking accepted - dismiss modal and ignore future polls
+    if (incomingBookingRequest) ignoreBookingRequest(incomingBookingRequest.bookingId);
+    else setIncomingBookingRequest(null);
   };
 
   const handleReject = () => {
-    // Booking rejected - dismiss modal
-    setIncomingBookingRequest(null);
+    // Booking rejected - dismiss modal and ignore future polls
+    if (incomingBookingRequest) ignoreBookingRequest(incomingBookingRequest.bookingId);
+    else setIncomingBookingRequest(null);
   };
 
   const handleDismiss = () => {
     // Timer expired or manually dismissed
-    setIncomingBookingRequest(null);
+    if (incomingBookingRequest) ignoreBookingRequest(incomingBookingRequest.bookingId);
+    else setIncomingBookingRequest(null);
   };
 
   return (

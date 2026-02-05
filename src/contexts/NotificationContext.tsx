@@ -61,6 +61,7 @@ interface NotificationContextType {
   // Booking request for providers
   incomingBookingRequest: BookingRequestData | null;
   setIncomingBookingRequest: (data: BookingRequestData | null) => void;
+  ignoreBookingRequest: (bookingId: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -69,7 +70,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [paymentModalData, setPaymentModalData] = useState<PaymentModalData | null>(null);
   const [incomingBookingRequest, setIncomingBookingRequest] = useState<BookingRequestData | null>(null);
+  // Track ignored bookings to prevent re-fetching (race condition fix)
+  const ignoredBookingIds = useRef<Set<string>>(new Set());
   const { user } = useAuth();
+
+  const ignoreBookingRequest = (bookingId: string) => {
+    ignoredBookingIds.current.add(bookingId);
+    setIncomingBookingRequest(null);
+  };
 
   const STORAGE_KEY = `yann_notifications_${user?.id || 'guest'}`;
 
@@ -220,7 +228,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       // BOOKING REQUEST: Show incoming request modal (only for providers)
       if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId) {
         // Only check if user is a provider
-        if (user.role === 'provider' || user.audience === 'provider') {
+        if (user.role === 'provider' || (user as any).audience === 'provider') {
           // Fetch fresh booking data to get timer info
           checkPendingBookingRequest(data.bookingId as string);
         }
@@ -275,7 +283,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (!user) return;
 
     // Only for providers
-    if (user.role === 'provider' || user.audience === 'provider') {
+    if (user.role === 'provider' || (user as any).audience === 'provider') {
       checkPendingBookingRequests();
     }
   }, [user]);
@@ -328,6 +336,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       if (response.success && response.data && response.data.length > 0) {
         // Show the first pending request (most recent)
         const pendingRequest = response.data[0];
+
+        // CRITICAL: Check ignore list first to prevent race condition buzzer loop
+        if (ignoredBookingIds.current.has(pendingRequest.bookingId)) {
+          return;
+        }
 
         setIncomingBookingRequest({
           bookingId: pendingRequest.bookingId,
@@ -524,6 +537,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       try {
         const userId = user.id || user._id;
+        if (!userId) return;
+
         // Use the dedicated pending requests endpoint which is much more reliable
         // than fetching all bookings and filtering client-side
         const response = await apiService.getProviderPendingRequests(userId);
@@ -531,6 +546,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         if (response.success && response.data && response.data.length > 0) {
           // Get the most recent pending request
           const pendingBooking = response.data[0];
+
+          // CRITICAL: Check ignore list first to prevent race condition buzzer loop
+          if (ignoredBookingIds.current.has(pendingBooking.bookingId)) {
+            return;
+          }
+
           console.log('🔥 FOUND PENDING REQUEST ON RESUME:', pendingBooking.bookingId);
 
           // Calculate actual expiry from backend data
@@ -653,7 +674,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         paymentModalData,
         setPaymentModalData,
         incomingBookingRequest,
-        setIncomingBookingRequest
+        setIncomingBookingRequest,
+        ignoreBookingRequest
       }}
     >
       {children}
