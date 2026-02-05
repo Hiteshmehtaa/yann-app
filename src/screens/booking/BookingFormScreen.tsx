@@ -54,6 +54,7 @@ type RootStackParamList = {
     serviceName: string;
     experienceRange?: any;
   };
+  Wallet: undefined;
 };
 
 type BookingFormScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingForm'>;
@@ -522,8 +523,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
         // Create booking without payment - payment happens after provider accepts
         const response = await apiService.createBooking(payload);
 
-        if (response.success && response.booking) {
-          const bookingId = response.booking.id || response.booking._id;
+        if (response.success && (response as any).booking) {
+          const bookingId = (response as any).booking.id || (response as any).booking._id;
           const providerId = provider?.id || provider?._id;
 
           // Send booking request to provider with 3-minute timer
@@ -541,16 +542,14 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 experienceRange: selectedExperienceRange,
               });
             } else {
-              // If request sending fails, still show success (booking created)
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              // If request sending fails, show error
               setIsLoading(false);
-              setShowSuccess(true);
+              Alert.alert('Request Failed', 'Could not send request to provider. Please try again.');
             }
           } catch (requestError) {
-            console.log('Request sending failed, showing success anyway:', requestError);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            console.log('Request sending failed:', requestError);
             setIsLoading(false);
-            setShowSuccess(true);
+            Alert.alert('Request Failed', 'Could not send request to provider. Please try again.');
           }
         } else {
           throw new Error(response.message || 'Booking creation failed');
@@ -566,8 +565,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
     // Cash Booking Flow
     try {
       const bookingResponse = await createBookingRecord('cash');
-      if (bookingResponse?.success && bookingResponse?.booking) {
-        const bookingId = bookingResponse.booking.id || bookingResponse.booking._id;
+      if (bookingResponse?.success && (bookingResponse as any).booking) {
+        const bookingId = (bookingResponse as any).booking.id || (bookingResponse as any).booking._id;
         const providerId = provider?.id || provider?._id;
 
         // Send booking request to provider with 3-minute timer

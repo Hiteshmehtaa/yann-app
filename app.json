@@ -20,8 +20,6 @@
       "buildNumber": "7",
       "associatedDomains": [
         "applinks:yann.app",
-        "applinks:www.yann.app",
-        "applinks:yann.app",
         "applinks:www.yann.app"
       ],
       "config": {
