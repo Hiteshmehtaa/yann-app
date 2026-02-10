@@ -43,6 +43,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
     name: '',
     email: '',
     phone: '',
+    agreedToTerms: false,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -80,6 +81,11 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSignup = async () => {
     if (!formData.name.trim()) {
       Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    if (!formData.agreedToTerms) {
+      Alert.alert('Agreement Required', 'Please agree to the Terms & Conditions and EULA to continue.');
       return;
     }
 
@@ -353,17 +359,24 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
             </View>
 
-            <View style={styles.bottomTerms}>
+            <TouchableOpacity
+              style={styles.termsContainer}
+              onPress={() => setFormData(prev => ({ ...prev, agreedToTerms: !prev.agreedToTerms }))}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.checkbox, formData.agreedToTerms && styles.checkboxChecked]}>
+                {formData.agreedToTerms && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
+              </View>
               <Text style={styles.termsText}>
-                By continuing, you agree to our <Text style={styles.termsLink}>Terms</Text> & <Text style={styles.termsLink}>Privacy</Text>
+                I agree to the <Text style={styles.termsLink} onPress={() => navigation.navigate('Terms' as any)}>Terms</Text>, <Text style={styles.termsLink} onPress={() => navigation.navigate('Privacy' as any)}>Privacy Policy</Text> & EULA.
               </Text>
-            </View>
+            </TouchableOpacity>
 
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
       <LoadingSpinner visible={isLoading} />
-    </View>
+    </View >
   );
 };
 
@@ -570,5 +583,25 @@ const styles = StyleSheet.create({
   termsLink: {
     color: COLORS.textSecondary,
     fontWeight: '700',
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: COLORS.textTertiary,
+    marginRight: SPACING.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
 });

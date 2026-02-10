@@ -278,6 +278,20 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.footerLink}>Create Account</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Guest Mode Action */}
+            <TouchableOpacity
+              style={styles.guestButton}
+              onPress={async () => {
+                try {
+                  await useAuth().continueAsGuest();
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+            >
+              <Text style={styles.guestButtonText}>Continue as Guest</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -540,5 +554,17 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+  guestButton: {
+    alignSelf: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.xl,
+  },
+  guestButtonText: {
+    fontSize: TYPOGRAPHY.size.md,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

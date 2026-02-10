@@ -376,37 +376,61 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       >
         {isGuest ? (
           <View style={styles.guestContainer}>
-            <LinearGradient
-              colors={['#667eea', '#764ba2']}
-              style={styles.guestHero}
-            >
-              <View style={styles.guestIconCircle}>
-                <Ionicons name="person" size={40} color={COLORS.primary} />
+            <View style={styles.guestHeroContainer}>
+              <LinearGradient
+                colors={[COLORS.primary, '#4F46E5']}
+                style={styles.guestHeroCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.guestIconCircle}>
+                  <Ionicons name="sparkles" size={32} color={COLORS.primary} />
+                </View>
+                <Text style={styles.guestTitle}>Unlock the Full Experience</Text>
+                <Text style={styles.guestSubtitle}>
+                  Join YANN to book services, track requests, and access exclusive member benefits.
+                </Text>
+              </LinearGradient>
+            </View>
+
+            <View style={styles.guestBenefits}>
+              <View style={styles.benefitItem}>
+                <Ionicons name="calendar-outline" size={24} color={COLORS.primary} />
+                <View style={styles.benefitText}>
+                  <Text style={styles.benefitTitle}>Easy Booking</Text>
+                  <Text style={styles.benefitDesc}>Book professionals in seconds</Text>
+                </View>
               </View>
-              <Text style={styles.guestTitle}>Welcome Guest</Text>
-              <Text style={styles.guestSubtitle}>
-                Sign in to manage bookings, view profile details, and access exclusive features.
-              </Text>
-            </LinearGradient>
+              <View style={styles.benefitItem}>
+                <Ionicons name="shield-checkmark-outline" size={24} color={COLORS.primary} />
+                <View style={styles.benefitText}>
+                  <Text style={styles.benefitTitle}>Secure Payments</Text>
+                  <Text style={styles.benefitDesc}>Safe & transparent transactions</Text>
+                </View>
+              </View>
+              <View style={styles.benefitItem}>
+                <Ionicons name="chatbubbles-outline" size={24} color={COLORS.primary} />
+                <View style={styles.benefitText}>
+                  <Text style={styles.benefitTitle}>Direct Chat</Text>
+                  <Text style={styles.benefitDesc}>Connect with providers instantly</Text>
+                </View>
+              </View>
+            </View>
 
             <View style={styles.guestActions}>
               <TouchableOpacity
-                style={[styles.guestButton, { backgroundColor: COLORS.primary }]}
+                style={[styles.guestButton, styles.signInButton]}
                 onPress={() => logout()}
+                activeOpacity={0.9}
               >
-                <Text style={styles.guestButtonText}>Sign In</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.guestButton, { backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border }]}
-                onPress={() => logout()}
-              >
-                <Text style={[styles.guestButtonText, { color: COLORS.text }]}>Create Account</Text>
+                <Text style={styles.signInButtonText}>Sign In / Sign Up</Text>
+                <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
               </TouchableOpacity>
             </View>
 
-            {/* Menu Items for Guest (Settings, Help only) */}
-            <View style={[styles.menuContainer, { backgroundColor: colors.cardBg, marginTop: 24 }]}>
+            {/* Support Links */}
+            <View style={[styles.menuContainer, { marginTop: 32 }]}>
+              <Text style={styles.menuHeader}>Support</Text>
               <TouchableOpacity
                 style={[styles.menuItem, { borderBottomColor: colors.divider }]}
                 onPress={() => navigation.navigate('LanguageSettings')}
@@ -855,53 +879,96 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   guestContainer: {
-    alignItems: 'center',
-    paddingTop: SPACING.xl,
+    paddingBottom: 20,
+    paddingTop: SPACING.md,
   },
-  guestHero: {
-    width: '100%',
-    padding: SPACING.xl,
-    borderRadius: RADIUS.large,
-    alignItems: 'center',
+  guestHeroContainer: {
     marginBottom: SPACING.xl,
+    paddingHorizontal: 4,
+  },
+  guestHeroCard: {
+    padding: SPACING.xl,
+    borderRadius: RADIUS.xl,
+    alignItems: 'center',
+    ...SHADOWS.md,
   },
   guestIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
-    ...SHADOWS.md,
-  },
-  guestTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.white,
-    marginBottom: SPACING.xs,
-  },
-  guestSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  guestActions: {
-    width: '100%',
-    gap: SPACING.md,
-  },
-  guestButton: {
-    width: '100%',
-    paddingVertical: 16,
-    borderRadius: RADIUS.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
     ...SHADOWS.sm,
   },
-  guestButtonText: {
-    fontSize: 16,
+  guestTitle: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: '800',
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
+    textAlign: 'center',
+  },
+  guestSubtitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: '90%',
+  },
+  guestBenefits: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    marginBottom: SPACING.xl,
+    ...SHADOWS.sm,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  benefitText: {
+    marginLeft: SPACING.md,
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  benefitDesc: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+  },
+  guestActions: {
+    marginBottom: SPACING.lg,
+  },
+  guestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: RADIUS.large,
+    gap: SPACING.sm,
+  },
+  signInButton: {
+    backgroundColor: COLORS.primary,
+    ...SHADOWS.md,
+  },
+  signInButtonText: {
+    fontSize: TYPOGRAPHY.size.lg,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  menuHeader: {
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+    marginLeft: SPACING.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });

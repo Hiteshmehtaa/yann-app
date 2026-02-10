@@ -35,6 +35,8 @@ import { Toast } from '../../components/Toast';
 import { SkeletonLoader } from '../../components/ui/SkeletonLoader';
 import { DepthCard } from '../../components/ui/DepthCard';
 import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
+import { GuestLoginModal } from '../../components/GuestLoginModal';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT_EXPANDED = height * 0.45;
@@ -97,6 +99,8 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const { toast, showSuccess, showInfo, hideToast } = useToast();
+  const { isGuest } = useAuth();
+  const [showGuestModal, setShowGuestModal] = useState(false);
 
   // UGC State
   const [showOptionsModal, setShowOptionsModal] = useState(false);
@@ -197,6 +201,12 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 
   const handleBookPress = () => {
     haptics.heavy();
+
+    if (isGuest) {
+      setShowGuestModal(true);
+      return;
+    }
+
     if (route.params.service) {
       const isDriver = route.params.service.category?.toLowerCase() === 'driver';
       navigation.navigate(isDriver ? 'DriverBooking' : 'BookingForm', {
@@ -740,6 +750,14 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <GuestLoginModal
+        visible={showGuestModal}
+        onClose={() => setShowGuestModal(false)}
+        navigation={navigation}
+        title="Sign In to Book"
+        message="You need an account to book services. Sign in or create an account to continue."
+      />
 
       {/* Report Modal */}
       <Modal

@@ -45,7 +45,7 @@ export const TermsConditionsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
@@ -92,15 +92,18 @@ export const TermsConditionsScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Section E */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>E. User Conduct</Text>
+            <Text style={styles.sectionTitle}>E. User Conduct & Zero Tolerance Policy</Text>
             <Text style={styles.paragraph}>Users must NOT:</Text>
             <View style={styles.bulletList}>
               <Text style={styles.bulletItem}>• Misuse the platform for illegal activities</Text>
-              <Text style={styles.bulletItem}>• Harass or abuse service providers</Text>
+              <Text style={styles.bulletItem}>• Harass, abuse, or engage in offensive behavior towards service providers</Text>
               <Text style={styles.bulletItem}>• Share fake reviews or cause fraudulent transactions</Text>
+              <Text style={styles.bulletItem}>• Post or share any objectionable, offensive, or inappropriate content</Text>
             </View>
+            <Text style={[styles.paragraph, { marginTop: 8, fontWeight: '700', color: COLORS.error }]}>
+              Zero Tolerance Policy: We have a strict zero-tolerance policy for objectionable content and abusive behavior. Any user found violating these terms will be immediately banned, and their content removed. We commit to acting on reports of such behavior within 24 hours.
+            </Text>
           </View>
 
           {/* Section F */}

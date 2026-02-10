@@ -31,6 +31,7 @@
         "NSCameraUsageDescription": "Allow Yann to access your camera to take a profile picture.",
         "NSPhotoLibraryUsageDescription": "Allow Yann to access your photos to upload a profile picture.",
         "NSPhotoLibraryAddUsageDescription": "Allow Yann to save photos to your library.",
+        "NSMicrophoneUsageDescription": "Allow Yann to access your microphone for video recording.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
