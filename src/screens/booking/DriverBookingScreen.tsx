@@ -108,8 +108,11 @@ const premiumMapStyle = [
 
 // Types
 type TripType = 'incity' | 'outstation';
+type TripDirection = 'oneway' | 'roundtrip';
 type Transmission = 'manual' | 'automatic';
 type VehicleType = 'hatchback' | 'sedan' | 'suv' | 'luxury';
+
+const DRIVER_RETURN_RATE_PER_KM = 2; // ₹2/km for driver's return in one-way trips
 
 interface PlaceSuggestion {
     description: string;
@@ -156,8 +159,13 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
     // Wizard State
     const [currentStep, setCurrentStep] = useState(1);
     const [tripType, setTripType] = useState<TripType | null>(null);
+    const [tripDirection, setTripDirection] = useState<TripDirection | null>(null);
     const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
     const [transmission, setTransmission] = useState<Transmission | null>(null);
+    const [routeDistanceKm, setRouteDistanceKm] = useState<number>(0);
+
+    // Computed: driver return fare for one-way trips
+    const driverReturnFare = tripDirection === 'oneway' ? Math.round(routeDistanceKm * DRIVER_RETURN_RATE_PER_KM) : 0;
 
     // UI State
     const [isSearching, setIsSearching] = useState(false);
@@ -220,8 +228,16 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                     const result = await apiService.getDirections(origin, destination);
 
                     if (result.success && result.data && result.data.length > 0) {
-                        const points = decodePolyline(result.data[0].overview_polyline.points);
+                        const route = result.data[0];
+                        const points = decodePolyline(route.overview_polyline.points);
                         setRouteCoordinates(points);
+
+                        // Extract route distance in km
+                        const legs = route.legs;
+                        if (legs && legs.length > 0) {
+                            const totalMeters = legs.reduce((sum: number, leg: any) => sum + (leg.distance?.value || 0), 0);
+                            setRouteDistanceKm(totalMeters / 1000);
+                        }
 
                         // Fit map to route
                         if (mapRef.current) {
@@ -332,7 +348,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
 
     // Navigation
     const goToNextStep = () => {
-        if (currentStep < 3) {
+        if (currentStep < 4) {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setCurrentStep(currentStep + 1);
         }
@@ -347,7 +363,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
 
     // Handle find drivers
     const handleFindDrivers = () => {
-        if (!pickupCoords || !dropCoords || !tripType || !vehicleType || !transmission) {
+        if (!pickupCoords || !dropCoords || !tripType || !tripDirection || !vehicleType || !transmission) {
             Alert.alert('Incomplete', 'Please complete all selections');
             return;
         }
@@ -509,6 +525,86 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                                 <Ionicons name="chevron-back" size={20} color={COLORS.text} />
                             </TouchableOpacity>
                             <View style={{ flex: 1 }}>
+                                <Text style={styles.stepTitle}>Trip Direction</Text>
+                                <Text style={styles.stepSubtitle}>One way or round trip?</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.optionsRow}>
+                            <TouchableOpacity
+                                style={[styles.optionCard, tripDirection === 'oneway' && styles.optionCardActive]}
+                                onPress={() => {
+                                    setTripDirection('oneway');
+                                    setTimeout(goToNextStep, 200);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.optionIconBg, tripDirection === 'oneway' && styles.optionIconBgActive]}>
+                                    <Ionicons
+                                        name="arrow-forward-outline"
+                                        size={24}
+                                        color={tripDirection === 'oneway' ? COLORS.primary : COLORS.textSecondary}
+                                    />
+                                </View>
+                                <Text style={[styles.optionLabel, tripDirection === 'oneway' && styles.optionLabelActive]}>
+                                    One Way
+                                </Text>
+                                <Text style={[styles.optionDescription, tripDirection === 'oneway' && styles.optionDescriptionActive]}>
+                                    Drop only
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.optionCard, tripDirection === 'roundtrip' && styles.optionCardActive]}
+                                onPress={() => {
+                                    setTripDirection('roundtrip');
+                                    setTimeout(goToNextStep, 200);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.optionIconBg, tripDirection === 'roundtrip' && styles.optionIconBgActive]}>
+                                    <Ionicons
+                                        name="repeat-outline"
+                                        size={24}
+                                        color={tripDirection === 'roundtrip' ? COLORS.primary : COLORS.textSecondary}
+                                    />
+                                </View>
+                                <Text style={[styles.optionLabel, tripDirection === 'roundtrip' && styles.optionLabelActive]}>
+                                    Round Trip
+                                </Text>
+                                <Text style={[styles.optionDescription, tripDirection === 'roundtrip' && styles.optionDescriptionActive]}>
+                                    Return included
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {tripDirection === 'oneway' && routeDistanceKm > 0 && (
+                            <View style={styles.returnFareCard}>
+                                <View style={styles.returnFareHeader}>
+                                    <Ionicons name="information-circle" size={20} color={COLORS.accent} />
+                                    <Text style={styles.returnFareTitle}>Driver Return Fare</Text>
+                                </View>
+                                <Text style={styles.returnFareDescription}>
+                                    Since this is a one-way trip, a return fare for the driver will be charged at ₹{DRIVER_RETURN_RATE_PER_KM}/km.
+                                </Text>
+                                <View style={styles.returnFareRow}>
+                                    <Text style={styles.returnFareLabel}>Distance: {routeDistanceKm.toFixed(1)} km</Text>
+                                    <Text style={styles.returnFareAmount}>₹{driverReturnFare}</Text>
+                                </View>
+                                <Text style={styles.returnFareNote}>This amount will be added during booking.</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 3:
+                return (
+                    <View style={styles.stepContainer}>
+                        <View style={styles.stepHeader}>
+                            <TouchableOpacity onPress={goToPreviousStep} style={styles.backButton}>
+                                <Ionicons name="chevron-back" size={20} color={COLORS.text} />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
                                 <Text style={styles.stepTitle}>Vehicle Type</Text>
                                 <Text style={styles.stepSubtitle}>Choose your preferred vehicle</Text>
                             </View>
@@ -549,7 +645,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                     </View>
                 );
 
-            case 3:
+            case 4:
                 return (
                     <View style={styles.stepContainer}>
                         <View style={styles.stepHeader}>
@@ -605,21 +701,30 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                         </View>
 
                         {transmission && (
-                            <TouchableOpacity
-                                style={styles.findDriversButton}
-                                onPress={handleFindDrivers}
-                                disabled={isSearching}
-                                activeOpacity={0.8}
-                            >
-                                {isSearching ? (
-                                    <ActivityIndicator color="#FFF" />
-                                ) : (
-                                    <>
-                                        <Text style={styles.findDriversText}>Find Drivers</Text>
-                                        <Ionicons name="arrow-forward" size={20} color="#FFF" />
-                                    </>
+                            <>
+                                {tripDirection === 'oneway' && driverReturnFare > 0 && (
+                                    <View style={styles.returnFareSummary}>
+                                        <Text style={styles.returnFareSummaryText}>
+                                            Driver return fare: ₹{driverReturnFare} ({routeDistanceKm.toFixed(1)} km × ₹{DRIVER_RETURN_RATE_PER_KM}/km)
+                                        </Text>
+                                    </View>
                                 )}
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.findDriversButton}
+                                    onPress={handleFindDrivers}
+                                    disabled={isSearching}
+                                    activeOpacity={0.8}
+                                >
+                                    {isSearching ? (
+                                        <ActivityIndicator color="#FFF" />
+                                    ) : (
+                                        <>
+                                            <Text style={styles.findDriversText}>Find Drivers</Text>
+                                            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </>
                         )}
                     </View>
                 );
@@ -663,14 +768,6 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 )}
                 {dropCoords && (
                     <Marker coordinate={dropCoords} pinColor={COLORS.error} />
-                )}
-                {pickupCoords && dropCoords && (
-                    <Polyline
-                        coordinates={[pickupCoords, dropCoords]}
-                        strokeColor={COLORS.accent}
-                        strokeWidth={3}
-                        lineDashPattern={[10, 5]}
-                    />
                 )}
             </MapView>
 
@@ -730,13 +827,13 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
                     {/* Step Progress */}
                     <View style={styles.stepProgress}>
-                        {[1, 2, 3].map((step) => (
+                        {[1, 2, 3, 4].map((step) => (
                             <React.Fragment key={step}>
                                 <View style={[
                                     styles.progressDot,
                                     currentStep >= step && styles.progressDotActive
                                 ]} />
-                                {step < 3 && (
+                                {step < 4 && (
                                     <View style={[
                                         styles.progressLine,
                                         currentStep > step && styles.progressLineActive
@@ -1130,5 +1227,68 @@ const styles = StyleSheet.create({
         fontSize: TYPOGRAPHY.size.md,
         fontWeight: TYPOGRAPHY.weight.semibold,
         color: COLORS.white,
+    },
+    returnFareCard: {
+        backgroundColor: '#F0F9FF',
+        borderRadius: RADIUS.large,
+        padding: SPACING.lg,
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+        marginTop: SPACING.md,
+    },
+    returnFareHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+        marginBottom: SPACING.sm,
+    },
+    returnFareTitle: {
+        fontSize: TYPOGRAPHY.size.md,
+        fontWeight: TYPOGRAPHY.weight.semibold,
+        color: COLORS.text,
+    },
+    returnFareDescription: {
+        fontSize: TYPOGRAPHY.size.sm,
+        color: COLORS.textSecondary,
+        marginBottom: SPACING.md,
+        lineHeight: 20,
+    },
+    returnFareRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: RADIUS.medium,
+        padding: SPACING.md,
+        marginBottom: SPACING.sm,
+    },
+    returnFareLabel: {
+        fontSize: TYPOGRAPHY.size.sm,
+        color: COLORS.textSecondary,
+        fontWeight: TYPOGRAPHY.weight.medium,
+    },
+    returnFareAmount: {
+        fontSize: TYPOGRAPHY.size.xl,
+        fontWeight: TYPOGRAPHY.weight.bold,
+        color: COLORS.primary,
+    },
+    returnFareNote: {
+        fontSize: TYPOGRAPHY.size.xs,
+        color: COLORS.textTertiary,
+        fontStyle: 'italic',
+    },
+    returnFareSummary: {
+        backgroundColor: '#FFF7ED',
+        borderRadius: RADIUS.medium,
+        padding: SPACING.md,
+        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: '#FED7AA',
+    },
+    returnFareSummaryText: {
+        fontSize: TYPOGRAPHY.size.sm,
+        color: '#9A3412',
+        fontWeight: TYPOGRAPHY.weight.medium,
+        textAlign: 'center',
     },
 });
