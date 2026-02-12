@@ -40,7 +40,7 @@ export async function initializeBuzzerSound() {
     // Uncomment when sound file is added:
     try {
       const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/booking-request.mp3'),
+        require('../../assets/sounds/booking_request.mp3'),
         { shouldPlay: false, isLooping: false, volume: 1.0 }
       );
       buzzerSound = sound;
@@ -82,7 +82,7 @@ export async function playBookingRequestBuzzer() {
 
         // Create and load the sound fresh every time to ensure it works
         const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sounds/booking-request.mp3'),
+          require('../../assets/sounds/booking_request.mp3'),
           { shouldPlay: true, isLooping: true, volume: 1.0 }
         );
 
