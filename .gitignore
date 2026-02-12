@@ -65,10 +65,13 @@ dhfcghvjkbnlkm
 
 # Google Cloud credentials
 yann-home-f55c5-d18b7b22672b.json
+# Exclude all JSON files except the ones needed for the project
 *.json
 !package.json
 !package-lock.json
 !tsconfig.json
 !app.json
 !eas.json
+!google-services.json
+!GoogleService-Info.plist
 
