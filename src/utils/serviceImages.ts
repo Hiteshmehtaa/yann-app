@@ -1,79 +1,59 @@
 import { ImageSourcePropType } from 'react-native';
 
-// Service icon images - Load all icons
+// Service icon images - All available icons
 export const SERVICE_IMAGES: Record<string, ImageSourcePropType> = {
-    // Using existing available icons as placeholders for missing ones
-    repair: require('../../assets/service-icons/Ganeshpuja.png'), // Placeholder
-    baby: require('../../assets/service-icons/Ganeshpuja.png'),   // Placeholder
-    cleaning: require('../../assets/service-icons/Ganeshpuja.png'), // Placeholder
-    food: require('../../assets/service-icons/Ganeshpuja.png'),     // Placeholder
-    driver: require('../../assets/service-icons/Ganeshpuja.png'),   // Placeholder
-
-    // Puja icons
-    puja1: require('../../assets/service-icons/Ganeshpuja.png'),
-    puja2: require('../../assets/service-icons/Ganeshpuja.png'),
-    puja3: require('../../assets/service-icons/Mahamrityunjay.png'), // Mapped to Mahamrityunjay
-    puja4: require('../../assets/service-icons/Ganeshpuja.png'),
-    puja5: require('../../assets/service-icons/Ganeshpuja.png'), // Mapped to Ganesh
-    puja6: require('../../assets/service-icons/Ganeshpuja.png'),
+    ganeshPuja: require('../../assets/service-icons/Ganeshpuja.png'),
+    mahamrityunjay: require('../../assets/service-icons/Mahamrityunjay.png'),
+    lakshmiPooja: require('../../assets/service-icons/Lakshmi Pooja.png'),
+    satyanarayanKatha: require('../../assets/service-icons/Satyanarayan Katha.png'),
+    lordVishnu: require('../../assets/service-icons/Lord Vishnu Pooja.png'),
+    vishnu: require('../../assets/service-icons/Vishnu.png'),
+    ringCeremony: require('../../assets/service-icons/Ring Ceremony.png'),
+    bhoomiPoojan: require('../../assets/service-icons/Bhoomi Poojan.png'),
+    shraadh: require('../../assets/service-icons/Shraadh Karm.png'),
+    janmdin: require('../../assets/service-icons/Janmdin Poojan.png'),
+    sundarkaand: require('../../assets/service-icons/Sundarkaand Paath.png'),
+    deepHouseCleaning: require('../../assets/service-icons/Deep House Cleaning.png'),
+    houseCleaning: require('../../assets/service-icons/House Cleaning.png'),
+    bathroomCleaning: require('../../assets/service-icons/Deep Bathroom Cleaning.png'),
+    carCleaning: require('../../assets/service-icons/Car Cleaning.png'),
+    laundry: require('../../assets/service-icons/Laundary And Iron.png'),
+    dryCleaning: require('../../assets/service-icons/Dry Cleaning.png'),
+    chimneyCleaning: require('../../assets/service-icons/Chimney Cleaning.png'),
+    tankCleaning: require('../../assets/service-icons/Tank Cleaning.png'),
 };
 
 // Function to get icon image based on service title or category
 export const getServiceIconImage = (serviceTitle: string): ImageSourcePropType | undefined => {
     const title = serviceTitle.toLowerCase();
 
-    // Driver Services
-    if (title.includes('driver') || title.includes('driving')) {
-        return SERVICE_IMAGES.driver;
-    }
+    // Pujari Services
+    if (title.includes('ganesh')) return SERVICE_IMAGES.ganeshPuja;
+    if (title.includes('lakshmi') || title.includes('laxmi')) return SERVICE_IMAGES.lakshmiPooja;
+    if (title.includes('satyanarayan') || title.includes('katha')) return SERVICE_IMAGES.satyanarayanKatha;
+    if (title.includes('mahamrityunjay') || title.includes('mrityunjay')) return SERVICE_IMAGES.mahamrityunjay;
+    if (title.includes('griha pravesh') || title.includes('housewarming') || title.includes('grihapravesh')) return SERVICE_IMAGES.lordVishnu;
+    if (title.includes('vastu')) return SERVICE_IMAGES.vishnu;
+    if (title.includes('ring ceremony') || title.includes('engagement')) return SERVICE_IMAGES.ringCeremony;
+    if (title.includes('bhoomi')) return SERVICE_IMAGES.bhoomiPoojan;
+    if (title.includes('shraddh') || title.includes('shraadh')) return SERVICE_IMAGES.shraadh;
+    if (title.includes('janmadin') || title.includes('birthday')) return SERVICE_IMAGES.janmdin;
+    if (title.includes('sundarkand') || title.includes('sundarkaand')) return SERVICE_IMAGES.sundarkaand;
 
-    // Specific Puja Services with unique icons
-    if (title.includes('ganesh')) {
-        return SERVICE_IMAGES.puja5; // Ganesh image
-    }
-    if (title.includes('lakshmi') || title.includes('laxmi')) {
-        return SERVICE_IMAGES.puja6; // Lakshmi image
-    }
-    if (title.includes('shiv') || title.includes('shiva') || title.includes('mahashivratri')) {
-        return SERVICE_IMAGES.puja3; // Shivling image
-    }
-    if (title.includes('satyanarayan') || title.includes('katha')) {
-        return SERVICE_IMAGES.puja4; // Diya/Lamp image
-    }
-    if (title.includes('griha pravesh') || title.includes('housewarming') || title.includes('grihapravesh') || title.includes('vastu')) {
-        return SERVICE_IMAGES.puja2; // Kalash image
-    }
+    // Cleaning Services
+    if (title.includes('deep') && title.includes('house')) return SERVICE_IMAGES.deepHouseCleaning;
+    if (title.includes('bathroom')) return SERVICE_IMAGES.bathroomCleaning;
+    if (title.includes('house') && title.includes('clean')) return SERVICE_IMAGES.houseCleaning;
+    if (title.includes('car') && title.includes('wash') || title.includes('car') && title.includes('clean')) return SERVICE_IMAGES.carCleaning;
+    if (title.includes('laundry') || title.includes('ironing')) return SERVICE_IMAGES.laundry;
+    if (title.includes('dry clean')) return SERVICE_IMAGES.dryCleaning;
+    if (title.includes('chimney') || title.includes('exhaust')) return SERVICE_IMAGES.chimneyCleaning;
+    if (title.includes('tank') && title.includes('clean') || title.includes('water tank')) return SERVICE_IMAGES.tankCleaning;
 
-    // General Puja Services
-    if (title.includes('puja') || title.includes('pujari') || title.includes('pooja') ||
-        title.includes('havan') || title.includes('ceremony') || title.includes('religious') ||
-        title.includes('aarti') || title.includes('worship')) {
-        return SERVICE_IMAGES.puja1; // General puja items
-    }
-
-    // Repairs & Maintenance
-    if (title.includes('repair') || title.includes('maintenance') ||
-        title.includes('ac service') || title.includes('ro service') ||
-        title.includes('refrigerator') || title.includes('air purifier') ||
-        title.includes('chimney') || title.includes('technician')) {
-        return SERVICE_IMAGES.repair;
-    }
-
-    // Childcare
-    if (title.includes('baby') || title.includes('sitter') || title.includes('childcare')) {
-        return SERVICE_IMAGES.baby;
-    }
-
-    // Cleaning
-    if (title.includes('maid') || title.includes('clean') || title.includes('toilet')) {
-        return SERVICE_IMAGES.cleaning;
-    }
-
-    // Food Service
-    if (title.includes('cook') || title.includes('catering') || title.includes('chef') ||
-        title.includes('food') || title.includes('kitchen')) {
-        return SERVICE_IMAGES.food;
-    }
+    // Fallback for general puja/cleaning
+    if (title.includes('puja') || title.includes('pooja') || title.includes('havan') || title.includes('pujari')) return SERVICE_IMAGES.ganeshPuja;
+    if (title.includes('clean') || title.includes('maid')) return SERVICE_IMAGES.houseCleaning;
 
     return undefined;
 };
+

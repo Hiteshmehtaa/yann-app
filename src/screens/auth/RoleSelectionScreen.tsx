@@ -15,9 +15,62 @@ import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useAuth } from '../../contexts/AuthContext';
+import { MD2Colors } from 'react-native-paper';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing
+} from 'react-native-reanimated';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
+};
+
+const AnimatedLetter = ({ letter, index }: { letter: string; index: number }) => {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(50);
+
+  useEffect(() => {
+    // Entrance animation
+    opacity.value = withDelay(index * 100, withTiming(1, { duration: 500 }));
+    translateY.value = withDelay(
+      index * 100,
+      withSpring(0, { damping: 12, stiffness: 90 }, (finished) => {
+        if (finished) {
+          // Continuous floating animation after entrance
+          translateY.value = withDelay(
+            index * 100, // Stagger the floating too
+            withRepeat(
+              withSequence(
+                withTiming(-5, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
+                withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.quad) })
+              ),
+              -1,
+              true
+            )
+          );
+        }
+      })
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+      transform: [{ translateY: translateY.value }],
+    };
+  });
+
+  return (
+    <Reanimated.Text style={[styles.brandLetter, animatedStyle]}>
+      {letter}
+    </Reanimated.Text>
+  );
 };
 
 export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
@@ -42,6 +95,8 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
       }),
     ]).start();
   }, []);
+
+  const brandName = "YANN";
 
   return (
     <View style={styles.container}>
@@ -77,7 +132,11 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Logo Section - Text Only now */}
           <Animated.View style={[styles.logoSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.brandName}>YANN</Text>
+            <View style={styles.brandNameContainer}>
+              {brandName.split('').map((letter, index) => (
+                <AnimatedLetter key={`${letter}-${index}`} letter={letter} index={index} />
+              ))}
+            </View>
             <View style={styles.taglineRow}>
               <View style={styles.taglineLine} />
               <Text style={styles.tagline}>PREMIUM HOME SERVICES</Text>
@@ -87,7 +146,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Welcome Text */}
           <Animated.View style={[styles.welcomeSection, { opacity: fadeAnim }]}>
-            <Text style={styles.title}>Choose Your{'\n'}Experience</Text>
+            <Text style={styles.title}>Get Started With Yann</Text>
           </Animated.View>
 
           {/* Role Options */}
@@ -106,11 +165,11 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
 
                 <View style={styles.titleRow}>
-                  <Text style={styles.cardTitle}>BOOK SERVICES</Text>
+                  <Text style={styles.cardTitle}>BECOME A MEMBER</Text>
                   <Ionicons name="arrow-forward" size={20} color={COLORS.primary} style={{ marginLeft: 8 }} />
                 </View>
                 <Text style={styles.cardDescription}>
-                  Trusted professionals at your doorstep
+                  Verified professionals at your doorstep
                 </Text>
               </View>
             </TouchableOpacity>
@@ -133,7 +192,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                   <Ionicons name="arrow-forward" size={20} color={COLORS.textTertiary} style={{ marginLeft: 8 }} />
                 </View>
                 <Text style={styles.cardDescriptionDark}>
-                  Join our network of experts
+                  Your Skills. Your Rates. Your Income.
                 </Text>
               </View>
             </TouchableOpacity>
@@ -159,12 +218,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Footer */}
           <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
-            <View style={styles.loginRow}>
-              <Text style={styles.footerText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.footerLink}>Sign In</Text>
-              </TouchableOpacity>
-            </View>
+
 
             <TouchableOpacity
               style={styles.skipButton}
@@ -236,12 +290,18 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
   },
-  brandName: {
-    fontSize: 38,
-    fontWeight: '900',
-    color: COLORS.text,
-    letterSpacing: 1.5,
+  brandNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4, // Space between letters
     marginTop: 6,
+  },
+  brandLetter: {
+    fontSize: 42, // Slightly larger for impact
+    fontWeight: '900',
+    color: MD2Colors.blue600, // Using the same premium blue
+    // letterSpacing is handled by gap in container now for cleaner layout
   },
   taglineRow: {
     flexDirection: 'row',

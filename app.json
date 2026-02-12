@@ -122,7 +122,10 @@
         {
           "icon": "./assets/Logo.png",
           "color": "#ffffff",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "sounds": [
+            "./assets/sounds/booking-request.mp3"
+          ]
         }
       ]
     ],

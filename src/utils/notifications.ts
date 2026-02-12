@@ -54,12 +54,14 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
             // Add channel for booking requests (matches backend)
             await Notifications.setNotificationChannelAsync('booking_requests_v2', {
                 name: 'Booking Requests',
-                sound: null, // Use default system sound for reliability
+                sound: 'booking_request.wav', // Custom buzzer sound for booking requests
                 importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 500, 200, 500],
+                vibrationPattern: [0, 500, 200, 500, 200, 500, 200, 500], // Extended pattern for better noticeability
                 lightColor: '#FF231F7C',
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
                 bypassDnd: true,
+                enableVibrate: true,
+                enableLights: true,
             });
             console.log('✅ Booking requests channel created');
         } catch (error) {
