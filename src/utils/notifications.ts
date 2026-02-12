@@ -20,54 +20,119 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
     let token;
 
-    if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#FF231F7C',
-        });
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔔 NOTIFICATION REGISTRATION STARTED');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-        // Add channel for booking requests (matches backend)
-        await Notifications.setNotificationChannelAsync('booking_requests_v2', {
-            name: 'Booking Requests',
-            sound: null, // Use default system sound for reliability
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 500, 200, 500],
-            lightColor: '#FF231F7C',
-            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-            bypassDnd: true,
-        });
+    // Check if device is physical
+    console.log('📱 Device Check:', {
+        isDevice: Device.isDevice,
+        platform: Platform.OS,
+        deviceName: Device.deviceName,
+        osVersion: Device.osVersion,
+    });
+
+    if (!Device.isDevice) {
+        console.warn('⚠️ Not a physical device - push notifications will not work');
+        console.warn('   Use a physical device or production build for testing');
+        return undefined;
     }
 
-    if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-
-        if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
-
-        if (finalStatus !== 'granted') {
-            return;
-        }
+    // Setup Android notification channels
+    if (Platform.OS === 'android') {
+        console.log('🤖 Setting up Android notification channels...');
 
         try {
-            const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'default',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#FF231F7C',
+            });
+            console.log('✅ Default channel created');
 
-            token = (
-                await Notifications.getExpoPushTokenAsync({
-                    projectId,
-                })
-            ).data;
-
-            console.log('✅ Push token obtained:', token);
+            // Add channel for booking requests (matches backend)
+            await Notifications.setNotificationChannelAsync('booking_requests_v2', {
+                name: 'Booking Requests',
+                sound: null, // Use default system sound for reliability
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 500, 200, 500],
+                lightColor: '#FF231F7C',
+                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+                bypassDnd: true,
+            });
+            console.log('✅ Booking requests channel created');
         } catch (error) {
-            console.error('❌ Error getting push token:', error);
+            console.error('❌ Failed to create notification channels:', error);
         }
-    } else {
-        // Not a physical device
+    }
+
+    // Check and request permissions
+    console.log('🔐 Checking notification permissions...');
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    console.log('   Current permission status:', existingStatus);
+
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+        console.log('   Requesting notification permissions...');
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+        console.log('   Permission request result:', status);
+    }
+
+    if (finalStatus !== 'granted') {
+        console.error('❌ NOTIFICATION PERMISSIONS DENIED');
+        console.error('   User must enable notifications in device settings');
+        console.error('   Go to: Settings > Apps > Yann > Notifications');
+        return undefined;
+    }
+
+    console.log('✅ Notification permissions granted');
+
+    // Get Expo push token
+    try {
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+
+        console.log('🎯 Expo Project Configuration:', {
+            projectId: projectId || 'NOT FOUND',
+            expoConfigExists: !!Constants.expoConfig,
+            easConfigExists: !!Constants.easConfig,
+        });
+
+        if (!projectId) {
+            console.error('❌ CRITICAL: Expo Project ID not found!');
+            console.error('   Check app.json for extra.eas.projectId');
+            return undefined;
+        }
+
+        console.log('📲 Requesting Expo push token...');
+        token = (
+            await Notifications.getExpoPushTokenAsync({
+                projectId,
+            })
+        ).data;
+
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('✅ PUSH TOKEN OBTAINED SUCCESSFULLY');
+        console.log('   Token:', token);
+        console.log('   Length:', token?.length);
+        console.log('   Format:', token?.startsWith('ExponentPushToken[') ? 'Valid' : 'Invalid');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    } catch (error: any) {
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('❌ PUSH TOKEN GENERATION FAILED');
+        console.error('   Error:', error.message);
+        console.error('   Code:', error.code);
+        console.error('   Stack:', error.stack);
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+        if (error.message?.includes('credentials')) {
+            console.error('💡 SOLUTION: Upload FCM credentials to Expo');
+            console.error('   1. Go to https://expo.dev/accounts/[account]/projects/[projectId]/credentials');
+            console.error('   2. Upload google-services.json for Android');
+            console.error('   3. Rebuild the app');
+        }
     }
 
     return token;

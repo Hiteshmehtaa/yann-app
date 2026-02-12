@@ -165,14 +165,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Register for push notifications after successful login
         try {
+          console.log('🔔 Starting push notification registration for homeowner...');
           const pushToken = await registerForPushNotificationsAsync();
+
           if (pushToken) {
-            await apiService.savePushToken(pushToken, 'homeowner');
-            console.log('📱 Push token registered:', pushToken);
+            console.log('📱 Push token generated, saving to backend...');
+            const saveResponse = await apiService.savePushToken(pushToken, 'homeowner');
+
+            if (saveResponse.success) {
+              console.log('✅ Push token saved successfully to backend');
+              console.log('   Token:', pushToken.substring(0, 30) + '...');
+            } else {
+              console.error('❌ Failed to save push token to backend:', saveResponse.message);
+            }
+          } else {
+            console.warn('⚠️ No push token generated - notifications will not work');
+            console.warn('   Check if device is physical and permissions are granted');
           }
+
           setupNotificationListeners();
-        } catch (pushError) {
-          console.error('Failed to register push notifications:', pushError);
+          console.log('✅ Notification listeners set up');
+        } catch (pushError: any) {
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.error('❌ PUSH NOTIFICATION REGISTRATION FAILED');
+          console.error('   Error:', pushError.message);
+          console.error('   Stack:', pushError.stack);
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           // Don't fail login if push registration fails
         }
 
@@ -245,14 +263,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Register for push notifications after successful provider login
         try {
+          console.log('🔔 Starting push notification registration for provider...');
           const pushToken = await registerForPushNotificationsAsync();
+
           if (pushToken) {
-            await apiService.savePushToken(pushToken, 'provider');
-            console.log('📱 Provider push token registered:', pushToken);
+            console.log('📱 Provider push token generated, saving to backend...');
+            const saveResponse = await apiService.savePushToken(pushToken, 'provider');
+
+            if (saveResponse.success) {
+              console.log('✅ Provider push token saved successfully to backend');
+              console.log('   Token:', pushToken.substring(0, 30) + '...');
+            } else {
+              console.error('❌ Failed to save provider push token to backend:', saveResponse.message);
+            }
+          } else {
+            console.warn('⚠️ No provider push token generated - notifications will not work');
+            console.warn('   Check if device is physical and permissions are granted');
           }
+
           setupNotificationListeners();
-        } catch (pushError) {
-          console.error('Failed to register provider push notifications:', pushError);
+          console.log('✅ Provider notification listeners set up');
+        } catch (pushError: any) {
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.error('❌ PROVIDER PUSH NOTIFICATION REGISTRATION FAILED');
+          console.error('   Error:', pushError.message);
+          console.error('   Stack:', pushError.stack);
+          console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           // Don't fail login if push registration fails
         }
 
