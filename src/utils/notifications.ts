@@ -54,7 +54,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
             // Add channel for booking requests (matches backend)
             await Notifications.setNotificationChannelAsync('booking_requests_v2', {
                 name: 'Booking Requests',
-                sound: 'booking_request.wav', // Custom buzzer sound for booking requests
+                sound: 'booking_request', // Custom buzzer sound (Android looks in res/raw/)
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 500, 200, 500, 200, 500, 200, 500], // Extended pattern for better noticeability
                 lightColor: '#FF231F7C',
