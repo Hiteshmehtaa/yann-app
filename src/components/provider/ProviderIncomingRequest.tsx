@@ -37,15 +37,21 @@ const THEME_STYLES = {
 interface BookingRequestData {
     bookingId: string;
     serviceName: string;
+    serviceCategory?: string;
     customerName: string;
-    customerProfileImage?: string; // Added field
+    customerProfileImage?: string;
     customerAddress?: string;
     customerPhone?: string;
     bookingDate?: string;
     bookingTime?: string;
     totalPrice: number;
+    bookedHours?: number;
+    billingType?: string;
     notes?: string;
     expiresAt: string;
+    driverDetails?: any;
+    driverTripDetails?: any;
+    pricingBreakdown?: any;
 }
 
 interface ProviderIncomingRequestProps {
@@ -80,6 +86,32 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     const [isAccepting, setIsAccepting] = useState(false);
     const [isRejecting, setIsRejecting] = useState(false);
+    const [showDetails, setShowDetails] = useState(false);
+    const [fetchedDetails, setFetchedDetails] = useState<any>(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+
+    // Detect driver booking by serviceCategory or serviceName
+    const isDriverBooking = !!(requestData?.serviceCategory === 'driver'
+        || requestData?.serviceName?.toLowerCase().includes('driver'));
+
+    // Auto-fetch booking details for driver bookings (pickup/drop/pricing)
+    useEffect(() => {
+        if (!visible || !isDriverBooking || !requestData?.bookingId) return;
+        if (requestData.driverTripDetails || requestData.driverDetails || fetchedDetails) return;
+        
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await apiService.getBookingById(requestData.bookingId);
+                if (!cancelled && res.success && res.data) {
+                    setFetchedDetails(res.data);
+                }
+            } catch (e) {
+                console.log('Auto-fetch booking details failed:', e);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [visible, isDriverBooking, requestData?.bookingId]);
 
     // Animations
     const slideAnim = useRef(new Animated.Value(500)).current; // Slide up
@@ -315,9 +347,12 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
                     {/* Price Hero */}
                     <View style={styles.heroSection}>
-                        <Text style={styles.heroLabel}>Estimated Earning</Text>
-                        <Text style={styles.heroPrice}>₹{requestData.totalPrice.toFixed(0)}</Text>
+                        <Text style={styles.heroLabel}>Your Earning</Text>
+                        <Text style={styles.heroPrice}>₹{requestData.totalPrice?.toFixed?.(0) || requestData.totalPrice || 0}</Text>
                         <Text style={styles.serviceName}>{requestData.serviceName}</Text>
+                        {requestData.bookedHours ? (
+                            <Text style={styles.durationBadgeText}>{requestData.bookedHours} hrs • {requestData.billingType === 'hourly' ? 'Hourly' : 'Fixed'}</Text>
+                        ) : null}
                     </View>
 
                     {/* Divider */}
@@ -347,20 +382,67 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
                             </View>
                         </View>
 
-                        {/* Location */}
-                        <View style={styles.row}>
-                            <View style={styles.iconBox}>
-                                <Ionicons name="location" size={18} color={COLORS.primary} />
-                            </View>
-                            <View style={styles.rowContent}>
-                                <Text style={styles.rowLabel}>Location</Text>
-                                <Text style={styles.rowValue} numberOfLines={2}>
-                                    {requestData.customerAddress || 'No address provided'}
-                                </Text>
-                            </View>
-                        </View>
+                        {/* Pickup & Drop Location for Driver bookings */}
+                        {isDriverBooking ? (
+                            (() => {
+                                // Resolve pickup/drop from notification data or fetched booking
+                                const trip = requestData.driverTripDetails || fetchedDetails?.driverTripDetails || null;
+                                const driver = requestData.driverDetails || fetchedDetails?.driverDetails || null;
+                                const pickupText = trip?.pickupLocation?.address
+                                    || driver?.pickupLocation
+                                    || driver?.pickupAddress
+                                    || requestData.customerAddress
+                                    || 'Not specified';
+                                const dropText = trip?.dropLocation?.address
+                                    || driver?.dropLocation
+                                    || driver?.dropAddress
+                                    || 'Not specified';
 
-                        {/* Time */}
+                                return (
+                                    <>
+                                        {/* Pickup */}
+                                        <View style={styles.row}>
+                                            <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+                                                <Ionicons name="radio-button-on" size={16} color="#10B981" />
+                                            </View>
+                                            <View style={styles.rowContent}>
+                                                <Text style={styles.rowLabel}>Pickup Location</Text>
+                                                <Text style={styles.rowValue} numberOfLines={2}>
+                                                    {pickupText}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        {/* Drop */}
+                                        <View style={styles.row}>
+                                            <View style={[styles.iconBox, { backgroundColor: '#FEF2F2' }]}>
+                                                <Ionicons name="location" size={18} color="#EF4444" />
+                                            </View>
+                                            <View style={styles.rowContent}>
+                                                <Text style={styles.rowLabel}>Drop Location</Text>
+                                                <Text style={styles.rowValue} numberOfLines={2}>
+                                                    {dropText}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </>
+                                );
+                            })()
+                        ) : (
+                            /* Location — for non-driver bookings */
+                            <View style={styles.row}>
+                                <View style={styles.iconBox}>
+                                    <Ionicons name="location" size={18} color={COLORS.primary} />
+                                </View>
+                                <View style={styles.rowContent}>
+                                    <Text style={styles.rowLabel}>Location</Text>
+                                    <Text style={styles.rowValue} numberOfLines={2}>
+                                        {requestData.customerAddress || 'No address provided'}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Schedule */}
                         <View style={styles.row}>
                             <View style={styles.iconBox}>
                                 <Ionicons name="calendar" size={18} color={COLORS.primary} />
@@ -373,13 +455,165 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
                             </View>
                         </View>
 
+                        {/* View More Details (Driver) */}
+                        {isDriverBooking && (
+                            <>
+                                <TouchableOpacity
+                                    style={styles.viewDetailsBtn}
+                                    onPress={async () => {
+                                        const newShowDetails = !showDetails;
+                                        setShowDetails(newShowDetails);
+                                        // Fetch booking details from API if not available from notification
+                                        if (newShowDetails && !requestData.driverTripDetails && !requestData.driverDetails && !fetchedDetails) {
+                                            setLoadingDetails(true);
+                                            try {
+                                                const res = await apiService.getBookingById(requestData.bookingId);
+                                                if (res.success && res.data) {
+                                                    setFetchedDetails(res.data);
+                                                }
+                                            } catch (e) {
+                                                console.log('Could not fetch booking details:', e);
+                                            } finally {
+                                                setLoadingDetails(false);
+                                            }
+                                        }
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name={showDetails ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.primary} />
+                                    <Text style={styles.viewDetailsBtnText}>
+                                        {showDetails ? 'Hide Details' : 'View More Details'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {showDetails && (
+                                    <View style={styles.expandedDetails}>
+                                        {loadingDetails ? (
+                                            <Text style={{ textAlign: 'center', color: COLORS.textSecondary, paddingVertical: 12, fontSize: 13 }}>Loading details...</Text>
+                                        ) : (() => {
+                                            // Use notification data first, then fetched data as fallback
+                                            const tripDetails = requestData.driverTripDetails || fetchedDetails?.driverTripDetails || null;
+                                            const driverDets = requestData.driverDetails || fetchedDetails?.driverDetails || null;
+                                            const pricing = requestData.pricingBreakdown || fetchedDetails?.pricingBreakdown || null;
+                                            const hours = requestData.bookedHours || fetchedDetails?.quantity || fetchedDetails?.bookedHours || 0;
+
+                                            return (<>
+                                        {/* Trip Type & Direction */}
+                                        <View style={styles.detailRow}>
+                                            <View style={styles.detailChip}>
+                                                <Ionicons name="swap-horizontal" size={14} color="#6366F1" />
+                                                <Text style={styles.detailChipText}>
+                                                    {(tripDetails?.tripType || driverDets?.tripType || 'incity') === 'incity' ? 'In-City' : 'Outstation'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.detailChip}>
+                                                <Ionicons name="navigate" size={14} color="#6366F1" />
+                                                <Text style={styles.detailChipText}>
+                                                    {(tripDetails?.serviceType || driverDets?.serviceType || 'oneway') === 'oneway' ? 'One Way' : 'Round Trip'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Vehicle & Transmission */}
+                                        <View style={styles.detailRow}>
+                                            {(tripDetails?.vehicleType || driverDets?.vehicleType) ? (
+                                                <View style={[styles.detailChip, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+                                                    <Ionicons name="car-sport" size={14} color="#0EA5E9" />
+                                                    <Text style={[styles.detailChipText, { color: '#0369A1' }]}>
+                                                        {(tripDetails?.vehicleType || driverDets?.vehicleType || '').charAt(0).toUpperCase() + (tripDetails?.vehicleType || driverDets?.vehicleType || '').slice(1)}
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+                                            {(tripDetails?.transmission || driverDets?.transmission) ? (
+                                                <View style={[styles.detailChip, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+                                                    <Ionicons name="cog" size={14} color="#0EA5E9" />
+                                                    <Text style={[styles.detailChipText, { color: '#0369A1' }]}>
+                                                        {(tripDetails?.transmission || driverDets?.transmission) === 'manual' ? 'Manual Transmission' : 'Automatic Transmission'}
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+
+                                        {/* Distance */}
+                                        {(tripDetails?.distanceKm || driverDets?.distanceKm) ? (
+                                            <View style={styles.detailInfoRow}>
+                                                <Text style={styles.detailInfoLabel}>Distance</Text>
+                                                <Text style={styles.detailInfoValue}>
+                                                    {Number(tripDetails?.distanceKm || driverDets?.distanceKm || 0).toFixed(1)} km
+                                                </Text>
+                                            </View>
+                                        ) : null}
+
+                                        {/* Duration */}
+                                        {hours ? (
+                                            <View style={styles.detailInfoRow}>
+                                                <Text style={styles.detailInfoLabel}>Duration</Text>
+                                                <Text style={styles.detailInfoValue}>{hours} hours</Text>
+                                            </View>
+                                        ) : null}
+
+                                        {/* Rate */}
+                                        {(driverDets?.hourlyRate || pricing?.hourlyRate) ? (
+                                            <View style={styles.detailInfoRow}>
+                                                <Text style={styles.detailInfoLabel}>Your Rate</Text>
+                                                <Text style={styles.detailInfoValue}>
+                                                    {pricing?.hourlyRate || `₹${driverDets?.hourlyRate}/hr`}
+                                                </Text>
+                                            </View>
+                                        ) : null}
+
+                                        {/* Return Fare */}
+                                        {(tripDetails?.returnFare > 0 || driverDets?.driverReturnFare > 0) ? (
+                                            <View style={styles.detailInfoRow}>
+                                                <Text style={styles.detailInfoLabel}>Return Fare</Text>
+                                                <Text style={styles.detailInfoValue}>
+                                                    ₹{tripDetails?.returnFare || driverDets?.driverReturnFare || 0}
+                                                </Text>
+                                            </View>
+                                        ) : null}
+
+                                        {/* Pricing Breakdown */}
+                                        {pricing && (
+                                            <View style={styles.breakdownBox}>
+                                                <Text style={styles.breakdownTitle}>Price Breakdown</Text>
+                                                {pricing.baseCost != null && (
+                                                    <View style={styles.breakdownRow}>
+                                                        <Text style={styles.breakdownLabel}>Base ({pricing.duration || `${hours}hrs`})</Text>
+                                                        <Text style={styles.breakdownValue}>₹{pricing.baseCost}</Text>
+                                                    </View>
+                                                )}
+                                                {pricing.returnFare > 0 && (
+                                                    <View style={styles.breakdownRow}>
+                                                        <Text style={styles.breakdownLabel}>Return Fare</Text>
+                                                        <Text style={styles.breakdownValue}>₹{pricing.returnFare}</Text>
+                                                    </View>
+                                                )}
+                                                {pricing.gst > 0 && (
+                                                    <View style={styles.breakdownRow}>
+                                                        <Text style={styles.breakdownLabel}>GST ({pricing.gstPercentage || 18}%)</Text>
+                                                        <Text style={styles.breakdownValue}>₹{pricing.gst}</Text>
+                                                    </View>
+                                                )}
+                                                <View style={[styles.breakdownRow, styles.breakdownTotalRow]}>
+                                                    <Text style={styles.breakdownTotalLabel}>Total</Text>
+                                                    <Text style={styles.breakdownTotalValue}>₹{pricing.total || requestData.totalPrice}</Text>
+                                                </View>
+                                            </View>
+                                        )}
+                                    </>);
+                                        })()}
+                                    </View>
+                                )}
+                            </>
+                        )}
+
                         {/* Notes */}
-                        {requestData.notes && (
+                        {requestData.notes ? (
                             <View style={styles.noteBox}>
                                 <Text style={styles.noteTitle}>Note from customer:</Text>
                                 <Text style={styles.noteText}>{requestData.notes}</Text>
                             </View>
-                        )}
+                        ) : null}
                     </ScrollView>
 
                     {/* Actions - Fixed at Bottom */}
@@ -505,7 +739,7 @@ const styles = StyleSheet.create({
     heroPrice: {
         fontSize: 48,
         fontWeight: '800',
-        color: COLORS.text, // Slate 900
+        color: COLORS.text,
         letterSpacing: -1,
         marginBottom: 8,
     },
@@ -514,6 +748,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: COLORS.primary,
         textAlign: 'center',
+    },
+    durationBadgeText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        marginTop: 4,
     },
     divider: {
         height: 1,
@@ -627,5 +867,116 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    // View More Details
+    viewDetailsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+        borderRadius: 12,
+        backgroundColor: '#F0F7FF',
+    },
+    viewDetailsBtnText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.primary,
+    },
+    expandedDetails: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    detailRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 10,
+        flexWrap: 'wrap',
+    },
+    detailChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#E0E7FF',
+    },
+    detailChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#4338CA',
+    },
+    detailInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    detailInfoLabel: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: COLORS.textSecondary,
+    },
+    detailInfoValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    breakdownBox: {
+        marginTop: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    breakdownTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.text,
+        marginBottom: 10,
+    },
+    breakdownRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 4,
+    },
+    breakdownLabel: {
+        fontSize: 13,
+        color: COLORS.textSecondary,
+        fontWeight: '500',
+    },
+    breakdownValue: {
+        fontSize: 13,
+        color: COLORS.text,
+        fontWeight: '600',
+    },
+    breakdownTotalRow: {
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
+        marginTop: 8,
+        paddingTop: 8,
+    },
+    breakdownTotalLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    breakdownTotalValue: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: COLORS.primary,
     },
 });

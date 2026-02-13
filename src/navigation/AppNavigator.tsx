@@ -46,6 +46,8 @@ import { BookingFormScreen } from '../screens/booking/BookingFormScreen';
 import { BookingWaitingScreen } from '../screens/booking/BookingWaitingScreen';
 import { ProviderPublicProfileScreen } from '../screens/booking/ProviderPublicProfileScreen';
 import { DriverBookingScreen } from '../screens/booking/DriverBookingScreen';
+import { DriverSearchResultsScreen } from '../screens/booking/DriverSearchResultsScreen';
+import { DriverBookingFormScreen } from '../screens/booking/DriverBookingFormScreen';
 
 // Profile Screens
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
@@ -96,6 +98,8 @@ type RootStackParamList = {
   ServiceDetail: { service: any };
   BookingForm: { service: any; selectedProvider?: any; selectedAddress?: any };
   DriverBooking: { service: any; selectedProvider: any; selectedAddress?: any };
+  DriverSearchResults: { service: any; tripType: string; tripDirection: string; vehicleType: string; transmission: string; pickupAddress: string; dropAddress: string; pickupCoords: any; dropCoords: any; routeDistanceKm: number; driverReturnFare: number };
+  DriverBookingForm: { service: any; selectedDriver: any; tripType: string; tripDirection: string; vehicleType: string; transmission: string; pickupAddress: string; dropAddress: string; pickupCoords: any; dropCoords: any; routeDistanceKm: number; driverReturnFare: number; driverRate: number };
   BookingWaiting: { bookingId: string; providerId: string; providerName: string; serviceName: string; experienceRange?: any };
   ProviderPublicProfile: { provider: any; service?: any };
   // Provider screens
@@ -387,6 +391,8 @@ export function AppNavigator() {
 
                 <Stack.Screen name="BookingForm" component={BookingFormScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="DriverBooking" component={DriverBookingScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="DriverSearchResults" component={DriverSearchResultsScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="DriverBookingForm" component={DriverBookingFormScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="BookingWaiting" component={BookingWaitingScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
