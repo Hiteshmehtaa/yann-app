@@ -359,22 +359,15 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-      {/* Premium Multi-Layer Background Gradient */}
+      {/* Hero Background Gradient (Subtle) */}
       <View style={styles.heroGradient}>
         <LinearGradient
           colors={isDark
-            ? [COLORS.primary + '15', COLORS.primary + '08', COLORS.background]
-            : [COLORS.primary + '12', COLORS.primary + '06', COLORS.background]}
+            ? [COLORS.primary + '20', COLORS.background]
+            : [COLORS.primary + '10', COLORS.background]}
           style={StyleSheet.absoluteFill}
-          start={{ x: 0.3, y: 0 }}
-          end={{ x: 0.7, y: 0.7 }}
-        />
-        {/* Accent gradient overlay for depth */}
-        <LinearGradient
-          colors={['transparent', isDark ? 'rgba(99, 102, 241, 0.03)' : 'rgba(99, 102, 241, 0.02)']}
-          style={[StyleSheet.absoluteFill, { top: '40%' }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 0.6 }}
         />
       </View>
 
@@ -386,22 +379,19 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         />
       )}
 
-      {/* Main Content - Enhanced spacing */}
+      {/* Main Content */}
       <Animated.ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 72 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
             tintColor={colors.primary}
-            progressViewOffset={insets.top + 110}
-            colors={[COLORS.primary]}
-            progressBackgroundColor={isDark ? '#1F2937' : '#F9FAFB'}
+            progressViewOffset={insets.top + 100}
           />
         }
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-        scrollEventThrottle={16}
       >
         {/* Smart Hero Section */}
         <SmartHero
@@ -432,23 +422,12 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           />
         ) : (
           <View style={styles.contentSection}>
-            {/* Banner - Enhanced spacing */}
-            <View style={{ marginBottom: 8 }}>
-              <RotatingLottieBanner />
-            </View>
+            {/* Banner */}
+            <RotatingLottieBanner />
 
-            {/* Service Matrix Header - Premium design */}
+            {/* Service Matrix (Bento Grid) */}
             <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderContent}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Explore Services</Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                  {filteredServices.length} available in your area
-                </Text>
-              </View>
-              <View style={[styles.serviceCountBadge, { backgroundColor: COLORS.primary + '15', borderColor: COLORS.primary + '20' }]}>
-                <View style={[styles.badgeDot, { backgroundColor: COLORS.primary }]} />
-                <Text style={[styles.badgeText, { color: COLORS.primary }]}>{filteredServices.filter(s => !s.isComingSoon).length}</Text>
-              </View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Services</Text>
             </View>
 
             {hasFetchedInitial ? (
@@ -474,98 +453,59 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </Animated.ScrollView>
 
-      {/* Premium Glassmorphic Header */}
+      {/* Ultra-Header (Floating Transparent Bar) */}
       <View style={[styles.fixedHeaderContainer, { paddingTop: insets.top }]}>
         <Animated.View style={[styles.glassBackground, { opacity: headerOpacity }]}>
           {Platform.OS === 'ios' ? (
-            <BlurView intensity={90} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+            <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { 
-              backgroundColor: isDark ? 'rgba(0,0,0,0.92)' : 'rgba(255,255,255,0.92)',
-              borderBottomWidth: 0.5,
-              borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
-            }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)', borderBottomWidth: 1, borderColor: COLORS.border }]} />
           )}
-          {/* Subtle gradient overlay for premium depth */}
-          <LinearGradient
-            colors={isDark ? ['rgba(99, 102, 241, 0.05)', 'transparent'] : ['rgba(99, 102, 241, 0.03)', 'transparent']}
-            style={[StyleSheet.absoluteFill, { height: '200%' }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
         </Animated.View>
 
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.locationButton}
             onPress={() => navigation.navigate('SavedAddresses')}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
           >
-            {/* Premium Logo with subtle glow */}
-            <View style={[styles.logoContainer, { 
-              backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
-              borderWidth: 0.5,
-              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-            }]}>
-              <Image
-                source={require('../../../assets/Logo.jpg')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
+            {/* Logo replaces Location Icon */}
+            <Image
+              source={require('../../../assets/Logo.jpg')}
+              style={{ width: 40, height: 40, borderRadius: 20 }}
+              resizeMode="contain"
+            />
 
             <View style={styles.locationInfo}>
-              <View style={styles.locationLabelRow}>
-                <Ionicons name="location" size={12} color={COLORS.primary} style={{ marginRight: 4 }} />
-                <Text style={[styles.locationLabel, { color: colors.textSecondary }]}>Location</Text>
-              </View>
+              <Text style={[styles.locationLabel, { color: colors.textSecondary }]}>Current Location</Text>
               <Text style={[styles.locationAddress, { color: colors.text }]} numberOfLines={1}>
-                {isLoadingLocation ? 'Detecting...' :
+                {isLoadingLocation ? 'Loading...' :
                   matchedAddress ? matchedAddress.label :
                     currentLocationAddress ? currentLocationAddress :
-                      'Set your location'}
+                      'Set Location'}
               </Text>
             </View>
           </TouchableOpacity>
 
           <View style={styles.actionsContainer}>
             <TouchableOpacity
-              style={[styles.actionButton, { 
-                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)',
-                borderWidth: 0.5,
-                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-              }]}
+              style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
               onPress={() => navigation.navigate('NotificationsList')}
-              activeOpacity={0.75}
             >
-              <Ionicons name="notifications-outline" size={20} color={colors.text} />
-              {(versionInfo?.updateAvailable || unreadCount > 0) && (
-                <View style={styles.notificationBadgeContainer}>
-                  <View style={styles.notificationBadge} />
-                  <View style={[styles.notificationBadge, styles.notificationBadgePulse]} />
-                </View>
-              )}
+              <Ionicons name="notifications-outline" size={22} color={colors.text} />
+              {(versionInfo?.updateAvailable || unreadCount > 0) && <View style={styles.notificationBadge} />}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.avatarButton, {
-                borderWidth: 1.5,
-                borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'
-              }]}
+              style={[styles.actionButton, { backgroundColor: colors.cardBg }]}
               onPress={() => navigation.navigate('Profile')}
-              activeOpacity={0.85}
             >
               {user?.avatar ? (
                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
               ) : (
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.secondary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.avatarPlaceholder}
-                >
+                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
                   <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'U'}</Text>
-                </LinearGradient>
+                </View>
               )}
             </TouchableOpacity>
           </View>
@@ -584,56 +524,24 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 480,
+    height: 400,
     zIndex: 0,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 100,
   },
   contentSection: {
     marginTop: 0,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    marginBottom: 20,
-    marginTop: 16,
-  },
-  sectionHeaderContent: {
-    flex: 1,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    marginTop: 8,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: -0.8,
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-    opacity: 0.7,
-  },
-  serviceCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 6,
-  },
-  badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: -0.5,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -661,89 +569,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
   locationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
     marginRight: 16,
   },
-  logoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.sm,
-  },
-  logoImage: {
+  locationIconBg: {
     width: 36,
     height: 36,
     borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   locationInfo: {
     flex: 1,
   },
-  locationLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
   locationLabel: {
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
   },
   locationAddress: {
     fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    fontWeight: '700',
   },
   actionsContainer: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   actionButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.sm,
   },
-  notificationBadgeContainer: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
   notificationBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#EF4444',
   },
-  notificationBadgePulse: {
-    position: 'absolute',
-    opacity: 0.5,
-    transform: [{ scale: 1.5 }],
-  },
-  avatarButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    overflow: 'hidden',
-    ...SHADOWS.sm,
-  },
   avatar: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
   },
   avatarPlaceholder: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -751,7 +633,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.5,
   },
   emptyState: {
     alignItems: 'center',

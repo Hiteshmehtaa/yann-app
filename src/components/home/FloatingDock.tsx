@@ -34,100 +34,54 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
 
     return (
         <View style={styles.container}>
-            {/* Premium Search Row with Enhanced Shadows */}
+            {/* Search Section - Floating Glass Pill */}
             <View style={styles.searchRow}>
                 <View style={[
                     styles.searchBarWrapper,
                     {
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.95)',
-                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-                        shadowColor: isDark ? '#000' : COLORS.primary,
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: isDark ? 0.4 : 0.08,
-                        shadowRadius: 16,
-                        elevation: 8,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)',
+                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)',
                     }
                 ]}>
-                    <Ionicons 
-                        name="search" 
-                        size={20} 
-                        color={colors.textTertiary} 
-                        style={styles.searchIcon}
-                    />
                     <SearchBar
                         value={searchQuery}
                         onChangeText={onSearchChange}
-                        placeholder="Search services, categories..."
-                        style={styles.searchInput}
+                        placeholder="Search services..."
+                        style={{ backgroundColor: 'transparent', borderWidth: 0, height: 50 }}
                     />
                 </View>
-
-                <TouchableOpacity 
-                    style={[
-                        styles.filterBtn, 
-                        { 
-                            backgroundColor: COLORS.primary,
-                            shadowColor: COLORS.primary,
-                            shadowOffset: { width: 0, height: 6 },
-                            shadowOpacity: 0.35,
-                            shadowRadius: 12,
-                            elevation: 8,
-                        }
-                    ]}
-                    onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
-                    activeOpacity={0.85}
-                >
-                    <Ionicons name="options-outline" size={22} color="#FFF" />
-                </TouchableOpacity>
             </View>
 
-            {/* Premium Category Pills with Enhanced Design */}
+            {/* Categories Scroller - Floating Chips */}
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.categoryScroll}
-                decelerationRate="fast"
-                snapToInterval={100}
             >
-                {categories.map((cat) => {
-                    const isSelected = selectedCategory === cat;
-                    return (
-                        <TouchableOpacity
-                            key={cat}
-                            onPress={() => handleCategorySelect(cat)}
+                {categories.map((cat) => (
+                    <TouchableOpacity
+                        key={cat}
+                        onPress={() => handleCategorySelect(cat)}
+                        style={[
+                            styles.categoryPill,
+                            selectedCategory === cat
+                                ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
+                                : {
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.5)',
+                                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'
+                                }
+                        ]}
+                    >
+                        <Text
                             style={[
-                                styles.categoryPill,
-                                isSelected
-                                    ? { 
-                                        backgroundColor: COLORS.primary,
-                                        borderColor: COLORS.primary,
-                                        shadowColor: COLORS.primary,
-                                        shadowOffset: { width: 0, height: 4 },
-                                        shadowOpacity: 0.25,
-                                        shadowRadius: 8,
-                                        elevation: 4,
-                                    }
-                                    : {
-                                        backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.6)',
-                                        borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
-                                    }
+                                styles.categoryText,
+                                { color: selectedCategory === cat ? '#FFF' : colors.text }
                             ]}
-                            activeOpacity={0.8}
                         >
-                            <Text
-                                style={[
-                                    styles.categoryText,
-                                    { color: isSelected ? '#FFF' : colors.text }
-                                ]}
-                            >
-                                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                            </Text>
-                            {isSelected && (
-                                <View style={styles.selectedIndicator} />
-                            )}
-                        </TouchableOpacity>
-                    );
-                })}
+                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
             </ScrollView>
         </View>
     );
@@ -136,64 +90,31 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 24,
-        marginBottom: 32,
-        gap: 20,
+        marginBottom: 24,
     },
     searchRow: {
-        flexDirection: 'row',
-        gap: 12,
-        alignItems: 'center',
+        marginBottom: 20,
     },
     searchBarWrapper: {
-        flex: 1,
-        height: 56,
-        borderRadius: 16,
+        height: 52,
+        borderRadius: 26,
         borderWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        gap: 12,
-    },
-    searchIcon: {
-        marginRight: -4,
-    },
-    searchInput: {
-        flex: 1,
-        backgroundColor: 'transparent',
-        borderWidth: 0,
-        height: 56,
-        paddingHorizontal: 0,
-    },
-    filterBtn: {
-        width: 56,
-        height: 56,
-        borderRadius: 16,
+        overflow: 'hidden',
         justifyContent: 'center',
-        alignItems: 'center',
     },
     categoryScroll: {
-        gap: 12,
-        paddingRight: 24,
+        gap: 10,
+        paddingRight: 24, // End padding
     },
     categoryPill: {
         paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 14,
+        paddingVertical: 10,
+        borderRadius: 20,
         borderWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
     },
     categoryText: {
         fontSize: 14,
         fontWeight: '600',
-        letterSpacing: 0.2,
-    },
-    selectedIndicator: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#FFF',
-        opacity: 0.8,
+        letterSpacing: 0.3,
     },
 });

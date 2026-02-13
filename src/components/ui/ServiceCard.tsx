@@ -66,9 +66,9 @@ export const ServiceCard = React.memo<ServiceCardProps>(({
     if (!isComingSoon) {
       haptics.light();
       Animated.spring(scaleAnim, {
-        toValue: 0.92, // More noticeable shrink (was 0.95)
-        speed: 20,     // Faster response
-        bounciness: 4,
+        toValue: 0.97,
+        tension: 60,
+        friction: 8,
         useNativeDriver: true,
       }).start();
     }
@@ -77,8 +77,8 @@ export const ServiceCard = React.memo<ServiceCardProps>(({
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      speed: 15,
-      bounciness: 6, // Slight bounce back
+      tension: 60,
+      friction: 7,
       useNativeDriver: true,
     }).start();
   };
@@ -98,100 +98,169 @@ export const ServiceCard = React.memo<ServiceCardProps>(({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
-      style={[styles.container, style]} // Removed opacity from container to keep text sharp
+      style={[styles.container, style]}
       disabled={isComingSoon}
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <View style={[
-          styles.glassCard,
-          {
-            backgroundColor: isComingSoon
-              ? (isDark ? 'rgba(50,50,50,0.3)' : 'rgba(200,200,200,0.3)') // Gray for Coming Soon
-              : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)'),
-            borderColor: isComingSoon
-              ? (isDark ? 'rgba(100,100,100,0.2)' : 'rgba(150,150,150,0.2)')
-              : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)'),
-            borderWidth: 1,
-            // Grayscale effect hack for content inside? No, handled by tinting children
-          }
-        ]}>
-
-          {/* Partner Count Badge - Top Left */}
-          {showCount && (
-            <LinearGradient
-              colors={gradientColors}
-              style={styles.partnerCountBadge}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.partnerCountText}>{partnerCount} active</Text>
-            </LinearGradient>
-          )}
-
-          {/* Image/Icon Container */}
-          <View style={[
-            styles.imageContainer,
-            { backgroundColor: isComingSoon ? 'transparent' : (iconImage ? 'transparent' : 'rgba(59, 130, 246, 0.1)') }
-          ]}>
-            {iconImage ? (
-              <Image
-                source={iconImage}
-                style={[
-                  styles.serviceImage,
-                  isComingSoon && { opacity: 0.3, tintColor: isDark ? '#888' : '#bbb' }
-                ]}
-                resizeMode="cover"
-              />
-            ) : icon && typeof icon === 'string' && icon.length < 5 ? (
-              // Render Emoji (length check avoids vector icon names if passed by mistake)
-              <Text style={{ fontSize: 32, opacity: isComingSoon ? 0.5 : 1 }}>{icon}</Text>
-            ) : (
-              <ServiceIcon
-                size={40}
-                color={isComingSoon ? COLORS.textTertiary : COLORS.primary}
-              />
-            )}
-          </View>
-
-          {/* Title */}
-          <Text
-            style={[
-              styles.title,
-              { color: isComingSoon ? colors.textTertiary : colors.text },
-            ]}
-            numberOfLines={2}
+        {/* Gradient Border Container */}
+        <LinearGradient
+          colors={isDark 
+            ? ['rgba(59, 130, 246, 0.3)', 'rgba(139, 92, 246, 0.2)', 'rgba(59, 130, 246, 0.1)']
+            : ['rgba(59, 130, 246, 0.15)', 'rgba(139, 92, 246, 0.1)', 'rgba(236, 72, 153, 0.08)']}
+          style={[styles.gradientBorder, { opacity: isComingSoon ? 0.4 : 1 }]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Inner Card with Background Gradient */}
+          <LinearGradient
+            colors={isDark 
+              ? ['#1E1E2E', '#1A1A28']
+              : ['#FFFFFF', '#FAFBFF']}
+            style={styles.premiumCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
           >
-            {title}
-          </Text>
+            {/* Ambient Glow Decoration */}
+            <View style={styles.ambientGlow}>
+              <LinearGradient
+                colors={isDark
+                  ? ['rgba(59, 130, 246, 0.15)', 'transparent']
+                  : ['rgba(59, 130, 246, 0.08)', 'transparent']}
+                style={styles.glowGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0.5 }}
+              />
+            </View>
 
-          {/* Price Tag OR Coming Soon Text */}
-          {isComingSoon ? (
-            <Text style={[styles.comingSoonText, { color: colors.textTertiary }]}>
-              COMING SOON
-            </Text>
-          ) : (
-            <Text style={[styles.priceTag, { color: colors.textSecondary }]}>
-              {price}
-            </Text>
-          )}
+            {/* Icon Feature Zone with Multi-Layer Design */}
+            <View style={styles.featureZone}>
+              {/* Outer Glow Ring */}
+              <View style={[styles.iconOuterRing, { 
+                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.06)' 
+              }]}>
+                <LinearGradient
+                  colors={isDark 
+                    ? ['rgba(59, 130, 246, 0.25)', 'rgba(139, 92, 246, 0.15)']
+                    : ['#EEF2FF', '#E0E7FF']}
+                  style={styles.iconContainer}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  {/* Icon Highlight Layer */}
+                  <View style={styles.iconHighlight} />
+                  
+                  {iconImage ? (
+                    <Image
+                      source={iconImage}
+                      style={styles.serviceIcon}
+                      resizeMode="contain"
+                    />
+                  ) : icon && typeof icon === 'string' && icon.length < 5 ? (
+                    <Text style={styles.emojiIcon}>{icon}</Text>
+                  ) : (
+                    <ServiceIcon
+                      size={38}
+                      color={COLORS.primary}
+                    />
+                  )}
+                </LinearGradient>
+              </View>
+            </View>
 
-          {/* Badges - Top Right Stack */}
-          <View style={styles.badgesContainer}>
-            {isNew && !isComingSoon && (
-              <View style={styles.badgeWrapper}>
-                <Badge variant="new" />
+            {/* Content Section */}
+            <View style={styles.contentSection}>
+              <Text
+                style={[
+                  styles.serviceTitle,
+                  { color: colors.text },
+                ]}
+                numberOfLines={2}
+              >
+                {title}
+              </Text>
+
+              {/* Price or Status with Enhanced Design */}
+              {isComingSoon ? (
+                <LinearGradient
+                  colors={isDark ? ['#2A2A3E', '#25273A'] : ['#F3F4F6', '#E5E7EB']}
+                  style={styles.statusPill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={[styles.statusText, { color: colors.textSecondary }]}>
+                    Coming Soon
+                  </Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.priceContainer}>
+                  <LinearGradient
+                    colors={['#3B82F6', '#8B5CF6']}
+                    style={styles.priceUnderline}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                  <Text style={styles.servicePrice}>
+                    {price}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Enhanced Bottom Meta: Partner Count */}
+            {showCount && !isComingSoon && (
+              <View style={styles.metaBadge}>
+                <View style={[styles.badgeShadow, { 
+                  shadowColor: gradientColors[0],
+                }]} />
+                <LinearGradient
+                  colors={gradientColors}
+                  style={styles.badgeGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <View style={styles.badgeShine} />
+                  <View style={styles.badgeContent}>
+                    <View style={styles.badgeDot} />
+                    <Text style={styles.badgeCount}>{partnerCount}</Text>
+                  </View>
+                </LinearGradient>
               </View>
             )}
 
-            {popular && !isComingSoon && !isNew && (
-              <View style={styles.badgeWrapper}>
-                <Badge variant="popular" />
+            {/* Enhanced Top Right: Status Tags */}
+            {(isNew || popular) && !isComingSoon && (
+              <View style={styles.statusTag}>
+                {isNew ? (
+                  <View style={styles.tagContainer}>
+                    <View style={[styles.tagGlow, { backgroundColor: '#10B981' }]} />
+                    <LinearGradient
+                      colors={['#10B981', '#059669']}
+                      style={styles.tagGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <View style={styles.tagShine} />
+                      <Text style={styles.tagText}>NEW</Text>
+                    </LinearGradient>
+                  </View>
+                ) : popular ? (
+                  <View style={styles.tagContainer}>
+                    <View style={[styles.tagGlow, { backgroundColor: '#F59E0B' }]} />
+                    <LinearGradient
+                      colors={['#F59E0B', '#D97706']}
+                      style={styles.tagGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <View style={styles.tagShine} />
+                      <Text style={styles.tagText}>POPULAR</Text>
+                    </LinearGradient>
+                  </View>
+                ) : null}
               </View>
             )}
-
-            {/* Removed the 'Coming Soon' badge since we have text now, or keep it as minimal dot? Removed for clean look */}
-          </View>
-        </View>
+          </LinearGradient>
+        </LinearGradient>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -201,74 +270,208 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  glassCard: {
-    height: 160,
-    borderRadius: 24,
-    borderWidth: 0,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  gradientBorder: {
+    borderRadius: 22,
+    padding: 1.5,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  premiumCard: {
+    height: 200,
+    borderRadius: 20.5,
+    padding: 20,
+    justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  comingSoonContainer: {
-    // No opacity change here, handled in glassCard
+  ambientGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    opacity: 0.6,
   },
-  imageContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    marginBottom: 12,
+  glowGradient: {
+    flex: 1,
+    borderTopLeftRadius: 20.5,
+    borderTopRightRadius: 20.5,
+  },
+  featureZone: {
+    marginBottom: 16,
+    zIndex: 1,
+  },
+  iconOuterRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden', // Clip the zoomed-in image
   },
-  serviceImage: {
-    width: '125%', // Zoom in by 25% to reduce whitespace
-    height: '125%',
+  iconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-  title: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 4,
-    lineHeight: 18,
+  iconHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
   },
-  priceTag: {
-    fontSize: 11,
-    fontWeight: '500',
-    opacity: 0.8,
+  serviceIcon: {
+    width: 42,
+    height: 42,
+    zIndex: 1,
   },
-  comingSoonText: {
-    fontSize: 10,
+  emojiIcon: {
+    fontSize: 38,
+    zIndex: 1,
+  },
+  contentSection: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    zIndex: 1,
+  },
+  serviceTitle: {
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    lineHeight: 20,
+    letterSpacing: -0.3,
+    marginBottom: 10,
+  },
+  priceContainer: {
+    alignSelf: 'flex-start',
     marginTop: 4,
   },
-  badgesContainer: {
+  priceUnderline: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    alignItems: 'flex-end',
-    gap: 4,
+    bottom: -2,
+    left: 0,
+    right: 0,
+    height: 2,
+    borderRadius: 1,
+    opacity: 0.6,
   },
-  badgeWrapper: {},
-  partnerCountBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  servicePrice: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#3B82F6',
+    letterSpacing: -0.2,
+  },
+  statusPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 12,
-    justifyContent: 'center',
+    marginTop: 4,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  metaBadge: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    zIndex: 2,
+  },
+  badgeShadow: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: 18,
+    opacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  badgeGradient: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  badgeShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  badgeContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 10,
+    gap: 6,
   },
-  partnerCountText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFF',
+  badgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
   },
-  // Unused but kept to prevent breakages if refs exist
+  badgeCount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  statusTag: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 2,
+  },
+  tagContainer: {
+    position: 'relative',
+  },
+  tagGlow: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 15,
+    opacity: 0.25,
+  },
+  tagGradient: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  tagShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  // Unused but kept to prevent breakages
   gradientOverlay: { display: 'none' },
   cardContent: { display: 'none' },
 });

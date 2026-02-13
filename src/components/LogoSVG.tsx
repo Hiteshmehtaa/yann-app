@@ -16,7 +16,7 @@ export const LogoSVG: React.FC<LogoSVGProps> = ({
       <Defs>
         <LinearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <Stop offset="0%" stopColor={COLORS.primary} stopOpacity="1" />
-          <Stop offset="100%" stopColor={COLORS.secondary} stopOpacity="1" />
+          <Stop offset="100%" stopColor={COLORS.primaryGradientEnd} stopOpacity="1" />
         </LinearGradient>
       </Defs>
 
