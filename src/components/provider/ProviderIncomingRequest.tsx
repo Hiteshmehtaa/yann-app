@@ -86,7 +86,6 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const vibrationRef = useRef<NodeJS.Timeout | null>(null);
-    const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // 1. Timer Logic
     useEffect(() => {
@@ -104,10 +103,6 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
             if (vibrationRef.current) {
                 clearInterval(vibrationRef.current);
                 vibrationRef.current = null;
-            }
-            if (audioIntervalRef.current) {
-                clearInterval(audioIntervalRef.current);
-                audioIntervalRef.current = null;
             }
         };
 
@@ -173,27 +168,23 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
 
     const startBuzzerEffects = async () => {
         try {
+            // Play buzzer sound - it will loop continuously until stopBuzzer() is called
             await playBookingRequestBuzzer();
-        } catch (e) { console.log('Buzzer error', e); }
+        } catch (e) { 
+            console.log('Buzzer error', e); 
+        }
 
+        // Start continuous vibration
         if (Platform.OS === 'android') {
             // Android supports native looping: vibrate(pattern, repeatIndex)
-            // repeatIndex is the index in pattern to start repeating from
-            Vibration.vibrate([0, 1000, 1000], true);
+            // Pattern: [wait, vibrate, wait]
+            // repeatIndex: index to repeat from (1 = repeat vibrate+wait)
+            Vibration.vibrate([0, 1000, 1000], 0); // Continuous loop
         } else {
             // iOS manual loop
             Vibration.vibrate(1000);
             vibrationRef.current = setInterval(() => {
                 Vibration.vibrate(1000);
-            }, 2000);
-        }
-
-        // Start buzzer sound loop separately
-        playBookingRequestBuzzer().catch(() => { });
-        if (Platform.OS === 'android') {
-            // Replay sound every 2 seconds matching the vibration cycle
-            audioIntervalRef.current = setInterval(() => {
-                playBookingRequestBuzzer().catch(() => { });
             }, 2000);
         }
     };
@@ -210,10 +201,6 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
         if (vibrationRef.current) {
             clearInterval(vibrationRef.current);
             vibrationRef.current = null;
-        }
-        if (audioIntervalRef.current) {
-            clearInterval(audioIntervalRef.current);
-            audioIntervalRef.current = null;
         }
     };
 

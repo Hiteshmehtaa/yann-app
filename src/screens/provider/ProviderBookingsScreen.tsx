@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
   StatusBar,
   Modal,
   Image,
-  Animated,
   Dimensions,
   Switch, // Added
 } from 'react-native';
@@ -60,37 +59,6 @@ interface ProviderBooking {
 }
 
 type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'rejected';
-
-// ==============================================
-// 🎬 ANIMATED ENTRY
-// ==============================================
-const AnimatedEntry = ({ children, index }: { children: React.ReactNode; index: number }) => {
-  const anim = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(20)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 500,
-        delay: index * 60,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slide, {
-        toValue: 0,
-        duration: 600,
-        delay: index * 60,
-        useNativeDriver: true,
-      })
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={{ opacity: anim, transform: [{ translateY: slide }] }}>
-      {children}
-    </Animated.View>
-  );
-};
 
 export const ProviderBookingsScreen = () => {
   const navigation = useNavigation();
@@ -297,7 +265,7 @@ export const ProviderBookingsScreen = () => {
       } else {
         // Success - Update global context with FULL returned profile (includes cleared services if offline)
         // r.data contains the updated provider profile
-        const updatedProfile = r.data || r.user || r.provider;
+        const updatedProfile = r.data || (r as any).user || (r as any).provider;
         if (updatedProfile) {
           updateUser(updatedProfile);
         } else {
@@ -383,8 +351,7 @@ export const ProviderBookingsScreen = () => {
     const session = jobSessions[item.id] || item.jobSession;
 
     return (
-      <AnimatedEntry key={item.id} index={index}>
-        <View style={styles.card}>
+      <View key={item.id} style={styles.card}>
 
           {/* Card Header Area */}
           <View style={styles.cardHeader}>
@@ -507,7 +474,6 @@ export const ProviderBookingsScreen = () => {
           </View>
 
         </View>
-      </AnimatedEntry>
     );
   };
 

@@ -51,12 +51,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
             });
             console.log('✅ Default channel created');
 
-            // Add channel for booking requests (matches backend)
+            // Add channel for booking requests with custom buzzer sound
+            // This plays even when app is closed/background (like Uber)
             await Notifications.setNotificationChannelAsync('booking_requests_v3', {
                 name: 'Booking Requests',
-                sound: 'booking_request', // Custom buzzer sound (no extension for res/raw/)
+                sound: 'booking_request.mp3', // Custom buzzer from res/raw/booking_request.mp3
                 importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 500, 200, 500, 200, 500, 200, 500], // Extended pattern for better noticeability
+                vibrationPattern: [0, 1000, 500, 1000, 500, 1000], // Repeating pattern
                 lightColor: '#FF231F7C',
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
                 bypassDnd: true,

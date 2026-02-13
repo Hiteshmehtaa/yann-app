@@ -56,10 +56,18 @@ export async function initializeBuzzerSound() {
 
 /**
  * Play booking request notification sound with vibration
+ * This buzzer will play continuously until stopBuzzer() is called
+ * (typically for the full 3-minute booking modal duration)
  */
 export async function playBookingRequestBuzzer() {
   try {
-    console.log('🔔 Attempting to play buzzer sound...');
+    console.log('🔔 Starting continuous buzzer for booking request...');
+
+    // Don't restart if already playing
+    if (isPlaying) {
+      console.log('⚠️ Buzzer already playing, skipping restart');
+      return;
+    }
 
     // Ensure audio mode is set before playing
     if (Audio) {
@@ -77,51 +85,41 @@ export async function playBookingRequestBuzzer() {
       try {
         // Unload existing sound if any to prevent state issues
         if (buzzerSound) {
-          try { await buzzerSound.unloadAsync(); } catch (e) { }
+          try { 
+            await buzzerSound.stopAsync();
+            await buzzerSound.unloadAsync(); 
+          } catch (e) { 
+            console.log('Cleanup warning:', e);
+          }
         }
 
-        // Create and load the sound fresh every time to ensure it works
+        // Create and load the sound to play continuously
         const { sound } = await Audio.Sound.createAsync(
           require('../../assets/sounds/booking_request.mp3'),
-          { shouldPlay: true, isLooping: true, volume: 1.0 }
+          { 
+            shouldPlay: true, 
+            isLooping: true,  // Loop continuously
+            volume: 1.0 
+          }
         );
 
         buzzerSound = sound;
         isPlaying = true;
-        console.log('✅ Buzzer playing successfully');
+        console.log('✅ Buzzer sound playing - will loop until stopBuzzer() is called');
       } catch (e) {
-        console.log('Error playing sound:', e);
+        console.log('⚠️ Sound file error, using haptic feedback only:', e);
       }
     }
 
-    // Auto-reset playing flag/stop after 30 seconds (or when modal closes)
-    // The modal component calls stopBuzzer() on unmount/dismiss
-
-    // Always provide haptic feedback as backup
+    // Provide initial haptic feedback to alert user
     if (Platform.OS === 'ios') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-
-      // Loop haptics a few times
-      const interval = setInterval(async () => {
-        if (!isPlaying) clearInterval(interval);
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }, 1000);
-
-      // Clear interval after 10s if not stopped
-      setTimeout(() => clearInterval(interval), 10000);
-
     } else {
-      // Android
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      // Loop haptics
-      const interval = setInterval(async () => {
-        if (!isPlaying) clearInterval(interval);
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }, 1000);
-      setTimeout(() => clearInterval(interval), 10000);
     }
+
   } catch (error) {
-    console.error('❌ Failed to play buzzer:', error);
+    console.error('❌ Failed to start buzzer:', error);
   }
 }
 
