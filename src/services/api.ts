@@ -494,14 +494,15 @@ class ApiService {
   }): Promise<ApiResponse<ServiceProviderListItem[]>> {
     try {
       const response = await this.client.get('/providers/search', { params: filters });
+      const providers = response.data?.data || response.data?.providers || [];
       return {
-        success: true,
+        success: Array.isArray(providers) && providers.length > 0,
         message: 'Search completed',
-        data: response.data.data || [],
-        meta: response.data.meta
+        data: Array.isArray(providers) ? providers : [],
+        meta: response.data?.meta
       };
     } catch (error: any) {
-      console.log('Provider search failed:', error?.message || '');
+      console.log('Provider search failed:', error?.message || '', '- will fallback to alternative methods');
       return {
         success: false,
         message: 'Search failed',
@@ -655,8 +656,14 @@ class ApiService {
     customerPhone: string;
     customerEmail?: string;
     customerAddress: string;
+    latitude?: number;
+    longitude?: number;
+    providerNavigationAddress?: any;
     bookingDate: string;
     bookingTime: string;
+    startTime?: string;
+    endTime?: string;
+    bookedHours?: number;
     providerId: string; // REQUIRED - get from selected provider
     paymentMethod?: string;
     billingType?: string;
@@ -664,15 +671,18 @@ class ApiService {
     notes?: string;
     extras?: any[];
     driverDetails?: any;
+    driverTripDetails?: any;
     basePrice?: number;
+    gstAmount?: number;
     totalPrice?: number;
+    [key: string]: any; // Allow any extra fields to pass through
   }): Promise<ApiResponse<Booking>> {
     if (!bookingData.providerId) {
       throw new Error('providerId is required - select a provider first');
     }
 
-    // Sanitize booking data - remove undefined/null non-required fields
-    const cleanedData = {
+    // Sanitize booking data - keep all fields, just set defaults for missing ones
+    const cleanedData: Record<string, any> = {
       serviceId: bookingData.serviceId,
       serviceName: bookingData.serviceName,
       serviceCategory: bookingData.serviceCategory,
@@ -689,10 +699,20 @@ class ApiService {
       quantity: bookingData.quantity || 1,
       notes: bookingData.notes || '',
       extras: bookingData.extras || [],
-      driverDetails: bookingData.driverDetails || null,
       basePrice: bookingData.basePrice || 0,
       totalPrice: bookingData.totalPrice || 0,
     };
+
+    // Pass through all additional fields (needed for driver bookings, etc.)
+    if (bookingData.driverDetails) cleanedData.driverDetails = bookingData.driverDetails;
+    if (bookingData.driverTripDetails) cleanedData.driverTripDetails = bookingData.driverTripDetails;
+    if (bookingData.bookedHours) cleanedData.bookedHours = bookingData.bookedHours;
+    if (bookingData.startTime) cleanedData.startTime = bookingData.startTime;
+    if (bookingData.endTime) cleanedData.endTime = bookingData.endTime;
+    if (bookingData.gstAmount != null) cleanedData.gstAmount = bookingData.gstAmount;
+    if (bookingData.latitude) cleanedData.latitude = bookingData.latitude;
+    if (bookingData.longitude) cleanedData.longitude = bookingData.longitude;
+    if (bookingData.providerNavigationAddress) cleanedData.providerNavigationAddress = bookingData.providerNavigationAddress;
 
     const response = await this.client.post('/bookings/create', cleanedData);
 

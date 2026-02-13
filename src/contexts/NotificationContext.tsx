@@ -26,16 +26,23 @@ export interface AppNotification {
 export interface BookingRequestData {
   bookingId: string;
   serviceName: string;
+  serviceCategory?: string;
   customerName: string;
-  customerProfileImage?: string; // Added field
+  customerProfileImage?: string;
   customerAddress?: string;
   customerPhone?: string;
   totalPrice: number;
+  bookedHours?: number;
+  billingType?: string;
   bookingDate?: string;
   bookingTime?: string;
   notes?: string;
   expiresAt: string;
-  notificationIdentifier?: string; // System notification ID for dismissal
+  notificationIdentifier?: string;
+  // Driver-specific details (JSON stringified from backend, parsed on arrival)
+  driverDetails?: any;
+  driverTripDetails?: any;
+  pricingBreakdown?: any;
 }
 
 // Payment modal data (support both initial and completion payments)
@@ -191,19 +198,33 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // BOOKING REQUEST for providers (no logging needed)
       if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId && data.expiresAt) {
+        // Parse driver-specific JSON strings from push notification
+        let parsedDriverDetails = null;
+        let parsedDriverTripDetails = null;
+        let parsedPricingBreakdown = null;
+        try { if (data.driverDetails) parsedDriverDetails = typeof data.driverDetails === 'string' ? JSON.parse(data.driverDetails) : data.driverDetails; } catch (e) {}
+        try { if (data.driverTripDetails) parsedDriverTripDetails = typeof data.driverTripDetails === 'string' ? JSON.parse(data.driverTripDetails) : data.driverTripDetails; } catch (e) {}
+        try { if (data.pricingBreakdown) parsedPricingBreakdown = typeof data.pricingBreakdown === 'string' ? JSON.parse(data.pricingBreakdown) : data.pricingBreakdown; } catch (e) {}
+
         setIncomingBookingRequest({
           bookingId: data.bookingId as string,
           serviceName: data.serviceName as string || 'Service',
+          serviceCategory: data.serviceCategory as string || '',
           customerName: data.customerName as string || 'Customer',
-          customerProfileImage: data.customerProfileImage as string, // Map Image
+          customerProfileImage: data.customerProfileImage as string,
           customerAddress: data.customerAddress as string,
           customerPhone: data.customerPhone as string,
           totalPrice: data.totalPrice as number || 0,
+          bookedHours: data.bookedHours as number || 0,
+          billingType: data.billingType as string || 'one-time',
           bookingDate: data.bookingDate as string,
           bookingTime: data.bookingTime as string,
           notes: data.notes as string,
           expiresAt: data.expiresAt as string,
-          notificationIdentifier: notification.request.identifier, // Track for dismissal
+          notificationIdentifier: notification.request.identifier,
+          driverDetails: parsedDriverDetails,
+          driverTripDetails: parsedDriverTripDetails,
+          pricingBreakdown: parsedPricingBreakdown,
         });
       }
 

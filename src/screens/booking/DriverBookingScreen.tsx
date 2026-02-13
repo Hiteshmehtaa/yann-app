@@ -368,11 +368,20 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
             return;
         }
 
-        setIsSearching(true);
-        setTimeout(() => {
-            setIsSearching(false);
-            Alert.alert('Success', 'Searching for available drivers...');
-        }, 2000);
+        // Navigate to driver search results with all preferences
+        navigation.navigate('DriverSearchResults', {
+            service,
+            tripType,
+            tripDirection,
+            vehicleType,
+            transmission,
+            pickupAddress,
+            dropAddress,
+            pickupCoords,
+            dropCoords,
+            routeDistanceKm,
+            driverReturnFare,
+        });
     };
 
     // Render location search modal
