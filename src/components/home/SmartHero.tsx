@@ -68,7 +68,8 @@ export const SmartHero: React.FC<SmartHeroProps> = ({
                     styles.statsPill,
                     {
                         backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.9)',
-                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',\n                        shadowColor: isDark ? '#000' : COLORS.primary,
+                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                        shadowColor: isDark ? '#000' : COLORS.primary,
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: isDark ? 0.3 : 0.08,
                         shadowRadius: 12,
