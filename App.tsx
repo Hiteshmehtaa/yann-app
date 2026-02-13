@@ -23,6 +23,7 @@ import './src/i18n'; // Initialize i18n
 WebBrowser.maybeCompleteAuthSession();
 
 import { initializeBuzzerSound } from './src/utils/soundNotifications';
+import { setupNotificationChannels } from './src/utils/notifications';
 
 // ... existing imports ...
 
@@ -35,6 +36,10 @@ export default function App() {
     async function initialize() {
       // Initialize audio system
       await initializeBuzzerSound();
+
+      // Setup notification channels early (Android)
+      // This ensures channels exist even when app is killed
+      await setupNotificationChannels();
 
       // Check onboarding status
       const completed = await isOnboardingCompleted();

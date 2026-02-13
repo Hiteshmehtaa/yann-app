@@ -35,6 +35,7 @@ export interface BookingRequestData {
   bookingTime?: string;
   notes?: string;
   expiresAt: string;
+  notificationIdentifier?: string; // System notification ID for dismissal
 }
 
 // Payment modal data (support both initial and completion payments)
@@ -78,6 +79,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const ignoreBookingRequest = (bookingId: string) => {
     console.log('🔇 Ignoring booking and STOPPING buzzer:', bookingId);
     stopBuzzer(); // Explicitly stop sound
+    
+    // Dismiss the system notification to stop buzzer from continuing
+    Notifications.dismissAllNotificationsAsync()
+      .then(() => console.log('✅ System notification dismissed'))
+      .catch(err => console.error('❌ Failed to dismiss notification:', err));
+    
     ignoredBookingIds.current.add(bookingId);
     setIncomingBookingRequest(null);
   };
@@ -196,6 +203,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           bookingTime: data.bookingTime as string,
           notes: data.notes as string,
           expiresAt: data.expiresAt as string,
+          notificationIdentifier: notification.request.identifier, // Track for dismissal
         });
       }
 

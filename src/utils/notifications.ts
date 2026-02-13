@@ -14,6 +14,45 @@ Notifications.setNotificationHandler({
 });
 
 /**
+ * Setup notification channels on app startup (Android only)
+ * This ensures channels exist even when app is killed
+ */
+export async function setupNotificationChannels() {
+    if (Platform.OS !== 'android') {
+        return; // iOS doesn't need this
+    }
+
+    console.log('🔔 Setting up notification channels on app startup...');
+
+    try {
+        // Default channel
+        await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF231F7C',
+        });
+        
+        // Booking requests channel with custom buzzer
+        await Notifications.setNotificationChannelAsync('booking_requests_v3', {
+            name: 'Booking Requests',
+            sound: 'booking_request.mp3', // From res/raw/booking_request.mp3
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
+            lightColor: '#FF231F7C',
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: true,
+            enableVibrate: true,
+            enableLights: true,
+        });
+
+        console.log('✅ Notification channels initialized');
+    } catch (error) {
+        console.error('❌ Failed to setup notification channels:', error);
+    }
+}
+
+/**
  * Register for push notifications and get Expo push token
  * @returns {Promise<string|undefined>} Push token or undefined if failed
  */
@@ -38,37 +77,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
         return undefined;
     }
 
-    // Setup Android notification channels
-    if (Platform.OS === 'android') {
-        console.log('🤖 Setting up Android notification channels...');
-
-        try {
-            await Notifications.setNotificationChannelAsync('default', {
-                name: 'default',
-                importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
-            });
-            console.log('✅ Default channel created');
-
-            // Add channel for booking requests with custom buzzer sound
-            // This plays even when app is closed/background (like Uber)
-            await Notifications.setNotificationChannelAsync('booking_requests_v3', {
-                name: 'Booking Requests',
-                sound: 'booking_request.mp3', // Custom buzzer from res/raw/booking_request.mp3
-                importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 1000, 500, 1000, 500, 1000], // Repeating pattern
-                lightColor: '#FF231F7C',
-                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-                bypassDnd: true,
-                enableVibrate: true,
-                enableLights: true,
-            });
-            console.log('✅ Booking requests channel created');
-        } catch (error) {
-            console.error('❌ Failed to create notification channels:', error);
-        }
-    }
+    // Setup notification channels (ensures they exist)
+    await setupNotificationChannels();
 
     // Check and request permissions
     console.log('🔐 Checking notification permissions...');
