@@ -124,7 +124,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
           {/* Header with Top-Left Logo (Animation Target) */}
           <View style={styles.header}>
             <Image
-              source={require('../../../assets/Logo.jpg')}
+              source={require('../../../assets/Logo.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   brandLetter: {
     fontSize: 42, // Slightly larger for impact
     fontWeight: '900',
-    color: MD2Colors.blue600, // Using the same premium blue
+    color: MD2Colors.blue700, // Using the same premium blue
     // letterSpacing is handled by gap in container now for cleaner layout
   },
   taglineRow: {
