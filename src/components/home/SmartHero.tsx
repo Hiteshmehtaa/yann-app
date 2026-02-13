@@ -77,7 +77,7 @@ export const SmartHero: React.FC<SmartHeroProps> = ({
                     }
                 ]}>
                     <View style={[styles.statsIconContainer, { backgroundColor: COLORS.primary + '15' }]}>
-                        <Ionicons name=\"flash\" size={14} color={COLORS.primary} />
+                        <Ionicons name="flash" size={14} color={COLORS.primary} />
                     </View>
                     <View style={styles.statsContent}>
                         <Text style={[styles.statsValue, { color: colors.text }]}>
