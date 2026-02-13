@@ -10,9 +10,9 @@ interface ServiceMatrixProps {
 }
 
 const { width } = Dimensions.get('window');
-const GAP = 12;
-const PADDING = 16;
-// Consistent 2-column layout
+const GAP = 16;
+const PADDING = 24;
+// Premium 2-column layout with better spacing
 const CARD_WIDTH = (width - (PADDING * 2) - GAP) / 2;
 
 export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressService }) => {
@@ -20,17 +20,19 @@ export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressS
     const animValues = useRef(services.map(() => new Animated.Value(0))).current;
 
     useEffect(() => {
-        // Reset and create new animation values when services change
+        // Enhanced staggered animation with spring physics
         const animations = services.map((_, index) => {
-            return Animated.spring(animValues[index] || new Animated.Value(0), {
+            const animValue = animValues[index] || new Animated.Value(0);
+            return Animated.spring(animValue, {
                 toValue: 1,
-                tension: 50,
-                friction: 7,
+                tension: 60,
+                friction: 8,
+                delay: index * 50,
                 useNativeDriver: true,
             });
         });
 
-        Animated.stagger(40, animations).start();
+        Animated.parallel(animations).start();
     }, [services]);
 
     const renderServiceItem = (service: Service, index: number) => {
@@ -46,8 +48,18 @@ export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressS
                         width: CARD_WIDTH,
                         marginRight: isRightColumn ? 0 : GAP,
                         transform: [
-                            { translateY: animValue.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) },
-                            { scale: animValue.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }
+                            { 
+                                translateY: animValue.interpolate({ 
+                                    inputRange: [0, 1], 
+                                    outputRange: [40, 0] 
+                                }) 
+                            },
+                            { 
+                                scale: animValue.interpolate({ 
+                                    inputRange: [0, 1], 
+                                    outputRange: [0.9, 1] 
+                                }) 
+                            }
                         ],
                         opacity: animValue
                     }
@@ -81,7 +93,7 @@ export const ServiceMatrix: React.FC<ServiceMatrixProps> = ({ services, onPressS
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: PADDING,
-        paddingBottom: 100, // Space for bottom navigation
+        paddingBottom: 120,
     },
     grid: {
         flexDirection: 'row',
@@ -91,6 +103,6 @@ const styles = StyleSheet.create({
         marginBottom: GAP,
     },
     card: {
-        height: 160,
+        height: 170,
     },
 });

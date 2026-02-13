@@ -34,58 +34,100 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
 
     return (
         <View style={styles.container}>
-            {/* Search Section - Floating Glass Pill */}
+            {/* Premium Search Row with Enhanced Shadows */}
             <View style={styles.searchRow}>
                 <View style={[
                     styles.searchBarWrapper,
                     {
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)',
-                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)',
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.95)',
+                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                        shadowColor: isDark ? '#000' : COLORS.primary,
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: isDark ? 0.4 : 0.08,
+                        shadowRadius: 16,
+                        elevation: 8,
                     }
                 ]}>
+                    <Ionicons 
+                        name="search" 
+                        size={20} 
+                        color={colors.textTertiary} 
+                        style={styles.searchIcon}
+                    />
                     <SearchBar
                         value={searchQuery}
                         onChangeText={onSearchChange}
-                        placeholder="Search services..."
-                        style={{ backgroundColor: 'transparent', borderWidth: 0, height: 50 }}
+                        placeholder="Search services, categories..."
+                        style={styles.searchInput}
                     />
                 </View>
 
-                <TouchableOpacity style={[styles.filterBtn, { backgroundColor: COLORS.primary }]}>
-                    <Ionicons name="options-outline" size={20} color="#FFF" />
+                <TouchableOpacity 
+                    style={[
+                        styles.filterBtn, 
+                        { 
+                            backgroundColor: COLORS.primary,
+                            shadowColor: COLORS.primary,
+                            shadowOffset: { width: 0, height: 6 },
+                            shadowOpacity: 0.35,
+                            shadowRadius: 12,
+                            elevation: 8,
+                        }
+                    ]}
+                    onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+                    activeOpacity={0.85}
+                >
+                    <Ionicons name="options-outline" size={22} color="#FFF" />
                 </TouchableOpacity>
             </View>
 
-            {/* Categories Scroller - Floating Chips */}
+            {/* Premium Category Pills with Enhanced Design */}
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.categoryScroll}
+                decelerationRate="fast"
+                snapToInterval={100}
             >
-                {categories.map((cat) => (
-                    <TouchableOpacity
-                        key={cat}
-                        onPress={() => handleCategorySelect(cat)}
-                        style={[
-                            styles.categoryPill,
-                            selectedCategory === cat
-                                ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
-                                : {
-                                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.5)',
-                                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.2)'
-                                }
-                        ]}
-                    >
-                        <Text
+                {categories.map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    return (
+                        <TouchableOpacity
+                            key={cat}
+                            onPress={() => handleCategorySelect(cat)}
                             style={[
-                                styles.categoryText,
-                                { color: selectedCategory === cat ? '#FFF' : colors.text }
+                                styles.categoryPill,
+                                isSelected
+                                    ? { 
+                                        backgroundColor: COLORS.primary,
+                                        borderColor: COLORS.primary,
+                                        shadowColor: COLORS.primary,
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.25,
+                                        shadowRadius: 8,
+                                        elevation: 4,
+                                    }
+                                    : {
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.6)',
+                                        borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+                                    }
                             ]}
+                            activeOpacity={0.8}
                         >
-                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+                            <Text
+                                style={[
+                                    styles.categoryText,
+                                    { color: isSelected ? '#FFF' : colors.text }
+                                ]}
+                            >
+                                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                            </Text>
+                            {isSelected && (
+                                <View style={styles.selectedIndicator} />
+                            )}
+                        </TouchableOpacity>
+                    );
+                })}
             </ScrollView>
         </View>
     );
@@ -94,47 +136,64 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 24,
-        marginBottom: 24,
+        marginBottom: 32,
+        gap: 20,
     },
     searchRow: {
         flexDirection: 'row',
         gap: 12,
-        marginBottom: 20,
         alignItems: 'center',
     },
     searchBarWrapper: {
         flex: 1,
-        height: 52, // Taller, more premium feel
-        borderRadius: 26, // Full pill shape
+        height: 56,
+        borderRadius: 16,
         borderWidth: 1,
-        overflow: 'hidden',
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        gap: 12,
+    },
+    searchIcon: {
+        marginRight: -4,
+    },
+    searchInput: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        height: 56,
+        paddingHorizontal: 0,
     },
     filterBtn: {
-        width: 52,
-        height: 52,
-        borderRadius: 26, // Circle
+        width: 56,
+        height: 56,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
     },
     categoryScroll: {
-        gap: 10,
-        paddingRight: 24, // End padding
+        gap: 12,
+        paddingRight: 24,
     },
     categoryPill: {
         paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
+        paddingVertical: 12,
+        borderRadius: 14,
         borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     categoryText: {
         fontSize: 14,
         fontWeight: '600',
-        letterSpacing: 0.3,
+        letterSpacing: 0.2,
+    },
+    selectedIndicator: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#FFF',
+        opacity: 0.8,
     },
 });

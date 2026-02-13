@@ -199,6 +199,10 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     }, [visible, requestData]);
 
     const startBuzzerEffects = async () => {
+        // Wait 500ms to let system notification sound finish before starting in-app buzzer
+        // This prevents double buzzer when app is opened from notification
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         try {
             // Play buzzer sound - it will loop continuously until stopBuzzer() is called
             await playBookingRequestBuzzer();

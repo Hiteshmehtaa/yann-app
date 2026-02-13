@@ -198,14 +198,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // BOOKING REQUEST for providers (no logging needed)
       if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId && data.expiresAt) {
-        // Parse driver-specific JSON strings from push notification
-        let parsedDriverDetails = null;
-        let parsedDriverTripDetails = null;
-        let parsedPricingBreakdown = null;
-        try { if (data.driverDetails) parsedDriverDetails = typeof data.driverDetails === 'string' ? JSON.parse(data.driverDetails) : data.driverDetails; } catch (e) {}
-        try { if (data.driverTripDetails) parsedDriverTripDetails = typeof data.driverTripDetails === 'string' ? JSON.parse(data.driverTripDetails) : data.driverTripDetails; } catch (e) {}
-        try { if (data.pricingBreakdown) parsedPricingBreakdown = typeof data.pricingBreakdown === 'string' ? JSON.parse(data.pricingBreakdown) : data.pricingBreakdown; } catch (e) {}
-
+        // Dismiss old booking notifications to prevent stacking
+        Notifications.dismissAllNotificationsAsync()
+          .then(() => console.log('✅ Old booking notifications cleared'))
+          .catch(err => console.error('❌ Failed to dismiss old notifications:', err));
+        
         setIncomingBookingRequest({
           bookingId: data.bookingId as string,
           serviceName: data.serviceName as string || 'Service',
@@ -261,6 +258,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId) {
         // Only check if user is a provider
         if (user.role === 'provider' || (user as any).audience === 'provider') {
+          // Dismiss all system notifications to stop notification buzzer
+          Notifications.dismissAllNotificationsAsync()
+            .then(() => console.log('✅ System notifications dismissed on tap'))
+            .catch(err => console.error('❌ Failed to dismiss notifications:', err));
+          
           // Fetch fresh booking data to get timer info
           checkPendingBookingRequest(data.bookingId as string);
         }
