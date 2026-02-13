@@ -215,7 +215,7 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
         else setIsRejecting(true);
 
         console.log('🛑 Calling stopAllEffects from handleAction');
-        stopAllEffects();
+        await stopAllEffects(); // Await to ensure buzzer stops
 
         try {
             if (type === 'accept') await playSuccessSound();
