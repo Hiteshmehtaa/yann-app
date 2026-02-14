@@ -10,7 +10,7 @@ interface ServiceMatrixProps {
 }
 
 const { width } = Dimensions.get('window');
-const GAP = 12;
+const GAP = 8;
 const PADDING = 16;
 // Consistent 2-column layout
 const CARD_WIDTH = (width - (PADDING * 2) - GAP) / 2;
@@ -91,6 +91,6 @@ const styles = StyleSheet.create({
         marginBottom: GAP,
     },
     card: {
-        height: 200,
+        height: 160,
     },
 });
