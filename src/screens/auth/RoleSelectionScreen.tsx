@@ -124,7 +124,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
           {/* Header with Top-Left Logo (Animation Target) */}
           <View style={styles.header}>
             <Image
-              source={require('../../../assets/Logo.png')}
+              source={require('../../../assets/Logo.jpg')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
