@@ -8,11 +8,6 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "yann",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1e3a8a"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
