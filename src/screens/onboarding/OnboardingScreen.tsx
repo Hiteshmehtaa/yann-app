@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 const { width } = Dimensions.get('window');
 
@@ -33,19 +34,19 @@ interface OnboardingSlide {
 const slides: OnboardingSlide[] = [
     {
         id: '1',
-        animation: require('../../../assets/lottie/Campers-Welcome.json'),
+        animation: LottieAnimations.campersWelcome,
         titleKey: 'onboarding.slide1.title',
         descriptionKey: 'onboarding.slide1.description',
     },
     {
         id: '2',
-        animation: require('../../../assets/lottie/Email-Sent.json'),
+        animation: LottieAnimations.emailSent,
         titleKey: 'onboarding.slide2.title',
         descriptionKey: 'onboarding.slide2.description',
     },
     {
         id: '3',
-        animation: require('../../../assets/lottie/Success.json'),
+        animation: LottieAnimations.success,
         titleKey: 'onboarding.slide3.title',
         descriptionKey: 'onboarding.slide3.description',
     },
