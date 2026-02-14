@@ -75,5 +75,6 @@ yann-home-f55c5-d18b7b22672b.json
 !google-services.json
 !GoogleService-Info.plist
 !src/i18n/locales/*.json
+!assets/lottie/*.json
 
 
