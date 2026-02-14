@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import LottieView from 'lottie-react-native';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
-import connectionLostAnimation from '../../assets/lottie/Connection-Lost-Animation.json';
+import { LottieAnimations } from '../utils/lottieAnimations';
 
 export const OfflineIndicator: React.FC = () => {
   const [isOffline, setIsOffline] = useState(false);
@@ -23,7 +23,7 @@ export const OfflineIndicator: React.FC = () => {
   return (
     <View style={styles.container}>
       <LottieView
-        source={connectionLostAnimation}
+        source={LottieAnimations.connectionLost}
         autoPlay
         loop
         style={styles.animation}
