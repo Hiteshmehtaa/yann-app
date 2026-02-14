@@ -2,10 +2,7 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Add JSON to asset extensions
-config.resolver.assetExts.push('json');
-
-// Remove json from sourceExts to treat it as an asset
-config.resolver.sourceExts = config.resolver.sourceExts.filter(ext => ext !== 'json');
+// JSON files are already in sourceExts by default, allowing them to be imported as modules
+// This is necessary for i18n locale files and other JSON imports
 
 module.exports = config;
