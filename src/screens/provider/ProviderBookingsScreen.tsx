@@ -348,21 +348,17 @@ export const ProviderBookingsScreen = () => {
       <TouchableOpacity
         onPress={() => setActiveFilter(value)}
         activeOpacity={0.8}
-        style={[styles.filterPill, isActive && styles.filterPillActiveBackground]} // Added background logic
+        // Force background color inline for active state to ensure it works
+        style={[
+          styles.filterPill,
+          isActive && { backgroundColor: COLORS.primary, shadowColor: COLORS.primary, elevation: 4 }
+        ]}
       >
-        {isActive ? (
-          <LinearGradient
-            colors={GRADIENTS.primary}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-        ) : null}
-
         <Text style={[styles.filterText, isActive && styles.filterTextActive]}>{label}</Text>
         {count > 0 && (
           <View style={[
             styles.filterBadge,
-            isActive ? styles.filterBadgeActive : styles.filterBadgeInactive
+            isActive ? { backgroundColor: 'rgba(255,255,255,0.2)' } : styles.filterBadgeInactive
           ]}>
             <Text style={[
               styles.filterBadgeText,
@@ -737,7 +733,7 @@ const styles = StyleSheet.create({
   statusLabel: { fontSize: 12, fontWeight: '600' },
 
   // Filters
-  filtersWrapper: { paddingVertical: SPACING.md, backgroundColor: BG_COLOR },
+  filtersWrapper: { paddingVertical: SPACING.md, backgroundColor: 'transparent' },
   filterScroll: { paddingHorizontal: SPACING.lg, gap: 10 },
   filterPill: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24,
@@ -746,11 +742,7 @@ const styles = StyleSheet.create({
     // Subtle shadow for unselected
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1
   },
-  filterPillActiveBackground: {
-    backgroundColor: COLORS.primary, // Fallback/Base
-    borderWidth: 0,
-    elevation: 4, shadowOpacity: 0.15, shadowColor: COLORS.primary
-  },
+  // Removed filterPillActiveBackground as it is handled inline now
   filterText: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
   filterTextActive: { color: '#FFF' },
 

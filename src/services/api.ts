@@ -1207,6 +1207,28 @@ class ApiService {
     return response.data;
   }
 
+  async uploadProviderAvatar(base64Image: string): Promise<ApiResponse> {
+    console.log('🔐 Uploading provider avatar...');
+    // Try provider-specific endpoint first
+    try {
+      const response = await this.client.post('/provider/profile/avatar', {
+        image: base64Image
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        withCredentials: true,
+      });
+      console.log('✅ Provider avatar upload successful');
+      return response.data;
+    } catch (error: any) {
+      console.warn('⚠️ /provider/profile/avatar failed, trying fallback to /profile/avatar', error.message);
+      // Fallback to generic endpoint if specific one fails (for backward compatibility)
+      return this.uploadAvatar(base64Image);
+    }
+  }
+
   // Debug endpoint for testing
   async getAllBookingsDebug(): Promise<ApiResponse<Booking[]>> {
     const response = await this.client.get('/debug/bookings');

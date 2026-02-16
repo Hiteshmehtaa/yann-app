@@ -162,8 +162,8 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
           uri: result.assets[0].uri
         });
 
-        console.log('🔐 Calling uploadAvatar...');
-        const response = await apiService.uploadAvatar(base64Image);
+        console.log('🔐 Calling uploadProviderAvatar...');
+        const response = await apiService.uploadProviderAvatar(base64Image);
         console.log('✅ Upload response success:', response.success);
 
         if (response.success && response.data) {

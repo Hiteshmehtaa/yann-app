@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 20,
     padding: SPACING.xl,
-    ...SHADOWS.medium,
+    ...SHADOWS.lg,
     marginBottom: SPACING.lg,
   },
   formTitle: {

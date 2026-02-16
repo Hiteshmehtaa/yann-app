@@ -10,6 +10,7 @@ import {
   Image,
   Dimensions,
   Modal,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,6 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import type { Service, ServiceProvider } from '../../types';
 import { apiService } from '../../services/api';
 import { getServiceIconImage } from '../../utils/serviceImages';
 import { COLORS, SPACING, SHADOWS } from '../../utils/theme';
@@ -26,12 +26,15 @@ import { DepthCard } from '../../components/ui/DepthCard';
 import { TopBar } from '../../components/ui/TopBar';
 import { Button } from '../../components/ui/Button';
 import { SkeletonLoader } from '../../components/ui/SkeletonLoader';
+import type { Service, ServiceProvider } from '../../types';
 
+// Types
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ params: { service: Service } }, 'params'>;
 };
 
+// Constants
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = height * 0.45;
 
@@ -47,39 +50,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedExperienceRange, setSelectedExperienceRange] = useState<{ label: string; min: number; max: number | null } | null>(null);
   const [experienceModalOpen, setExperienceModalOpen] = useState(false);
-  const [providerModalOpen, setProviderModalOpen] = useState(false);
 
   // Animations
   const scrollY = useRef(new Animated.Value(0)).current;
-  const tabAnim = useRef(new Animated.Value(0)).current;
   const contentFade = useRef(new Animated.Value(1)).current;
 
-  // Tab Switch Handler
-  const switchTab = (tab: string, index: number) => {
-    setActiveTab(tab);
-    Animated.parallel([
-      Animated.spring(tabAnim, {
-        toValue: index,
-        useNativeDriver: true,
-        damping: 20,
-        stiffness: 150,
-      }),
-      Animated.sequence([
-        Animated.timing(contentFade, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentFade, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        })
-      ])
-    ]).start();
-  };
-
-  // Fetch Logic
+  // Fetch Data
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -102,10 +78,11 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             reviews: p.reviews || []
           }));
           setProviders(mapped);
+          // Auto-select if only one provider
           if (mapped.length === 1) setSelectedProvider(mapped[0]);
         }
       } catch (e) {
-        console.error(e);
+        console.error("Error fetching providers:", e);
       } finally {
         setIsLoading(false);
       }
@@ -113,14 +90,13 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     loadData();
   }, [service.title]);
 
+  // Filters
   const EXPERIENCE_RANGES = [
     { label: '0-5 years', min: 0, max: 5 },
     { label: '5-10 years', min: 5, max: 10 },
     { label: '10-15 years', min: 10, max: 15 },
     { label: '15-20 years', min: 15, max: 20 },
-    { label: '20-25 years', min: 20, max: 25 },
-    { label: '25-30 years', min: 25, max: 30 },
-    { label: '30+ years', min: 30, max: null },
+    { label: '20+ years', min: 20, max: null },
   ];
 
   const filteredProviders = providers.filter((p: any) => {
@@ -130,19 +106,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     return exp >= min && (max === null || exp < max);
   });
 
-  const onlineProviders = filteredProviders.filter((p: any) => p.status === 'active');
-
-  useEffect(() => {
-    if (selectedProvider && !filteredProviders.find(p => p._id === selectedProvider._id)) {
-      setSelectedProvider(null);
-    }
-  }, [selectedExperienceRange, providers.length]);
-
-  // Derived Values
+  // Calculate Base Price
   const startPrice = providers.length > 0
     ? Math.min(...providers.map(p => p.priceForService || 0))
     : service.price;
 
+  // Render Helpers
   const renderHero = () => {
     const scale = scrollY.interpolate({
       inputRange: [-HERO_HEIGHT, 0, HERO_HEIGHT],
@@ -171,23 +140,18 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           style={styles.heroGradient}
         />
         <View style={styles.heroContent}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-            <View>
-              <View style={styles.categoryTag}>
-                <Text style={styles.categoryText}>{service.category?.toUpperCase()}</Text>
-              </View>
-              <Text style={styles.heroTitle}>{service.title}</Text>
-            </View>
+          <View style={styles.categoryTag}>
+            <Text style={styles.categoryText}>{service.category?.toUpperCase() || 'SERVICE'}</Text>
           </View>
+          <Text style={styles.heroTitle} numberOfLines={2}>{service.title}</Text>
 
-          <View style={styles.heroStats}>
-            <View style={styles.heroStatItem}>
-              <Ionicons name="star" size={16} color="#FFD700" />
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatBadge}>
+              <Ionicons name="star" size={14} color="#FFD700" />
               <Text style={styles.heroStatText}>4.8 (250+)</Text>
             </View>
-            <View style={styles.dotSeparator} />
-            <View style={styles.heroStatItem}>
-              <Ionicons name="time-outline" size={16} color="#FFF" />
+            <View style={styles.heroStatBadge}>
+              <Ionicons name="time-outline" size={14} color="#FFF" />
               <Text style={styles.heroStatText}>60 mins</Text>
             </View>
           </View>
@@ -196,74 +160,48 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  const renderQuickStats = () => (
-    <DepthCard variant="floating" style={styles.quickStatsRow} padding={SPACING.md}>
-      <View style={styles.statBox}>
-        <View style={[styles.statIcon, { backgroundColor: isDark ? colors.primary + '20' : '#E3F2FD' }]}>
-          <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-        </View>
-        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Verified</Text>
-      </View>
-      <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
-      <View style={styles.statBox}>
-        <View style={[styles.statIcon, { backgroundColor: isDark ? colors.success + '20' : '#E8F5E9' }]}>
-          <Ionicons name="wallet-outline" size={20} color={colors.success} />
-        </View>
-        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Best Price</Text>
-      </View>
-      <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
-      <View style={styles.statBox}>
-        <View style={[styles.statIcon, { backgroundColor: isDark ? colors.warning + '20' : '#FFF3E0' }]}>
-          <Ionicons name="headset-outline" size={20} color={colors.warning} />
-        </View>
-        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Support</Text>
-      </View>
-    </DepthCard>
-  );
-
-  const renderTabs = () => {
-    const tabWidth = (width - 40 - 16) / 3;
-    const translateX = tabAnim.interpolate({
-      inputRange: [0, 1, 2],
-      outputRange: [4, 4 + tabWidth, 4 + tabWidth * 2]
-    });
-
-    return (
-      <View style={[styles.tabsContainer, { backgroundColor: isDark ? colors.border : '#F1F5F9' }]}>
-        <Animated.View style={[styles.activeTabIndicator, {
-          width: tabWidth,
-          transform: [{ translateX }],
-          backgroundColor: colors.cardBg,
-          shadowColor: colors.text
-        }]} />
-
-        {['providers', 'details', 'reviews'].map((tab, index) => (
+  const renderTabs = () => (
+    <View style={styles.tabsContainer}>
+      {['providers', 'details', 'reviews'].map((tab) => {
+        const isActive = activeTab === tab;
+        return (
           <TouchableOpacity
             key={tab}
             style={styles.tabItem}
-            onPress={() => switchTab(tab, index)}
+            onPress={() => {
+              if (isActive) return;
+              setActiveTab(tab);
+              // Simple flicker animation for content
+              contentFade.setValue(0);
+              Animated.timing(contentFade, {
+                toValue: 1,
+                duration: 250,
+                useNativeDriver: true,
+              }).start();
+            }}
           >
             <Text style={[
               styles.tabText,
-              { color: colors.textTertiary },
-              activeTab === tab && { color: colors.text, fontWeight: '700' }
+              { color: isActive ? colors.text : colors.textTertiary },
+              isActive && styles.tabTextActive
             ]}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Text>
+            {isActive && <View style={[styles.activeTabDot, { backgroundColor: colors.primary }]} />}
           </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+        );
+      })}
+    </View>
+  );
 
-  const renderProvider = (item: any, index: number) => {
+  const renderProviderCard = (item: ServiceProvider, index: number) => {
     const isAvailable = item.status === 'active';
+    const isSelected = selectedProvider?._id === item._id;
     const isPending = item.status === 'pending';
 
-    // Determine overlay text based on status
-    let statusText = 'Currently Unavailable';
-    if (isPending) statusText = 'Approval Pending';
-    else if (item.status === 'inactive') statusText = 'Currently Offline';
+    let statusText = 'Unavailable';
+    if (isPending) statusText = 'Pending Approval';
+    else if (!isAvailable) statusText = 'Offline';
 
     return (
       <TouchableOpacity
@@ -273,80 +211,73 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         disabled={!isAvailable}
       >
         <DepthCard
-          variant="elevated"
+          variant={isSelected ? "elevated" : "flat"}
           style={[
             styles.providerCard,
-            selectedProvider?._id === item._id && { borderColor: colors.primary, borderWidth: 1.5 },
-            !isAvailable && { backgroundColor: isDark ? '#1E1E1E' : '#F5F5F5', opacity: 0.7 }
+            isSelected && { borderColor: colors.primary, borderWidth: 1.5, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' },
+            !isAvailable && { opacity: 0.7 }
           ]}
-          padding={SPACING.md}
+          padding={16}
         >
-          {!isAvailable && (
-            <View style={styles.unavailableOverlay}>
-              <Text style={[
-                styles.unavailableText,
-                isPending && { backgroundColor: '#F59E0B', color: '#FFF' } // Orange for pending
-              ]}>
-                {statusText}
-              </Text>
-            </View>
-          )}
+          {/* Header: Avatar + Main Info */}
           <View style={styles.providerHeader}>
-            <View style={styles.providerAvatarContainer}>
+            <View style={styles.avatarContainer}>
               {item.profileImage ? (
-                <Image
-                  source={{ uri: item.profileImage }}
-                  style={styles.providerAvatar}
-                />
+                <Image source={{ uri: item.profileImage }} style={styles.avatar} />
               ) : (
-                <View style={[styles.providerAvatar, { backgroundColor: isDark ? colors.border : '#F0F0F0' }]}>
+                <View style={[styles.avatar, { backgroundColor: isDark ? colors.border : '#E2E8F0', justifyContent: 'center', alignItems: 'center' }]}>
                   <Ionicons name="person" size={24} color={colors.textTertiary} />
                 </View>
               )}
+              {index === 0 && (
+                <View style={styles.badgeTopRated}>
+                  <Ionicons name="trophy" size={10} color="#FFF" />
+                </View>
+              )}
             </View>
+
             <View style={styles.providerInfo}>
               <View style={styles.nameRow}>
-                <Text style={[styles.providerName, { color: isAvailable ? colors.text : colors.textTertiary }]}>{item.name}</Text>
-                {index === 0 && (
-                  <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.badgeText}>TOP RATED</Text>
-                  </View>
-                )}
+                <Text style={[styles.providerName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                {item.rating >= 4.8 && <Ionicons name="shield-checkmark" size={14} color={colors.primary} />}
               </View>
-              <Text style={[styles.providerMeta, { color: colors.textTertiary }]}>
-                {item.experience} years exp • {item.totalReviews} jobs
+              <Text style={[styles.providerMeta, { color: colors.textSecondary }]}>
+                {item.experience}+ years exp • {item.totalReviews} jobs
               </Text>
-              {!isAvailable && (
-                <Text style={[styles.providerOfflineText, { color: colors.textTertiary }]}>
-                  Currently offline • available later
-                </Text>
-              )}
+
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={14} color="#FFD700" />
-                <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
+                <View style={styles.ratingPill}>
+                  <Ionicons name="star" size={10} color="#FFD700" />
+                  <Text style={[styles.ratingVal, { color: colors.text }]}>{item.rating}</Text>
+                </View>
+                <View style={styles.dotSeparator} />
+                <Text style={[styles.verifiedText, { color: colors.success }]}>Verified</Text>
               </View>
             </View>
-            <View style={styles.priceTag}>
+
+            <View style={styles.priceColumn}>
               <Text style={[styles.priceVal, { color: colors.primary }]}>₹{item.priceForService}</Text>
-              <Text style={[styles.priceUnit, { color: colors.textTertiary }]}>/hr</Text>
+              <Text style={[styles.priceUnit, { color: colors.textSecondary }]}>/hr</Text>
+
+              <View style={[
+                styles.radioButton,
+                { borderColor: isSelected ? colors.primary : colors.border },
+                isSelected && { backgroundColor: colors.primary }
+              ]}>
+                {isSelected && <Ionicons name="checkmark" size={12} color="#FFF" />}
+              </View>
             </View>
           </View>
 
-          {/* Selection Checkmark */}
-          <View style={[
-            styles.radioButton,
-            { borderColor: isDark ? colors.border : '#E0E0E0' },
-            selectedProvider?._id === item._id && {
-              borderColor: colors.primary,
-              backgroundColor: colors.primary
-            }
-          ]}>
-            {selectedProvider?._id === item._id && (
-              <Ionicons name="checkmark" size={16} color="#FFF" />
-            )}
-          </View>
+          {/* Unavailable Overlay */}
+          {!isAvailable && (
+            <View style={styles.unavailableOverlay}>
+              <Text style={styles.unavailableText}>{statusText}</Text>
+            </View>
+          )}
+
         </DepthCard>
-      </TouchableOpacity >
+      </TouchableOpacity>
     );
   };
 
@@ -354,11 +285,12 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
+      {/* Parallax Hero */}
       {renderHero()}
 
-      {/* Glass Header */}
+      {/* Top Navigation */}
       <TopBar
-        title={service.title}
+        title=""
         glass
         showBack
         onBackPress={() => navigation.goBack()}
@@ -366,85 +298,108 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       />
 
       <Animated.ScrollView
-        contentContainerStyle={{ paddingTop: HERO_HEIGHT - 40, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: HERO_HEIGHT - 30, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
         )}
-        scrollEventThrottle={16}
       >
-        <View style={[styles.sheetContainer, { backgroundColor: colors.cardBg }]}>
+        <View style={[styles.sheetContainer, { backgroundColor: colors.background }]}>
           <View style={styles.dragHandleCenter}>
-            <View style={[styles.dragHandle, { backgroundColor: colors.divider }]} />
+            <View style={[styles.dragHandle, { backgroundColor: colors.border }]} />
           </View>
 
-          {renderQuickStats()}
-
-          <View style={styles.section}>
+          <View style={styles.headerSection}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Description</Text>
             <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
               {service.description || 'Experience top-tier service quality with verified professionals. We ensure satisfaction with every booking.'}
             </Text>
           </View>
 
+          {/* Quick Stats Grid */}
+          <View style={styles.quickStatsGrid}>
+            {[
+              { icon: 'shield-checkmark', color: colors.primary, text: 'Verified Pro', bg: isDark ? 'rgba(255,255,255,0.05)' : '#F0F9FF' },
+              { icon: 'pricetag', color: colors.success, text: 'Best Price', bg: isDark ? 'rgba(255,255,255,0.05)' : '#ECFDF5' },
+              { icon: 'headset', color: colors.warning, text: '24/7 Support', bg: isDark ? 'rgba(255,255,255,0.05)' : '#FFFBEB' }
+            ].map((stat, i) => (
+              <View key={i} style={[styles.statPill, { backgroundColor: stat.bg }]}>
+                <Ionicons name={stat.icon as any} size={16} color={stat.color} />
+                <Text style={[styles.statPillText, { color: colors.text }]}>{stat.text}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Tabs */}
           {renderTabs()}
 
-          <Animated.View style={[styles.contentArea, { opacity: contentFade, transform: [{ translateY: contentFade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }]}>
+          {/* Tab Content */}
+          <Animated.View style={{ opacity: contentFade, minHeight: 300 }}>
             {activeTab === 'providers' && (
-              <View style={{ gap: 16 }}>
+              <View style={styles.tabContent}>
+                {/* Filter Row */}
                 <View style={styles.filterRow}>
                   <TouchableOpacity
                     style={[styles.filterChip, { backgroundColor: colors.cardBg, borderColor: colors.border }]}
                     onPress={() => setExperienceModalOpen(true)}
                   >
-                    <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.filterChipText, { color: colors.textSecondary }]}>
-                      {selectedExperienceRange ? selectedExperienceRange.label : 'Experience'}
+                    <Ionicons name="options-outline" size={14} color={colors.text} />
+                    <Text style={[styles.filterChipText, { color: colors.text }]}>
+                      {selectedExperienceRange ? selectedExperienceRange.label : 'Filter by Experience'}
                     </Text>
-                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                    <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
+
                 {isLoading ? (
                   <View style={{ gap: 12 }}>
                     {[1, 2, 3].map(i => <SkeletonLoader key={i} height={100} variant="rect" />)}
                   </View>
                 ) : filteredProviders.length === 0 ? (
                   <View style={styles.emptyState}>
-                    <Ionicons name="search" size={32} color={colors.textTertiary} />
-                    <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No providers match this experience range.</Text>
+                    <Ionicons name="search" size={48} color={colors.textTertiary} />
+                    <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No providers found matching your criteria.</Text>
                   </View>
                 ) : (
-                  filteredProviders.map((p, i) => renderProvider(p, i))
+                  filteredProviders.map((p, i) => renderProviderCard(p, i))
                 )}
               </View>
             )}
 
             {activeTab === 'details' && (
               <View style={styles.detailsList}>
-                {['Professional Equipment', 'Safety Protocols', 'Insured Service', 'Satisfaction Guarantee'].map((feat, i) => (
-                  <DepthCard key={i} variant="flat" style={styles.detailRow} padding={SPACING.md}>
-                    <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                {['Professional Equipment Provided', 'Safety Protocols Followed', 'Insured Service', '100% Satisfaction Guarantee'].map((feat, i) => (
+                  <View key={i} style={[styles.detailRow, { borderBottomColor: colors.border }]}>
+                    <View style={[styles.checkCircle, { backgroundColor: colors.primary + '20' }]}>
+                      <Ionicons name="checkmark" size={16} color={colors.primary} />
+                    </View>
                     <Text style={[styles.detailText, { color: colors.text }]}>{feat}</Text>
-                  </DepthCard>
+                  </View>
                 ))}
               </View>
             )}
 
             {activeTab === 'reviews' && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewsScroll} contentContainerStyle={{ paddingRight: 20 }}>
-                {[1, 2, 3].map((i) => (
-                  <DepthCard key={i} variant="elevated" style={styles.reviewCard} padding={SPACING.md}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
+                {[1, 2, 3].map(i => (
+                  <DepthCard key={i} variant="flat" style={styles.reviewCard} padding={16}>
                     <View style={styles.reviewHeader}>
-                      <View style={[styles.reviewAvatar, { backgroundColor: isDark ? colors.border : '#E0E0E0' }]}>
-                        <Text style={[styles.reviewInitial, { color: colors.textSecondary }]}>U{i}</Text>
+                      <View style={[styles.reviewAvatar, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]}>
+                        <Text style={{ fontWeight: '700', color: colors.textSecondary }}>U{i}</Text>
                       </View>
                       <View>
-                        <Text style={[styles.reviewerName, { color: colors.text }]}>User {i}</Text>
-                        <View style={{ flexDirection: 'row' }}><Ionicons name="star" size={12} color="#FFD700" /><Text style={{ fontSize: 12, color: colors.text }}> 5.0</Text></View>
+                        <Text style={{ fontWeight: '600', color: colors.text, fontSize: 14 }}>User {i}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="star" size={12} color="#FFD700" />
+                          <Text style={{ fontSize: 12, color: colors.textSecondary }}>5.0</Text>
+                        </View>
                       </View>
                     </View>
-                    <Text style={[styles.reviewBody, { color: colors.textSecondary }]}>"Amazing service! The professional was on time and did a great job."</Text>
+                    <Text style={{ fontSize: 13, lineHeight: 20, color: colors.textSecondary, marginTop: 8 }}>
+                      "Exceptional service! Arrived on time and completed the job perfectly. Highly recommended."
+                    </Text>
                   </DepthCard>
                 ))}
               </ScrollView>
@@ -454,35 +409,40 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </Animated.ScrollView>
 
-      {/* Bottom FAB */}
-      <BlurView intensity={20} tint={isDark ? "dark" : "light"} style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)' }]}>
+      {/* Bottom Bar */}
+      <BlurView intensity={30} tint={isDark ? "dark" : "light"} style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, borderTopColor: colors.border }]}>
         <View style={styles.priceContainer}>
-          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total Estimate</Text>
+          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Expected Total</Text>
           <Text style={[styles.totalPrice, { color: colors.text }]}>
             {selectedProvider ? `₹${selectedProvider.priceForService}` : `From ₹${startPrice}`}
+            <Text style={{ fontSize: 14, fontWeight: '400', color: colors.textSecondary }}> /hr</Text>
           </Text>
         </View>
-        <View style={{ flex: 1, maxWidth: 180 }}>
-          <Button
-            title="View Profile"
-            onPress={() => {
-              if (filteredProviders.length > 1 && !selectedProvider) return; // Maybe show toast?
-              const providerToView = selectedProvider || filteredProviders[0];
-              if (!providerToView || !providerToView._id) return;
+        <Button
+          title={selectedProvider ? "Book Provider" : "Select Provider"}
+          onPress={() => {
+            const providerToBook = selectedProvider || (filteredProviders.length === 1 ? filteredProviders[0] : null);
+
+            if (!providerToBook && filteredProviders.length > 1) {
+              // Ideally scroll to provider list
+              return;
+            }
+
+            if (providerToBook) {
               navigation.navigate('ProviderPublicProfile', {
-                provider: providerToView,
+                provider: providerToBook,
                 service: service
               });
-            }}
-            disabled={!selectedProvider && filteredProviders.length > 1 || filteredProviders.length === 0}
-            variant={(!selectedProvider && filteredProviders.length > 1) ? "ghost" : "primary"}
-            icon={<Ionicons name="arrow-forward" size={18} color="#FFF" />}
-            size="medium"
-          />
-        </View>
+            }
+          }}
+          disabled={(!selectedProvider && filteredProviders.length !== 1 && filteredProviders.length !== 0)}
+          variant={selectedProvider ? "primary" : "outline"}
+          style={{ flex: 1, marginLeft: 20, maxWidth: 180 }}
+          textStyle={!selectedProvider && { color: colors.primary }}
+        />
       </BlurView>
 
-      {/* Experience Selector Modal */}
+      {/* Experience Modal */}
       <Modal
         visible={experienceModalOpen}
         transparent
@@ -490,9 +450,8 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onRequestClose={() => setExperienceModalOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}
-            >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Select Experience Range</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Filter Experience</Text>
             {EXPERIENCE_RANGES.map((range) => (
               <TouchableOpacity
                 key={range.label}
@@ -503,6 +462,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 }}
               >
                 <Text style={[styles.modalItemText, { color: colors.text }]}>{range.label}</Text>
+                {selectedExperienceRange?.label === range.label && <Ionicons name="checkmark" size={18} color={colors.primary} />}
               </TouchableOpacity>
             ))}
             <TouchableOpacity
@@ -512,51 +472,23 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 setExperienceModalOpen(false);
               }}
             >
-              <Text style={[styles.modalItemText, { color: colors.text }]}>All experience levels</Text>
+              <Text style={[styles.modalItemText, { color: colors.text }]}>Any Experience</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ marginTop: 16, alignItems: 'center' }} onPress={() => setExperienceModalOpen(false)}>
+              <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Provider Selector Modal */}
-      <Modal
-        visible={providerModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setProviderModalOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}
-            >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Select Provider</Text>
-            {onlineProviders.length === 0 ? (
-              <Text style={[styles.modalEmptyText, { color: colors.textTertiary }]}>No online providers available.</Text>
-            ) : (
-              onlineProviders.map((p: any) => (
-                <TouchableOpacity
-                  key={p._id}
-                  style={[styles.modalItem, { borderColor: colors.border }]}
-                  onPress={() => {
-                    setSelectedProvider(p);
-                    setProviderModalOpen(false);
-                  }}
-                >
-                  <Text style={[styles.modalItemText, { color: colors.text }]}>{p.name}</Text>
-                  <Text style={[styles.modalItemSubtext, { color: colors.textTertiary }]}>₹{p.priceForService}</Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        </View>
-      </Modal>
-    </View >
+    </View>
   );
 };
 
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F7',
   },
   // Hero
   heroContainer: {
@@ -572,6 +504,13 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
   heroGradient: {
     position: 'absolute',
     bottom: 0,
@@ -579,17 +518,9 @@ const styles = StyleSheet.create({
     right: 0,
     height: '60%',
   },
-  topGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    zIndex: 1,
-  },
   heroContent: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 40,
     left: 20,
     right: 20,
   },
@@ -598,108 +529,45 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
   },
   categoryText: {
     color: '#FFF',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   heroTitle: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '800',
     color: '#FFF',
-    marginBottom: 8,
+    marginBottom: 12,
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    textShadowRadius: 8,
   },
-  heroStats: {
+  heroStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  heroStatItem: {
+  heroStatBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   heroStatText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 6,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  filterChipText: {
+    color: '#FFF',
     fontSize: 12,
     fontWeight: '600',
-  },
-  providerOfflineText: {
-    marginTop: 4,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    width: '100%',
-    borderRadius: 16,
-    padding: 16,
-    maxHeight: '70%',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  modalItem: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 10,
-  },
-  modalItemText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  modalItemSubtext: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  modalEmptyText: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  dotSeparator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    marginHorizontal: 8,
   },
 
   // Sheet
@@ -709,120 +577,131 @@ const styles = StyleSheet.create({
     minHeight: height - HERO_HEIGHT + 40,
     paddingHorizontal: 20,
     paddingBottom: 40,
-    ...SHADOWS.lg,
+    paddingTop: 8,
   },
   dragHandleCenter: {
     alignItems: 'center',
     paddingVertical: 12,
+    marginBottom: 10,
   },
   dragHandle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E0E0E0',
+    opacity: 0.3,
   },
-
-  // Quick Stats
-  quickStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderRadius: 20,
-    marginBottom: 24,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#F0F0F0',
-  },
-
-  // Section
-  section: {
-    marginBottom: 24,
+  headerSection: {
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   descriptionText: {
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  quickStatsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 24,
+  },
+  statPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+  },
+  statPillText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    borderRadius: 16,
-    padding: 4,
-    marginBottom: 24,
-    position: 'relative',
-    height: 48,
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   tabItem: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 12,
-    zIndex: 1,
-  },
-  activeTabIndicator: {
-    position: 'absolute',
-    top: 4,
-    left: 0,
-    height: 40,
-    borderRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-    zIndex: 0,
+    marginRight: 24,
+    paddingBottom: 10,
+    position: 'relative',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
   },
+  tabTextActive: {
+    fontWeight: '700',
+  },
+  activeTabDot: {
+    position: 'absolute',
+    bottom: -1.5,
+    left: '50%',
+    marginLeft: -12,
+    width: 24,
+    height: 3,
+    borderRadius: 1.5,
+  },
 
-  contentArea: {
-    minHeight: 200,
+  // Tab Content
+  tabContent: {
+    gap: 12,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   // Providers
   providerCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderRadius: 20,
-    alignItems: 'center',
-    marginBottom: 4, // Spacing handled by parent gap
+    borderRadius: 16,
+    marginBottom: 4,
   },
   providerHeader: {
     flexDirection: 'row',
     gap: 12,
-    flex: 1,
   },
-  providerAvatarContainer: {
-    marginRight: 4,
+  avatarContainer: {
+    position: 'relative',
   },
-  providerAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  badgeTopRated: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFF',
   },
   providerInfo: {
     flex: 1,
@@ -831,22 +710,13 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   providerName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-  },
-  badgeContainer: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  badgeText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: '800',
+    maxWidth: 120,
   },
   providerMeta: {
     fontSize: 12,
@@ -855,17 +725,34 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  ratingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
   },
   ratingVal: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
   },
-  priceTag: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#94A3B8',
+  },
+  verifiedText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  priceColumn: {
+    alignItems: 'flex-end',
     justifyContent: 'center',
-    marginRight: 12,
   },
   priceVal: {
     fontSize: 16,
@@ -873,12 +760,73 @@ const styles = StyleSheet.create({
   },
   priceUnit: {
     fontSize: 11,
+    marginBottom: 8,
   },
   radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unavailableOverlay: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#94A3B8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 10,
+  },
+  unavailableText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  // Details
+  detailsList: {
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderRadius: 16,
+    padding: 8,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+    borderBottomWidth: 0.5,
+  },
+  checkCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+
+  // Reviews
+  reviewCard: {
+    width: 280,
+    marginRight: 12,
+    borderRadius: 16,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  reviewAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -886,58 +834,12 @@ const styles = StyleSheet.create({
   // Empty State
   emptyState: {
     alignItems: 'center',
-    justifyContent: 'center',
     padding: 30,
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 14,
-  },
-  loadingText: {
-    textAlign: 'center',
-    marginTop: 20,
-  },
-
-  // Details list
-  detailsList: {
-    gap: 12,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  detailText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-
-  // Reviews
-  reviewsScroll: {
-
-  },
-  reviewCard: {
-    width: 280,
-    marginRight: 16,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
     gap: 10,
   },
-  reviewAvatar: {
-    width: 32, height: 32, borderRadius: 16,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  reviewInitial: {
-    fontWeight: '700', fontSize: 14,
-  },
-  reviewerName: {
-    fontWeight: '600', fontSize: 14,
-  },
-  reviewBody: {
-    fontSize: 14, lineHeight: 20,
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 
   // Bottom Bar
@@ -948,41 +850,55 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   priceContainer: {
     flex: 1,
   },
   totalLabel: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   totalPrice: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  bookBtnDisabled: {
-    opacity: 0.6,
-  },
-  unavailableOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    zIndex: 10,
-    justifyContent: 'center',
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
-    borderRadius: 20,
+    justifyContent: 'center',
+    padding: 24,
   },
-  unavailableText: {
-    backgroundColor: '#000',
-    color: '#FFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    fontSize: 12,
+  modalContent: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 24,
+    ...SHADOWS.medium,
+  },
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    overflow: 'hidden',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+  },
+  modalItemText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
