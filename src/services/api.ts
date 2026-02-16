@@ -809,6 +809,10 @@ class ApiService {
    * Check booking request status (for polling)
    */
   async checkBookingRequestStatus(bookingId: string, customerId?: string): Promise<ApiResponse> {
+    if (!bookingId || bookingId === 'undefined') {
+      console.warn('⚠️ checkBookingRequestStatus called with invalid ID:', bookingId);
+      return { success: false, message: 'Invalid booking ID', data: null };
+    }
     const params = new URLSearchParams({ bookingId });
     if (customerId) params.append('customerId', customerId);
     const response = await this.client.get(`/bookings/request?${params.toString()}`);

@@ -56,6 +56,8 @@ interface ProviderBooking {
   sortableDate?: number;
   customerAvatar?: string;
   jobSession?: { startTime: string; expectedDuration: number; status: string };
+  rawDate?: string;
+  rawTime?: string;
 }
 
 type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'rejected';
@@ -107,10 +109,37 @@ export const ProviderBookingsScreen = () => {
       if (response.success) {
         const formatDate = (dateStr: string) => {
           if (!dateStr || dateStr === 'N/A') return 'N/A';
-          try { return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }); }
+          try {
+            // Handle DD-MM-YYYY format
+            if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
+              const [d, m, y] = dateStr.split('-');
+              return new Date(`${y}-${m}-${d}`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+            }
+            return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+          }
           catch { return dateStr; }
         };
-        const getTimestamp = (dateStr: string) => { try { return new Date(dateStr).getTime(); } catch { return 0; } };
+        const getTimestamp = (dateStr: string) => {
+          try {
+            if (!dateStr) return 0;
+            // Handle DD-MM-YYYY format
+            if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
+              const [d, m, y] = dateStr.split('-');
+              return new Date(`${y}-${m}-${d}`).getTime();
+            }
+            return new Date(dateStr).getTime();
+          } catch { return 0; }
+        };
+
+        // Helper to normalize date for comparison
+        const normalizeDateStr = (dateStr: string) => {
+          if (!dateStr) return null;
+          if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
+            const [d, m, y] = dateStr.split('-');
+            return `${y}-${m}-${d}`; // Return ISO YYYY-MM-DD
+          }
+          return dateStr;
+        };
         const mapBooking = (b: any, statusOverride?: string) => ({
           id: b._id || b.id, customerName: b.customerName, customerPhone: b.customerPhone,
           serviceName: b.serviceName, serviceCategory: b.serviceCategory,
@@ -125,6 +154,8 @@ export const ProviderBookingsScreen = () => {
           notes: b.notes || '', createdAt: b.createdAt || new Date().toISOString(),
           sortableDate: getTimestamp(b.bookingDate || b.scheduledDate),
           customerAvatar: b.customerAvatar || null, jobSession: b.jobSession || null,
+          rawDate: normalizeDateStr(b.bookingDate || b.scheduledDate),
+          rawTime: b.bookingTime || b.scheduledTime,
         });
 
         const all = [...(response.pendingRequests || []).map((b: any) => mapBooking(b, 'pending')), ...(response.acceptedBookings || []).map((b: any) => mapBooking(b))];
@@ -353,127 +384,240 @@ export const ProviderBookingsScreen = () => {
     return (
       <View key={item.id} style={styles.card}>
 
-          {/* Card Header Area */}
-          <View style={styles.cardHeader}>
-            <View style={styles.headerLeft}>
-              <View style={[styles.iconBox, { backgroundColor: `${COLORS.primary}10` }]}>
-                <Ionicons name="briefcase" size={20} color={COLORS.primary} />
-              </View>
-              <View>
-                <Text style={styles.serviceName}>{item.serviceName}</Text>
-                <Text style={styles.serviceCategory}>{item.serviceCategory}</Text>
-              </View>
+        {/* Card Header Area */}
+        <View style={styles.cardHeader}>
+          <View style={styles.headerLeft}>
+            <View style={[styles.iconBox, { backgroundColor: `${COLORS.primary}10` }]}>
+              <Ionicons name="briefcase" size={20} color={COLORS.primary} />
             </View>
-            {/* Status Badge - Sleek Pill */}
-            <View style={[styles.statusPill, { backgroundColor: `${statusColor}10` }]}>
-              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.statusText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
+            <View>
+              <Text style={styles.serviceName}>{item.serviceName}</Text>
+              <Text style={styles.serviceCategory}>{item.serviceCategory}</Text>
+            </View>
+          </View>
+          {/* Status Badge - Sleek Pill */}
+          <View style={[styles.statusPill, { backgroundColor: `${statusColor}10` }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <Text style={[styles.statusText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
+          </View>
+        </View>
+
+        {/* Divider with spacing */}
+        <View style={styles.divider} />
+
+        {/* Details Grid - More Spacious */}
+        <View style={styles.detailsGrid}>
+
+          {/* Date */}
+          <View style={styles.detailItem}>
+            <View style={styles.detailIconBox}>
+              <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
+            </View>
+            <View>
+              <Text style={styles.detailLabel}>Date & Time</Text>
+              <Text style={styles.detailValue}>{item.scheduledDate} • {item.scheduledTime}</Text>
             </View>
           </View>
 
-          {/* Divider with spacing */}
-          <View style={styles.divider} />
-
-          {/* Details Grid - More Spacious */}
-          <View style={styles.detailsGrid}>
-
-            {/* Date */}
-            <View style={styles.detailItem}>
-              <View style={styles.detailIconBox}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.textSecondary} />
-              </View>
-              <View>
-                <Text style={styles.detailLabel}>Date & Time</Text>
-                <Text style={styles.detailValue}>{item.scheduledDate} • {item.scheduledTime}</Text>
-              </View>
+          {/* Location */}
+          <View style={styles.detailItem}>
+            <View style={styles.detailIconBox}>
+              <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
             </View>
-
-            {/* Location */}
-            <View style={styles.detailItem}>
-              <View style={styles.detailIconBox}>
-                <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.detailLabel}>Location</Text>
-                <Text style={styles.detailValue} numberOfLines={1}>{item.address}</Text>
-              </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.detailLabel}>Location</Text>
+              <Text style={styles.detailValue} numberOfLines={1}>{item.address}</Text>
             </View>
-
-            {/* Price - Highlighted */}
-            <View style={styles.detailItem}>
-              <View style={styles.detailIconBox}>
-                <Ionicons name="wallet-outline" size={16} color={COLORS.textSecondary} />
-              </View>
-              <View>
-                <Text style={styles.detailLabel}>Earning</Text>
-                <Text style={styles.priceValue}>₹{item.amount}</Text>
-              </View>
-            </View>
-
           </View>
 
-          {/* Timer active state */}
-          {(isAccepted || isInProgress) && session?.startTime && (
-            <View style={styles.timerWrapper}>
-              <JobTimer startTime={new Date(session.startTime)} expectedDuration={session.expectedDuration || 60} variant="compact" />
+          {/* Price - Highlighted */}
+          <View style={styles.detailItem}>
+            <View style={styles.detailIconBox}>
+              <Ionicons name="wallet-outline" size={16} color={COLORS.textSecondary} />
             </View>
-          )}
-
-          {/* Footer Actions */}
-          {(isPending || isAccepted || isInProgress) && (
-            <View style={styles.footerActions}>
-              {isPending && (
-                <>
-                  <TouchableOpacity style={styles.actionBtnOutline} onPress={() => handleStatusChange(item.id, 'cancelled')}>
-                    <Text style={styles.actionBtnTextOutline}>Decline</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionBtnPrimary} onPress={() => handleStatusChange(item.id, 'accepted')}>
-                    <LinearGradient colors={GRADIENTS.primary} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-                    <Text style={styles.actionBtnTextPrimary}>Accept Request</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              {isAccepted && (
-                <>
-                  <TouchableOpacity style={styles.actionBtnOutline} onPress={() => openLocationNavigation(item)}>
-                    <Ionicons name="navigate" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
-                    <Text style={[styles.actionBtnTextOutline, { color: COLORS.primary }]}>Navigate</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionBtnPrimary} onPress={() => handleStartJob(item.id)}>
-                    <LinearGradient colors={GRADIENTS.primary} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-                    <Ionicons name="play" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.actionBtnTextPrimary}>Start</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              {isInProgress && (
-                <TouchableOpacity style={styles.actionBtnFull} onPress={() => handleEndJob(item.id)}>
-                  <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-                  <Ionicons name="checkmark-done" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.actionBtnTextPrimary}>Complete Job</Text>
-                </TouchableOpacity>
-              )}
+            <View>
+              <Text style={styles.detailLabel}>Earning</Text>
+              <Text style={styles.priceValue}>₹{item.amount}</Text>
             </View>
-          )}
-
-          {/* Customer Mini Bar (Bottom) */}
-          <View style={styles.customerBar}>
-            <View style={styles.customerRow}>
-              {item.customerAvatar ? (
-                <Image source={{ uri: item.customerAvatar }} style={styles.miniAvatar} />
-              ) : (
-                <View style={styles.avatarPlaceholderMini}>
-                  <Text style={styles.avatarTextMini}>{item.customerName.charAt(0)}</Text>
-                </View>
-              )}
-              <Text style={styles.customerNameMini}>{item.customerName}</Text>
-            </View>
-            <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.customerPhone}`)} style={styles.callBtnMini}>
-              <Ionicons name="call" size={14} color={COLORS.primary} />
-            </TouchableOpacity>
           </View>
 
         </View>
+
+        {/* Timer active state */}
+        {(isAccepted || isInProgress) && session?.startTime && (
+          <View style={styles.timerWrapper}>
+            <JobTimer startTime={new Date(session.startTime)} expectedDuration={session.expectedDuration || 60} variant="compact" />
+          </View>
+        )}
+
+        {/* Footer Actions */}
+        {(isPending || isAccepted || isInProgress) && (
+          <View style={styles.footerActions}>
+            {isPending && (
+              <>
+                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => handleStatusChange(item.id, 'cancelled')}>
+                  <Text style={styles.actionBtnTextOutline}>Decline</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtnPrimary} onPress={() => handleStatusChange(item.id, 'accepted')}>
+                  <LinearGradient colors={GRADIENTS.primary} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                  <Text style={styles.actionBtnTextPrimary}>Accept Request</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {isAccepted && (
+              <>
+                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => openLocationNavigation(item)}>
+                  <Ionicons name="navigate" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                  <Text style={[styles.actionBtnTextOutline, { color: COLORS.primary }]}>Navigate</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.actionBtnPrimary,
+                    (() => {
+                      try {
+                        if (!item.rawDate || !item.rawTime) return false;
+
+                        let date: Date;
+                        // Handle ISO string or YYYY-MM-DD
+                        if (item.rawDate.includes('T')) {
+                          date = new Date(item.rawDate);
+                        } else if (item.rawDate.includes('-')) {
+                          const parts = item.rawDate.split('-');
+                          if (parts[0].length === 4) {
+                            // YYYY-MM-DD
+                            date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                          } else {
+                            // Fallback (should be handled by normalizeDateStr but strictly safe here)
+                            date = new Date(item.rawDate);
+                          }
+                        } else {
+                          date = new Date(item.rawDate);
+                        }
+
+                        if (isNaN(date.getTime())) return false;
+
+                        const [hours, minutes] = item.rawTime.split(':').map(Number);
+                        if (isNaN(hours) || isNaN(minutes)) return false;
+
+                        date.setHours(hours, minutes, 0, 0);
+                        const oneMinuteBefore = date.getTime() - 60000; // 1 minute in ms
+                        return Date.now() < oneMinuteBefore;
+                      } catch (e) { return false; }
+                    })() && { backgroundColor: '#CBD5E1', opacity: 0.7 }
+                  ]}
+                  onPress={() => {
+                    try {
+                      if (!item.rawDate || !item.rawTime) {
+                        handleStartJob(item.id);
+                        return;
+                      }
+
+                      let date: Date;
+                      if (item.rawDate.includes('T')) {
+                        date = new Date(item.rawDate);
+                      } else if (item.rawDate.includes('-')) {
+                        const parts = item.rawDate.split('-');
+                        if (parts[0].length === 4) {
+                          date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                        } else {
+                          date = new Date(item.rawDate);
+                        }
+                      } else {
+                        date = new Date(item.rawDate);
+                      }
+
+                      if (isNaN(date.getTime())) {
+                        handleStartJob(item.id);
+                        return;
+                      }
+
+                      const [hours, minutes] = item.rawTime.split(':').map(Number);
+
+                      if (!isNaN(hours) && !isNaN(minutes)) {
+                        date.setHours(hours, minutes, 0, 0);
+                        const oneMinuteBefore = date.getTime() - 60000;
+
+                        if (Date.now() < oneMinuteBefore) {
+                          Alert.alert(
+                            'Too Early',
+                            `You can only start this job 1 minute before the scheduled time (${item.scheduledTime}).`
+                          );
+                          return;
+                        }
+                      }
+                      handleStartJob(item.id);
+                    } catch (e) {
+                      handleStartJob(item.id);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={(() => {
+                      try {
+                        if (!item.rawDate || !item.rawTime) return GRADIENTS.primary;
+
+                        let date: Date;
+                        if (item.rawDate.includes('T')) {
+                          date = new Date(item.rawDate);
+                        } else if (item.rawDate.includes('-')) {
+                          const parts = item.rawDate.split('-');
+                          if (parts[0].length === 4) {
+                            date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                          } else {
+                            date = new Date(item.rawDate);
+                          }
+                        } else {
+                          date = new Date(item.rawDate);
+                        }
+
+                        if (isNaN(date.getTime())) return GRADIENTS.primary;
+
+                        const [hours, minutes] = item.rawTime.split(':').map(Number);
+                        if (isNaN(hours) || isNaN(minutes)) return GRADIENTS.primary;
+
+                        date.setHours(hours, minutes, 0, 0);
+                        const oneMinuteBefore = date.getTime() - 60000;
+                        return Date.now() < oneMinuteBefore ? ['#CBD5E1', '#CBD5E1'] : GRADIENTS.primary;
+                      } catch (e) { return GRADIENTS.primary; }
+                    })()}
+                    style={StyleSheet.absoluteFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                  <Ionicons name="play" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.actionBtnTextPrimary}>Start</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {isInProgress && (
+              <TouchableOpacity style={styles.actionBtnFull} onPress={() => handleEndJob(item.id)}>
+                <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                <Ionicons name="checkmark-done" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                <Text style={styles.actionBtnTextPrimary}>Complete Job</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Customer Mini Bar (Bottom) */}
+        <View style={styles.customerBar}>
+          <View style={styles.customerRow}>
+            {item.customerAvatar ? (
+              <Image source={{ uri: item.customerAvatar }} style={styles.miniAvatar} />
+            ) : (
+              <View style={styles.avatarPlaceholderMini}>
+                <Text style={styles.avatarTextMini}>{item.customerName.charAt(0)}</Text>
+              </View>
+            )}
+            <Text style={styles.customerNameMini}>{item.customerName}</Text>
+          </View>
+          <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.customerPhone}`)} style={styles.callBtnMini}>
+            <Ionicons name="call" size={14} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+
+      </View>
     );
   };
 

@@ -191,7 +191,7 @@ const renderDashboardIcon = (props: { focused: boolean }) => (
 );
 
 const renderEarningsIcon = (props: { focused: boolean }) => (
-  <TabIcon name={props.focused ? "wallet" : "wallet-outline"} focused={props.focused} />
+  <TabIcon name={props.focused ? "cash" : "cash-outline"} focused={props.focused} />
 );
 
 // Homeowner/Customer Tab Navigator

@@ -97,30 +97,55 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
   const fetchEarnings = async () => {
     setIsLoading(true);
     try {
-      const response = await apiService.getProviderEarnings(selectedPeriod);
-      console.log('Earnings response:', response);
+      // Fetch ALL completed bookings directly to ensure Driver bookings are included
+      // The backend /provider/earning endpoint might be filtering them out
+      const response = await apiService.getProviderBookings('completed');
 
-      if (response.success) {
-        // Handle both response structures (standard .data or direct .earnings)
-        const data = response.data || response.earnings || {};
+      if (response.success && response.data) {
+        const allCompletedBookings = response.data;
+
+        // Filter by selected period
+        const now = new Date();
+        const startOfPeriod = new Date();
+
+        switch (selectedPeriod) {
+          case 'week':
+            startOfPeriod.setDate(now.getDate() - 7);
+            break;
+          case 'month':
+            startOfPeriod.setMonth(now.getMonth() - 1);
+            break;
+          case 'year':
+            startOfPeriod.setFullYear(now.getFullYear() - 1);
+            break;
+        }
+
+        const filteredBookings = allCompletedBookings.filter((b: any) => {
+          const bookingDate = new Date(b.completedAt || b.bookingDate);
+          return bookingDate >= startOfPeriod && bookingDate <= now;
+        });
+
+        // Calculate stats locally
+        const totalEarnings = filteredBookings.reduce((sum: number, b: any) => sum + (b.totalPrice || 0), 0);
+        const completedCount = filteredBookings.length;
+        const average = completedCount > 0 ? Math.round(totalEarnings / completedCount) : 0;
 
         setEarningsData({
-          totalEarnings: data.totalEarnings || 0,
-          completedBookings: data.bookingsCount || data.completedBookings || 0,
-          averagePerBooking: data.averageEarning || 0,
-          transactions: (data.recentTransactions || []).map((t: any) => ({
-            id: t.id || Math.random().toString(),
-            service: t.serviceName || 'Service',
-            customer: t.customerName || 'Customer',
-            amount: t.amount || 0,
-            date: t.date ? new Date(t.date).toLocaleDateString() : 'Recent',
-            status: t.status || 'completed'
-          })),
+          totalEarnings,
+          completedBookings: completedCount,
+          averagePerBooking: average,
+          transactions: filteredBookings.map((b: any) => ({
+            id: b._id || b.id,
+            service: b.serviceName || 'Service',
+            customer: b.customerName || 'Customer',
+            amount: b.totalPrice || 0,
+            date: new Date(b.completedAt || b.bookingDate).toLocaleDateString(),
+            status: b.status || 'completed'
+          })).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()), // Sort by date desc
         });
       }
     } catch (error) {
       console.error('Error fetching earnings:', error);
-      // Fallback only if error
       setEarningsData({
         totalEarnings: 0,
         completedBookings: 0,

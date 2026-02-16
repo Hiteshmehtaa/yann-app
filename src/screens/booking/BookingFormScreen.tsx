@@ -531,7 +531,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
           time: bookingTime,
           startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime
             ? bookingTime.toTimeString().substring(0, 5)
-            : bookingTime,
+            : (bookingTime ? bookingTime.toTimeString().substring(0, 5) : undefined),
           endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime
             ? endTime.toTimeString().substring(0, 5)
             : undefined,
@@ -662,7 +662,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
       time: bookingTime,
       startTime: (isHourlyService || isDriverService || hasOvertimeCharges) && bookingTime
         ? bookingTime.toTimeString().substring(0, 5)
-        : bookingTime,
+        : (bookingTime ? bookingTime.toTimeString().substring(0, 5) : undefined),
       endTime: (isHourlyService || isDriverService || hasOvertimeCharges) && endTime
         ? endTime.toTimeString().substring(0, 5)
         : undefined,
@@ -936,20 +936,52 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <View style={styles.timeGrid}>
                   {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map((time) => {
                     const isSelected = bookingTime && bookingTime.toTimeString().substring(0, 5) === time;
+
+                    // Check if time is in the past (only if selected date is today)
+                    let isDisabled = false;
+                    if (bookingDate) {
+                      const now = new Date();
+                      const isToday = bookingDate.getDate() === now.getDate() &&
+                        bookingDate.getMonth() === now.getMonth() &&
+                        bookingDate.getFullYear() === now.getFullYear();
+
+                      if (isToday) {
+                        const [h, m] = time.split(':');
+                        const slotTime = new Date();
+                        slotTime.setHours(parseInt(h), parseInt(m), 0, 0);
+                        if (slotTime.getTime() < now.getTime()) {
+                          isDisabled = true;
+                        }
+                      }
+                    }
+
                     return (
                       <TouchableOpacity
                         key={time}
-                        style={[styles.timeChip, isSelected && styles.timeChipSelected]}
+                        disabled={isDisabled}
+                        style={[
+                          styles.timeChip,
+                          isSelected && styles.timeChipSelected,
+                          isDisabled && { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', opacity: 0.5 }
+                        ]}
                         onPress={() => {
                           const [h, m] = time.split(':');
                           const newTime = new Date();
                           newTime.setHours(parseInt(h), parseInt(m), 0);
                           setBookingTime(newTime);
+                          // Reset end time if it becomes invalid
+                          if (endTime && newTime.getTime() >= endTime.getTime()) {
+                            setEndTime(null);
+                          }
                           Haptics.selectionAsync();
                           setTimeout(() => scrollToSection(800), 400);
                         }}
                       >
-                        <Text style={[styles.timeText, isSelected && styles.textSelected]}>{time}</Text>
+                        <Text style={[
+                          styles.timeText,
+                          isSelected && styles.textSelected,
+                          isDisabled && { color: '#CBD5E1' }
+                        ]}>{time}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -974,10 +1006,31 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                     <View style={styles.timeGrid}>
                       {['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map((time) => {
                         const isSelected = endTime && endTime.toTimeString().substring(0, 5) === time;
+
+                        // Check if end time is valid (must be > start time)
+                        let isDisabled = false;
+                        if (bookingTime) {
+                          const [h, m] = time.split(':');
+                          const slotTime = new Date();
+                          slotTime.setHours(parseInt(h), parseInt(m), 0, 0);
+
+                          const startTime = new Date();
+                          startTime.setHours(bookingTime.getHours(), bookingTime.getMinutes(), 0, 0);
+
+                          if (slotTime.getTime() <= startTime.getTime()) {
+                            isDisabled = true;
+                          }
+                        }
+
                         return (
                           <TouchableOpacity
                             key={time}
-                            style={[styles.timeChip, isSelected && styles.timeChipSelected]}
+                            disabled={isDisabled}
+                            style={[
+                              styles.timeChip,
+                              isSelected && styles.timeChipSelected,
+                              isDisabled && { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', opacity: 0.5 }
+                            ]}
                             onPress={() => {
                               const [h, m] = time.split(':');
                               const newTime = new Date();
@@ -986,7 +1039,11 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                               Haptics.selectionAsync();
                             }}
                           >
-                            <Text style={[styles.timeText, isSelected && styles.textSelected]}>{time}</Text>
+                            <Text style={[
+                              styles.timeText,
+                              isSelected && styles.textSelected,
+                              isDisabled && { color: '#CBD5E1' }
+                            ]}>{time}</Text>
                           </TouchableOpacity>
                         );
                       })}
