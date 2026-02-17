@@ -145,7 +145,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           description: s.description || '',
           category: s.category || 'other',
           price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-          // icon: require('../../../assets/service-icons/Ganeshpuja.png'), // REMOVED: Using dynamic lookup or local constant emojis
+          icon: '✨', // Default emoji icon, or use getServiceIcon(s.title) if available
           popular: s.popular || false,
           features: s.features || [],
           isNew,
@@ -163,7 +163,16 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
         if (index !== -1) {
           // Update existing local service with backend data (id, price, etc)
-          mergedServices[index] = { ...mergedServices[index], ...fetchedService };
+          // PRESERVE LOCAL ICON if fetched icon is just the default emoji
+          const fetchedIcon = fetchedService.icon;
+          const localIcon = mergedServices[index].icon;
+
+          mergedServices[index] = {
+            ...mergedServices[index],
+            ...fetchedService,
+            // Restore local icon if backend didn't provide a real one (URL or non-default)
+            icon: (fetchedIcon === '✨' && localIcon) ? localIcon : fetchedIcon
+          };
         } else {
           // Optional: Add entirely new services from backend that aren't in local constants
           // distinct from "Coming Soon" ones.
@@ -615,7 +624,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#EF4444',
+    backgroundColor: COLORS.error,
   },
   avatar: {
     width: 40,
@@ -630,7 +639,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '700',
   },

@@ -320,31 +320,31 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     {(booking.paymentMethod as string) === 'wallet' && (booking as any).escrowDetails && (
                         <>
                             <View style={styles.divider} />
-                            <View style={{ backgroundColor: '#F0F9FF', borderRadius: 12, padding: 12, marginTop: 8 }}>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#0369A1', marginBottom: 8 }}>
+                            <View style={{ backgroundColor: COLORS.primaryLight, borderRadius: 12, padding: 12, marginTop: 8 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.primary, marginBottom: 8 }}>
                                     Staged Payment Status
                                 </Text>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Initial Payment (25%)</Text>
+                                    <Text style={{ fontSize: 13, color: COLORS.text }}>Initial Payment (25%)</Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Ionicons name="checkmark-circle" size={14} color="#10B981" style={{ marginRight: 4 }} />
-                                        <Text style={{ fontSize: 13, color: '#10B981', fontWeight: '600' }}>
+                                        <Ionicons name="checkmark-circle" size={14} color={COLORS.success} style={{ marginRight: 4 }} />
+                                        <Text style={{ fontSize: 13, color: COLORS.success, fontWeight: '600' }}>
                                             ₹{(booking as any).escrowDetails.initialAmount}
                                         </Text>
                                     </View>
                                 </View>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Completion Payment (75%)</Text>
+                                    <Text style={{ fontSize: 13, color: COLORS.text }}>Completion Payment (75%)</Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         <Ionicons
                                             name={(booking as any).walletPaymentStage === 'completed' ? 'checkmark-circle' : 'time-outline'}
                                             size={14}
-                                            color={(booking as any).walletPaymentStage === 'completed' ? '#10B981' : '#EAB308'}
+                                            color={(booking as any).walletPaymentStage === 'completed' ? COLORS.success : COLORS.warning}
                                             style={{ marginRight: 4 }}
                                         />
                                         <Text style={{
                                             fontSize: 13,
-                                            color: (booking as any).walletPaymentStage === 'completed' ? '#10B981' : '#EAB308',
+                                            color: (booking as any).walletPaymentStage === 'completed' ? COLORS.success : COLORS.warning,
                                             fontWeight: '600'
                                         }}>
                                             ₹{(booking as any).escrowDetails.completionAmount}
@@ -378,12 +378,12 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         disabled={isPayingCompletion}
                     >
                         <LinearGradient
-                            colors={isPayingCompletion ? ['#94A3B8', '#64748B'] : ['#10B981', '#059669']}
+                            colors={isPayingCompletion ? [COLORS.textTertiary, COLORS.textSecondary] : [COLORS.success, '#059669']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.rateButtonGradient}
                         >
-                            <Ionicons name="wallet" size={20} color="#FFFFFF" />
+                            <Ionicons name="wallet" size={20} color={COLORS.white} />
                             <Text style={styles.rateButtonText}>
                                 {isPayingCompletion
                                     ? 'Processing...'
@@ -402,12 +402,12 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         activeOpacity={0.8}
                     >
                         <LinearGradient
-                            colors={['#60A5FA', '#3B82F6']}
+                            colors={[COLORS.primaryGradientStart, COLORS.primary]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.rateButtonGradient}
                         >
-                            <Ionicons name="star" size={20} color="#FFFFFF" />
+                            <Ionicons name="star" size={20} color={COLORS.white} />
                             <Text style={styles.rateButtonText}>Rate Your Experience</Text>
                         </LinearGradient>
                     </TouchableOpacity>
@@ -415,7 +415,7 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
                 {booking.status === 'completed' && (booking as any).hasBeenRated && (
                     <View style={styles.ratedBadge}>
-                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                        <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
                         <Text style={styles.ratedText}>You've rated this service</Text>
                     </View>
                 )}
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     providerInitial: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: COLORS.white,
     },
     providerName: {
         fontSize: TYPOGRAPHY.size.md,
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     rateButtonText: {
         fontSize: TYPOGRAPHY.size.md,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: COLORS.white,
     },
     ratedBadge: {
         flexDirection: 'row',
@@ -649,12 +649,12 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingVertical: 16,
         marginTop: SPACING.md,
-        backgroundColor: '#ECFDF5',
+        backgroundColor: COLORS.success + '15', // #ECFDF5 equivalent roughly
         borderRadius: RADIUS.medium,
     },
     ratedText: {
         fontSize: TYPOGRAPHY.size.sm,
         fontWeight: '600',
-        color: '#10B981',
+        color: COLORS.success,
     },
 });

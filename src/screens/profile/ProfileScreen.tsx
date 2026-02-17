@@ -80,8 +80,8 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   // Get membership tier based on bookings
   const getMembershipTier = () => {
     const count = stats.bookingsCount;
-    if (count >= 20) return { tier: 'Gold', color: colors.warning, icon: '👑' };
-    if (count >= 10) return { tier: 'Silver', color: colors.textSecondary, icon: '⭐' };
+    if (count >= 20) return { tier: 'Gold', color: COLORS.warning, icon: '👑' };
+    if (count >= 10) return { tier: 'Silver', color: COLORS.textSecondary, icon: '⭐' };
     return { tier: 'Bronze', color: '#CD7F32', icon: '🥉' };
   };
 
@@ -378,7 +378,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.guestContainer}>
             <View style={styles.guestHeroContainer}>
               <LinearGradient
-                colors={[COLORS.primary, '#4F46E5']}
+                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
                 style={styles.guestHeroCard}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -470,7 +470,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 style={styles.avatarWrapper}
               >
                 <LinearGradient
-                  colors={['#667eea', '#764ba2', '#667eea']}
+                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.avatarGradientRing}
@@ -485,7 +485,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                       />
                     ) : (
                       <LinearGradient
-                        colors={['#667eea', '#764ba2']}
+                        colors={[COLORS.primary, COLORS.primaryGradientEnd]}
                         style={styles.avatarPlaceholder}
                       >
                         <Text style={styles.avatarText}>
@@ -497,10 +497,10 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 </LinearGradient>
                 <View style={styles.cameraIconContainer}>
                   <LinearGradient
-                    colors={['#667eea', '#764ba2']}
+                    colors={[COLORS.primary, COLORS.primaryGradientEnd]}
                     style={styles.cameraIconGradient}
                   >
-                    <Ionicons name="camera" size={14} color="#FFF" />
+                    <Ionicons name="camera" size={14} color={COLORS.white} />
                   </LinearGradient>
                 </View>
               </TouchableOpacity>
@@ -510,7 +510,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'User'}</Text>
                 <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'No email'}</Text>
                 <View style={styles.roleBadge}>
-                  <Ionicons name={getRoleBadgeIcon()} size={12} color="#FFF" />
+                  <Ionicons name={getRoleBadgeIcon()} size={12} color={COLORS.white} />
                   <Text style={styles.roleText}>{getRoleDisplay()}</Text>
                 </View>
               </View>
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
   headerTitleWhite: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF',
+    color: COLORS.white,
     letterSpacing: 0.5,
   },
   settingsButton: {
@@ -843,7 +843,7 @@ const styles = StyleSheet.create({
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#667eea',
+    backgroundColor: COLORS.primary, // #667eea
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFF',
+    color: COLORS.white,
     letterSpacing: 0.5,
   },
   // Clean professional header styles
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
   },
   guestHeroCard: {
     padding: SPACING.xl,
-    borderRadius: RADIUS.xl,
+    borderRadius: RADIUS.xlarge,
     alignItems: 'center',
     ...SHADOWS.md,
   },

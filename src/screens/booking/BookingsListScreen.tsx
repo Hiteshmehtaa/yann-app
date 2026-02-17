@@ -32,14 +32,14 @@ import { useAuth } from '../../contexts/AuthContext';
 
 // Gradient presets for status
 const STATUS_GRADIENTS: Record<string, readonly [string, string]> = {
-  accepted: ['#10B981', '#059669'],
-  confirmed: ['#10B981', '#059669'],
-  active: ['#10B981', '#059669'],
-  in_progress: ['#3B82F6', '#2563EB'],
-  completed: ['#667eea', '#764ba2'],
-  pending: ['#F59E0B', '#D97706'],
-  cancelled: ['#EF4444', '#DC2626'],
-  rejected: ['#EF4444', '#DC2626'],
+  accepted: [COLORS.success, '#059669'],
+  confirmed: [COLORS.success, '#059669'],
+  active: [COLORS.success, '#059669'],
+  in_progress: [COLORS.primary, COLORS.primaryGradientEnd],
+  completed: [COLORS.primaryGradientStart, COLORS.primaryGradientEnd], // Using proper theme gradient structure
+  pending: [COLORS.warning, '#D97706'],
+  cancelled: [COLORS.error, '#DC2626'],
+  rejected: [COLORS.error, '#DC2626'],
 };
 
 type Props = {
@@ -315,19 +315,19 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#60A5FA', '#3B82F6']}
+              colors={[COLORS.primaryGradientStart, COLORS.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.rateButtonGradient}
             >
-              <Ionicons name="star" size={16} color="#FFFFFF" />
+              <Ionicons name="star" size={16} color={COLORS.white} />
               <Text style={styles.rateButtonText}>Rate Experience</Text>
             </LinearGradient>
           </TouchableOpacity>
         ) : activeTab === 'rejected' ? (
           <View style={[styles.countdownFooter, { backgroundColor: '#FEF2F2' }]}>
-            <Ionicons name="information-circle" size={14} color="#DC2626" />
-            <Text style={[styles.countdownLabel, { color: '#DC2626' }]}>
+            <Ionicons name="information-circle" size={14} color={COLORS.error} />
+            <Text style={[styles.countdownLabel, { color: COLORS.error }]}>
               {item.paymentMethod === 'wallet' ? 'Wallet refunded' : 'Booking cancelled'}
             </Text>
           </View>
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
   statusTextWhite: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFF',
+    color: COLORS.white,
     letterSpacing: 0.3,
   },
   // New Booking Card Styles

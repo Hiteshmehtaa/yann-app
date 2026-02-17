@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { COLORS } from './theme';
 
 // API Configuration
 // Automatic backend detection - pings local server and falls back to production
@@ -479,16 +480,16 @@ export const BOOKING_STATUS = {
 
 // Status Colors
 export const STATUS_COLORS = {
-  pending: '#F59E0B',
-  awaiting_response: '#F59E0B',
-  pending_payment: '#F59E0B',
-  accepted: '#10B981',
-  in_progress: '#3B82F6',
-  rejected: '#EF4444',
-  awaiting_completion_payment: '#F97316',  // Orange - action needed from member
-  completed: '#06B6D4',
-  cancelled: '#6B7280',
-  expired: '#6B7280',
+  pending: COLORS.warning,
+  awaiting_response: COLORS.warning,
+  pending_payment: COLORS.warning,
+  accepted: COLORS.success,
+  in_progress: COLORS.info, // or COLORS.primary
+  rejected: COLORS.error,
+  awaiting_completion_payment: COLORS.accentOrange,  // Orange - action needed from member
+  completed: COLORS.info, // using info (blue) for completed as per theme
+  cancelled: COLORS.textTertiary,
+  expired: COLORS.textTertiary,
 };
 
 // Storage Keys

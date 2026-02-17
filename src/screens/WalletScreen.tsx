@@ -344,6 +344,9 @@ export const WalletScreen = ({ navigation }: any) => {
     return type === 'CREDIT' ? 'arrow-down-left' : 'arrow-up-right';
   };
 
+  // Ensure we have a safe user role fallback
+  const isProvider = user?.role === 'provider';
+
   const renderTransaction = ({ item, index }: { item: Transaction, index: number }) => {
     const isIncome = isIncomeTransaction(item.type);
     const iconName = getTransactionIcon(item.description, item.type);
@@ -351,14 +354,14 @@ export const WalletScreen = ({ navigation }: any) => {
     // Modern color scheme - Green for income, Red for expense
     const colors = {
       income: {
-        icon: '#10B981',
-        iconBg: '#ECFDF5',
-        amount: '#059669',
+        icon: COLORS.success,
+        iconBg: addAlpha(COLORS.success, 0.1),
+        amount: COLORS.success,
       },
       expense: {
-        icon: '#EF4444',
-        iconBg: '#FEF2F2',
-        amount: '#DC2626',
+        icon: COLORS.error,
+        iconBg: addAlpha(COLORS.error, 0.1),
+        amount: COLORS.error,
       },
     };
 
@@ -368,6 +371,22 @@ export const WalletScreen = ({ navigation }: any) => {
     const isToday = new Date().toDateString() === date.toDateString();
     const dateStr = isToday ? 'Today' : date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
     const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    // Determine labels and signs based on user role
+    let amountPrefix = '';
+    let statusLabel = '';
+
+    if (isProvider) {
+      // Partners: Income/Expense
+      amountPrefix = isIncome ? '+' : '-';
+      statusLabel = isIncome ? 'Income' : 'Expense';
+    } else {
+      // Members: Credit/Debit
+      // Credit = Income (Green, +)
+      // Debit = Expense (Red, -)
+      amountPrefix = isIncome ? '+' : '-';
+      statusLabel = isIncome ? 'Credit' : 'Debit';
+    }
 
     return (
 
@@ -387,10 +406,10 @@ export const WalletScreen = ({ navigation }: any) => {
 
         <View style={styles.transactionAmountContainer}>
           <Text style={[styles.transactionAmount, { color: colorScheme.amount }]}>
-            {isIncome ? '+' : '-'}₹{Math.abs(item.amount).toFixed(2)}
+            {amountPrefix}₹{Math.abs(item.amount).toFixed(2)}
           </Text>
           <Text style={[styles.transactionStatus, { color: colorScheme.icon }]}>
-            {isIncome ? 'Income' : 'Expense'}
+            {statusLabel}
           </Text>
         </View>
       </View>
@@ -407,7 +426,7 @@ export const WalletScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -443,7 +462,7 @@ export const WalletScreen = ({ navigation }: any) => {
             <View style={styles.refundBanner}>
               <View style={styles.refundBannerContent}>
                 <View style={styles.refundIconContainer}>
-                  <Ionicons name="alert-circle" size={24} color="#F59E0B" />
+                  <Ionicons name="alert-circle" size={24} color={COLORS.warning} />
                 </View>
                 <View style={styles.refundTextContainer}>
                   <Text style={styles.refundBannerTitle}>Refund Available</Text>
@@ -469,7 +488,7 @@ export const WalletScreen = ({ navigation }: any) => {
           {/* Premium Mesh Gradient Card */}
           <View style={styles.cardContainer}>
             <LinearGradient
-              colors={['#2563EB', '#1E40AF']} // Blue-600 -> Blue-800
+              colors={[COLORS.primary, COLORS.primaryGradientEnd]} // Blue-600 -> Blue-800
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.walletCard}
@@ -500,24 +519,24 @@ export const WalletScreen = ({ navigation }: any) => {
             {/* Floating 3D Stats - Overlapping the Card */}
             <View style={styles.floatingStatsContainer}>
               <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#ECFDF5' }]}>
-                  <Ionicons name="arrow-down" size={20} color="#059669" />
+                <View style={[styles.statIcon, { backgroundColor: addAlpha(COLORS.success, 0.1) }]}>
+                  <Ionicons name="arrow-down" size={20} color={COLORS.success} />
                 </View>
                 <View>
-                  <Text style={styles.statLabel}>Income</Text>
-                  <Text style={[styles.statValue, { color: '#059669' }]}>
+                  <Text style={styles.statLabel}>{isProvider ? 'Income' : 'Credit'}</Text>
+                  <Text style={[styles.statValue, { color: COLORS.success }]}>
                     ₹{transactions.filter(t => isIncomeTransaction(t.type)).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: '#FEF2F2' }]}>
-                  <Ionicons name="arrow-up" size={20} color="#DC2626" />
+                <View style={[styles.statIcon, { backgroundColor: addAlpha(COLORS.error, 0.1) }]}>
+                  <Ionicons name="arrow-up" size={20} color={COLORS.error} />
                 </View>
                 <View>
-                  <Text style={styles.statLabel}>Expense</Text>
-                  <Text style={[styles.statValue, { color: '#DC2626' }]}>
+                  <Text style={styles.statLabel}>{isProvider ? 'Expense' : 'Debit'}</Text>
+                  <Text style={[styles.statValue, { color: COLORS.error }]}>
                     ₹{transactions.filter(t => !isIncomeTransaction(t.type)).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
                   </Text>
                 </View>
@@ -534,10 +553,10 @@ export const WalletScreen = ({ navigation }: any) => {
               <Text style={styles.sectionTitle}>Withdraw Earnings</Text>
 
               {/* Commission Info Card */}
-              <View style={{ backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+              <View style={{ backgroundColor: addAlpha(COLORS.warning, 0.1), borderRadius: 12, padding: 12, marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="information-circle-outline" size={18} color="#92400E" />
-                  <Text style={{ fontSize: 12, color: '#92400E', marginLeft: 8, flex: 1 }}>
+                  <Ionicons name="information-circle-outline" size={18} color={COLORS.warning} />
+                  <Text style={{ fontSize: 12, color: COLORS.warning, marginLeft: 8, flex: 1 }}>
                     {withdrawalConfig.commissionRate}% platform commission on withdrawals
                   </Text>
                 </View>
@@ -545,24 +564,24 @@ export const WalletScreen = ({ navigation }: any) => {
 
               {/* Bank Account Status */}
               {withdrawalConfig.bankAccount ? (
-                <View style={{ backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                <View style={{ backgroundColor: addAlpha(COLORS.success, 0.1), borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
                   <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={{ fontSize: 12, color: '#059669', fontWeight: '500' }}>Bank Account Linked</Text>
-                    <Text style={{ fontSize: 14, color: '#065F46', fontWeight: '600' }}>{withdrawalConfig.bankAccount}</Text>
+                    <Text style={{ fontSize: 12, color: COLORS.success, fontWeight: '500' }}>Bank Account Linked</Text>
+                    <Text style={{ fontSize: 14, color: COLORS.success, fontWeight: '600' }}>{withdrawalConfig.bankAccount}</Text>
                   </View>
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={{ backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
+                  style={{ backgroundColor: addAlpha(COLORS.error, 0.1), borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
                   onPress={() => navigation.navigate('BankDetails' as never)}
                 >
-                  <Ionicons name="warning-outline" size={20} color="#DC2626" />
+                  <Ionicons name="warning-outline" size={20} color={COLORS.error} />
                   <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '500' }}>Bank Account Required</Text>
-                    <Text style={{ fontSize: 11, color: '#B91C1C' }}>Add bank details to enable withdrawals</Text>
+                    <Text style={{ fontSize: 12, color: COLORS.error, fontWeight: '500' }}>Bank Account Required</Text>
+                    <Text style={{ fontSize: 11, color: COLORS.error }}>Add bank details to enable withdrawals</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.error} />
                 </TouchableOpacity>
               )}
 
@@ -583,11 +602,11 @@ export const WalletScreen = ({ navigation }: any) => {
                 }}
                 disabled={isWithdrawing}
               >
-                <Ionicons name="cash-outline" size={24} color="#FFF" />
+                <Ionicons name="cash-outline" size={24} color={COLORS.white} />
                 <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
               </TouchableOpacity>
 
-              <Text style={{ fontSize: 11, color: '#6B7280', textAlign: 'center', marginTop: 8 }}>
+              <Text style={{ fontSize: 11, color: COLORS.textTertiary, textAlign: 'center', marginTop: 8 }}>
                 Min ₹{withdrawalConfig.minAmount} • Processed in {withdrawalConfig.processingDays} days
               </Text>
             </View>
@@ -658,7 +677,7 @@ export const WalletScreen = ({ navigation }: any) => {
           style={styles.fab}
           onPress={openAmountModal}
         >
-          <Ionicons name="add" size={24} color="#FFF" />
+          <Ionicons name="add" size={24} color={COLORS.white} />
         </AnimatedButton>
 
         {/* Custom Amount Modal */}
@@ -681,7 +700,7 @@ export const WalletScreen = ({ navigation }: any) => {
                   onChangeText={setCustomAmount}
                   keyboardType="numeric"
                   placeholder="0"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={COLORS.textTertiary}
                   autoFocus
                 />
               </View>
@@ -743,28 +762,28 @@ export const WalletScreen = ({ navigation }: any) => {
                   onChangeText={setWithdrawAmount}
                   keyboardType="numeric"
                   placeholder="0"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={COLORS.textTertiary}
                   autoFocus
                 />
               </View>
 
               {/* Live Commission Preview */}
               {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-                <View style={{ backgroundColor: '#F0F9FF', borderRadius: 12, padding: 12, marginTop: 12 }}>
+                <View style={{ backgroundColor: addAlpha(COLORS.primary, 0.05), borderRadius: 12, padding: 12, marginTop: 12 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>Amount</Text>
-                    <Text style={{ fontSize: 13, color: '#0C4A6E' }}>₹{parseFloat(withdrawAmount).toFixed(2)}</Text>
+                    <Text style={{ fontSize: 13, color: COLORS.text }}>Amount</Text>
+                    <Text style={{ fontSize: 13, color: COLORS.text }}>₹{parseFloat(withdrawAmount).toFixed(2)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={{ fontSize: 13, color: '#DC2626' }}>Commission ({withdrawalConfig.commissionRate}%)</Text>
-                    <Text style={{ fontSize: 13, color: '#DC2626' }}>
+                    <Text style={{ fontSize: 13, color: COLORS.error }}>Commission ({withdrawalConfig.commissionRate}%)</Text>
+                    <Text style={{ fontSize: 13, color: COLORS.error }}>
                       -₹{(parseFloat(withdrawAmount) * withdrawalConfig.commissionRate / 100).toFixed(2)}
                     </Text>
                   </View>
-                  <View style={{ height: 1, backgroundColor: '#E0E7FF', marginVertical: 8 }} />
+                  <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 8 }} />
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 14, color: '#059669', fontWeight: '600' }}>You'll Receive</Text>
-                    <Text style={{ fontSize: 14, color: '#059669', fontWeight: '700' }}>
+                    <Text style={{ fontSize: 14, color: COLORS.success, fontWeight: '600' }}>You'll Receive</Text>
+                    <Text style={{ fontSize: 14, color: COLORS.success, fontWeight: '700' }}>
                       ₹{(parseFloat(withdrawAmount) * (1 - withdrawalConfig.commissionRate / 100)).toFixed(2)}
                     </Text>
                   </View>
@@ -782,7 +801,7 @@ export const WalletScreen = ({ navigation }: any) => {
                   <Text style={styles.modalButtonTextCancel}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: '#059669' }]}
+                  style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: COLORS.success }]}
                   onPress={handleWithdraw}
                   disabled={isWithdrawing}
                 >
@@ -806,7 +825,7 @@ export const WalletScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.background,
   },
   safeArea: {
     flex: 1,
@@ -815,7 +834,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -829,7 +848,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.sm,
@@ -914,7 +933,7 @@ const styles = StyleSheet.create({
   cardBalance: {
     fontSize: 36,
     fontWeight: '800',
-    color: '#FFF',
+    color: COLORS.white,
     letterSpacing: -1,
     lineHeight: 42,
   },
@@ -940,7 +959,7 @@ const styles = StyleSheet.create({
   cardUserValues: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFF',
+    color: COLORS.white,
     marginBottom: 4,
     letterSpacing: 1,
     opacity: 0.9,
@@ -981,7 +1000,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     padding: 16,
     borderRadius: 20,
     ...SHADOWS.md, // Elevated shadow
@@ -997,7 +1016,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#9CA3AF', // Gray-400
+    color: COLORS.textTertiary, // Gray-400
     fontWeight: '600',
     marginBottom: 2,
     textTransform: 'uppercase',
@@ -1024,7 +1043,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
   },
   amountChip: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.white,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -1050,7 +1069,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.md,
   },
   withdrawButtonText: {
-    color: '#FFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1090,11 +1109,11 @@ const styles = StyleSheet.create({
   transactionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     paddingVertical: 16,
     paddingHorizontal: 0, // No horizontal padding for cleaner list look
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: COLORS.gray100, // #F3F4F6
   },
   transactionIconCircle: {
     width: 44,
@@ -1111,13 +1130,13 @@ const styles = StyleSheet.create({
   transactionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937', // Gray-900
+    color: COLORS.text, // #1F2937 Gray-900
     marginBottom: 4,
     letterSpacing: -0.2,
   },
   transactionMeta: {
     fontSize: 13,
-    color: '#6B7280', // Gray-500
+    color: COLORS.textSecondary, // #6B7280 Gray-500
     fontWeight: '500',
   },
   transactionAmountContainer: {
@@ -1141,7 +1160,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.white,
     borderRadius: RADIUS.large,
     paddingHorizontal: SPACING.xl,
   },
@@ -1173,7 +1192,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   emptyActionText: {
-    color: '#FFF',
+    color: COLORS.white,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -1202,7 +1221,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.white,
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -1224,7 +1243,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.gray50, // #F9FAFB
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 20,
@@ -1253,13 +1272,13 @@ const styles = StyleSheet.create({
   quickAmountChip: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.gray100, // #F3F4F6
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border, // #E5E7EB
   },
   quickAmountText: {
     fontSize: 16,
@@ -1277,7 +1296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalButtonCancel: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.gray100, // #F3F4F6
   },
   modalButtonConfirm: {
     backgroundColor: COLORS.primary,
@@ -1290,7 +1309,7 @@ const styles = StyleSheet.create({
   modalButtonTextConfirm: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
+    color: COLORS.white,
   },
   refundBanner: {
     backgroundColor: '#FEF3C7',
@@ -1299,7 +1318,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     marginHorizontal: 20,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: COLORS.accentYellow,
   },
   refundBannerContent: {
     flexDirection: 'row',
@@ -1315,12 +1334,12 @@ const styles = StyleSheet.create({
   refundBannerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#92400E',
+    color: COLORS.warning, // Using warning color instead of specific hex
     marginBottom: 4,
   },
   refundBannerText: {
     fontSize: 14,
-    color: '#78350F',
+    color: COLORS.warning, // Using warning color
   },
   refundButton: {
     backgroundColor: COLORS.primary,
@@ -1332,6 +1351,6 @@ const styles = StyleSheet.create({
   refundButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
+    color: COLORS.white,
   },
 });

@@ -1,4 +1,4 @@
-    import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ export const BankDetailsScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasBankDetails, setHasBankDetails] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     accountNumber: '',
     confirmAccountNumber: '',
@@ -96,7 +96,7 @@ export const BankDetailsScreen: React.FC<Props> = ({ navigation }) => {
     setIsSaving(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
+
       const response = await apiService.updateBankDetails({
         accountNumber: formData.accountNumber,
         ifscCode: formData.ifscCode.toUpperCase(),
@@ -129,13 +129,22 @@ export const BankDetailsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#667EEA', '#764BA2']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      
+      <View style={styles.backgroundContainer}>
+        {/* Primary Gradient Background */}
+        <LinearGradient
+          colors={[COLORS.primary, '#2563EB']} // Standard Blue Gradient
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* Decorative Blobs */}
+        <View style={styles.blobContainer} pointerEvents="none">
+          <View style={styles.blobTopRight} />
+          <View style={styles.blobBottomLeft} />
+        </View>
+      </View>
+
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -191,7 +200,7 @@ export const BankDetailsScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.infoCard}>
               <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
               <Text style={styles.infoText}>
-                {hasBankDetails 
+                {hasBankDetails
                   ? 'Update your bank account details below. Changes will be reviewed by our team.'
                   : 'Add your bank account details to start withdrawing your earnings.'}
               </Text>
@@ -266,7 +275,7 @@ export const BankDetailsScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.7}
               >
                 <LinearGradient
-                  colors={['#10B981', '#059669']}
+                  colors={[COLORS.primary, '#2563EB']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.saveButtonGradient}
@@ -312,10 +321,12 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADIUS.full,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   headerTitle: {
     fontSize: 18,
@@ -328,8 +339,8 @@ const styles = StyleSheet.create({
   },
   existingCard: {
     backgroundColor: '#ECFDF5',
-    borderRadius: 16,
-    padding: SPACING.lg,
+    borderRadius: RADIUS.medium,
+    padding: SPACING.md,
     marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: '#A7F3D0',
@@ -355,7 +366,7 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     backgroundColor: '#EFF6FF',
-    borderRadius: 12,
+    borderRadius: RADIUS.medium,
     padding: SPACING.md,
     marginBottom: SPACING.lg,
     borderWidth: 1,
@@ -369,10 +380,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   formCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: SPACING.xl,
-    ...SHADOWS.lg,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    ...SHADOWS.md,
     marginBottom: SPACING.lg,
   },
   formTitle: {
@@ -391,23 +402,24 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   input: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    backgroundColor: COLORS.gray50,
+    borderRadius: RADIUS.medium,
     padding: SPACING.md,
     fontSize: 15,
     color: COLORS.text,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.gray200,
   },
   inputHint: {
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.textTertiary,
     marginTop: 4,
   },
   saveButton: {
     marginTop: SPACING.md,
-    borderRadius: 14,
+    borderRadius: RADIUS.medium,
     overflow: 'hidden',
+    ...SHADOWS.sm,
   },
   saveButtonGradient: {
     flexDirection: 'row',
@@ -415,6 +427,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     gap: 8,
+    backgroundColor: COLORS.primary, // Fallback
   },
   saveButtonText: {
     fontSize: 16,
@@ -424,15 +437,40 @@ const styles = StyleSheet.create({
   securityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: SPACING.md,
+    backgroundColor: COLORS.gray100,
+    borderRadius: RADIUS.medium,
+    padding: SPACING.medium,
     gap: 10,
   },
   securityText: {
     flex: 1,
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     lineHeight: 16,
+  },
+  backgroundContainer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  blobContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  blobTopRight: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  blobBottomLeft: {
+    position: 'absolute',
+    bottom: -50,
+    left: -50,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
 });
