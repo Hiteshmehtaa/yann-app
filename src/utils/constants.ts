@@ -97,7 +97,7 @@ export const SERVICES = [
     description: 'Professional driver for your vehicle (In-city & Outstation)',
     category: 'driver',
     price: 'Varies',
-    icon: require('../../assets/service-icons/Ganeshpuja.png'),
+    icon: require('../../assets/service-icons/Driver.png'),
     popular: true,
     features: ['Licensed drivers', 'Flexible hours', 'Background verified', 'In-city & Outstation'],
     hasOvertimeCharges: true,

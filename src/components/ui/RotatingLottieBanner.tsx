@@ -12,7 +12,6 @@ import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
 const HEIGHT = 240;
-const TRANSITION_DURATION = 1200; // Slower, more cinematic transition
 const DISPLAY_DURATION = 9000;
 
 // Curated list of high-quality animations
@@ -51,16 +50,6 @@ const HERO_ANIMATIONS = [
     {
         id: 'wallet-payment',
         source: require('../../../assets/lottie/Payment Success.json'),
-        scale: 1.0,
-    },
-    {
-        id: 'meditating-mechanic',
-        source: require('../../../assets/lottie/Meditating Mechanic.json'),
-        scale: 1.0,
-    },
-    {
-        id: 'puja-thali',
-        source: require('../../../assets/lottie/puja ki thali.json'),
         scale: 1.0,
     },
 ];
@@ -194,6 +183,7 @@ export const RotatingLottieBanner: React.FC = () => {
                     { transform: [{ scale: pressAnim }, { scale: scaleAnim }] }
                 ]}>
 
+
                     {/* Layer 1: The "Next" Animation (Bottom/Incoming) */}
                     {/* We position absolute so it sits behind or blends */}
                     <Animated.View
@@ -241,7 +231,6 @@ export const RotatingLottieBanner: React.FC = () => {
                             colorFilters={currentItem?.colorFilters}
                         />
                     </Animated.View>
-
 
                 </Animated.View>
             </Pressable>

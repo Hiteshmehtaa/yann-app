@@ -106,8 +106,6 @@ const ModernProviderCard = ({
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: withSpring(isSelected ? 1.02 : 1) }],
-        borderColor: withTiming(isSelected ? COLORS.primary : 'transparent'),
-        borderWidth: withTiming(isSelected ? 2 : 0),
     }));
 
     return (
@@ -120,6 +118,8 @@ const ModernProviderCard = ({
                 shadowOpacity: isDark ? 0.3 : 0.05, // Softer shadow for light mode
                 shadowRadius: 12,
                 elevation: isDark ? 2 : 4,
+                borderColor: isSelected ? COLORS.primary : 'transparent',
+                borderWidth: isSelected ? 2 : 0,
             },
             animatedStyle
         ]}>
@@ -154,7 +154,7 @@ const ModernProviderCard = ({
                     <View style={styles.ratingRow}>
                         <View style={styles.starContainer}>
                             <Ionicons name="star" size={12} color={COLORS.warning} />
-                            <Text style={[styles.ratingVal, { color: isDark ? COLORS.gray50 : COLORS.gray100 }]}>{item.rating}</Text>
+                            <Text style={[styles.ratingVal, { color: isDark ? COLORS.gray50 : COLORS.text }]}>{item.rating}</Text>
                         </View>
                         {/* Dot Separator */}
                         <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: isDark ? '#475569' : '#CBD5E1', marginHorizontal: 6 }} />
@@ -221,7 +221,10 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         priceForService: p.price || service.price || 0,
                         experience: p.experience || 2,
                         bio: p.bio,
-                        reviews: p.reviews || []
+                        experience: p.experience || 2,
+                        bio: p.bio,
+                        reviews: p.reviews || [],
+                        hasLateStarts: p.hasLateStarts || false,
                     }));
                     setProviders(mapped);
                     // Pre-select the best rated or first provider

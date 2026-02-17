@@ -21,6 +21,7 @@ export const SERVICE_IMAGES: Record<string, ImageSourcePropType> = {
     dryCleaning: require('../../assets/service-icons/Dry Cleaning.png'),
     chimneyCleaning: require('../../assets/service-icons/Chimney Cleaning.png'),
     tankCleaning: require('../../assets/service-icons/Tank Cleaning.png'),
+    driver: require('../../assets/service-icons/Driver.png'),
 };
 
 // Function to get icon image based on service title or category
@@ -39,6 +40,9 @@ export const getServiceIconImage = (serviceTitle: string): ImageSourcePropType |
     if (title.includes('shraddh') || title.includes('shraadh')) return SERVICE_IMAGES.shraadh;
     if (title.includes('janmadin') || title.includes('birthday')) return SERVICE_IMAGES.janmdin;
     if (title.includes('sundarkand') || title.includes('sundarkaand')) return SERVICE_IMAGES.sundarkaand;
+
+    // Driver Services
+    if (title.includes('driver') || title.includes('driving')) return SERVICE_IMAGES.driver;
 
     // Cleaning Services
     if (title.includes('deep') && title.includes('house')) return SERVICE_IMAGES.deepHouseCleaning;

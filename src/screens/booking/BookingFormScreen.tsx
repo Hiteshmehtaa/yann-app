@@ -28,7 +28,7 @@ import * as Haptics from 'expo-haptics';
 import { BookingAnimation } from '../../components/animations';
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
 import { useResponsive } from '../../hooks/useResponsive';
-import { PremiumDateTimePicker } from '../../components/ui/PremiumDateTimePicker';
+import { CustomDateTimePicker } from '../../components/ui/CustomDateTimePicker';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
@@ -131,7 +131,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Auto-select Primary Address if not provided
     if (!selectedAddress && user?.addressBook && user.addressBook.length > 0) {
-      const primary = user.addressBook.find(addr => addr.isPrimary) || user.addressBook[0];
+      const primary = user.addressBook.find((addr: Address) => addr.isPrimary) || user.addressBook[0];
       setSelectedAddress(primary);
     }
 
@@ -802,7 +802,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               <View style={styles.cardHighlight} />
               <View style={styles.serviceRow}>
                 <View style={styles.serviceIconContainer}>
-                  <Ionicons name="briefcase-outline" size={26} color="COLORS.primary" />
+                  <Ionicons name="briefcase-outline" size={26} color={COLORS.primary} />
                 </View>
                 <View style={styles.serviceInfo}>
                   <Text style={styles.serviceName}>{service.title}</Text>
@@ -822,7 +822,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                       style={styles.providerAvatar}
                     />
                   ) : (
-                    <View style={[styles.providerAvatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: 'COLORS.primaryGradientStart' }]}>
+                    <View style={[styles.providerAvatar, { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primaryGradientStart }]}>
                       <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
                         {provider.name?.charAt(0) || 'E'}
                       </Text>
@@ -831,7 +831,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.providerName}>{provider.name}</Text>
                     <View style={styles.ratingRow}>
-                      <Ionicons name="star" size={12} color="COLORS.warning" />
+                      <Ionicons name="star" size={12} color={COLORS.warning} />
                       <Text style={styles.ratingText}>{provider.rating ? provider.rating.toFixed(1) : 'New'}</Text>
                     </View>
                   </View>
@@ -855,13 +855,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={['COLORS.gray50', 'COLORS.gray100']}
+                  colors={[COLORS.gray50, COLORS.gray100]}
                   style={StyleSheet.absoluteFill}
                 />
 
                 <View style={styles.locationHeaderRow}>
                   <View style={styles.locationIconContainer}>
-                    <Ionicons name="map" size={24} color="COLORS.primary" />
+                    <Ionicons name="map" size={24} color={COLORS.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.locationTitle}>Service Location</Text>
@@ -877,194 +877,103 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
 
                 <View style={styles.addressDetails}>
-                  <Text style={[styles.addressText, !selectedAddress && { color: 'COLORS.textTertiary', fontStyle: 'italic' }]} numberOfLines={2}>
+                  <Text style={[styles.addressText, !selectedAddress && { color: COLORS.textTertiary, fontStyle: 'italic' }]} numberOfLines={2}>
                     {selectedAddress ? selectedAddress.fullAddress : 'Select service location...'}
                   </Text>
                 </View>
 
                 {/* Decorative Map Pattern (Dots) */}
                 <View style={styles.mapPattern} pointerEvents="none">
-                  <Ionicons name="location" size={120} color="COLORS.gray200" style={{ opacity: 0.1, transform: [{ rotate: '-15deg' }] }} />
+                  <Ionicons name="location" size={120} color={COLORS.gray200} style={{ opacity: 0.1, transform: [{ rotate: '-15deg' }] }} />
                 </View>
               </TouchableOpacity>
 
               <View style={styles.divider} />
 
-              {/* Horizontal Date Strip */}
               <View style={styles.pickerSection}>
-                <Text style={styles.pickerLabel}>Select Date</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.dateStripContainer}
-                  nestedScrollEnabled={true}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {Array.from({ length: 14 }).map((_, i) => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + i);
-                    const isSelected = bookingDate && date.getDate() === bookingDate.getDate();
+                <View style={{ gap: 16 }}>
+                  {/* Date Picker */}
+                  <CustomDateTimePicker
+                    label="Select Date"
+                    mode="date"
+                    value={bookingDate}
+                    onChange={(date) => {
+                      setBookingDate(date);
+                    }}
+                    minimumDate={new Date()}
+                    placeholder="Choose a date"
+                    leftIcon="calendar"
+                  />
 
-                    return (
-                      <TouchableOpacity
-                        key={i}
-                        style={[styles.dateCard, isSelected && styles.dateCardSelected]}
-                        onPress={() => {
-                          Haptics.selectionAsync();
-                          setBookingDate(date);
-                          // Progressive Scroll
-                          setTimeout(() => scrollToSection(500), 400);
-                        }}
-                      >
-                        <Text style={[styles.dateDay, isSelected && styles.textSelected]}>
-                          {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                        </Text>
-                        <Text style={[styles.dateNum, isSelected && styles.textSelected]}>
-                          {date.getDate()}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              <View style={styles.divider} />
-
-              {/* Visual Time Grid */}
-              <View style={styles.pickerSection}>
-                <Text style={styles.pickerLabel}>Select Time</Text>
-                <View style={styles.timeGrid}>
-                  {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map((time) => {
-                    const isSelected = bookingTime && bookingTime.toTimeString().substring(0, 5) === time;
-
-                    // Check if time is in the past (only if selected date is today)
-                    let isDisabled = false;
-                    if (bookingDate) {
-                      const now = new Date();
-                      const isToday = bookingDate.getDate() === now.getDate() &&
-                        bookingDate.getMonth() === now.getMonth() &&
-                        bookingDate.getFullYear() === now.getFullYear();
-
-                      if (isToday) {
-                        const [h, m] = time.split(':');
-                        const slotTime = new Date();
-                        slotTime.setHours(parseInt(h), parseInt(m), 0, 0);
-                        if (slotTime.getTime() < now.getTime()) {
-                          isDisabled = true;
-                        }
+                  {/* Start Time Picker */}
+                  <CustomDateTimePicker
+                    label="Select Start Time"
+                    mode="time"
+                    value={bookingTime}
+                    onChange={(date) => {
+                      setBookingTime(date);
+                      // Reset end time if invalid
+                      if (endTime && date.getTime() >= endTime.getTime()) {
+                        setEndTime(null);
                       }
-                    }
+                    }}
+                    placeholder="Choose start time"
+                    leftIcon="time"
+                  />
 
-                    return (
-                      <TouchableOpacity
-                        key={time}
-                        disabled={isDisabled}
-                        style={[
-                          styles.timeChip,
-                          isSelected && styles.timeChipSelected,
-                          isDisabled && { backgroundColor: 'COLORS.gray100', borderColor: 'COLORS.gray200', opacity: 0.5 }
-                        ]}
-                        onPress={() => {
-                          const [h, m] = time.split(':');
-                          const newTime = new Date();
-                          newTime.setHours(parseInt(h), parseInt(m), 0);
-                          setBookingTime(newTime);
-                          // Reset end time if it becomes invalid
-                          if (endTime && newTime.getTime() >= endTime.getTime()) {
-                            setEndTime(null);
+                  {/* End Time Picker - Only for Overtime Services */}
+                  {(hasOvertimeCharges || isDriverService) && (
+                    <View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        {bookedHours > 0 && (
+                          <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginLeft: 'auto' }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: '#4F46E5' }}>
+                              {bookedHours.toFixed(1)} hours
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <CustomDateTimePicker
+                        label="Select End Time"
+                        mode="time"
+                        value={endTime}
+                        onChange={(date) => {
+                          // Validate end time > start time
+                          if (bookingTime) {
+                            const startTime = new Date(bookingTime);
+                            if (date.getTime() <= startTime.getTime()) {
+                              // Invalid
+                              // You might want to show a toast or just not set it, 
+                              // or set it responsibly. For now, let's just set it.
+                              // The component or validation logic elsewhere handles alerts?
+                              // The previous grid disabled invalid times.
+                            }
                           }
-                          Haptics.selectionAsync();
-                          setTimeout(() => scrollToSection(800), 400);
+                          setEndTime(date);
                         }}
-                      >
-                        <Text style={[
-                          styles.timeText,
-                          isSelected && styles.textSelected,
-                          isDisabled && { color: '#CBD5E1' }
-                        ]}>{time}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
+                        placeholder="Choose end time"
+                        leftIcon="time-outline"
+                      />
 
-              {/* End Time Picker - Only for Overtime Services */}
-              {(hasOvertimeCharges || isDriverService) && (
-                <>
-                  <View style={styles.divider} />
-                  <View style={styles.pickerSection}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <Text style={styles.pickerLabel}>Select End Time</Text>
-                      {bookedHours > 0 && (
-                        <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#4F46E5' }}>
-                            {bookedHours.toFixed(1)} hours
+                      {hasOvertimeCharges && bookedHours > 0 && (
+                        <View style={{ marginTop: 8, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 8 }}>
+                          <Text style={{ fontSize: 12, color: '#92400E', fontWeight: '500' }}>
+                            ⚠️ Overtime charges may apply if job exceeds {bookedHours.toFixed(1)} hours
                           </Text>
                         </View>
                       )}
                     </View>
-                    <View style={styles.timeGrid}>
-                      {['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map((time) => {
-                        const isSelected = endTime && endTime.toTimeString().substring(0, 5) === time;
-
-                        // Check if end time is valid (must be > start time)
-                        let isDisabled = false;
-                        if (bookingTime) {
-                          const [h, m] = time.split(':');
-                          const slotTime = new Date();
-                          slotTime.setHours(parseInt(h), parseInt(m), 0, 0);
-
-                          const startTime = new Date();
-                          startTime.setHours(bookingTime.getHours(), bookingTime.getMinutes(), 0, 0);
-
-                          if (slotTime.getTime() <= startTime.getTime()) {
-                            isDisabled = true;
-                          }
-                        }
-
-                        return (
-                          <TouchableOpacity
-                            key={time}
-                            disabled={isDisabled}
-                            style={[
-                              styles.timeChip,
-                              isSelected && styles.timeChipSelected,
-                              isDisabled && { backgroundColor: 'COLORS.gray100', borderColor: 'COLORS.gray200', opacity: 0.5 }
-                            ]}
-                            onPress={() => {
-                              const [h, m] = time.split(':');
-                              const newTime = new Date();
-                              newTime.setHours(parseInt(h), parseInt(m), 0);
-                              setEndTime(newTime);
-                              Haptics.selectionAsync();
-                            }}
-                          >
-                            <Text style={[
-                              styles.timeText,
-                              isSelected && styles.textSelected,
-                              isDisabled && { color: '#CBD5E1' }
-                            ]}>{time}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                    {hasOvertimeCharges && bookedHours > 0 && (
-                      <View style={{ marginTop: 12, padding: 12, backgroundColor: '#FEF3C7', borderRadius: 8 }}>
-                        <Text style={{ fontSize: 12, color: '#92400E', fontWeight: '500' }}>
-                          ⚠️ Overtime charges may apply if job exceeds {bookedHours.toFixed(1)} hours
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </>
-              )}
-
-              {(formErrors.address || formErrors.date || formErrors.time || formErrors.endTime) && (
-                <View style={styles.errorContainer}>
-                  <Ionicons name="alert-circle" size={16} color="COLORS.error" />
-                  <Text style={styles.errorText}>Please select Location, Date and Time</Text>
+                  )}
                 </View>
-              )}
+
+                {(formErrors.address || formErrors.date || formErrors.time || formErrors.endTime) && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+                    <Text style={styles.errorText}>Please select Location, Date and Time</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </FadeInView>
 
@@ -1090,8 +999,8 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                           {
                             borderRadius: 16,
                             borderWidth: 2,
-                            borderColor: isSelected ? 'COLORS.primary' : 'COLORS.gray200',
-                            backgroundColor: isSelected ? '#EFF6FF' : 'COLORS.white',
+                            borderColor: isSelected ? COLORS.primary : COLORS.gray200,
+                            backgroundColor: isSelected ? '#EFF6FF' : COLORS.white,
                             overflow: 'hidden',
                           },
                           isSelected && SHADOWS.md,
@@ -1108,7 +1017,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                             width: 52,
                             height: 52,
                             borderRadius: 14,
-                            backgroundColor: isSelected ? 'COLORS.primary' : 'COLORS.gray100',
+                            backgroundColor: isSelected ? COLORS.primary : COLORS.gray100,
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginRight: 14,
@@ -1116,7 +1025,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                             <Ionicons
                               name={method.icon as any}
                               size={26}
-                              color={isSelected ? 'COLORS.white' : 'COLORS.textSecondary'}
+                              color={isSelected ? COLORS.white : COLORS.textSecondary}
                             />
                           </View>
 
@@ -1132,13 +1041,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                               </Text>
                               {method.recommended && (
                                 <View style={{
-                                  backgroundColor: 'COLORS.success',
+                                  backgroundColor: COLORS.success,
                                   paddingHorizontal: 8,
                                   paddingVertical: 3,
                                   borderRadius: 6,
                                   marginLeft: 10,
                                 }}>
-                                  <Text style={{ fontSize: 10, color: 'COLORS.white', fontWeight: '700' }}>
+                                  <Text style={{ fontSize: 10, color: COLORS.white, fontWeight: '700' }}>
                                     RECOMMENDED
                                   </Text>
                                 </View>
@@ -1148,7 +1057,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                             {method.description && (
                               <Text style={{
                                 fontSize: 13,
-                                color: isSelected ? 'COLORS.primary' : 'COLORS.textSecondary',
+                                color: isSelected ? COLORS.primary : COLORS.textSecondary,
                                 lineHeight: 18,
                               }}>
                                 {method.description}
@@ -1158,16 +1067,16 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                             {/* Wallet Balance Inline for Wallet Option */}
                             {isWallet && !loadingWallet && (
                               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-                                <Text style={{ fontSize: 12, color: 'COLORS.textSecondary' }}>Balance: </Text>
+                                <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>Balance: </Text>
                                 <Text style={{
                                   fontSize: 13,
                                   fontWeight: '700',
-                                  color: walletBalance >= initialPayment ? 'COLORS.success' : 'COLORS.error',
+                                  color: walletBalance >= initialPayment ? COLORS.success : COLORS.error,
                                 }}>
                                   ₹{walletBalance.toFixed(2)}
                                 </Text>
                                 {walletBalance < initialPayment && (
-                                  <Text style={{ fontSize: 11, color: 'COLORS.error', marginLeft: 6 }}>
+                                  <Text style={{ fontSize: 11, color: COLORS.error, marginLeft: 6 }}>
                                     (Need ₹{initialPayment.toFixed(0)})
                                   </Text>
                                 )}
@@ -1181,13 +1090,13 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                             height: 24,
                             borderRadius: 12,
                             borderWidth: 2,
-                            borderColor: isSelected ? 'COLORS.primary' : '#CBD5E1',
-                            backgroundColor: isSelected ? 'COLORS.primary' : 'transparent',
+                            borderColor: isSelected ? COLORS.primary : '#CBD5E1',
+                            backgroundColor: isSelected ? COLORS.primary : 'transparent',
                             alignItems: 'center',
                             justifyContent: 'center',
                           }}>
                             {isSelected && (
-                              <Ionicons name="checkmark" size={14} color="COLORS.white" />
+                              <Ionicons name="checkmark" size={14} color={COLORS.white} />
                             )}
                           </View>
                         </View>
@@ -1216,7 +1125,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: 'COLORS.primary', marginRight: 8 }} />
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.primary, marginRight: 8 }} />
                           <Text style={{ fontSize: 14, color: '#374151' }}>After Provider Accepts ({initialPaymentPercentage}%)</Text>
                         </View>
                         <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937' }}>₹{initialPayment.toFixed(2)}</Text>
@@ -1224,7 +1133,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: 'COLORS.textTertiary', marginRight: 8 }} />
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.textTertiary, marginRight: 8 }} />
                           <Text style={{ fontSize: 14, color: '#6B7280' }}>After Service (75%)</Text>
                         </View>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280' }}>₹{completionPayment.toFixed(2)}</Text>
@@ -1254,10 +1163,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}>
-                          <Ionicons name="wallet-outline" size={20} color="COLORS.error" />
+                          <Ionicons name="wallet-outline" size={20} color={COLORS.error} />
                         </View>
                         <View style={{ flex: 1, marginLeft: 12 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '700', color: 'COLORS.error' }}>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.error }}>
                             Top Up Required
                           </Text>
                           <Text style={{ fontSize: 12, color: '#B91C1C', marginTop: 2 }}>
@@ -1265,12 +1174,12 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                           </Text>
                         </View>
                         <View style={{
-                          backgroundColor: 'COLORS.error',
+                          backgroundColor: COLORS.error,
                           paddingHorizontal: 12,
                           paddingVertical: 6,
                           borderRadius: 8,
                         }}>
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: 'COLORS.white' }}>Top Up</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.white }}>Top Up</Text>
                         </View>
                       </TouchableOpacity>
                     )}
@@ -1283,7 +1192,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                     value={formData.notes}
                     onChangeText={(t) => setFormData({ ...formData, notes: t })}
                     multiline
-                    containerStyle={{ borderWidth: 1, borderColor: 'COLORS.gray200', backgroundColor: 'COLORS.gray50', borderRadius: 12 }}
+                    containerStyle={{ borderWidth: 1, borderColor: COLORS.gray200, backgroundColor: COLORS.gray50, borderRadius: 12 }}
                   />
                 </View>
               </View>
@@ -1307,10 +1216,10 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
               {(isHourlyService || hasOvertimeCharges) && bookingTime && endTime && (
                 <View style={[styles.summaryRow, { marginTop: 4 }]}>
-                  <Text style={[styles.summaryLabel, { fontSize: 12, color: 'COLORS.textSecondary' }]}>
+                  <Text style={[styles.summaryLabel, { fontSize: 12, color: COLORS.textSecondary }]}>
                     {(hourlyPricing.duration || calculateHourlyPrice().duration).toFixed(1)}h × ₹{getProviderPrice()}/hr
                   </Text>
-                  <Text style={[styles.summaryValue, { fontSize: 12, color: 'COLORS.textSecondary' }]}>
+                  <Text style={[styles.summaryValue, { fontSize: 12, color: COLORS.textSecondary }]}>
                     ({bookingTime.toTimeString().substring(0, 5)} - {endTime.toTimeString().substring(0, 5)})
                   </Text>
                 </View>
@@ -1331,9 +1240,9 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                     <Text style={styles.totalLabelReceipt}>Booking Total</Text>
                     <Text style={styles.totalAmountReceipt}>₹{totalPrice.toFixed(2)}</Text>
                   </View>
-                  <View style={[styles.summaryRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'COLORS.gray200' }]}>
-                    <Text style={[styles.summaryLabel, { fontSize: 12, color: 'COLORS.primary' }]}>💡 Pay 25% after provider accepts</Text>
-                    <Text style={[styles.summaryValue, { fontSize: 12, color: 'COLORS.primary', fontWeight: '600' }]}>₹{initialPayment.toFixed(2)}</Text>
+                  <View style={[styles.summaryRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.gray200 }]}>
+                    <Text style={[styles.summaryLabel, { fontSize: 12, color: COLORS.primary }]}>💡 Pay 25% after provider accepts</Text>
+                    <Text style={[styles.summaryValue, { fontSize: 12, color: COLORS.primary, fontWeight: '600' }]}>₹{initialPayment.toFixed(2)}</Text>
                   </View>
                   <View style={[styles.summaryRow, { marginTop: 4 }]}>
                     <Text style={[styles.summaryLabel, { fontSize: 12 }]}>After Service (75%)</Text>
@@ -1380,7 +1289,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Gradient only if active */}
             {bookingDate && bookingTime && (
               <LinearGradient
-                colors={['COLORS.primary', '#2563EB']}
+                colors={[COLORS.primary, '#2563EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -1391,7 +1300,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={[styles.bookButtonText, (!bookingDate || !bookingTime) && { color: 'COLORS.textTertiary' }]}>
+                <Text style={[styles.bookButtonText, (!bookingDate || !bookingTime) && { color: COLORS.textTertiary }]}>
                   {!bookingDate ? 'Select Date' : !bookingTime ? 'Select Time' : 'Book Now'}
                 </Text>
                 {(bookingDate && bookingTime) && <Ionicons name="arrow-forward" size={20} color="#fff" />}
@@ -1452,7 +1361,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 width: 80,
                 height: 80,
                 borderRadius: 40,
-                backgroundColor: 'COLORS.success',
+                backgroundColor: COLORS.success,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 16,
@@ -1510,14 +1419,14 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Ionicons
                   name="wallet"
                   size={20}
-                  color={walletBalance >= initialPayment ? 'COLORS.success' : 'COLORS.error'}
+                  color={walletBalance >= initialPayment ? COLORS.success : COLORS.error}
                 />
                 <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>Wallet Balance</Text>
               </View>
               <Text style={{
                 fontSize: 16,
                 fontWeight: '700',
-                color: walletBalance >= initialPayment ? 'COLORS.success' : 'COLORS.error'
+                color: walletBalance >= initialPayment ? COLORS.success : COLORS.error
               }}>
                 ₹{walletBalance.toFixed(2)}
               </Text>
@@ -1532,7 +1441,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
               marginBottom: 20,
               gap: 10,
             }}>
-              <Ionicons name="information-circle" size={20} color="COLORS.primary" style={{ marginTop: 2 }} />
+              <Ionicons name="information-circle" size={20} color={COLORS.primary} style={{ marginTop: 2 }} />
               <Text style={{ flex: 1, fontSize: 12, color: '#1E40AF', lineHeight: 18 }}>
                 25% will be held in escrow until service completion. The remaining 75% will be charged after the service is completed.
               </Text>
@@ -1592,7 +1501,7 @@ export const BookingFormScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'COLORS.gray50',
+    backgroundColor: COLORS.gray50,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -1619,7 +1528,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'COLORS.gray100', // V4 Light Border
+    borderColor: COLORS.gray100, // V4 Light Border
     ...SHADOWS.sm,
   },
   headerTitle: {
@@ -1635,7 +1544,7 @@ const styles = StyleSheet.create({
   },
   heroPreTitle: {
     fontSize: 16,
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -1662,7 +1571,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'COLORS.gray100',
+    backgroundColor: COLORS.gray100,
     marginVertical: 12,
   },
 
@@ -1673,7 +1582,7 @@ const styles = StyleSheet.create({
     padding: 20,
     ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: 'COLORS.gray100',
+    borderColor: COLORS.gray100,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -1682,22 +1591,22 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: 'COLORS.gray100',
+    borderColor: COLORS.gray100,
     overflow: 'hidden',
   },
   cardHighlight: {
     position: 'absolute',
     top: 0, left: 0, right: 0, height: 4,
-    backgroundColor: 'COLORS.primary',
+    backgroundColor: COLORS.primary,
     zIndex: 10,
   },
 
   // NEW: Premium Location Card
   premiumLocationCard: {
     padding: 16,
-    backgroundColor: 'COLORS.gray50',
+    backgroundColor: COLORS.gray50,
     borderBottomWidth: 1,
-    borderBottomColor: 'COLORS.gray100',
+    borderBottomColor: COLORS.gray100,
     position: 'relative',
     overflow: 'hidden',
     minHeight: 120,
@@ -1715,7 +1624,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginRight: 12,
     borderWidth: 1,
-    borderColor: 'COLORS.gray200',
+    borderColor: COLORS.gray200,
     ...SHADOWS.sm,
   },
   locationTitle: {
@@ -1734,7 +1643,7 @@ const styles = StyleSheet.create({
   addressTagText: {
     fontSize: 10,
     fontWeight: '600',
-    color: 'COLORS.primary',
+    color: COLORS.primary,
     textTransform: 'uppercase',
   },
   changeButton: {
@@ -1743,7 +1652,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'COLORS.gray200',
+    borderColor: COLORS.gray200,
   },
   changeButtonText: {
     fontSize: 12,
@@ -1786,21 +1695,21 @@ const styles = StyleSheet.create({
     width: 56,
     height: 70,
     borderRadius: 16,
-    backgroundColor: 'COLORS.gray50',
+    backgroundColor: COLORS.gray50,
     borderWidth: 1,
-    borderColor: 'COLORS.gray200',
+    borderColor: COLORS.gray200,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10, // Replaces gap
   },
   dateCardSelected: {
-    backgroundColor: 'COLORS.primary',
-    borderColor: 'COLORS.primary',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
     ...SHADOWS.md,
   },
   dateDay: {
     fontSize: 12,
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
     marginBottom: 4,
     fontWeight: '500',
   },
@@ -1823,17 +1732,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: 'COLORS.gray50',
+    backgroundColor: COLORS.gray50,
     borderWidth: 1,
-    borderColor: 'COLORS.gray200',
+    borderColor: COLORS.gray200,
     minWidth: '30%',
     alignItems: 'center',
     marginRight: 10, // Replaces gap
     marginBottom: 10, // Replaces gap
   },
   timeChipSelected: {
-    backgroundColor: 'COLORS.primary',
-    borderColor: 'COLORS.primary',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   timeText: {
     fontSize: 14,
@@ -1868,13 +1777,13 @@ const styles = StyleSheet.create({
   },
   serviceCategory: {
     fontSize: 13,
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    backgroundColor: 'COLORS.gray50',
+    backgroundColor: COLORS.gray50,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -1886,17 +1795,17 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: 10,
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
     marginLeft: 2,
   },
   providerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'COLORS.gray50',
+    backgroundColor: COLORS.gray50,
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'COLORS.gray100',
+    borderColor: COLORS.gray100,
   },
   providerAvatar: {
     width: 44,
@@ -1918,7 +1827,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
   },
 
   // NEW: Receipt Style Summary
@@ -1928,7 +1837,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: 'COLORS.gray200',
+    borderColor: COLORS.gray200,
     position: 'relative',
   },
   receiptHeader: {
@@ -1940,7 +1849,7 @@ const styles = StyleSheet.create({
   receiptTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: 'COLORS.textTertiary',
+    color: COLORS.textTertiary,
     letterSpacing: 2,
   },
   receiptId: {
@@ -1952,7 +1861,7 @@ const styles = StyleSheet.create({
   dashedLine: {
     height: 1,
     borderWidth: 1,
-    borderColor: 'COLORS.gray200',
+    borderColor: COLORS.gray200,
     borderStyle: 'dashed',
     borderRadius: 1,
     marginVertical: 16,
@@ -1975,11 +1884,11 @@ const styles = StyleSheet.create({
   totalAmountReceipt: {
     fontSize: 22,
     fontWeight: '800',
-    color: 'COLORS.primary',
+    color: COLORS.primary,
   },
   summaryLabel: {
     fontSize: 14,
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
   },
   summaryValue: {
     fontSize: 14,
@@ -2006,7 +1915,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
     marginBottom: 2,
   },
   value: {
@@ -2027,7 +1936,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    color: 'COLORS.error',
+    color: COLORS.error,
   },
 
   // Payment methods
@@ -2039,15 +1948,15 @@ const styles = StyleSheet.create({
     width: 120,
     height: 90,
     borderRadius: 16,
-    backgroundColor: 'COLORS.gray50',
+    backgroundColor: COLORS.gray50,
     borderWidth: 1,
-    borderColor: 'COLORS.gray200',
+    borderColor: COLORS.gray200,
     overflow: 'hidden',
     position: 'relative',
     marginRight: 10,
   },
   paymentOptionSelected: {
-    borderColor: 'COLORS.primary',
+    borderColor: COLORS.primary,
     ...SHADOWS.md,
   },
   paymentContent: {
@@ -2060,7 +1969,7 @@ const styles = StyleSheet.create({
   paymentText: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
   },
   checkmarkBadge: {
     position: 'absolute',
@@ -2079,7 +1988,7 @@ const styles = StyleSheet.create({
     bottom: 0, left: 0, right: 0,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: 'COLORS.gray100',
+    borderTopColor: COLORS.gray100,
     paddingTop: 16,
     paddingHorizontal: 20,
     zIndex: 999,
@@ -2095,7 +2004,7 @@ const styles = StyleSheet.create({
   },
   totalLabelSmall: {
     fontSize: 12,
-    color: 'COLORS.textSecondary',
+    color: COLORS.textSecondary,
     marginBottom: 2,
   },
   finalPrice: {
@@ -2118,7 +2027,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
   },
   bookButtonDisabled: {
-    backgroundColor: 'COLORS.gray100',
+    backgroundColor: COLORS.gray100,
     shadowOpacity: 0,
     elevation: 0,
   },

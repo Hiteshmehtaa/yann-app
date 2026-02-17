@@ -75,15 +75,19 @@ export const PremiumDateTimePicker: React.FC<PremiumDateTimePickerProps> = ({
 
       {/* Picker Button */}
       <TouchableOpacity
-        style={[styles.pickerButton, error && styles.pickerButtonError]}
+        style={[
+          styles.pickerButton,
+          error && styles.pickerButtonError,
+          show && { borderColor: COLORS.primary, backgroundColor: '#F8FAFC' } // Active State
+        ]}
         onPress={handlePress}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         <View style={styles.iconContainer}>
           <Ionicons
             name={leftIcon}
-            size={20}
-            color={value ? COLORS.primary : COLORS.textSecondary}
+            size={22} // Slightly larger icon
+            color={COLORS.primary} // Always primary color for consistency
           />
         </View>
 
@@ -99,7 +103,7 @@ export const PremiumDateTimePicker: React.FC<PremiumDateTimePickerProps> = ({
 
         <Ionicons
           name="chevron-down"
-          size={20}
+          size={18}
           color={COLORS.textTertiary}
         />
       </TouchableOpacity>
@@ -147,71 +151,81 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   label: {
-    fontSize: TYPOGRAPHY.size.sm,
+    fontSize: TYPOGRAPHY.size.sm, // 14
     fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+    marginLeft: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    minHeight: 56,
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
-    ...SHADOWS.sm,
+    backgroundColor: COLORS.white,
+    borderRadius: 16, // Smoother corners
+    borderWidth: 1.5, // Slightly thicker border
+    borderColor: COLORS.gray200,
+    height: 64, // Taller touch target
+    paddingHorizontal: 16,
+    gap: 12,
+    ...SHADOWS.sm, // Soft shadow
   },
   pickerButtonError: {
     borderColor: COLORS.error,
-    borderWidth: 2,
+    backgroundColor: '#FEF2F2', // Light red bg
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.small,
-    backgroundColor: COLORS.elevated,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF', // Light blue bg
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DBEAFE', // Blue 100
   },
   contentContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
   valueText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text, // Dark slate
+    marginTop: 2,
   },
   placeholderText: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 16,
     color: COLORS.textTertiary,
     fontWeight: '500',
   },
   errorText: {
     fontSize: TYPOGRAPHY.size.xs,
     color: COLORS.error,
-    marginTop: SPACING.xs,
-    marginLeft: SPACING.sm,
-    fontWeight: '500',
+    marginTop: 6,
+    marginLeft: 4,
+    fontWeight: '600',
   },
   iosPickerContainer: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
-    marginTop: SPACING.sm,
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    marginTop: 12,
     overflow: 'hidden',
-    ...SHADOWS.md,
+    ...SHADOWS.lg, // Stronger shadow for modal feel
+    borderWidth: 1,
+    borderColor: COLORS.gray100,
   },
   iosPickerHeader: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    padding: SPACING.md,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: COLORS.gray100,
+    backgroundColor: COLORS.gray50,
   },
   iosPickerButton: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.primary,
   },

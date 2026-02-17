@@ -2,9 +2,9 @@
   "expo": {
     "name": "Yann Home",
     "slug": "yann-mobile",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "orientation": "portrait",
-    "icon": "./assets/Logo.jpg",
+    "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "yann",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "associatedDomains": [
         "applinks:yann.app",
         "applinks:www.yann.app"
@@ -33,10 +33,10 @@
     "android": {
       "package": "com.yanncare.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 7,
+      "versionCode": 8,
       "userInterfaceStyle": "light",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Logo.jpg",
+        "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -115,7 +115,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/Logo.jpg",
+          "icon": "./assets/Logo.png",
           "color": "#ffffff",
           "defaultChannel": "default",
           "sounds": [

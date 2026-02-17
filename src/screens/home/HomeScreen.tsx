@@ -139,13 +139,16 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           ? (Date.now() - new Date(s.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
           : false;
 
+        // Try to resolve a local image icon based on the title
+        const resolvedIcon = getServiceIconImage(s.title || s.name);
+
         return {
           id: s._id || s.id || `service-${index + 1}`,
           title: s.title || s.name,
           description: s.description || '',
           category: s.category || 'other',
           price: s.price || (s.basePrice ? `₹${s.basePrice}` : 'View prices'),
-          icon: '✨', // Default emoji icon, or use getServiceIcon(s.title) if available
+          icon: resolvedIcon || '✨', // Use resolved image or default emoji
           popular: s.popular || false,
           features: s.features || [],
           isNew,
