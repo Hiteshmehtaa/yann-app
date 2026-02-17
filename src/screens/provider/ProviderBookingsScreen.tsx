@@ -497,7 +497,10 @@ export const ProviderBookingsScreen = () => {
 
                         date.setHours(hours, minutes, 0, 0);
                         const oneMinuteBefore = date.getTime() - 60000; // 1 minute in ms
-                        return Date.now() < oneMinuteBefore;
+                        const twoHoursAfter = date.getTime() + (2 * 60 * 60 * 1000); // 2 hours buffer
+
+                        // Disable if too early OR too late
+                        return Date.now() < oneMinuteBefore || Date.now() > twoHoursAfter;
                       } catch (e) { return false; }
                     })() && { backgroundColor: '#CBD5E1', opacity: 0.7 }
                   ]}
@@ -533,187 +536,202 @@ export const ProviderBookingsScreen = () => {
                         date.setHours(hours, minutes, 0, 0);
                         const oneMinuteBefore = date.getTime() - 60000;
 
-                        if (Date.now() < oneMinuteBefore) {
-                          Alert.alert(
-                            'Too Early',
-                            `You can only start this job 1 minute before the scheduled time (${item.scheduledTime}).`
-                          );
-                          return;
-                        }
                       }
+
+                      // Check for late start (2 hours buffer)
+                      const twoHoursInMillis = 2 * 60 * 60 * 1000;
+                      const lateThreshold = date.getTime() + twoHoursInMillis;
+
+                      if (Date.now() > lateThreshold) {
+                        Alert.alert(
+                          'Booking Expired',
+                          'You cannot start this booking as the 2-hour buffer period has passed. This late start has been recorded.'
+                        );
+                        return;
+                      }
+
+                      if (Date.now() < oneMinuteBefore) {
+                        Alert.alert(
+                          'Too Early',
+                          `You can only start this job 1 minute before the scheduled time (${item.scheduledTime}).`
+                        );
+                        return;
+                      }
+                    }
                       handleStartJob(item.id);
-                    } catch (e) {
-                      handleStartJob(item.id);
+                  } catch (e) {
+                  handleStartJob(item.id);
                     }
                   }}
-                  activeOpacity={0.8}
+                activeOpacity={0.8}
                 >
-                  <LinearGradient
-                    colors={(() => {
-                      try {
-                        if (!item.rawDate || !item.rawTime) return GRADIENTS.primary;
+                <LinearGradient
+                  colors={(() => {
+                    try {
+                      if (!item.rawDate || !item.rawTime) return GRADIENTS.primary;
 
-                        let date: Date;
-                        if (item.rawDate.includes('T')) {
-                          date = new Date(item.rawDate);
-                        } else if (item.rawDate.includes('-')) {
-                          const parts = item.rawDate.split('-');
-                          if (parts[0].length === 4) {
-                            date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                          } else {
-                            date = new Date(item.rawDate);
-                          }
+                      let date: Date;
+                      if (item.rawDate.includes('T')) {
+                        date = new Date(item.rawDate);
+                      } else if (item.rawDate.includes('-')) {
+                        const parts = item.rawDate.split('-');
+                        if (parts[0].length === 4) {
+                          date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                         } else {
                           date = new Date(item.rawDate);
                         }
+                      } else {
+                        date = new Date(item.rawDate);
+                      }
 
-                        if (isNaN(date.getTime())) return GRADIENTS.primary;
+                      if (isNaN(date.getTime())) return GRADIENTS.primary;
 
-                        const [hours, minutes] = item.rawTime.split(':').map(Number);
-                        if (isNaN(hours) || isNaN(minutes)) return GRADIENTS.primary;
+                      const [hours, minutes] = item.rawTime.split(':').map(Number);
+                      if (isNaN(hours) || isNaN(minutes)) return GRADIENTS.primary;
 
-                        date.setHours(hours, minutes, 0, 0);
-                        const oneMinuteBefore = date.getTime() - 60000;
-                        return Date.now() < oneMinuteBefore ? ['#CBD5E1', '#CBD5E1'] : GRADIENTS.primary;
-                      } catch (e) { return GRADIENTS.primary; }
-                    })()}
-                    style={StyleSheet.absoluteFill}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  />
-                  <Ionicons name="play" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.actionBtnTextPrimary}>Start</Text>
-                </TouchableOpacity>
-              </>
-            )}
-            {isInProgress && (
-              <TouchableOpacity style={styles.actionBtnFull} onPress={() => handleEndJob(item.id)}>
-                <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-                <Ionicons name="checkmark-done" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                <Text style={styles.actionBtnTextPrimary}>Complete Job</Text>
+                      date.setHours(hours, minutes, 0, 0);
+                      const oneMinuteBefore = date.getTime() - 60000;
+                      return Date.now() < oneMinuteBefore ? ['#CBD5E1', '#CBD5E1'] : GRADIENTS.primary;
+                    } catch (e) { return GRADIENTS.primary; }
+                  })()}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
+                <Ionicons name="play" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={styles.actionBtnTextPrimary}>Start</Text>
               </TouchableOpacity>
-            )}
-          </View>
+          </>
         )}
-
-        {/* Customer Mini Bar (Bottom) */}
-        <View style={styles.customerBar}>
-          <View style={styles.customerRow}>
-            {item.customerAvatar ? (
-              <Image source={{ uri: item.customerAvatar }} style={styles.miniAvatar} />
-            ) : (
-              <View style={styles.avatarPlaceholderMini}>
-                <Text style={styles.avatarTextMini}>{item.customerName.charAt(0)}</Text>
-              </View>
-            )}
-            <Text style={styles.customerNameMini}>{item.customerName}</Text>
-          </View>
-          <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.customerPhone}`)} style={styles.callBtnMini}>
-            <Ionicons name="call" size={14} color={COLORS.primary} />
+        {isInProgress && (
+          <TouchableOpacity style={styles.actionBtnFull} onPress={() => handleEndJob(item.id)}>
+            <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+            <Ionicons name="checkmark-done" size={20} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.actionBtnTextPrimary}>Complete Job</Text>
           </TouchableOpacity>
-        </View>
-
+        )}
       </View>
+    )
+  }
+
+  {/* Customer Mini Bar (Bottom) */ }
+  <View style={styles.customerBar}>
+    <View style={styles.customerRow}>
+      {item.customerAvatar ? (
+        <Image source={{ uri: item.customerAvatar }} style={styles.miniAvatar} />
+      ) : (
+        <View style={styles.avatarPlaceholderMini}>
+          <Text style={styles.avatarTextMini}>{item.customerName.charAt(0)}</Text>
+        </View>
+      )}
+      <Text style={styles.customerNameMini}>{item.customerName}</Text>
+    </View>
+    <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.customerPhone}`)} style={styles.callBtnMini}>
+      <Ionicons name="call" size={14} color={COLORS.primary} />
+    </TouchableOpacity>
+  </View>
+
+      </View >
     );
   };
 
 
-  // Count Helpers
-  const counts = {
-    all: bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled').length,
-    pending: bookings.filter(b => b.status === 'pending').length,
-    accepted: bookings.filter(b => b.status === 'accepted').length,
-    in_progress: bookings.filter(b => b.status === 'in_progress').length,
-    completed: bookings.filter(b => b.status === 'completed').length,
-    rejected: bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length,
-  };
+// Count Helpers
+const counts = {
+  all: bookings.filter(b => b.status !== 'rejected' && b.status !== 'cancelled').length,
+  pending: bookings.filter(b => b.status === 'pending').length,
+  accepted: bookings.filter(b => b.status === 'accepted').length,
+  in_progress: bookings.filter(b => b.status === 'in_progress').length,
+  completed: bookings.filter(b => b.status === 'completed').length,
+  rejected: bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length,
+};
 
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG_COLOR} />
+return (
+  <SafeAreaView style={styles.container} edges={['top']}>
+    <StatusBar barStyle="dark-content" backgroundColor={BG_COLOR} />
 
-      {/* Header Matches Dashboard/Profile */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Bookings</Text>
+    {/* Header Matches Dashboard/Profile */}
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>My Bookings</Text>
 
-        {/* Availability Switch */}
-        <View style={styles.headerRight}>
-          <Text style={[styles.statusLabel, { color: isAvailable ? COLORS.success : COLORS.textTertiary }]}>
-            {isAvailable ? 'Online' : 'Offline'}
-          </Text>
-          <Switch
-            trackColor={{ false: COLORS.gray200, true: COLORS.success }}
-            thumbColor={'#FFFFFF'}
-            ios_backgroundColor={COLORS.gray200}
-            onValueChange={toggleAvailability}
-            value={isAvailable}
-            disabled={isToggling}
-            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-          />
-        </View>
+      {/* Availability Switch */}
+      <View style={styles.headerRight}>
+        <Text style={[styles.statusLabel, { color: isAvailable ? COLORS.success : COLORS.textTertiary }]}>
+          {isAvailable ? 'Online' : 'Offline'}
+        </Text>
+        <Switch
+          trackColor={{ false: COLORS.gray200, true: COLORS.success }}
+          thumbColor={'#FFFFFF'}
+          ios_backgroundColor={COLORS.gray200}
+          onValueChange={toggleAvailability}
+          value={isAvailable}
+          disabled={isToggling}
+          style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+        />
       </View>
+    </View>
 
-      {/* Filter Tabs */}
-      <View style={styles.filtersWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {renderFilter('All', 'all', counts.all)}
-          {renderFilter('New', 'pending', counts.pending)}
-          {renderFilter('Upcoming', 'accepted', counts.accepted)}
-          {renderFilter('Active', 'in_progress', counts.in_progress)}
-          {renderFilter('History', 'completed', counts.completed)}
-          {renderFilter('Cancelled', 'rejected', counts.rejected)}
-        </ScrollView>
-      </View>
-
-      {/* List */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
-        showsVerticalScrollIndicator={false}
-      >
-        {isLoading ? (
-          <View style={styles.center}>
-            <LottieView source={require('../../../assets/lottie/loading.json')} autoPlay loop style={{ width: 120, height: 120 }} />
-          </View>
-        ) : filteredBookings.length === 0 ? (
-          <View style={styles.center}>
-            <View style={styles.emptyIcon}><Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} /></View>
-            <Text style={styles.emptyText}>No bookings found</Text>
-            <Text style={styles.emptySub}>Your scheduled jobs will appear here</Text>
-          </View>
-        ) : (
-          filteredBookings.map((b, i) => renderBookingCard(b, i))
-        )}
+    {/* Filter Tabs */}
+    <View style={styles.filtersWrapper}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+        {renderFilter('All', 'all', counts.all)}
+        {renderFilter('New', 'pending', counts.pending)}
+        {renderFilter('Upcoming', 'accepted', counts.accepted)}
+        {renderFilter('Active', 'in_progress', counts.in_progress)}
+        {renderFilter('History', 'completed', counts.completed)}
+        {renderFilter('Cancelled', 'rejected', counts.rejected)}
       </ScrollView>
+    </View>
 
-      {/* Navigation Modal */}
-      <Modal visible={navModalVisible} transparent animationType="slide" onRequestClose={() => setNavModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Navigate to Customer</Text>
-            {[{ k: 'google', l: 'Google Maps', c: '#34A853' }, { k: 'uber', l: 'Uber', c: '#000' }, { k: 'ola', l: 'Ola', c: '#b2d235' }, { k: 'rapido', l: 'Rapido', c: '#f9c933' }].map((o: any) => (
-              <TouchableOpacity key={o.k} style={styles.modalOption} onPress={() => handleNavigationAppSelect(o.k)}>
-                <View style={[styles.modalIconBox, { backgroundColor: `${o.c}10` }]}>
-                  <Ionicons name={o.k === 'google' ? 'map' : 'car'} size={22} color={o.c} />
-                </View>
-                <Text style={styles.modalOptionText}>{o.l}</Text>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
-              </TouchableOpacity>
-            ))}
-          </View>
+    {/* List */}
+    <ScrollView
+      style={styles.content}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+      showsVerticalScrollIndicator={false}
+    >
+      {isLoading ? (
+        <View style={styles.center}>
+          <LottieView source={require('../../../assets/lottie/loading.json')} autoPlay loop style={{ width: 120, height: 120 }} />
         </View>
-      </Modal>
+      ) : filteredBookings.length === 0 ? (
+        <View style={styles.center}>
+          <View style={styles.emptyIcon}><Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} /></View>
+          <Text style={styles.emptyText}>No bookings found</Text>
+          <Text style={styles.emptySub}>Your scheduled jobs will appear here</Text>
+        </View>
+      ) : (
+        filteredBookings.map((b, i) => renderBookingCard(b, i))
+      )}
+    </ScrollView>
 
-      <OTPInputModal visible={otpModalVisible} onClose={handleCloseOTPModal} onSubmit={handleOTPSubmit} title={otpModalTitle} subtitle={otpModalSubtitle} isLoading={otpLoading} error={otpError} />
+    {/* Navigation Modal */}
+    <Modal visible={navModalVisible} transparent animationType="slide" onRequestClose={() => setNavModalVisible(false)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>Navigate to Customer</Text>
+          {[{ k: 'google', l: 'Google Maps', c: '#34A853' }, { k: 'uber', l: 'Uber', c: '#000' }, { k: 'ola', l: 'Ola', c: '#b2d235' }, { k: 'rapido', l: 'Rapido', c: '#f9c933' }].map((o: any) => (
+            <TouchableOpacity key={o.k} style={styles.modalOption} onPress={() => handleNavigationAppSelect(o.k)}>
+              <View style={[styles.modalIconBox, { backgroundColor: `${o.c}10` }]}>
+                <Ionicons name={o.k === 'google' ? 'map' : 'car'} size={22} color={o.c} />
+              </View>
+              <Text style={styles.modalOptionText}>{o.l}</Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </Modal>
 
-    </SafeAreaView>
-  );
+    <OTPInputModal visible={otpModalVisible} onClose={handleCloseOTPModal} onSubmit={handleOTPSubmit} title={otpModalTitle} subtitle={otpModalSubtitle} isLoading={otpLoading} error={otpError} />
+
+  </SafeAreaView>
+);
 };
 
 // ==============================================

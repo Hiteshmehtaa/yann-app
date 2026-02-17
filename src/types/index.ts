@@ -63,6 +63,7 @@ export interface ServiceProvider {
   rating: number;
   totalReviews: number;
   bio?: string;
+  hasLateStarts?: boolean; // Indicates if provider has a history of late starts
   // UI helper fields
   type?: string;
   specialty?: string;
