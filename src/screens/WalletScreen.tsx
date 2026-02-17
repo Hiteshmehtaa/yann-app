@@ -36,41 +36,13 @@ interface Transaction {
   balanceAfter: number;
 }
 
-// Helper to determine if transaction is income or expense
-const isIncomeTransaction = (type: string) => {
-  return [
-    'wallet_topup',
-    'wallet_refund',
-    'wallet_credit',
-    'escrow_refund',      // Refund to user when rejected
-    'escrow_release',     // Credit to provider on acceptance
-    'booking_initial_payment', // 25% initial payment for providers
-    'booking_completion_payment', // 75% completion payment for providers
-    'completion_payment', // Service completion payment
-    'withdrawal_rejected' // Returned funds on rejected withdrawal
-  ].includes(type);
+// Helper to determine if transaction is income or expense based on sign
+// Backend now returns negative amounts for debits/expenses
+const isIncomeTransaction = (amount: number) => {
+  return amount >= 0;
 };
 
-// Helper to get transaction display info
-const getTransactionInfo = (type: string): { label: string; icon: string } => {
-  const typeMap: Record<string, { label: string; icon: string }> = {
-    wallet_topup: { label: 'Wallet Top-up', icon: 'add-circle' },
-    wallet_debit: { label: 'Payment', icon: 'remove-circle' },
-    wallet_refund: { label: 'Refund', icon: 'refresh-circle' },
-    wallet_credit: { label: 'Earning', icon: 'cash' },
-    escrow_hold: { label: 'Booking Deposit (25%)', icon: 'lock-closed' },
-    escrow_release: { label: 'Booking Payment Received', icon: 'lock-open' },
-    escrow_refund: { label: 'Deposit Refunded', icon: 'refresh-circle' },
-    booking_initial_payment: { label: 'Initial Payment (25%)', icon: 'cash' },
-    booking_completion_payment: { label: 'Completion Payment (75%)', icon: 'checkmark-circle' },
-    completion_payment: { label: 'Service Payment (75%)', icon: 'checkmark-circle' },
-    withdrawal_request: { label: 'Withdrawal Pending', icon: 'hourglass' },
-    withdrawal_completed: { label: 'Withdrawal Completed', icon: 'checkmark-done-circle' },
-    withdrawal_rejected: { label: 'Withdrawal Rejected', icon: 'close-circle' },
-    commission: { label: 'Platform Commission', icon: 'trending-down' },
-  };
-  return typeMap[type] || { label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), icon: 'ellipse' };
-};
+
 
 const QUICK_AMOUNTS = [100, 500, 1000, 2000];
 
@@ -348,7 +320,7 @@ export const WalletScreen = ({ navigation }: any) => {
   const isProvider = user?.role === 'provider';
 
   const renderTransaction = ({ item, index }: { item: Transaction, index: number }) => {
-    const isIncome = isIncomeTransaction(item.type);
+    const isIncome = isIncomeTransaction(item.amount);
     const iconName = getTransactionIcon(item.description, item.type);
 
     // Modern color scheme - Green for income, Red for expense
@@ -373,26 +345,34 @@ export const WalletScreen = ({ navigation }: any) => {
     const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
     // Determine labels and signs based on user role
+    const isDebit = item.amount < 0;
+    const absAmount = Math.abs(item.amount);
+
     let amountPrefix = '';
     let statusLabel = '';
 
     if (isProvider) {
       // Partners: Income/Expense
-      amountPrefix = isIncome ? '+' : '-';
-      statusLabel = isIncome ? 'Income' : 'Expense';
+      amountPrefix = isDebit ? '-' : '+';
+      statusLabel = isDebit ? 'Expense' : 'Income';
     } else {
       // Members: Credit/Debit
-      // Credit = Income (Green, +)
-      // Debit = Expense (Red, -)
-      amountPrefix = isIncome ? '+' : '-';
-      statusLabel = isIncome ? 'Credit' : 'Debit';
+      // Credit = Income (Green, +) -> Topups, Refunds
+      // Debit = Expense (Red, -) -> Payments
+      amountPrefix = isDebit ? '-' : '+';
+      statusLabel = isDebit ? 'Debit' : 'Credit';
     }
+
+    // Force color scheme based on amount sign
+    // Negative = Red (Expense/Debit)
+    // Positive = Green (Income/Credit)
+    const finalColorScheme = isDebit ? colors.expense : colors.income;
 
     return (
 
       <View key={item._id} style={styles.transactionCard}>
-        <View style={[styles.transactionIconCircle, { backgroundColor: colorScheme.iconBg }]}>
-          <MaterialCommunityIcons name={iconName} size={20} color={colorScheme.icon} />
+        <View style={[styles.transactionIconCircle, { backgroundColor: finalColorScheme.iconBg }]}>
+          <MaterialCommunityIcons name={iconName} size={20} color={finalColorScheme.icon} />
         </View>
 
         <View style={styles.transactionDetails}>
@@ -405,10 +385,10 @@ export const WalletScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.transactionAmountContainer}>
-          <Text style={[styles.transactionAmount, { color: colorScheme.amount }]}>
-            {amountPrefix}₹{Math.abs(item.amount).toFixed(2)}
+          <Text style={[styles.transactionAmount, { color: finalColorScheme.amount }]}>
+            {amountPrefix}₹{absAmount.toFixed(2)}
           </Text>
-          <Text style={[styles.transactionStatus, { color: colorScheme.icon }]}>
+          <Text style={[styles.transactionStatus, { color: finalColorScheme.icon }]}>
             {statusLabel}
           </Text>
         </View>
@@ -525,7 +505,7 @@ export const WalletScreen = ({ navigation }: any) => {
                 <View>
                   <Text style={styles.statLabel}>{isProvider ? 'Income' : 'Credit'}</Text>
                   <Text style={[styles.statValue, { color: COLORS.success }]}>
-                    ₹{transactions.filter(t => isIncomeTransaction(t.type)).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
+                    ₹{transactions.filter(t => t.amount >= 0).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
@@ -537,7 +517,7 @@ export const WalletScreen = ({ navigation }: any) => {
                 <View>
                   <Text style={styles.statLabel}>{isProvider ? 'Expense' : 'Debit'}</Text>
                   <Text style={[styles.statValue, { color: COLORS.error }]}>
-                    ₹{transactions.filter(t => !isIncomeTransaction(t.type)).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
+                    ₹{Math.abs(transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)).toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
