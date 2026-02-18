@@ -36,11 +36,7 @@ interface Transaction {
   balanceAfter: number;
 }
 
-// Helper to determine if transaction is income or expense based on sign
-// Backend now returns negative amounts for debits/expenses
-const isIncomeTransaction = (amount: number) => {
-  return amount >= 0;
-};
+
 
 
 
@@ -320,7 +316,7 @@ export const WalletScreen = ({ navigation }: any) => {
   const isProvider = user?.role === 'provider';
 
   const renderTransaction = ({ item, index }: { item: Transaction, index: number }) => {
-    const isIncome = isIncomeTransaction(item.amount);
+    const isIncome = item.amount >= 0;
     const iconName = getTransactionIcon(item.description, item.type);
 
     // Modern color scheme - Green for income, Red for expense

@@ -56,6 +56,12 @@ type MenuItemType = {
 
 export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout, updateUser } = useAuth();
+  // TODO: Remove this mock after verification
+  // useEffect(() => {
+  //   if (user && !user.hasLateStarts) {
+  //     updateUser({ ...user, hasLateStarts: true });
+  //   }
+  // }, [user]);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -369,6 +375,19 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
                     <Ionicons name="shield-checkmark" size={12} color="#FFF" />
                     <Text style={styles.roleText}>VERIFIED</Text>
                   </View>
+                )}
+                {/* Late Start Warning Badge */}
+                {user?.hasLateStarts && (
+                  <TouchableOpacity
+                    style={[styles.roleBadge, { backgroundColor: COLORS.error }]}
+                    onPress={() => Alert.alert(
+                      'Late Start History',
+                      'You have a history of not starting bookings on time. Please ensure you start jobs within the 2-hour buffer to remove this badge.'
+                    )}
+                  >
+                    <Ionicons name="warning" size={12} color="#FFF" />
+                    <Text style={styles.roleText}>LATE STARTS</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             </View>

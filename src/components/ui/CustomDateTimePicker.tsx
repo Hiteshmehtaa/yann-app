@@ -9,7 +9,7 @@ import {
     Platform,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import DatePicker from 'react-native-date-picker';
+import { CustomTimePickerWheel } from './CustomTimePickerWheel';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 
@@ -173,23 +173,16 @@ export const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                 </Modal>
             )}
 
-            {/* Time Picker Modal (react-native-date-picker) */}
+            {/* Time Picker Modal (Custom Wheel) */}
             {mode === 'time' && (
-                <DatePicker
-                    modal
-                    open={open}
-                    date={value || new Date()}
-                    mode="time"
+                <CustomTimePickerWheel
+                    visible={open}
+                    onClose={() => setOpen(false)}
                     onConfirm={(date) => {
                         setOpen(false);
                         onChange(date);
                     }}
-                    onCancel={() => {
-                        setOpen(false);
-                    }}
-                    theme="light" // 'light', 'dark' or 'auto'
-                    confirmText="Confirm"
-                    cancelText="Cancel"
+                    initialDate={value || new Date()}
                     title="Select Time"
                 />
             )}
@@ -285,5 +278,32 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: COLORS.text,
+    },
+    // iOS DatePicker Styles
+    iosDatePickerContainer: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 20,
+        width: '100%',
+        maxWidth: 360,
+        alignItems: 'center',
+        ...SHADOWS.lg,
+    },
+    iosDatePickerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: 10,
+        alignItems: 'center',
+    },
+    iosDatePickerTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: COLORS.text,
+    },
+    iosDatePickerDone: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.primary,
     },
 });

@@ -460,13 +460,6 @@ export const PAYMENT_METHODS = [
     description: 'Pay 25% now, 75% after service',
     recommended: true
   },
-  {
-    id: 'cash',
-    label: 'Cash',
-    value: 'cash',
-    icon: 'cash-outline',
-    description: 'Pay full amount after service'
-  },
 ];
 
 // Booking Status
@@ -497,6 +490,7 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'authToken',
   USER_DATA: 'userData',
   EMAIL: 'email',
+  ONBOARDING_COMPLETED: 'onboardingCompleted',
 } as const;
 
 // Helper function to get service config by title

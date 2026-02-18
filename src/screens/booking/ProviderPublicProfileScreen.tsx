@@ -460,24 +460,28 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
                 {(provider as any).isVerified && (
                   <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
                 )}
-                {/* Red Dot for Late Starts reliability warning */}
+                {/* Late Start Warning Badge */}
                 {(provider as any).hasLateStarts && (
                   <TouchableOpacity
                     onPress={() => {
                       haptics.warning();
-                      showInfo('This provider has a history of not starting bookings on time.', 4000);
+                      Alert.alert(
+                        'Late Start History',
+                        'This provider has a history of not starting bookings on time.'
+                      );
                     }}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <View style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: 6,
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
                       backgroundColor: COLORS.error,
-                      borderWidth: 2,
-                      borderColor: '#FFF',
-                      marginLeft: 2
-                    }} />
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      gap: 4
+                    }}
+                  >
+                    <Ionicons name="warning" size={12} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '700' }}>LATE STARTS</Text>
                   </TouchableOpacity>
                 )}
               </View>

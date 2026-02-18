@@ -94,10 +94,31 @@ export const storage = {
         STORAGE_KEYS.AUTH_TOKEN,
         STORAGE_KEYS.USER_DATA,
         STORAGE_KEYS.EMAIL,
+        STORAGE_KEYS.ONBOARDING_COMPLETED,
       ]);
     } catch (error) {
       console.error('Error clearing storage:', error);
       throw error;
+    }
+  },
+
+  // Save onboarding status
+  async setOnboardingCompleted(completed: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, JSON.stringify(completed));
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
+    }
+  },
+
+  // Get onboarding status
+  async getOnboardingCompleted(): Promise<boolean> {
+    try {
+      const value = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
+      return value === 'true' || value === 'true'; // Handle string 'true' or JSON true
+    } catch (error) {
+      console.error('Error getting onboarding status:', error);
+      return false;
     }
   },
 };

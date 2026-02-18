@@ -17,6 +17,8 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
   isGuest: boolean;
   continueAsGuest: () => Promise<void>;
+  hasSeenOnboarding: boolean;
+  completeOnboarding: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check if user is already logged in on app start
@@ -36,6 +39,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const savedToken = await storage.getToken();
       const savedUser = await storage.getUserData();
+      const onboardingStatus = await storage.getOnboardingCompleted();
+
+      setHasSeenOnboarding(onboardingStatus);
 
       console.log('🔍 Checking auth status:', {
         hasToken: !!savedToken,
@@ -314,6 +320,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const completeOnboarding = async () => {
+    try {
+      await storage.setOnboardingCompleted(true);
+      setHasSeenOnboarding(true);
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    }
+  };
+
   const value: AuthContextType = useMemo(() => ({
     user,
     token,
@@ -327,7 +342,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     sendOTP,
     sendProviderOTP,
     updateUser,
-  }), [user, token, isLoading, isGuest]);
+    hasSeenOnboarding,
+    completeOnboarding,
+  }), [user, token, isLoading, isGuest, hasSeenOnboarding]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

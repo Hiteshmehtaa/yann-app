@@ -23,6 +23,7 @@ export interface User {
   totalReviews?: number;
   experience?: number;
   bio?: string;
+  hasLateStarts?: boolean; // Indicates if provider has a history of late starts
 }
 
 export interface Address {
