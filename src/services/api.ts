@@ -1335,8 +1335,21 @@ class ApiService {
    * GET /api/wallet
    * Get wallet balance and transaction history
    */
-  async getWalletBalance(): Promise<ApiResponse<{ balance: number; currency: string; transactions: any[] }>> {
-    const response = await this.client.get('/wallet');
+  async getWalletBalance(page: number = 1, limit: number = 20): Promise<ApiResponse<{
+    balance: number;
+    currency: string;
+    transactions: any[];
+    meta?: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  }>> {
+    const response = await this.client.get('/wallet', {
+      params: { page, limit }
+    });
     return response.data;
   }
 

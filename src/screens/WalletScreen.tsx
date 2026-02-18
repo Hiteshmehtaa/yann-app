@@ -11,6 +11,7 @@ import {
   Animated,
   Modal,
   TextInput,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -109,42 +110,52 @@ export const WalletScreen = ({ navigation }: any) => {
     bankAccount: null as string | null,
   });
 
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   useEffect(() => {
-    loadWalletData();
+    loadWalletData(true);
     checkFailedTransactions();
   }, []);
 
-  const loadWalletData = async () => {
+  const loadWalletData = async (reset = false) => {
     try {
-      const response = await apiService.getWalletBalance();
-      if (response.success && response.data) {
-        setBalance(response.data.balance || 0);
-        setTransactions(response.data.transactions || []);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (reset) {
+        setIsLoading(true);
+        setPage(1);
       }
 
-      // Load withdrawal config for providers
-      if (user?.role === 'provider') {
-        try {
-          const withdrawInfo = await apiService.getWithdrawalInfo();
-          if (withdrawInfo.success && withdrawInfo.data) {
-            const minAmount = withdrawInfo.data.withdrawalConfig?.minAmount;
-            console.log('🔍 Withdrawal config from API:', withdrawInfo.data.withdrawalConfig);
-            console.log('🔍 minAmount received:', minAmount);
-            const finalMinAmount = minAmount === 100 ? 1 : (minAmount || 1);
-            console.log('✅ minAmount after override:', finalMinAmount);
-            setWithdrawalConfig({
-              commissionRate: withdrawInfo.data.withdrawalConfig?.commissionRate || 15,
-              minAmount: finalMinAmount,
-              maxAmount: withdrawInfo.data.withdrawalConfig?.maxAmount || 100000,
-              processingDays: withdrawInfo.data.withdrawalConfig?.processingDays || 3,
-              hasBankDetails: withdrawInfo.data.hasBankDetails || false,
-              bankAccount: withdrawInfo.data.bankAccount || null,
-            });
-          }
-        } catch (e) {
-          console.log('Failed to load withdrawal config:', e);
+      const currentPage = reset ? 1 : page;
+      const response = await apiService.getWalletBalance(currentPage, 20);
+
+      if (response.success && response.data) {
+        setBalance(response.data.balance || 0);
+
+        const newTransactions = response.data.transactions || [];
+
+        if (reset) {
+          setTransactions(newTransactions);
+        } else {
+          setTransactions(prev => [...prev, ...newTransactions]);
         }
+
+        // Update pagination state
+        if (response.data.meta) {
+          setHasMore(response.data.meta.hasMore);
+          setPage(currentPage + 1);
+        } else {
+          // Fallback if no meta
+          setHasMore(newTransactions.length === 20);
+          if (newTransactions.length > 0) setPage(currentPage + 1);
+        }
+
+        if (reset) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      // Load withdrawal config for providers only on initial load
+      if (reset && user?.role === 'provider') {
+        loadWithdrawalConfig();
       }
     } catch (error) {
       console.error('Failed to load wallet:', error);
@@ -152,6 +163,27 @@ export const WalletScreen = ({ navigation }: any) => {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const loadWithdrawalConfig = async () => {
+    try {
+      const withdrawInfo = await apiService.getWithdrawalInfo();
+      if (withdrawInfo.success && withdrawInfo.data) {
+        const minAmount = withdrawInfo.data.withdrawalConfig?.minAmount;
+        const finalMinAmount = minAmount === 100 ? 1 : (minAmount || 1);
+        setWithdrawalConfig({
+          commissionRate: withdrawInfo.data.withdrawalConfig?.commissionRate || 15,
+          minAmount: finalMinAmount,
+          maxAmount: withdrawInfo.data.withdrawalConfig?.maxAmount || 100000,
+          processingDays: withdrawInfo.data.withdrawalConfig?.processingDays || 3,
+          hasBankDetails: withdrawInfo.data.hasBankDetails || false,
+          bankAccount: withdrawInfo.data.bankAccount || null,
+        });
+      }
+    } catch (e) {
+      console.log('Failed to load withdrawal config:', e);
     }
   };
 
@@ -177,7 +209,7 @@ export const WalletScreen = ({ navigation }: any) => {
         showSuccess(`Refunded ₹${(response as any).refundAmount.toFixed(2)}!`);
         setRefundableAmount(0);
         setBalance((response as any).newBalance || balance);
-        loadWalletData();
+        loadWalletData(true);
       }
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -187,7 +219,6 @@ export const WalletScreen = ({ navigation }: any) => {
     }
   };
 
-  // Handler for partner withdrawal
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
 
@@ -225,7 +256,7 @@ export const WalletScreen = ({ navigation }: any) => {
         showSuccess(`Withdrawal of ₹${netAmount} ${autoApproved ? 'processed' : 'requested'}!`);
         setShowWithdrawModal(false);
         setWithdrawAmount('');
-        loadWalletData(); // Refresh balance
+        loadWalletData(true); // Refresh balance
       }
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -241,14 +272,12 @@ export const WalletScreen = ({ navigation }: any) => {
   };
 
   const handleAddMoney = async (amountToAdd?: number) => {
-    // Close modal if open
     if (showAmountModal) {
       setShowAmountModal(false);
     }
 
     const finalAmount = amountToAdd || 500;
 
-    // Validate amount
     if (finalAmount < 1) {
       showError('Minimum amount is ₹1');
       return;
@@ -288,13 +317,12 @@ export const WalletScreen = ({ navigation }: any) => {
       if (verifyRes.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showSuccess(`Successfully added ₹${finalAmount}!`);
-        loadWalletData();
+        loadWalletData(true);
       }
     } catch (error: any) {
       console.error('Wallet topup error:', error);
       if (!error.message?.toLowerCase().includes('cancel')) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        // Show backend error message if available
         const errorMessage = error.response?.data?.message || error.message || 'Failed to add money';
         showError(errorMessage);
       }
@@ -312,14 +340,12 @@ export const WalletScreen = ({ navigation }: any) => {
     return type === 'CREDIT' ? 'arrow-down-left' : 'arrow-up-right';
   };
 
-  // Ensure we have a safe user role fallback
   const isProvider = user?.role === 'provider';
 
   const renderTransaction = ({ item, index }: { item: Transaction, index: number }) => {
     const isIncome = item.amount >= 0;
     const iconName = getTransactionIcon(item.description, item.type);
 
-    // Modern color scheme - Green for income, Red for expense
     const colors = {
       income: {
         icon: COLORS.success,
@@ -340,7 +366,6 @@ export const WalletScreen = ({ navigation }: any) => {
     const dateStr = isToday ? 'Today' : date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
     const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-    // Determine labels and signs based on user role
     const isDebit = item.amount < 0;
     const absAmount = Math.abs(item.amount);
 
@@ -348,20 +373,13 @@ export const WalletScreen = ({ navigation }: any) => {
     let statusLabel = '';
 
     if (isProvider) {
-      // Partners: Income/Expense
       amountPrefix = isDebit ? '-' : '+';
       statusLabel = isDebit ? 'Expense' : 'Income';
     } else {
-      // Members: Credit/Debit
-      // Credit = Income (Green, +) -> Topups, Refunds
-      // Debit = Expense (Red, -) -> Payments
       amountPrefix = isDebit ? '-' : '+';
       statusLabel = isDebit ? 'Debit' : 'Credit';
     }
 
-    // Force color scheme based on amount sign
-    // Negative = Red (Expense/Debit)
-    // Positive = Green (Income/Credit)
     const finalColorScheme = isDebit ? colors.expense : colors.income;
 
     return (
@@ -392,247 +410,219 @@ export const WalletScreen = ({ navigation }: any) => {
     );
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <LoadingSpinner visible={true} />
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore && !isLoading) {
+      setIsLoadingMore(true);
+      loadWalletData(false);
+    }
+  };
+
+  const activeTransactions = transactions;
+
+  const renderHeader = () => (
+    <>
+      <View style={styles.header}>
+        <AnimatedButton
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </AnimatedButton>
+        <Text style={styles.headerTitle}>My Wallet</Text>
+        <AnimatedButton style={styles.helpButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+          <Ionicons name="help-circle-outline" size={24} color={COLORS.text} />
+        </AnimatedButton>
       </View>
-    );
-  }
+
+      {/* Refund Banner */}
+      {refundableAmount > 0 && (
+        <View style={styles.refundBanner}>
+          <View style={styles.refundBannerContent}>
+            <View style={styles.refundIconContainer}>
+              <Ionicons name="alert-circle" size={24} color={COLORS.warning} />
+            </View>
+            <View style={styles.refundTextContainer}>
+              <Text style={styles.refundBannerTitle}>Refund Available</Text>
+              <Text style={styles.refundBannerText}>
+                ₹{refundableAmount.toFixed(2)} from failed booking(s)
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.refundButton}
+            onPress={handleRequestRefund}
+            disabled={isProcessingRefund}
+          >
+            {isProcessingRefund ? (
+              <LoadingSpinner visible={true} color={COLORS.primary} size="small" />
+            ) : (
+              <Text style={styles.refundButtonText}>Claim Refund</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Premium Mesh Gradient Card */}
+      <View style={styles.cardContainer}>
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.primaryGradientEnd]} // Blue-600 -> Blue-800
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.walletCard}
+        >
+          <View style={styles.patternDot1} />
+          <View style={styles.patternDot2} />
+          <View style={styles.patternAhoy} />
+
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.cardLabel}>Total Balance</Text>
+              <Text style={styles.cardBalance}>₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+            </View>
+            <View style={styles.glassChip}>
+              <MaterialCommunityIcons name="contactless-payment" size={24} color="rgba(255,255,255,0.9)" />
+            </View>
+          </View>
+
+          <View style={styles.cardFooter}>
+            <View style={styles.cardUserInfo}>
+              <Text style={styles.cardUserValues}>YANN WALLET </Text>
+              <Text style={styles.cardUserLabel}>•••• 8832</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Floating 3D Stats - Overlapping the Card */}
+        <View style={styles.floatingStatsContainer}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: addAlpha(COLORS.success, 0.1) }]}>
+              <Ionicons name="arrow-down" size={20} color={COLORS.success} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>{isProvider ? 'Income' : 'Credit'}</Text>
+              <Text style={[styles.statValue, { color: COLORS.success }]}>
+                ₹{activeTransactions.filter(t => t.amount >= 0).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: addAlpha(COLORS.error, 0.1) }]}>
+              <Ionicons name="arrow-up" size={20} color={COLORS.error} />
+            </View>
+            <View>
+              <Text style={styles.statLabel}>{isProvider ? 'Expense' : 'Debit'}</Text>
+              <Text style={[styles.statValue, { color: COLORS.error }]}>
+                ₹{Math.abs(activeTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)).toLocaleString('en-IN')}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Spacer for overlapping stats */}
+      <View style={{ height: 40 }} />
+
+      {/* Quick Actions */}
+      {user?.role === 'provider' ? (
+        <View style={styles.quickActionsSection}>
+          <Text style={styles.sectionTitle}>Withdraw Earnings</Text>
+
+          {/* Commission Info Card */}
+          <View style={{ backgroundColor: addAlpha(COLORS.warning, 0.1), borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="information-circle-outline" size={18} color={COLORS.warning} />
+              <Text style={{ fontSize: 12, color: COLORS.warning, marginLeft: 8, flex: 1 }}>
+                {withdrawalConfig.commissionRate}% platform commission on withdrawals
+              </Text>
+            </View>
+          </View>
+
+          {/* Bank Account Status */}
+          {withdrawalConfig.bankAccount ? (
+            <View style={{ backgroundColor: addAlpha(COLORS.success, 0.1), borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={{ fontSize: 12, color: COLORS.success, fontWeight: '500' }}>Bank Account Linked</Text>
+                <Text style={{ fontSize: 14, color: COLORS.success, fontWeight: '600' }}>{withdrawalConfig.bankAccount}</Text>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={{ backgroundColor: addAlpha(COLORS.error, 0.1), borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
+              onPress={() => navigation.navigate('BankDetails' as never)}
+            >
+              <Ionicons name="warning-outline" size={20} color={COLORS.error} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={{ fontSize: 12, color: COLORS.error, fontWeight: '500' }}>Bank Account Required</Text>
+                <Text style={{ fontSize: 11, color: COLORS.error }}>Add bank details to enable withdrawals</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.error} />
+            </TouchableOpacity>
+          )}
+
+          {/* Withdrawal Button */}
+          <TouchableOpacity
+            style={[styles.withdrawButton, { opacity: balance >= withdrawalConfig.minAmount && withdrawalConfig.hasBankDetails ? 1 : 0.5 }]}
+            onPress={() => {
+              if (!withdrawalConfig.hasBankDetails) {
+                navigation.navigate('BankDetails' as never);
+                return;
+              }
+              if (balance < withdrawalConfig.minAmount) {
+                showError(`Minimum balance of ₹${withdrawalConfig.minAmount} required`);
+                return;
+              }
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setShowWithdrawModal(true);
+            }}
+            disabled={isWithdrawing}
+          >
+            <Ionicons name="cash-outline" size={24} color={COLORS.white} />
+            <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.quickActionsSection}>
+          <Text style={styles.sectionTitle}>Quick Top-up</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ paddingRight: 20 }}>
+            {QUICK_AMOUNTS.map((amt) => (
+              <AnimatedButton
+                key={amt}
+                style={styles.amountChip}
+                onPress={() => handleAddMoney(amt)}
+                disabled={isAddingMoney}
+              >
+                <Text style={styles.amountChipText}>+ ₹{amt}</Text>
+              </AnimatedButton>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Transactions Header */}
+      <View style={styles.transactionsSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+        </View>
+      </View>
+    </>
+  );
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <AnimatedButton
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-          </AnimatedButton>
-          <Text style={styles.headerTitle}>My Wallet</Text>
-          <AnimatedButton style={styles.helpButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
-            <Ionicons name="help-circle-outline" size={24} color={COLORS.text} />
-          </AnimatedButton>
-        </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
+        <FlatList
+          data={transactions}
+          renderItem={renderTransaction}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => {
-                setIsRefreshing(true);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                loadWalletData();
-              }}
-              colors={[COLORS.primary]}
-            />
-          }
-        >
-          {/* Refund Banner */}
-          {refundableAmount > 0 && (
-            <View style={styles.refundBanner}>
-              <View style={styles.refundBannerContent}>
-                <View style={styles.refundIconContainer}>
-                  <Ionicons name="alert-circle" size={24} color={COLORS.warning} />
-                </View>
-                <View style={styles.refundTextContainer}>
-                  <Text style={styles.refundBannerTitle}>Refund Available</Text>
-                  <Text style={styles.refundBannerText}>
-                    ₹{refundableAmount.toFixed(2)} from failed booking(s)
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.refundButton}
-                onPress={handleRequestRefund}
-                disabled={isProcessingRefund}
-              >
-                {isProcessingRefund ? (
-                  <LoadingSpinner visible={true} color={COLORS.primary} size="small" />
-                ) : (
-                  <Text style={styles.refundButtonText}>Claim Refund</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Premium Mesh Gradient Card */}
-          <View style={styles.cardContainer}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryGradientEnd]} // Blue-600 -> Blue-800
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.walletCard}
-            >
-              <View style={styles.patternDot1} />
-              <View style={styles.patternDot2} />
-              <View style={styles.patternAhoy} />
-
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={styles.cardLabel}>Total Balance</Text>
-                  <Text style={styles.cardBalance}>₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
-                </View>
-                <View style={styles.glassChip}>
-                  <MaterialCommunityIcons name="contactless-payment" size={24} color="rgba(255,255,255,0.9)" />
-                </View>
-              </View>
-
-              <View style={styles.cardFooter}>
-                <View style={styles.cardUserInfo}>
-                  <Text style={styles.cardUserValues}>YANN WALLET </Text>
-                  <Text style={styles.cardUserLabel}>•••• 8832</Text>
-                </View>
-                {/* Top Up button removed as requested */}
-              </View>
-            </LinearGradient>
-
-            {/* Floating 3D Stats - Overlapping the Card */}
-            <View style={styles.floatingStatsContainer}>
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: addAlpha(COLORS.success, 0.1) }]}>
-                  <Ionicons name="arrow-down" size={20} color={COLORS.success} />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>{isProvider ? 'Income' : 'Credit'}</Text>
-                  <Text style={[styles.statValue, { color: COLORS.success }]}>
-                    ₹{transactions.filter(t => t.amount >= 0).reduce((sum, t) => sum + t.amount, 0).toLocaleString('en-IN')}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: addAlpha(COLORS.error, 0.1) }]}>
-                  <Ionicons name="arrow-up" size={20} color={COLORS.error} />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>{isProvider ? 'Expense' : 'Debit'}</Text>
-                  <Text style={[styles.statValue, { color: COLORS.error }]}>
-                    ₹{Math.abs(transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)).toLocaleString('en-IN')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Spacer for overlapping stats */}
-          <View style={{ height: 40 }} />
-
-          {/* Quick Actions - Top-up for Members, Withdrawal for Providers */}
-          {user?.role === 'provider' ? (
-            <View style={styles.quickActionsSection}>
-              <Text style={styles.sectionTitle}>Withdraw Earnings</Text>
-
-              {/* Commission Info Card */}
-              <View style={{ backgroundColor: addAlpha(COLORS.warning, 0.1), borderRadius: 12, padding: 12, marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="information-circle-outline" size={18} color={COLORS.warning} />
-                  <Text style={{ fontSize: 12, color: COLORS.warning, marginLeft: 8, flex: 1 }}>
-                    {withdrawalConfig.commissionRate}% platform commission on withdrawals
-                  </Text>
-                </View>
-              </View>
-
-              {/* Bank Account Status */}
-              {withdrawalConfig.bankAccount ? (
-                <View style={{ backgroundColor: addAlpha(COLORS.success, 0.1), borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={{ fontSize: 12, color: COLORS.success, fontWeight: '500' }}>Bank Account Linked</Text>
-                    <Text style={{ fontSize: 14, color: COLORS.success, fontWeight: '600' }}>{withdrawalConfig.bankAccount}</Text>
-                  </View>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={{ backgroundColor: addAlpha(COLORS.error, 0.1), borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}
-                  onPress={() => navigation.navigate('BankDetails' as never)}
-                >
-                  <Ionicons name="warning-outline" size={20} color={COLORS.error} />
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={{ fontSize: 12, color: COLORS.error, fontWeight: '500' }}>Bank Account Required</Text>
-                    <Text style={{ fontSize: 11, color: COLORS.error }}>Add bank details to enable withdrawals</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={COLORS.error} />
-                </TouchableOpacity>
-              )}
-
-              {/* Withdrawal Button */}
-              <TouchableOpacity
-                style={[styles.withdrawButton, { opacity: balance >= withdrawalConfig.minAmount && withdrawalConfig.hasBankDetails ? 1 : 0.5 }]}
-                onPress={() => {
-                  if (!withdrawalConfig.hasBankDetails) {
-                    navigation.navigate('BankDetails' as never);
-                    return;
-                  }
-                  if (balance < withdrawalConfig.minAmount) {
-                    showError(`Minimum balance of ₹${withdrawalConfig.minAmount} required`);
-                    return;
-                  }
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setShowWithdrawModal(true);
-                }}
-                disabled={isWithdrawing}
-              >
-                <Ionicons name="cash-outline" size={24} color={COLORS.white} />
-                <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
-              </TouchableOpacity>
-
-              <Text style={{ fontSize: 11, color: COLORS.textTertiary, textAlign: 'center', marginTop: 8 }}>
-                Min ₹{withdrawalConfig.minAmount} • Processed in {withdrawalConfig.processingDays} days
-              </Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.quickActionsSection}>
-                <Text style={styles.sectionTitle}>Quick Top-up</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={{ paddingRight: 20 }}>
-                  {QUICK_AMOUNTS.map((amt) => (
-                    <AnimatedButton
-                      key={amt}
-                      style={styles.amountChip}
-                      onPress={() => handleAddMoney(amt)}
-                      disabled={isAddingMoney}
-                    >
-                      <Text style={styles.amountChipText}>+ ₹{amt}</Text>
-                    </AnimatedButton>
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* Withdrawal for Members - temporarily commented out */}
-              {/* <View style={[styles.quickActionsSection, { marginTop: 0 }]}>
-                <Text style={styles.sectionTitle}>Withdraw Money</Text>
-                <TouchableOpacity
-                  style={[styles.withdrawButton, { backgroundColor: '#059669' }]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    showSuccess('Withdrawal feature coming soon!');
-                  }}
-                >
-                  <Ionicons name="arrow-up-outline" size={24} color="#FFF" />
-                  <Text style={styles.withdrawButtonText}>Withdraw to Bank</Text>
-                </TouchableOpacity>
-              </View> */}
-            </>
-          )}
-
-          {/* Transactions */}
-          <View style={styles.transactionsSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              {transactions.length > 5 && (
-                <AnimatedButton onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
-                  <Text style={styles.seeAllText}>See All</Text>
-                </AnimatedButton>
-              )}
-            </View>
-
-            {transactions.length === 0 ? (
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={
+            !isLoading ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIconContainer}>
                   <Ionicons name="receipt-outline" size={48} color={COLORS.textTertiary} />
@@ -640,13 +630,29 @@ export const WalletScreen = ({ navigation }: any) => {
                 <Text style={styles.emptyTitle}>No transaction history</Text>
                 <Text style={styles.emptyDescription}>Your recent payments and top-ups will show here</Text>
               </View>
-            ) : (
-              <View style={styles.transactionsList}>
-                {transactions.map((item, index) => renderTransaction({ item, index }))}
+            ) : null
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <LoadingSpinner visible={true} size="small" />
               </View>
-            )}
-          </View>
-        </ScrollView>
+            ) : null
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => {
+                setIsRefreshing(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                loadWalletData(true);
+              }}
+              colors={[COLORS.primary]}
+            />
+          }
+        />
 
         {/* Simple FAB */}
         <AnimatedButton
