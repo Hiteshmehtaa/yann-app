@@ -65,7 +65,7 @@ export async function playBookingRequestBuzzer() {
 
     if (!Audio) {
       console.log('⚠️ expo-av not available — haptic feedback only');
-      // Fallthrough to haptic below
+      isPlaying = false; // no Audio — release the slot, fall through to haptic
     } else {
       // Ensure the audio session is configured correctly
       await Audio.setAudioModeAsync({
@@ -115,8 +115,6 @@ export async function playBookingRequestBuzzer() {
         console.log('⚠️ Sound file error, haptic feedback only:', e);
         isPlaying = false; // release the slot so a retry can succeed
       }
-    } else {
-      isPlaying = false; // no Audio available — release slot
     }
 
     // Always give immediate haptic alert
