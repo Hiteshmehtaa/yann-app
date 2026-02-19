@@ -118,12 +118,17 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const vibrationRef = useRef<NodeJS.Timeout | null>(null);
+    // Guards the 500ms delay in startBuzzerEffects: if stopAllEffects fires before
+    // the delay resolves, this is set to false and the buzzer is never started.
+    const buzzerShouldPlayRef = useRef(false);
 
     // 1. Timer Logic
     useEffect(() => {
         if (!visible || !requestData?.expiresAt) return;
 
         const stopAllEffects = async () => {
+            // Cancel any in-flight startBuzzerEffects that is waiting on its 500ms delay
+            buzzerShouldPlayRef.current = false;
             try { await stopBuzzer(); } catch (e) { }
 
             // Cancel vibration
@@ -199,9 +204,19 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     }, [visible, requestData]);
 
     const startBuzzerEffects = async () => {
+        // Mark this invocation as the active one
+        buzzerShouldPlayRef.current = true;
+
         // Wait 500ms to let system notification sound finish before starting in-app buzzer
         // This prevents double buzzer when app is opened from notification
         await new Promise(resolve => setTimeout(resolve, 500));
+
+        // If stopAllEffects() was called during the delay (accept/reject/expire),
+        // abort — starting the buzzer now would leave it with no owner to stop it.
+        if (!buzzerShouldPlayRef.current) {
+            console.log('🚫 Buzzer start cancelled (modal already dismissed during delay)');
+            return;
+        }
         
         try {
             // Play buzzer sound - it will loop continuously until stopBuzzer() is called
@@ -226,6 +241,9 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     };
 
     const stopAllEffects = async () => {
+        // Cancel any in-flight startBuzzerEffects that is waiting on its 500ms delay
+        buzzerShouldPlayRef.current = false;
+
         try { await stopBuzzer(); } catch (e) { }
 
         // Cancel vibration

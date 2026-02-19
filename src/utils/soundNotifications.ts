@@ -137,13 +137,17 @@ export async function stopBuzzer() {
         console.log('Error stopping/unloading sound:', e);
       }
       buzzerSound = null;
-      isPlaying = false;
-      console.log('✅ Buzzer stopped and unloaded');
     } else {
       console.log('⚠️ No buzzerSound instance to stop');
     }
+    // Always reset the flag — even when buzzerSound was already null.
+    // This prevents a stuck isPlaying=true state that would block future
+    // playBookingRequestBuzzer() calls from ever starting.
+    isPlaying = false;
   } catch (error) {
     console.error('❌ Failed to stop buzzer:', error);
+    // Even on error, force-reset so the next buzzer can start cleanly
+    isPlaying = false;
   }
 }
 

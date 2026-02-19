@@ -324,6 +324,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Check for a specific pending booking request (when notification tapped)
   const checkPendingBookingRequest = async (bookingId: string) => {
+    // Respect the ignore list — prevents re-showing a booking the provider already
+    // acted on (accept/reject) if the notification tap fires slightly late.
+    if (ignoredBookingIds.current.has(bookingId)) {
+      console.log(`🔇 Skipping ignored booking (notification tap): ${bookingId}`);
+      // Make sure the buzzer is stopped in case it's still going
+      stopBuzzer();
+      return;
+    }
+
     try {
       const response = await apiService.getBookingStatus(bookingId);
 
