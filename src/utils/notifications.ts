@@ -53,14 +53,18 @@ export async function setupNotificationChannels() {
         // a version number again.
         await Notifications.deleteNotificationChannelAsync('booking_requests').catch(() => {});
 
-        // Recreate with correct settings — sound now guaranteed to load from
+        // Recreate with correct settings — sound guaranteed to load from
         // res/raw because the channel is brand-new on every launch.
-        // audioAttributes.usage = ALARM (4) makes Android treat this exactly
-        // like Uber/Ola incoming-ride notifications: plays on the alarm stream,
-        // bypasses Do-Not-Disturb, and is not attenuated by the notification
-        // volume slider.  The default for MAX-importance channels is
-        // NOTIFICATION_RINGTONE (6) which Android shows as "Ringtone" in
-        // settings — switching to ALARM removes that ambiguity.
+        //
+        // NOTE: Do NOT use audioAttributes.usage = Notifications.AndroidAudioUsage.ALARM
+        // — AndroidAudioUsage is NOT re-exported from expo-notifications' main
+        // index.js (confirmed v0.32.16), so Notifications.AndroidAudioUsage is
+        // undefined at runtime.  Accessing .ALARM on undefined throws TypeError,
+        // which our catch swallows silently — resulting in the channel being
+        // DELETED but never RECREATED, so every notification falls back to the
+        // 'default' channel and plays the system ping sound.
+        // The default audio attributes (NOTIFICATION stream) are correct for
+        // booking alert notifications.
         await Notifications.setNotificationChannelAsync('booking_requests', {
             name: 'Booking Requests',
             sound: 'booking_request.wav',
@@ -71,9 +75,6 @@ export async function setupNotificationChannels() {
             bypassDnd: true,
             enableVibrate: true,
             enableLights: true,
-            audioAttributes: {
-                usage: Notifications.AndroidAudioUsage.ALARM,
-            },
         });
 
         // Clean up all old versioned channels
