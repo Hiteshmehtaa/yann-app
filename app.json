@@ -119,9 +119,7 @@
           "color": "#ffffff",
           "defaultChannel": "default",
           "sounds": [
-            "./assets/sounds/booking_request.wav",
-            "./assets/sounds/booking_request.caf",
-            "./assets/sounds/booking_request.mp3"
+            "./assets/sounds/booking_request.wav"
           ]
         }
       ]
