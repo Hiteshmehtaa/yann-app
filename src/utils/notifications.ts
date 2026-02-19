@@ -55,6 +55,12 @@ export async function setupNotificationChannels() {
 
         // Recreate with correct settings — sound now guaranteed to load from
         // res/raw because the channel is brand-new on every launch.
+        // audioAttributes.usage = ALARM (4) makes Android treat this exactly
+        // like Uber/Ola incoming-ride notifications: plays on the alarm stream,
+        // bypasses Do-Not-Disturb, and is not attenuated by the notification
+        // volume slider.  The default for MAX-importance channels is
+        // NOTIFICATION_RINGTONE (6) which Android shows as "Ringtone" in
+        // settings — switching to ALARM removes that ambiguity.
         await Notifications.setNotificationChannelAsync('booking_requests', {
             name: 'Booking Requests',
             sound: 'booking_request.wav',
@@ -65,6 +71,9 @@ export async function setupNotificationChannels() {
             bypassDnd: true,
             enableVibrate: true,
             enableLights: true,
+            audioAttributes: {
+                usage: Notifications.AndroidAudioUsage.ALARM,
+            },
         });
 
         // Clean up all old versioned channels
