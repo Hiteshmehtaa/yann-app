@@ -208,7 +208,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         Notifications.dismissAllNotificationsAsync()
           .then(() => console.log('✅ Old booking notifications cleared'))
           .catch(err => console.error('❌ Failed to dismiss old notifications:', err));
-        
+
+        // Safely parse optional driver-service JSON fields sent as strings in
+        // the push payload.  These were previously referenced as bare identifiers
+        // (parsedDriverDetails etc.) which caused a ReferenceError inside the
+        // Hermes-compiled release build, silently aborting the state update and
+        // preventing the modal + buzzer from ever showing.
+        const safeJsonParse = (val: any) => {
+          if (!val) return null;
+          if (typeof val !== 'string') return val;
+          try { return JSON.parse(val); } catch { return null; }
+        };
+        const parsedDriverDetails    = safeJsonParse(data.driverDetails);
+        const parsedDriverTripDetails = safeJsonParse(data.driverTripDetails);
+        const parsedPricingBreakdown  = safeJsonParse(data.pricingBreakdown);
+
         // If a reminder arrives for the booking ALREADY displayed in the modal,
         // silently update only the expiresAt field so the countdown timer stays
         // accurate.  Replacing the entire object would change requestData, which
