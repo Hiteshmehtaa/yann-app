@@ -22,12 +22,18 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Setup notification channels on app startup (Android only)
- * This ensures channels exist even when app is killed
+ * Setup notification channels on app startup (Android only).
+ *
+ * THE PERMANENT SOLUTION — no more version bumping:
+ * Android caches channel settings and ignores updates to existing channels,
+ * BUT it allows channels to be deleted.  By deleting then immediately
+ * recreating the channel on every startup, we guarantee the sound setting
+ * always matches whatever is compiled into res/raw in the current APK.
+ * The backend uses the stable ID 'booking_requests' forever.
  */
 export async function setupNotificationChannels() {
     if (Platform.OS !== 'android') {
-        return; // iOS doesn't need this
+        return;
     }
 
     console.log('🔔 Setting up notification channels on app startup...');
@@ -40,16 +46,17 @@ export async function setupNotificationChannels() {
             vibrationPattern: [0, 250, 250, 250],
             lightColor: '#FF231F7C',
         });
-        
-        // Booking requests channel with custom buzzer.
-        // NOTE: Android caches channel settings on first creation and ignores
-        // subsequent updates for the same channel ID.  When the sound asset or
-        // settings need to change, bump this ID (v4 → v5, etc.) so a fresh
-        // channel is created on every device.
-        await Notifications.setNotificationChannelAsync('booking_requests_v5', {
+
+        // Delete the booking_requests channel first so Android is forced to
+        // recreate it fresh with the current res/raw/booking_request.wav.
+        // This runs on every startup and is the reason we never need to bump
+        // a version number again.
+        await Notifications.deleteNotificationChannelAsync('booking_requests').catch(() => {});
+
+        // Recreate with correct settings — sound now guaranteed to load from
+        // res/raw because the channel is brand-new on every launch.
+        await Notifications.setNotificationChannelAsync('booking_requests', {
             name: 'Booking Requests',
-            // 'booking_request' refers to res/raw/booking_request.wav compiled
-            // into the APK via the expo-notifications sounds array in app.json.
             sound: 'booking_request.wav',
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
@@ -60,13 +67,12 @@ export async function setupNotificationChannels() {
             enableLights: true,
         });
 
-        // Delete stale channels from previous versions so they don't clutter
-        // the user's notification settings.
-        await Notifications.deleteNotificationChannelAsync('booking_requests_v4').catch(() => {});
-        await Notifications.deleteNotificationChannelAsync('booking_requests_v3').catch(() => {});
-        await Notifications.deleteNotificationChannelAsync('booking_requests').catch(() => {});
+        // Clean up all old versioned channels
+        for (const old of ['booking_requests_v5', 'booking_requests_v4', 'booking_requests_v3']) {
+            await Notifications.deleteNotificationChannelAsync(old).catch(() => {});
+        }
 
-        console.log('✅ Notification channels initialized');
+        console.log('✅ Notification channels initialised (booking_requests recreated fresh)');
     } catch (error) {
         console.error('❌ Failed to setup notification channels:', error);
     }
