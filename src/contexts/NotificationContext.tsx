@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
 import { apiService } from '../services/api';
-import { stopBuzzer, playBookingRequestBuzzer } from '../utils/soundNotifications';
+import { stopBuzzer, playBookingRequestBuzzer, initializeBuzzerSound } from '../utils/soundNotifications';
 
 export interface AppNotification {
   id: string;
@@ -82,6 +82,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Track ignored bookings to prevent re-fetching (race condition fix)
   const ignoredBookingIds = useRef<Set<string>>(new Set());
   const { user } = useAuth();
+
+  // Initialise the audio session once at startup so it is ready before the
+  // first booking request notification arrives.
+  useEffect(() => {
+    initializeBuzzerSound().catch(() => {});
+  }, []);
 
   const ignoreBookingRequest = (bookingId: string) => {
     console.log('🔇 Ignoring booking and STOPPING buzzer:', bookingId);
@@ -203,25 +209,40 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           .then(() => console.log('✅ Old booking notifications cleared'))
           .catch(err => console.error('❌ Failed to dismiss old notifications:', err));
         
-        setIncomingBookingRequest({
-          bookingId: data.bookingId as string,
-          serviceName: data.serviceName as string || 'Service',
-          serviceCategory: data.serviceCategory as string || '',
-          customerName: data.customerName as string || 'Customer',
-          customerProfileImage: data.customerProfileImage as string,
-          customerAddress: data.customerAddress as string,
-          customerPhone: data.customerPhone as string,
-          totalPrice: data.totalPrice as number || 0,
-          bookedHours: data.bookedHours as number || 0,
-          billingType: data.billingType as string || 'one-time',
-          bookingDate: data.bookingDate as string,
-          bookingTime: data.bookingTime as string,
-          notes: data.notes as string,
-          expiresAt: data.expiresAt as string,
-          notificationIdentifier: notification.request.identifier,
-          driverDetails: parsedDriverDetails,
-          driverTripDetails: parsedDriverTripDetails,
-          pricingBreakdown: parsedPricingBreakdown,
+        // If a reminder arrives for the booking ALREADY displayed in the modal,
+        // silently update only the expiresAt field so the countdown timer stays
+        // accurate.  Replacing the entire object would change requestData, which
+        // triggers the ProviderIncomingRequest Sound useEffect to teardown and
+        // restart — stopping the continuous in-app buzzer for over 500 ms.
+        setIncomingBookingRequest((prev: BookingRequestData | null) => {
+          if (
+            prev &&
+            prev.bookingId === (data.bookingId as string) &&
+            data.type === 'booking_request_reminder'
+          ) {
+            return { ...prev, expiresAt: data.expiresAt as string };
+          }
+          // Fresh booking request (or app was idle) — show the full modal
+          return {
+            bookingId: data.bookingId as string,
+            serviceName: data.serviceName as string || 'Service',
+            serviceCategory: data.serviceCategory as string || '',
+            customerName: data.customerName as string || 'Customer',
+            customerProfileImage: data.customerProfileImage as string,
+            customerAddress: data.customerAddress as string,
+            customerPhone: data.customerPhone as string,
+            totalPrice: data.totalPrice as number || 0,
+            bookedHours: data.bookedHours as number || 0,
+            billingType: data.billingType as string || 'one-time',
+            bookingDate: data.bookingDate as string,
+            bookingTime: data.bookingTime as string,
+            notes: data.notes as string,
+            expiresAt: data.expiresAt as string,
+            notificationIdentifier: notification.request.identifier,
+            driverDetails: parsedDriverDetails,
+            driverTripDetails: parsedDriverTripDetails,
+            pricingBreakdown: parsedPricingBreakdown,
+          };
         });
       }
 

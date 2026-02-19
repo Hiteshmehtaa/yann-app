@@ -10,7 +10,9 @@ import {
     Vibration,
     Platform,
     ScrollView,
-    Image, // Added Image import
+    Image,
+    AppState,
+    AppStateStatus,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -201,6 +203,27 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
         startEffects();
 
         return () => { stopAllEffects(); };
+    }, [visible, requestData]);
+
+    // 3. AppState recovery — restart buzzer when partner foregrounds the app
+    // while the modal is still open (e.g. they checked another app briefly).
+    useEffect(() => {
+        if (!visible || !requestData) return;
+
+        const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+            if (nextState === 'active') {
+                // App came back to foreground; ensure the buzzer is running
+                playBookingRequestBuzzer().catch(() => {});
+            } else if (nextState === 'background') {
+                // Optional: stop the in-app loop when backgrounded so the system
+                // notification sound (from repeated push buzzer pings) is the only
+                // audio playing.  Remove the stopBuzzer call if you want expo-av
+                // to keep playing in background too.
+                stopBuzzer().catch(() => {});
+            }
+        });
+
+        return () => subscription.remove();
     }, [visible, requestData]);
 
     const startBuzzerEffects = async () => {

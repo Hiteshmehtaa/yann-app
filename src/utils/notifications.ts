@@ -3,14 +3,22 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// Configure how notifications are handled when app is in foreground
+// Configure how notifications are handled when app is in foreground.
+// For booking_request / booking_request_reminder we intentionally suppress the
+// system notification sound because the in-app modal immediately starts a
+// continuously-looping expo-av buzzer.  Playing both at the same time produces
+// the "heard twice" double-sound experienced by partners.
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
+    handleNotification: async (notification) => {
+        const type = notification.request.content.data?.type as string | undefined;
+        const isBookingRequest = type === 'booking_request' || type === 'booking_request_reminder';
+        return {
+            shouldPlaySound: !isBookingRequest, // in-app looping buzzer handles booking requests
+            shouldSetBadge: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        };
+    },
 });
 
 /**

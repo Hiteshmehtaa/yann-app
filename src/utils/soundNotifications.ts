@@ -13,8 +13,9 @@ let buzzerSound: any | null = null;
 let isPlaying = false;
 
 /**
- * Initialize and load the booking request buzzer sound
- * Note: Requires expo-av package. If not installed, will use haptic feedback only.
+ * Set up the audio system for booking request sounds.
+ * Call once at app startup (e.g. from AppContext / AuthContext) so the audio
+ * session is ready before the first notification arrives.
  */
 export async function initializeBuzzerSound() {
   if (!Audio) {
@@ -23,41 +24,29 @@ export async function initializeBuzzerSound() {
   }
 
   try {
-    // Set audio mode
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
-      shouldDuckAndroid: true,
-      // Ensure Android plays even if other audio is active
+      shouldDuckAndroid: false,          // Don't lower other apps — be dominant
       interruptionModeAndroid: Audio.InterruptionModeAndroid?.DoNotMix ?? 1,
-      playThroughEarpieceAndroid: false,
+      playThroughEarpieceAndroid: false, // Use speaker, not earpiece
     });
-
-    // Sound file is optional - app works with haptic feedback only
-    // To enable sound: add booking-request.mp3 to /assets/sounds/
-    console.log('✅ Audio system initialized (sound file optional)');
-
-    // Uncomment when sound file is added:
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/booking_request.mp3'),
-        { shouldPlay: false, isLooping: false, volume: 1.0 }
-      );
-      buzzerSound = sound;
-      console.log('✅ Buzzer sound loaded');
-    } catch (fileError) {
-      console.log('⚠️ Sound file not found. Using haptic feedback only.');
-    }
+    console.log('✅ Audio system initialised for booking buzzer');
   } catch (error) {
-    console.error('❌ Failed to initialize audio system:', error);
-    // Fallback to haptic feedback only
+    console.error('❌ Failed to initialise audio system:', error);
   }
 }
 
 /**
- * Play booking request notification sound with vibration
- * This buzzer will play continuously until stopBuzzer() is called
- * (typically for the full 3-minute booking modal duration)
+ * Play the booking-request buzzer continuously until stopBuzzer() is called.
+ *
+ * Reliability improvements over the naïve approach:
+ *  1. `setIsLoopingAsync(true)` is called explicitly AFTER createAsync —
+ *     some Android devices ignore the option passed inside createAsync.
+ *  2. A `setOnPlaybackStatusUpdate` callback watches for the sound finishing
+ *     and immediately replays it in case the native looping silently drops.
+ *  3. Audio mode has `shouldDuckAndroid: false` so the buzzer is never
+ *     attenuated by another app's audio stream.
  */
 export async function playBookingRequestBuzzer() {
   try {
@@ -69,49 +58,60 @@ export async function playBookingRequestBuzzer() {
       return;
     }
 
-    // Ensure audio mode is set before playing
-    if (Audio) {
+    if (!Audio) {
+      console.log('⚠️ expo-av not available — haptic feedback only');
+      // Fallthrough to haptic below
+    } else {
+      // Ensure the audio session is configured correctly
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: true,
-        shouldDuckAndroid: true,
+        shouldDuckAndroid: false,
         interruptionModeAndroid: Audio.InterruptionModeAndroid?.DoNotMix ?? 1,
         playThroughEarpieceAndroid: false,
       });
-    }
 
-    // Play sound if available
-    if (Audio) {
+      // Tear down any lingering instance first
+      if (buzzerSound) {
+        try {
+          await buzzerSound.stopAsync();
+          await buzzerSound.unloadAsync();
+        } catch (_e) { /* ignore */ }
+        buzzerSound = null;
+      }
+
       try {
-        // Unload existing sound if any to prevent state issues
-        if (buzzerSound) {
-          try { 
-            await buzzerSound.stopAsync();
-            await buzzerSound.unloadAsync(); 
-          } catch (e) { 
-            console.log('Cleanup warning:', e);
-          }
-        }
-
-        // Create and load the sound to play continuously
         const { sound } = await Audio.Sound.createAsync(
           require('../../assets/sounds/booking_request.mp3'),
-          { 
-            shouldPlay: true, 
-            isLooping: true,  // Loop continuously
-            volume: 1.0 
-          }
+          { shouldPlay: false, isLooping: true, volume: 1.0 }
         );
 
+        // Explicitly set looping at the native level — more reliable than
+        // the option in createAsync on some Android versions.
+        await sound.setIsLoopingAsync(true);
+
+        // Safety net: if the sound ever finishes despite the loop flag,
+        // immediately replay it so the buzzer never silently stops.
+        sound.setOnPlaybackStatusUpdate((status: any) => {
+          if (!isPlaying) return; // buzzer was intentionally stopped
+          if (status.didJustFinish && !status.isLooping) {
+            console.log('🔄 Buzzer finished without looping — restarting...');
+            sound.replayAsync().catch((e: any) =>
+              console.log('⚠️ Buzzer replay error:', e)
+            );
+          }
+        });
+
+        await sound.playAsync();
         buzzerSound = sound;
         isPlaying = true;
-        console.log('✅ Buzzer sound playing - will loop until stopBuzzer() is called');
+        console.log('✅ Buzzer sound playing (looping) — will stop when stopBuzzer() is called');
       } catch (e) {
-        console.log('⚠️ Sound file error, using haptic feedback only:', e);
+        console.log('⚠️ Sound file error, haptic feedback only:', e);
       }
     }
 
-    // Provide initial haptic feedback to alert user
+    // Always give immediate haptic alert
     if (Platform.OS === 'ios') {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } else {
