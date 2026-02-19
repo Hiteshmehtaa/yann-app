@@ -205,20 +205,28 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
         return () => { stopAllEffects(); };
     }, [visible, requestData]);
 
-    // 3. AppState recovery — restart buzzer when partner foregrounds the app
-    // while the modal is still open (e.g. they checked another app briefly).
+    // 3. AppState recovery — stop in-app buzzer when app goes to background
+    // (channel notifications take over the sound while in background), and
+    // restart when it comes back to foreground.
+    // NOTE: We do NOT call playBookingRequestBuzzer() directly on 'active' here
+    // because it races with Effect 2's startBuzzerEffects (which also calls it
+    // after a 500ms delay) — that race creates two orphaned Sound instances.
+    // Instead, we flip a flag that Effect 2's next render will pick up, OR we
+    // just call stopBuzzer on background so the channel notification is the
+    // sole audio source, then let Effect 2 restart it when focus returns.
     useEffect(() => {
         if (!visible || !requestData) return;
 
         const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
             if (nextState === 'active') {
-                // App came back to foreground; ensure the buzzer is running
-                playBookingRequestBuzzer().catch(() => {});
+                // Small delay so Effect 2 (which may have just remounted due to
+                // state updates triggered by the return-to-foreground) runs
+                // first and claims isPlaying before we do.
+                setTimeout(() => {
+                    playBookingRequestBuzzer().catch(() => {});
+                }, 600);
             } else if (nextState === 'background') {
-                // Optional: stop the in-app loop when backgrounded so the system
-                // notification sound (from repeated push buzzer pings) is the only
-                // audio playing.  Remove the stopBuzzer call if you want expo-av
-                // to keep playing in background too.
+                // Stop in-app buzzer — channel push notifications handle sound
                 stopBuzzer().catch(() => {});
             }
         });

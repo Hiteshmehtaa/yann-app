@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
 import { apiService } from '../services/api';
-import { stopBuzzer, playBookingRequestBuzzer, initializeBuzzerSound } from '../utils/soundNotifications';
+import { stopBuzzer, initializeBuzzerSound } from '../utils/soundNotifications';
 
 export interface AppNotification {
   id: string;
@@ -455,9 +455,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           expiresAt: pendingRequest.expiresAt
         });
 
+        // Do NOT call playBookingRequestBuzzer() here.
+        // ProviderIncomingRequest's Effect 2 owns the buzzer lifecycle — it
+        // starts the buzzer when `visible && requestData` becomes true.
+        // Calling it here races with that Effect and can create a second
+        // orphaned Sound instance that stopBuzzer() cannot stop.
         console.log('✅ Found pending booking request on app open:', pendingRequest.bookingId);
-        // Start buzzer ONLY if not already playing and verified not ignored
-        playBookingRequestBuzzer();
       }
     } catch (error) {
       console.error('Failed to check pending booking requests:', error);

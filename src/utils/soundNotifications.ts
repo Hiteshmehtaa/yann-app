@@ -52,11 +52,16 @@ export async function playBookingRequestBuzzer() {
   try {
     console.log('🔔 Starting continuous buzzer for booking request...');
 
-    // Don't restart if already playing
+    // Don't restart if already playing.
+    // IMPORTANT: set isPlaying = true SYNCHRONOUSLY before any await so that
+    // concurrent callers that reach this check before the first await resolves
+    // don't also proceed and create a second orphaned Sound instance that
+    // can never be stopped by stopBuzzer().
     if (isPlaying) {
       console.log('⚠️ Buzzer already playing, skipping restart');
       return;
     }
+    isPlaying = true; // claim the slot synchronously — reset on any failure path
 
     if (!Audio) {
       console.log('⚠️ expo-av not available — haptic feedback only');
@@ -104,11 +109,14 @@ export async function playBookingRequestBuzzer() {
 
         await sound.playAsync();
         buzzerSound = sound;
-        isPlaying = true;
+        // isPlaying already set to true synchronously above
         console.log('✅ Buzzer sound playing (looping) — will stop when stopBuzzer() is called');
       } catch (e) {
         console.log('⚠️ Sound file error, haptic feedback only:', e);
+        isPlaying = false; // release the slot so a retry can succeed
       }
+    } else {
+      isPlaying = false; // no Audio available — release slot
     }
 
     // Always give immediate haptic alert
