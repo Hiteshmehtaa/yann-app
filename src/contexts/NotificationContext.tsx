@@ -349,7 +349,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     // acted on (accept/reject) if the notification tap fires slightly late.
     if (ignoredBookingIds.current.has(bookingId)) {
       console.log(`🔇 Skipping ignored booking (notification tap): ${bookingId}`);
-      // Make sure the buzzer is stopped in case it's still going
       stopBuzzer();
       return;
     }
@@ -357,26 +356,43 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       const response = await apiService.getBookingStatus(bookingId);
 
+      // CRITICAL: Re-check the ignore list AFTER the async getBookingStatus call.
+      // The partner may have accepted/rejected while this request was in-flight.
+      // Without this second check, setIncomingBookingRequest would re-show the
+      // modal and restart the buzzer even after the partner acted on the booking.
+      if (ignoredBookingIds.current.has(bookingId)) {
+        console.log(`🔇 Booking acted on during status fetch, skipping: ${bookingId}`);
+        stopBuzzer();
+        return;
+      }
+
       if (response.success && response.data) {
-        const { status, remainingSeconds, serviceName, provider, totalPrice, isExpired } = response.data;
+        const { status, remainingSeconds, serviceName, totalPrice, isExpired } = response.data;
 
         // Only show modal if still awaiting response and not expired
         if (status === 'awaiting_response' && !isExpired && remainingSeconds > 0) {
-          // Calculate new expiresAt based on remainingSeconds
           const expiresAt = new Date(Date.now() + remainingSeconds * 1000).toISOString();
 
-          setIncomingBookingRequest({
-            bookingId: bookingId,
-            serviceName: serviceName || 'Service',
-            customerName: response.data.customerName || 'Customer',
-            customerProfileImage: response.data.customerProfileImage, // Map Image from status check
-            customerAddress: response.data.customerAddress,
-            customerPhone: response.data.customerPhone,
-            totalPrice: totalPrice || 0,
-            bookingDate: response.data.bookingDate,
-            bookingTime: response.data.bookingTime,
-            notes: response.data.notes,
-            expiresAt: expiresAt
+          // Use a functional update: if the modal is ALREADY showing this booking,
+          // only patch expiresAt so we don't replace the whole object, which would
+          // re-trigger the Sound useEffect and restart the buzzer unnecessarily.
+          setIncomingBookingRequest((prev: BookingRequestData | null) => {
+            if (prev && prev.bookingId === bookingId) {
+              return { ...prev, expiresAt };
+            }
+            return {
+              bookingId,
+              serviceName: serviceName || 'Service',
+              customerName: response.data.customerName || 'Customer',
+              customerProfileImage: response.data.customerProfileImage,
+              customerAddress: response.data.customerAddress,
+              customerPhone: response.data.customerPhone,
+              totalPrice: totalPrice || 0,
+              bookingDate: response.data.bookingDate,
+              bookingTime: response.data.bookingTime,
+              notes: response.data.notes,
+              expiresAt,
+            };
           });
 
           console.log('✅ Showing booking request modal with timer:', remainingSeconds, 'seconds remaining');

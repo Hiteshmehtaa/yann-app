@@ -44,13 +44,12 @@ export async function setupNotificationChannels() {
         // Booking requests channel with custom buzzer.
         // NOTE: Android caches channel settings on first creation and ignores
         // subsequent updates for the same channel ID.  When the sound asset or
-        // settings need to change, bump this ID (v3 → v4, etc.) so a fresh
+        // settings need to change, bump this ID (v4 → v5, etc.) so a fresh
         // channel is created on every device.
-        await Notifications.setNotificationChannelAsync('booking_requests_v4', {
+        await Notifications.setNotificationChannelAsync('booking_requests_v5', {
             name: 'Booking Requests',
-            // 'booking_request' refers to res/raw/booking_request.wav (or .mp3)
-            // compiled into the APK.  Android strips the extension to match the
-            // resource name, so either .mp3 or .wav works here.
+            // 'booking_request' refers to res/raw/booking_request.wav compiled
+            // into the APK via the expo-notifications sounds array in app.json.
             sound: 'booking_request.wav',
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
@@ -63,6 +62,7 @@ export async function setupNotificationChannels() {
 
         // Delete stale channels from previous versions so they don't clutter
         // the user's notification settings.
+        await Notifications.deleteNotificationChannelAsync('booking_requests_v4').catch(() => {});
         await Notifications.deleteNotificationChannelAsync('booking_requests_v3').catch(() => {});
         await Notifications.deleteNotificationChannelAsync('booking_requests').catch(() => {});
 
