@@ -24,22 +24,29 @@ Notifications.setNotificationHandler({
 /**
  * Setup notification channels on app startup (Android only).
  *
- * THE PERMANENT SOLUTION — no more version bumping:
- * Android caches channel settings and ignores updates to existing channels,
- * BUT it allows channels to be deleted.  By deleting then immediately
- * recreating the channel on every startup, we guarantee the sound setting
- * always matches whatever is compiled into res/raw in the current APK.
- * The backend uses the stable ID 'booking_requests' forever.
+ * WHY 'booking_alert' AND NOT 'booking_requests':
+ * Android permanently caches user preferences per channel ID.  The old
+ * 'booking_requests' channel (and v3/v4/v5 variants) was created and deleted
+ * dozens of times with broken configurations — Android has cached "Default"
+ * sound for that ID on every partner device.  Even after delete+recreate,
+ * Android restores the cached preference and ignores our WAV.
+ *
+ * Solution: use a completely new ID 'booking_alert' that has NEVER existed on
+ * any device.  A fresh ID has zero cached preferences → our WAV is applied.
+ *
+ * We do NOT delete this channel on every startup (the old broken approach).
+ * We create it once, verify the sound loaded, and leave it permanently.
+ * Only re-create if the channel is missing or the sound didn't apply.
  */
 export async function setupNotificationChannels() {
     if (Platform.OS !== 'android') {
         return;
     }
 
-    console.log('🔔 Setting up notification channels on app startup...');
+    console.log('🔔 Setting up notification channels...');
 
     try {
-        // Default channel
+        // Default channel (unchanged)
         await Notifications.setNotificationChannelAsync('default', {
             name: 'default',
             importance: Notifications.AndroidImportance.MAX,
@@ -47,42 +54,49 @@ export async function setupNotificationChannels() {
             lightColor: '#FF231F7C',
         });
 
-        // Delete the booking_requests channel first so Android is forced to
-        // recreate it fresh with the current res/raw/booking_request.wav.
-        // This runs on every startup and is the reason we never need to bump
-        // a version number again.
-        await Notifications.deleteNotificationChannelAsync('booking_requests').catch(() => {});
+        // Check if the booking_alert channel already exists with a custom sound.
+        // 'sound' field returns 'custom' when a non-default sound is applied,
+        // 'default' when the WAV failed to load, or null when no sound is set.
+        const existing = await Notifications.getNotificationChannelAsync('booking_alert').catch(() => null);
 
-        // Recreate with correct settings — sound guaranteed to load from
-        // res/raw because the channel is brand-new on every launch.
-        //
-        // NOTE: Do NOT use audioAttributes.usage = Notifications.AndroidAudioUsage.ALARM
-        // — AndroidAudioUsage is NOT re-exported from expo-notifications' main
-        // index.js (confirmed v0.32.16), so Notifications.AndroidAudioUsage is
-        // undefined at runtime.  Accessing .ALARM on undefined throws TypeError,
-        // which our catch swallows silently — resulting in the channel being
-        // DELETED but never RECREATED, so every notification falls back to the
-        // 'default' channel and plays the system ping sound.
-        // The default audio attributes (NOTIFICATION stream) are correct for
-        // booking alert notifications.
-        await Notifications.setNotificationChannelAsync('booking_requests', {
-            name: 'Booking Requests',
-            sound: 'booking_request.wav',
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
-            lightColor: '#FF231F7C',
-            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-            bypassDnd: true,
-            enableVibrate: true,
-            enableLights: true,
-        });
+        if (existing && existing.sound === 'custom') {
+            // Perfect — channel already registered with our WAV.
+            console.log('✅ booking_alert channel already correct (sound: custom)');
+        } else {
+            // First run on this device, OR previous creation didn't apply the sound.
+            // Delete first if a broken version exists.
+            if (existing) {
+                await Notifications.deleteNotificationChannelAsync('booking_alert').catch(() => {});
+                console.log('🗑️ Deleted broken booking_alert channel (sound was:', existing.sound, ')');
+            }
 
-        // Clean up all old versioned channels
-        for (const old of ['booking_requests_v5', 'booking_requests_v4', 'booking_requests_v3']) {
-            await Notifications.deleteNotificationChannelAsync(old).catch(() => {});
+            await Notifications.setNotificationChannelAsync('booking_alert', {
+                name: 'Booking Requests',
+                sound: 'booking_request.wav',         // resolves to res/raw/booking_request in APK
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
+                lightColor: '#FF231F7C',
+                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+                bypassDnd: true,
+                enableVibrate: true,
+                enableLights: true,
+            });
+
+            // Verify the sound was actually applied (returns 'custom' on success)
+            const verified = await Notifications.getNotificationChannelAsync('booking_alert').catch(() => null);
+            if (verified?.sound === 'custom') {
+                console.log('✅ booking_alert channel created — custom WAV confirmed');
+            } else {
+                console.warn('⚠️ booking_alert channel created but sound =', verified?.sound, '(expected: custom). WAV may be missing from res/raw.');
+            }
         }
 
-        console.log('✅ Notification channels initialised (booking_requests recreated fresh)');
+        // Silently retire all old channel IDs — leave them registered so old
+        // notifications in the tray still show, but new ones go to booking_alert.
+        // (Deleting them here would cause Android to restore their cached prefs
+        //  on the next create attempt — so we just leave them alone.)
+
+        console.log('✅ Notification channels ready');
     } catch (error) {
         console.error('❌ Failed to setup notification channels:', error);
     }
