@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,8 @@ import {
     Dimensions,
     ScrollView,
     Image,
+    Alert,
+    BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,12 +43,12 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
     const insets = useSafeAreaInsets();
     const { setPaymentModalData } = useNotifications();
 
-    console.log('📍 BookingWaitingScreen params:', { 
-        bookingId, 
-        providerId, 
-        providerName, 
-        serviceName, 
-        experienceRange 
+    console.log('📍 BookingWaitingScreen params:', {
+        bookingId,
+        providerId,
+        providerName,
+        serviceName,
+        experienceRange
     });
 
     const [timeRemaining, setTimeRemaining] = useState(TIMER_DURATION);
@@ -55,10 +57,50 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
     const [showAlternatives, setShowAlternatives] = useState(false);
     const [rejectedProviderIds, setRejectedProviderIds] = useState<string[]>([providerId]); // Start with initial provider
     const [isLoading, setIsLoading] = useState(false);
-    
+
     // Track current provider (can change when selecting alternative)
     const [currentProviderId, setCurrentProviderId] = useState(providerId);
     const [currentProviderName, setCurrentProviderName] = useState(providerName);
+    const [isCancelling, setIsCancelling] = useState(false);
+
+    // Cancel booking and go back
+    const handleCancelBooking = useCallback(() => {
+        if (isCancelling) return;
+        Alert.alert(
+            'Cancel Booking?',
+            'Are you sure you want to cancel this booking request?',
+            [
+                { text: 'No, Wait', style: 'cancel' },
+                {
+                    text: 'Yes, Cancel',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setIsCancelling(true);
+                        try {
+                            await apiService.cancelBooking(bookingId);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                        } catch (e) {
+                            console.error('Cancel booking error:', e);
+                        }
+                        navigation.goBack();
+                    },
+                },
+            ]
+        );
+    }, [bookingId, isCancelling]);
+
+    // Android hardware back press
+    useEffect(() => {
+        const onBackPress = () => {
+            if (status === 'waiting') {
+                handleCancelBooking();
+                return true;
+            }
+            return false;
+        };
+        const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+        return () => sub.remove();
+    }, [status, handleCancelBooking]);
 
     // Animations
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -127,7 +169,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                     status: response.data?.status,
                     bookingId: response.data?._id || response.data?.id
                 });
-                
+
                 if (response.success && response.data) {
                     const bookingStatus = response.data.status;
                     console.log(`📌 Current booking status: ${bookingStatus}`);
@@ -156,21 +198,21 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                         setStatus('accepted');
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         clearInterval(pollInterval);
-                        
+
                         console.log('💰 Booking pending payment detected, triggering modal manually');
                         console.log('📊 Booking data:', JSON.stringify(response.data, null, 2));
-                        
+
                         // Calculate payment details
                         const totalPrice = response.data.totalPrice || 0;
                         const initialPaymentAmount = Math.round(totalPrice * 0.25 * 100) / 100; // Proper rounding to 2 decimals
                         const expiresAt = response.data.paymentTimer?.expiresAt || new Date(Date.now() + 3 * 60 * 1000).toISOString();
-                        
+
                         console.log('💵 Payment calculation:', {
                             totalPrice,
                             initialPaymentAmount,
                             percentage: '25%'
                         });
-                        
+
                         // Trigger payment modal directly
                         setPaymentModalData({
                             type: 'initial',
@@ -182,7 +224,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                             expiresAt: expiresAt,
                             notificationId: Date.now().toString()
                         });
-                        
+
                         console.log('✅ Payment modal triggered with data:', {
                             bookingId,
                             initialPaymentAmount,
@@ -223,18 +265,18 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
         try {
             // Fetch ALL alternative providers for this service, excluding rejected ones
             const params: any = { service: serviceName };
-            
+
             console.log(`🔍 Loading all providers for ${serviceName}, excluding rejected ones`);
             console.log(`🚫 Excluding ${rejectedProviderIds.length} rejected provider(s):`, rejectedProviderIds);
             console.log('📦 Request params:', params);
 
             const response = await apiService.getProvidersByService(serviceName, params);
-            console.log('📥 API Response:', { 
-                success: response.success, 
+            console.log('📥 API Response:', {
+                success: response.success,
                 totalProviders: response.data?.length,
                 providers: response.data?.map((p: any) => ({ id: p.id || p._id, name: p.name, experience: p.experience }))
             });
-            
+
             if (response.success && response.data) {
                 // Filter out ALL rejected providers client-side
                 const filteredProviders = response.data.filter(
@@ -257,7 +299,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
 
         const newProviderId = provider.id || provider._id;
         console.log('🔄 Rebooking with new provider:', provider.name, 'ID:', newProviderId);
-        
+
         setIsLoading(true);
 
         try {
@@ -266,26 +308,26 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
 
             if (reassignResponse.success) {
                 console.log('✅ Booking reassigned, sending request to new provider');
-                
+
                 // Update local state with new provider info
                 setCurrentProviderId(newProviderId);
                 setCurrentProviderName(provider.name);
-                
+
                 // Add old provider to rejected list
                 setRejectedProviderIds(prev => [...prev, newProviderId]);
-                
+
                 // Then send the booking request to new provider
                 const response = await apiService.sendBookingRequest(bookingId, newProviderId);
-                
+
                 if (response.success) {
                     console.log('✅ Request sent to new provider:', provider.name);
-                    
+
                     // Reset timer and hide alternatives
                     setTimeRemaining(TIMER_DURATION);
                     setStatus('waiting');
                     setShowAlternatives(false);
                     setIsLoading(false);
-                    
+
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 } else {
                     console.error('❌ Failed to send request to new provider');
@@ -348,7 +390,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+                    onPress={handleCancelBooking}
                 >
                     <Ionicons name="close" size={24} color="#FFF" />
                 </TouchableOpacity>
@@ -371,7 +413,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                                         transform: [{ rotate: `${(timeRemaining / TIMER_DURATION) * 360}deg` }]
                                     }]} />
                                 </View>
-                                
+
                                 {/* Time display */}
                                 <View style={styles.timerContent}>
                                     <View style={styles.timerRow}>
@@ -388,7 +430,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                                             <Text style={styles.timeUnit}>SECONDS</Text>
                                         </View>
                                     </View>
-                                    
+
                                     <View style={styles.statusBar}>
                                         <Animated.View style={[styles.statusPulse, { opacity: pulseAnim }]} />
                                         <Text style={styles.statusText}>Waiting for response</Text>
@@ -750,7 +792,7 @@ const styles = StyleSheet.create({
         color: '#FFF',
         letterSpacing: 2,
     },
-    timerLabel: {
+    timerLabel2: {
         fontSize: 16,
         color: 'rgba(255,255,255,0.8)',
         marginTop: 8,

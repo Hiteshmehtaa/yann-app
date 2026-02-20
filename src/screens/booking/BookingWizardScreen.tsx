@@ -161,14 +161,12 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Sync Address from Route (when returning from SavedAddresses)
     useEffect(() => {
-        // route.params is immutable, but we check if we received a new address
-        // Navigation params update when navigating back with new params
-        // However, usually we used listener or separate param update logic.
-        // In React Navigation 6, route.params updates automatically if we navigate with merge: true key.
-        // Let's assume the previous logic worked:
         if (route.params?.selectedAddress && route.params.selectedAddress !== selectedAddress) {
             setSelectedAddress(route.params.selectedAddress);
             setFormErrors((prev: any) => ({ ...prev, address: undefined }));
+            // Restore to Location step (step 1) since user was on this step
+            // when they navigated to SavedAddresses
+            setCurrentStep(1);
         }
     }, [route.params?.selectedAddress]);
 

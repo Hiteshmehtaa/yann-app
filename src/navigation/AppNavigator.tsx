@@ -194,7 +194,11 @@ const renderDashboardIcon = (props: { focused: boolean }) => (
 );
 
 const renderEarningsIcon = (props: { focused: boolean }) => (
-  <TabIcon name={props.focused ? "cash" : "cash-outline"} focused={props.focused} />
+  <TabIcon name={props.focused ? "analytics" : "analytics-outline"} focused={props.focused} />
+);
+
+const renderWalletIcon = (props: { focused: boolean }) => (
+  <TabIcon name={props.focused ? "wallet" : "wallet-outline"} focused={props.focused} />
 );
 
 // Homeowner/Customer Tab Navigator
@@ -236,11 +240,11 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Chat"
-        component={ComingSoonScreen}
+        name="Wallet"
+        component={WalletScreen}
         options={{
-          tabBarLabel: 'CHAT',
-          tabBarIcon: renderChatIcon,
+          tabBarLabel: 'WALLET',
+          tabBarIcon: renderWalletIcon,
           headerShown: false,
         }}
       />

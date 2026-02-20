@@ -3,17 +3,14 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// Configure how notifications are handled when app is in foreground.
-// For booking_request / booking_request_reminder we intentionally suppress the
-// system notification sound because the in-app modal immediately starts a
-// continuously-looping expo-av buzzer.  Playing both at the same time produces
-// the "heard twice" double-sound experienced by partners.
+// Foreground notification handler.
+// Suppress system sound for booking requests — the in-app expo-av buzzer handles those.
 Notifications.setNotificationHandler({
     handleNotification: async (notification) => {
         const type = notification.request.content.data?.type as string | undefined;
         const isBookingRequest = type === 'booking_request' || type === 'booking_request_reminder';
         return {
-            shouldPlaySound: !isBookingRequest, // in-app looping buzzer handles booking requests
+            shouldPlaySound: !isBookingRequest,
             shouldSetBadge: true,
             shouldShowBanner: true,
             shouldShowList: true,
@@ -22,31 +19,15 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Setup notification channels on app startup (Android only).
- *
- * WHY 'booking_alert' AND NOT 'booking_requests':
- * Android permanently caches user preferences per channel ID.  The old
- * 'booking_requests' channel (and v3/v4/v5 variants) was created and deleted
- * dozens of times with broken configurations — Android has cached "Default"
- * sound for that ID on every partner device.  Even after delete+recreate,
- * Android restores the cached preference and ignores our WAV.
- *
- * Solution: use a completely new ID 'booking_alert' that has NEVER existed on
- * any device.  A fresh ID has zero cached preferences → our WAV is applied.
- *
- * We do NOT delete this channel on every startup (the old broken approach).
- * We create it once, verify the sound loaded, and leave it permanently.
- * Only re-create if the channel is missing or the sound didn't apply.
+ * Setup Android notification channels on app startup.
+ * Uses 'booking_alert_v3' — a fresh channel ID that has never been cached
+ * by Android, so our custom MP3 sound is always applied.
  */
 export async function setupNotificationChannels() {
-    if (Platform.OS !== 'android') {
-        return;
-    }
-
-    console.log('🔔 Setting up notification channels...');
+    if (Platform.OS !== 'android') return;
 
     try {
-        // Default channel (unchanged)
+        // Default channel
         await Notifications.setNotificationChannelAsync('default', {
             name: 'default',
             importance: Notifications.AndroidImportance.MAX,
@@ -54,25 +35,20 @@ export async function setupNotificationChannels() {
             lightColor: '#FF231F7C',
         });
 
-        // Check if the booking_alert channel already exists with a custom sound.
-        // 'sound' field returns 'custom' when a non-default sound is applied,
-        // 'default' when the WAV failed to load, or null when no sound is set.
-        const existing = await Notifications.getNotificationChannelAsync('booking_alert').catch(() => null);
+        // Booking buzzer channel
+        const existing = await Notifications.getNotificationChannelAsync('booking_alert_v3').catch(() => null);
 
         if (existing && existing.sound === 'custom') {
-            // Perfect — channel already registered with our WAV.
-            console.log('✅ booking_alert channel already correct (sound: custom)');
+            console.log('🔔 booking_alert_v3 channel OK (sound: custom)');
         } else {
-            // First run on this device, OR previous creation didn't apply the sound.
-            // Delete first if a broken version exists.
             if (existing) {
-                await Notifications.deleteNotificationChannelAsync('booking_alert').catch(() => {});
-                console.log('🗑️ Deleted broken booking_alert channel (sound was:', existing.sound, ')');
+                await Notifications.deleteNotificationChannelAsync('booking_alert_v3').catch(() => { });
+                console.log('🔔 Recreating booking_alert_v3 (old sound:', existing.sound, ')');
             }
 
-            await Notifications.setNotificationChannelAsync('booking_alert', {
+            await Notifications.setNotificationChannelAsync('booking_alert_v3', {
                 name: 'Booking Requests',
-                sound: 'booking_request.wav',         // resolves to res/raw/booking_request in APK
+                sound: 'booking_request',  // Android res/raw references use filename WITHOUT extension
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 1000, 500, 1000, 500, 1000],
                 lightColor: '#FF231F7C',
@@ -80,121 +56,79 @@ export async function setupNotificationChannels() {
                 bypassDnd: true,
                 enableVibrate: true,
                 enableLights: true,
+                audioAttributes: {
+                    usage: Notifications.AndroidAudioUsage.ALARM,
+                    contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+                },
             });
 
-            // Verify the sound was actually applied (returns 'custom' on success)
-            const verified = await Notifications.getNotificationChannelAsync('booking_alert').catch(() => null);
+            const verified = await Notifications.getNotificationChannelAsync('booking_alert_v3').catch(() => null);
             if (verified?.sound === 'custom') {
-                console.log('✅ booking_alert channel created — custom WAV confirmed');
+                console.log('🔔 booking_alert_v3 created ✅ (custom MP3)');
             } else {
-                console.warn('⚠️ booking_alert channel created but sound =', verified?.sound, '(expected: custom). WAV may be missing from res/raw.');
+                console.warn('🔔 booking_alert_v3 created ⚠️ sound:', verified?.sound, '(expected: custom)');
             }
         }
-
-        // Silently retire all old channel IDs — leave them registered so old
-        // notifications in the tray still show, but new ones go to booking_alert.
-        // (Deleting them here would cause Android to restore their cached prefs
-        //  on the next create attempt — so we just leave them alone.)
-
-        console.log('✅ Notification channels ready');
     } catch (error) {
-        console.error('❌ Failed to setup notification channels:', error);
+        console.error('❌ Channel setup failed:', error);
     }
 }
 
 /**
- * Register for push notifications and get Expo push token
- * @returns {Promise<string|undefined>} Push token or undefined if failed
+ * Register for push notifications and get Expo push token.
+ * Retries up to 3 times for transient Google Play Services failures.
  */
 export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
     let token;
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔔 NOTIFICATION REGISTRATION STARTED');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-    // Check if device is physical
-    console.log('📱 Device Check:', {
-        isDevice: Device.isDevice,
-        platform: Platform.OS,
-        deviceName: Device.deviceName,
-        osVersion: Device.osVersion,
-    });
-
     if (!Device.isDevice) {
-        console.warn('⚠️ Not a physical device - push notifications will not work');
-        console.warn('   Use a physical device or production build for testing');
+        console.warn('⚠️ Not a physical device — push notifications unavailable');
         return undefined;
     }
 
-    // Setup notification channels (ensures they exist)
     await setupNotificationChannels();
 
-    // Check and request permissions
-    console.log('🔐 Checking notification permissions...');
+    // Check permissions
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    console.log('   Current permission status:', existingStatus);
-
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
-        console.log('   Requesting notification permissions...');
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
-        console.log('   Permission request result:', status);
     }
 
     if (finalStatus !== 'granted') {
-        console.error('❌ NOTIFICATION PERMISSIONS DENIED');
-        console.error('   User must enable notifications in device settings');
-        console.error('   Go to: Settings > Apps > Yann > Notifications');
+        console.error('❌ Notification permissions denied');
         return undefined;
     }
 
-    console.log('✅ Notification permissions granted');
+    // Get push token with retry
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 5000;
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 
-    // Get Expo push token
-    try {
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    if (!projectId) {
+        console.error('❌ Expo Project ID not found in app.json');
+        return undefined;
+    }
 
-        console.log('🎯 Expo Project Configuration:', {
-            projectId: projectId || 'NOT FOUND',
-            expoConfigExists: !!Constants.expoConfig,
-            easConfigExists: !!Constants.easConfig,
-        });
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`📲 Push token request (attempt ${attempt}/${MAX_RETRIES})...`);
+            token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+            console.log('✅ Push token:', token);
+            break;
+        } catch (error: any) {
+            const isRetryable = error.message?.includes('SERVICE_NOT_AVAILABLE') ||
+                error.message?.includes('TIMEOUT') ||
+                error.code === 'E_REGISTRATION_FAILED';
 
-        if (!projectId) {
-            console.error('❌ CRITICAL: Expo Project ID not found!');
-            console.error('   Check app.json for extra.eas.projectId');
-            return undefined;
-        }
-
-        console.log('📲 Requesting Expo push token...');
-        token = (
-            await Notifications.getExpoPushTokenAsync({
-                projectId,
-            })
-        ).data;
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('✅ PUSH TOKEN OBTAINED SUCCESSFULLY');
-        console.log('   Token:', token);
-        console.log('   Length:', token?.length);
-        console.log('   Format:', token?.startsWith('ExponentPushToken[') ? 'Valid' : 'Invalid');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    } catch (error: any) {
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.error('❌ PUSH TOKEN GENERATION FAILED');
-        console.error('   Error:', error.message);
-        console.error('   Code:', error.code);
-        console.error('   Stack:', error.stack);
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-        if (error.message?.includes('credentials')) {
-            console.error('💡 SOLUTION: Upload FCM credentials to Expo');
-            console.error('   1. Go to https://expo.dev/accounts/[account]/projects/[projectId]/credentials');
-            console.error('   2. Upload google-services.json for Android');
-            console.error('   3. Rebuild the app');
+            if (isRetryable && attempt < MAX_RETRIES) {
+                console.warn(`⚠️ Attempt ${attempt} failed (${error.code}), retrying in ${RETRY_DELAY_MS / 1000}s...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            } else {
+                console.error(`❌ Push token failed after ${attempt} attempts:`, error.message);
+            }
         }
     }
 
@@ -203,25 +137,19 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
 
 /**
  * Setup notification listeners
- * @param onNotificationReceived Callback when notification received (foreground)
- * @param onNotificationTapped Callback when notification tapped
- * @returns Cleanup function to remove listeners
  */
 export function setupNotificationListeners(
     onNotificationReceived?: (notification: Notifications.Notification) => void,
     onNotificationTapped?: (response: Notifications.NotificationResponse) => void
 ) {
-    // Handle notification received while app is in foreground
     const receivedSubscription = Notifications.addNotificationReceivedListener(notification => {
         onNotificationReceived?.(notification);
     });
 
-    // Handle notification tapped
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
         onNotificationTapped?.(response);
     });
 
-    // Return cleanup function
     return () => {
         receivedSubscription.remove();
         responseSubscription.remove();
@@ -240,12 +168,7 @@ export async function getLastNotificationResponse() {
  */
 export async function scheduleLocalNotification(title: string, body: string, data?: any) {
     await Notifications.scheduleNotificationAsync({
-        content: {
-            title,
-            body,
-            data,
-            sound: true,
-        },
-        trigger: null, // Show immediately
+        content: { title, body, data, sound: true },
+        trigger: null,
     });
 }
