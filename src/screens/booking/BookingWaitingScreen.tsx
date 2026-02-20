@@ -20,6 +20,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { COLORS, SHADOWS, RADIUS } from '../../utils/theme';
 import { apiService } from '../../services/api';
 import { useNotifications } from '../../contexts/NotificationContext';
+import { useDialog } from '../../components/CustomDialog';
 import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
@@ -62,30 +63,25 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
     const [currentProviderId, setCurrentProviderId] = useState(providerId);
     const [currentProviderName, setCurrentProviderName] = useState(providerName);
     const [isCancelling, setIsCancelling] = useState(false);
+    const { showConfirm, DialogComponent } = useDialog();
 
     // Cancel booking and go back
     const handleCancelBooking = useCallback(() => {
         if (isCancelling) return;
-        Alert.alert(
+        showConfirm(
             'Cancel Booking?',
-            'Are you sure you want to cancel this booking request?',
-            [
-                { text: 'No, Wait', style: 'cancel' },
-                {
-                    text: 'Yes, Cancel',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setIsCancelling(true);
-                        try {
-                            await apiService.cancelBooking(bookingId);
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                        } catch (e) {
-                            console.error('Cancel booking error:', e);
-                        }
-                        navigation.goBack();
-                    },
-                },
-            ]
+            'Are you sure you want to cancel this booking request? Your wallet will be refunded.',
+            async () => {
+                setIsCancelling(true);
+                try {
+                    await apiService.cancelBookingByMember(bookingId, 'Cancelled from waiting screen');
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                } catch (e) {
+                    console.error('Cancel booking error:', e);
+                }
+                navigation.goBack();
+            },
+            { confirmText: 'Yes, Cancel', cancelText: 'No, Wait' }
         );
     }, [bookingId, isCancelling]);
 
@@ -541,6 +537,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                     </>
                 )}
             </ScrollView>
+            {DialogComponent}
         </View>
     );
 };
