@@ -101,7 +101,8 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                                 showsVerticalScrollIndicator={false}
                                 contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
                                 getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-                                initialScrollIndex={Math.max(0, HOURS.findIndex(h => h.value === selectedHour) - 1)} // Rough centering
+                                initialScrollIndex={Math.max(0, HOURS.findIndex(h => h.value === selectedHour) - 1)}
+                                onScrollToIndexFailed={() => {}}
                             />
                         </View>
 
@@ -118,7 +119,9 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                                 })}
                                 showsVerticalScrollIndicator={false}
                                 contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
+                                getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
                                 initialScrollIndex={Math.max(0, MINUTES.findIndex(m => m.value === selectedMinute) - 1)}
+                                onScrollToIndexFailed={() => {}}
                             />
                         </View>
 
@@ -126,11 +129,15 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                         <View style={styles.column}>
                             <Text style={styles.columnLabel}>Period</Text>
                             <View style={{ marginTop: ITEM_HEIGHT }}>
-                                {PERIODS.map(item => renderItem({
-                                    item,
-                                    isSelected: item.value === selectedPeriod,
-                                    onPress: () => setSelectedPeriod(item.value)
-                                }))}
+                                {PERIODS.map(item => (
+                                    <React.Fragment key={item.value}>
+                                        {renderItem({
+                                            item,
+                                            isSelected: item.value === selectedPeriod,
+                                            onPress: () => setSelectedPeriod(item.value)
+                                        })}
+                                    </React.Fragment>
+                                ))}
                             </View>
                         </View>
                     </View>

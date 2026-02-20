@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.gray100,
     borderRadius: RADIUS.medium,
-    padding: SPACING.medium,
+    padding: SPACING.md,
     gap: 10,
   },
   securityText: {

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Yann Home",
     "slug": "yann-mobile",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "8",
+      "buildNumber": "9",
       "associatedDomains": [
         "applinks:yann.app",
         "applinks:www.yann.app"
@@ -33,7 +33,7 @@
     "android": {
       "package": "com.yanncare.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 8,
+      "versionCode": 9,
       "userInterfaceStyle": "light",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
