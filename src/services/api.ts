@@ -782,19 +782,6 @@ class ApiService {
     return this.rejectBooking(bookingId, providerId || '', 'Cancelled by user');
   }
 
-  /**
-   * POST /api/bookings/cancel
-   * Cancel a booking as a member (customer). Uses the dedicated cancel endpoint
-   * which handles wallet refunds and does NOT require providerId.
-   */
-  async cancelBookingByMember(bookingId: string, reason?: string): Promise<ApiResponse> {
-    const response = await this.client.post('/bookings/cancel', {
-      bookingId,
-      reason: reason || 'Cancelled by customer',
-    });
-    return response.data;
-  }
-
   // ====================================================================
   // BOOKING REQUEST FLOW (3-minute timer system)
   // ====================================================================

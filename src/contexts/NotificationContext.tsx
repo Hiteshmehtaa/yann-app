@@ -8,7 +8,7 @@ import { stopBuzzer, initializeBuzzerSound } from '../utils/soundNotifications';
 
 export interface AppNotification {
   id: string;
-  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'booking_expired' | 'booking_request' | 'booking_request_reminder' | 'payment_required' | 'completion_payment_required' | 'general';
+  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'booking_expired' | 'booking_request' | 'booking_request_reminder' | 'booking_cancelled' | 'payment_required' | 'completion_payment_required' | 'general';
   title: string;
   message: string;
   otp?: string;
@@ -71,6 +71,8 @@ interface NotificationContextType {
   incomingBookingRequest: BookingRequestData | null;
   setIncomingBookingRequest: (data: BookingRequestData | null) => void;
   ignoreBookingRequest: (bookingId: string) => void;
+  // Cancellation message shown briefly when homeowner cancels
+  cancelledBookingMessage: string | null;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -79,6 +81,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [paymentModalData, setPaymentModalData] = useState<PaymentModalData | null>(null);
   const [incomingBookingRequest, setIncomingBookingRequest] = useState<BookingRequestData | null>(null);
+  const [cancelledBookingMessage, setCancelledBookingMessage] = useState<string | null>(null);
   // Track ignored bookings to prevent re-fetching (race condition fix)
   const ignoredBookingIds = useRef<Set<string>>(new Set());
   const { user } = useAuth();
@@ -86,18 +89,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Initialise the audio session once at startup so it is ready before the
   // first booking request notification arrives.
   useEffect(() => {
-    initializeBuzzerSound().catch(() => {});
+    initializeBuzzerSound().catch(() => { });
   }, []);
 
   const ignoreBookingRequest = (bookingId: string) => {
     console.log('🔇 Ignoring booking and STOPPING buzzer:', bookingId);
     stopBuzzer(); // Explicitly stop sound
-    
+
     // Dismiss the system notification to stop buzzer from continuing
     Notifications.dismissAllNotificationsAsync()
       .then(() => console.log('✅ System notification dismissed'))
       .catch(err => console.error('❌ Failed to dismiss notification:', err));
-    
+
     ignoredBookingIds.current.add(bookingId);
     setIncomingBookingRequest(null);
   };
@@ -219,9 +222,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           if (typeof val !== 'string') return val;
           try { return JSON.parse(val); } catch { return null; }
         };
-        const parsedDriverDetails    = safeJsonParse(data.driverDetails);
+        const parsedDriverDetails = safeJsonParse(data.driverDetails);
         const parsedDriverTripDetails = safeJsonParse(data.driverTripDetails);
-        const parsedPricingBreakdown  = safeJsonParse(data.pricingBreakdown);
+        const parsedPricingBreakdown = safeJsonParse(data.pricingBreakdown);
 
         // If a reminder arrives for the booking ALREADY displayed in the modal,
         // silently update only the expiresAt field so the countdown timer stays
@@ -257,6 +260,22 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             driverTripDetails: parsedDriverTripDetails,
             pricingBreakdown: parsedPricingBreakdown,
           };
+        });
+      }
+
+      // BOOKING CANCELLED — homeowner cancelled while provider had the request open
+      if (data.type === 'booking_cancelled' && data.bookingId) {
+        setIncomingBookingRequest((prev: BookingRequestData | null) => {
+          if (prev && prev.bookingId === (data.bookingId as string)) {
+            // This is the booking currently shown in the modal — dismiss it
+            stopBuzzer();
+            Notifications.dismissAllNotificationsAsync().catch(() => { });
+            setCancelledBookingMessage(`${data.customerName || 'Customer'} cancelled this booking.`);
+            // Clear after 3 seconds so the UI can show the message briefly
+            setTimeout(() => setCancelledBookingMessage(null), 3000);
+            return null;
+          }
+          return prev;
         });
       }
 
@@ -297,7 +316,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           Notifications.dismissAllNotificationsAsync()
             .then(() => console.log('✅ System notifications dismissed on tap'))
             .catch(err => console.error('❌ Failed to dismiss notifications:', err));
-          
+
           // Fetch fresh booking data to get timer info
           checkPendingBookingRequest(data.bookingId as string);
         }
@@ -783,7 +802,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         setPaymentModalData,
         incomingBookingRequest,
         setIncomingBookingRequest,
-        ignoreBookingRequest
+        ignoreBookingRequest,
+        cancelledBookingMessage,
       }}
     >
       {children}

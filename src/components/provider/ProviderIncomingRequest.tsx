@@ -234,30 +234,6 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
         return () => subscription.remove();
     }, [visible, requestData]);
 
-    // 4. Poll booking status — auto-dismiss if member cancelled
-    useEffect(() => {
-        if (!visible || !requestData?.bookingId) return;
-
-        const pollInterval = setInterval(async () => {
-            try {
-                const res = await apiService.checkBookingRequestStatus(requestData.bookingId);
-                if (res.success && res.data) {
-                    const status = res.data.status;
-                    if (status === 'cancelled' || status === 'expired') {
-                        console.log(`📲 Booking ${status} by member — auto-dismissing modal`);
-                        clearInterval(pollInterval);
-                        await stopAllEffects();
-                        onDismiss();
-                    }
-                }
-            } catch (e) {
-                // Ignore polling errors
-            }
-        }, 5000);
-
-        return () => clearInterval(pollInterval);
-    }, [visible, requestData?.bookingId]);
-
     const startBuzzerEffects = async () => {
         // Mark this invocation as the active one
         buzzerShouldPlayRef.current = true;

@@ -79,7 +79,6 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // -- STATE --
     const [currentStep, setCurrentStep] = useState(0);
-    const stepBeforeNavRef = useRef<number | null>(null);
     const [provider, setProvider] = useState<any>(initialProvider);
 
     // Data State
@@ -162,14 +161,14 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Sync Address from Route (when returning from SavedAddresses)
     useEffect(() => {
+        // route.params is immutable, but we check if we received a new address
+        // Navigation params update when navigating back with new params
+        // However, usually we used listener or separate param update logic.
+        // In React Navigation 6, route.params updates automatically if we navigate with merge: true key.
+        // Let's assume the previous logic worked:
         if (route.params?.selectedAddress && route.params.selectedAddress !== selectedAddress) {
             setSelectedAddress(route.params.selectedAddress);
             setFormErrors((prev: any) => ({ ...prev, address: undefined }));
-        }
-        // Always restore to Location step if we navigated away for address selection
-        if (stepBeforeNavRef.current !== null) {
-            setCurrentStep(stepBeforeNavRef.current);
-            stepBeforeNavRef.current = null;
         }
     }, [route.params?.selectedAddress]);
 
@@ -455,10 +454,7 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
                         {currentStep === 1 && (
                             <BookingStepLocation
                                 selectedAddress={selectedAddress}
-                                onSelectAddressPress={() => {
-                                    stepBeforeNavRef.current = currentStep;
-                                    navigation.navigate('SavedAddresses', { fromBooking: true });
-                                }}
+                                onSelectAddressPress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
                                 notes={notes}
                                 onNotesChange={setNotes}
                                 formErrors={formErrors}
