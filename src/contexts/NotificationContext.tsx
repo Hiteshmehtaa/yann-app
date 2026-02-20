@@ -376,6 +376,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, [user]);
 
+  // Poll every 3s while a booking modal is showing — catch cancellations instantly
+  useEffect(() => {
+    if (!incomingBookingRequest) return;
+    if (!user || (user.role !== 'provider' && (user as any).audience !== 'provider')) return;
+
+    const interval = setInterval(() => {
+      checkPendingBookingRequests();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [incomingBookingRequest, user]);
+
   // Check for a specific pending booking request (when notification tapped)
   const checkPendingBookingRequest = async (bookingId: string) => {
     // Respect the ignore list — prevents re-showing a booking the provider already
@@ -480,6 +492,16 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         // Calling it here races with that Effect and can create a second
         // orphaned Sound instance that stopBuzzer() cannot stop.
         console.log('✅ Found pending booking request on app open:', pendingRequest.bookingId);
+      } else if (incomingBookingRequest) {
+        // No pending requests from backend, but we're still showing a modal.
+        // This means the booking was cancelled, expired, or already responded to.
+        // Dismiss the modal immediately.
+        console.log('🚫 No pending requests — dismissing stale modal for:', incomingBookingRequest.bookingId);
+        stopBuzzer();
+        Notifications.dismissAllNotificationsAsync().catch(() => { });
+        setCancelledBookingMessage('This booking is no longer available.');
+        setTimeout(() => setCancelledBookingMessage(null), 3000);
+        setIncomingBookingRequest(null);
       }
     } catch (error) {
       console.error('Failed to check pending booking requests:', error);
