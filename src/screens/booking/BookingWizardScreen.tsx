@@ -79,6 +79,7 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // -- STATE --
     const [currentStep, setCurrentStep] = useState(0);
+    const stepBeforeNavRef = useRef<number | null>(null);
     const [provider, setProvider] = useState<any>(initialProvider);
 
     // Data State
@@ -164,9 +165,11 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
         if (route.params?.selectedAddress && route.params.selectedAddress !== selectedAddress) {
             setSelectedAddress(route.params.selectedAddress);
             setFormErrors((prev: any) => ({ ...prev, address: undefined }));
-            // Restore to Location step (step 1) since user was on this step
-            // when they navigated to SavedAddresses
-            setCurrentStep(1);
+        }
+        // Always restore to Location step if we navigated away for address selection
+        if (stepBeforeNavRef.current !== null) {
+            setCurrentStep(stepBeforeNavRef.current);
+            stepBeforeNavRef.current = null;
         }
     }, [route.params?.selectedAddress]);
 
@@ -452,7 +455,10 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
                         {currentStep === 1 && (
                             <BookingStepLocation
                                 selectedAddress={selectedAddress}
-                                onSelectAddressPress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
+                                onSelectAddressPress={() => {
+                                    stepBeforeNavRef.current = currentStep;
+                                    navigation.navigate('SavedAddresses', { fromBooking: true });
+                                }}
                                 notes={notes}
                                 onNotesChange={setNotes}
                                 formErrors={formErrors}

@@ -100,7 +100,7 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
     useEffect(() => {
         if (!visible || !isDriverBooking || !requestData?.bookingId) return;
         if (requestData.driverTripDetails || requestData.driverDetails || fetchedDetails) return;
-        
+
         let cancelled = false;
         (async () => {
             try {
@@ -223,16 +223,40 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
                 // state updates triggered by the return-to-foreground) runs
                 // first and claims isPlaying before we do.
                 setTimeout(() => {
-                    playBookingRequestBuzzer().catch(() => {});
+                    playBookingRequestBuzzer().catch(() => { });
                 }, 600);
             } else if (nextState === 'background') {
                 // Stop in-app buzzer — channel push notifications handle sound
-                stopBuzzer().catch(() => {});
+                stopBuzzer().catch(() => { });
             }
         });
 
         return () => subscription.remove();
     }, [visible, requestData]);
+
+    // 4. Poll booking status — auto-dismiss if member cancelled
+    useEffect(() => {
+        if (!visible || !requestData?.bookingId) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const res = await apiService.checkBookingRequestStatus(requestData.bookingId);
+                if (res.success && res.data) {
+                    const status = res.data.status;
+                    if (status === 'cancelled' || status === 'expired') {
+                        console.log(`📲 Booking ${status} by member — auto-dismissing modal`);
+                        clearInterval(pollInterval);
+                        await stopAllEffects();
+                        onDismiss();
+                    }
+                }
+            } catch (e) {
+                // Ignore polling errors
+            }
+        }, 5000);
+
+        return () => clearInterval(pollInterval);
+    }, [visible, requestData?.bookingId]);
 
     const startBuzzerEffects = async () => {
         // Mark this invocation as the active one
@@ -248,12 +272,12 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
             console.log('🚫 Buzzer start cancelled (modal already dismissed during delay)');
             return;
         }
-        
+
         try {
             // Play buzzer sound - it will loop continuously until stopBuzzer() is called
             await playBookingRequestBuzzer();
-        } catch (e) { 
-            console.log('Buzzer error', e); 
+        } catch (e) {
+            console.log('Buzzer error', e);
         }
 
         // Start continuous vibration
@@ -547,109 +571,109 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
                                             const hours = requestData.bookedHours || fetchedDetails?.quantity || fetchedDetails?.bookedHours || 0;
 
                                             return (<>
-                                        {/* Trip Type & Direction */}
-                                        <View style={styles.detailRow}>
-                                            <View style={styles.detailChip}>
-                                                <Ionicons name="swap-horizontal" size={14} color="#6366F1" />
-                                                <Text style={styles.detailChipText}>
-                                                    {(tripDetails?.tripType || driverDets?.tripType || 'incity') === 'incity' ? 'In-City' : 'Outstation'}
-                                                </Text>
-                                            </View>
-                                            <View style={styles.detailChip}>
-                                                <Ionicons name="navigate" size={14} color="#6366F1" />
-                                                <Text style={styles.detailChipText}>
-                                                    {(tripDetails?.serviceType || driverDets?.serviceType || 'oneway') === 'oneway' ? 'One Way' : 'Round Trip'}
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        {/* Vehicle & Transmission */}
-                                        <View style={styles.detailRow}>
-                                            {(tripDetails?.vehicleType || driverDets?.vehicleType) ? (
-                                                <View style={[styles.detailChip, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
-                                                    <Ionicons name="car-sport" size={14} color="#0EA5E9" />
-                                                    <Text style={[styles.detailChipText, { color: '#0369A1' }]}>
-                                                        {(tripDetails?.vehicleType || driverDets?.vehicleType || '').charAt(0).toUpperCase() + (tripDetails?.vehicleType || driverDets?.vehicleType || '').slice(1)}
-                                                    </Text>
+                                                {/* Trip Type & Direction */}
+                                                <View style={styles.detailRow}>
+                                                    <View style={styles.detailChip}>
+                                                        <Ionicons name="swap-horizontal" size={14} color="#6366F1" />
+                                                        <Text style={styles.detailChipText}>
+                                                            {(tripDetails?.tripType || driverDets?.tripType || 'incity') === 'incity' ? 'In-City' : 'Outstation'}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.detailChip}>
+                                                        <Ionicons name="navigate" size={14} color="#6366F1" />
+                                                        <Text style={styles.detailChipText}>
+                                                            {(tripDetails?.serviceType || driverDets?.serviceType || 'oneway') === 'oneway' ? 'One Way' : 'Round Trip'}
+                                                        </Text>
+                                                    </View>
                                                 </View>
-                                            ) : null}
-                                            {(tripDetails?.transmission || driverDets?.transmission) ? (
-                                                <View style={[styles.detailChip, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
-                                                    <Ionicons name="cog" size={14} color="#0EA5E9" />
-                                                    <Text style={[styles.detailChipText, { color: '#0369A1' }]}>
-                                                        {(tripDetails?.transmission || driverDets?.transmission) === 'manual' ? 'Manual Transmission' : 'Automatic Transmission'}
-                                                    </Text>
+
+                                                {/* Vehicle & Transmission */}
+                                                <View style={styles.detailRow}>
+                                                    {(tripDetails?.vehicleType || driverDets?.vehicleType) ? (
+                                                        <View style={[styles.detailChip, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+                                                            <Ionicons name="car-sport" size={14} color="#0EA5E9" />
+                                                            <Text style={[styles.detailChipText, { color: '#0369A1' }]}>
+                                                                {(tripDetails?.vehicleType || driverDets?.vehicleType || '').charAt(0).toUpperCase() + (tripDetails?.vehicleType || driverDets?.vehicleType || '').slice(1)}
+                                                            </Text>
+                                                        </View>
+                                                    ) : null}
+                                                    {(tripDetails?.transmission || driverDets?.transmission) ? (
+                                                        <View style={[styles.detailChip, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+                                                            <Ionicons name="cog" size={14} color="#0EA5E9" />
+                                                            <Text style={[styles.detailChipText, { color: '#0369A1' }]}>
+                                                                {(tripDetails?.transmission || driverDets?.transmission) === 'manual' ? 'Manual Transmission' : 'Automatic Transmission'}
+                                                            </Text>
+                                                        </View>
+                                                    ) : null}
                                                 </View>
-                                            ) : null}
-                                        </View>
 
-                                        {/* Distance */}
-                                        {(tripDetails?.distanceKm || driverDets?.distanceKm) ? (
-                                            <View style={styles.detailInfoRow}>
-                                                <Text style={styles.detailInfoLabel}>Distance</Text>
-                                                <Text style={styles.detailInfoValue}>
-                                                    {Number(tripDetails?.distanceKm || driverDets?.distanceKm || 0).toFixed(1)} km
-                                                </Text>
-                                            </View>
-                                        ) : null}
+                                                {/* Distance */}
+                                                {(tripDetails?.distanceKm || driverDets?.distanceKm) ? (
+                                                    <View style={styles.detailInfoRow}>
+                                                        <Text style={styles.detailInfoLabel}>Distance</Text>
+                                                        <Text style={styles.detailInfoValue}>
+                                                            {Number(tripDetails?.distanceKm || driverDets?.distanceKm || 0).toFixed(1)} km
+                                                        </Text>
+                                                    </View>
+                                                ) : null}
 
-                                        {/* Duration */}
-                                        {hours ? (
-                                            <View style={styles.detailInfoRow}>
-                                                <Text style={styles.detailInfoLabel}>Duration</Text>
-                                                <Text style={styles.detailInfoValue}>{hours} hours</Text>
-                                            </View>
-                                        ) : null}
+                                                {/* Duration */}
+                                                {hours ? (
+                                                    <View style={styles.detailInfoRow}>
+                                                        <Text style={styles.detailInfoLabel}>Duration</Text>
+                                                        <Text style={styles.detailInfoValue}>{hours} hours</Text>
+                                                    </View>
+                                                ) : null}
 
-                                        {/* Rate */}
-                                        {(driverDets?.hourlyRate || pricing?.hourlyRate) ? (
-                                            <View style={styles.detailInfoRow}>
-                                                <Text style={styles.detailInfoLabel}>Your Rate</Text>
-                                                <Text style={styles.detailInfoValue}>
-                                                    {pricing?.hourlyRate || `₹${driverDets?.hourlyRate}/hr`}
-                                                </Text>
-                                            </View>
-                                        ) : null}
+                                                {/* Rate */}
+                                                {(driverDets?.hourlyRate || pricing?.hourlyRate) ? (
+                                                    <View style={styles.detailInfoRow}>
+                                                        <Text style={styles.detailInfoLabel}>Your Rate</Text>
+                                                        <Text style={styles.detailInfoValue}>
+                                                            {pricing?.hourlyRate || `₹${driverDets?.hourlyRate}/hr`}
+                                                        </Text>
+                                                    </View>
+                                                ) : null}
 
-                                        {/* Return Fare */}
-                                        {(tripDetails?.returnFare > 0 || driverDets?.driverReturnFare > 0) ? (
-                                            <View style={styles.detailInfoRow}>
-                                                <Text style={styles.detailInfoLabel}>Return Fare</Text>
-                                                <Text style={styles.detailInfoValue}>
-                                                    ₹{tripDetails?.returnFare || driverDets?.driverReturnFare || 0}
-                                                </Text>
-                                            </View>
-                                        ) : null}
+                                                {/* Return Fare */}
+                                                {(tripDetails?.returnFare > 0 || driverDets?.driverReturnFare > 0) ? (
+                                                    <View style={styles.detailInfoRow}>
+                                                        <Text style={styles.detailInfoLabel}>Return Fare</Text>
+                                                        <Text style={styles.detailInfoValue}>
+                                                            ₹{tripDetails?.returnFare || driverDets?.driverReturnFare || 0}
+                                                        </Text>
+                                                    </View>
+                                                ) : null}
 
-                                        {/* Pricing Breakdown */}
-                                        {pricing && (
-                                            <View style={styles.breakdownBox}>
-                                                <Text style={styles.breakdownTitle}>Price Breakdown</Text>
-                                                {pricing.baseCost != null && (
-                                                    <View style={styles.breakdownRow}>
-                                                        <Text style={styles.breakdownLabel}>Base ({pricing.duration || `${hours}hrs`})</Text>
-                                                        <Text style={styles.breakdownValue}>₹{pricing.baseCost}</Text>
+                                                {/* Pricing Breakdown */}
+                                                {pricing && (
+                                                    <View style={styles.breakdownBox}>
+                                                        <Text style={styles.breakdownTitle}>Price Breakdown</Text>
+                                                        {pricing.baseCost != null && (
+                                                            <View style={styles.breakdownRow}>
+                                                                <Text style={styles.breakdownLabel}>Base ({pricing.duration || `${hours}hrs`})</Text>
+                                                                <Text style={styles.breakdownValue}>₹{pricing.baseCost}</Text>
+                                                            </View>
+                                                        )}
+                                                        {pricing.returnFare > 0 && (
+                                                            <View style={styles.breakdownRow}>
+                                                                <Text style={styles.breakdownLabel}>Return Fare</Text>
+                                                                <Text style={styles.breakdownValue}>₹{pricing.returnFare}</Text>
+                                                            </View>
+                                                        )}
+                                                        {pricing.gst > 0 && (
+                                                            <View style={styles.breakdownRow}>
+                                                                <Text style={styles.breakdownLabel}>GST ({pricing.gstPercentage || 18}%)</Text>
+                                                                <Text style={styles.breakdownValue}>₹{pricing.gst}</Text>
+                                                            </View>
+                                                        )}
+                                                        <View style={[styles.breakdownRow, styles.breakdownTotalRow]}>
+                                                            <Text style={styles.breakdownTotalLabel}>Total</Text>
+                                                            <Text style={styles.breakdownTotalValue}>₹{pricing.total || requestData.totalPrice}</Text>
+                                                        </View>
                                                     </View>
                                                 )}
-                                                {pricing.returnFare > 0 && (
-                                                    <View style={styles.breakdownRow}>
-                                                        <Text style={styles.breakdownLabel}>Return Fare</Text>
-                                                        <Text style={styles.breakdownValue}>₹{pricing.returnFare}</Text>
-                                                    </View>
-                                                )}
-                                                {pricing.gst > 0 && (
-                                                    <View style={styles.breakdownRow}>
-                                                        <Text style={styles.breakdownLabel}>GST ({pricing.gstPercentage || 18}%)</Text>
-                                                        <Text style={styles.breakdownValue}>₹{pricing.gst}</Text>
-                                                    </View>
-                                                )}
-                                                <View style={[styles.breakdownRow, styles.breakdownTotalRow]}>
-                                                    <Text style={styles.breakdownTotalLabel}>Total</Text>
-                                                    <Text style={styles.breakdownTotalValue}>₹{pricing.total || requestData.totalPrice}</Text>
-                                                </View>
-                                            </View>
-                                        )}
-                                    </>);
+                                            </>);
                                         })()}
                                     </View>
                                 )}
