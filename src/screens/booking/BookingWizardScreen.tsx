@@ -169,6 +169,8 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
         if (route.params?.selectedAddress && route.params.selectedAddress !== selectedAddress) {
             setSelectedAddress(route.params.selectedAddress);
             setFormErrors((prev: any) => ({ ...prev, address: undefined }));
+            // Stay on the location step (step 1) — don't reset to step 0
+            setCurrentStep(1);
         }
     }, [route.params?.selectedAddress]);
 
@@ -249,6 +251,9 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
 
 
     // -- HANDLERS --
+
+    // Disable Next on step 1 until time is entered
+    const isNextDisabled = currentStep === 0 && !bookingTime;
 
     const handleNext = () => {
         const errors: any = {};
@@ -497,9 +502,9 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
                     </View>
 
                     <TouchableOpacity
-                        style={[styles.nextButton, isLoading && { opacity: 0.7 }]}
+                        style={[styles.nextButton, (isLoading || isNextDisabled) && { opacity: 0.4 }]}
                         onPress={handleNext}
-                        disabled={isLoading}
+                        disabled={isLoading || isNextDisabled}
                     >
                         {isLoading ? (
                             <ActivityIndicator color="#FFF" />

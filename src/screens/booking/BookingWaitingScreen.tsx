@@ -9,6 +9,7 @@ import {
     ScrollView,
     Image,
     Alert,
+    Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,6 +57,8 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
     const [showAlternatives, setShowAlternatives] = useState(false);
     const [rejectedProviderIds, setRejectedProviderIds] = useState<string[]>([providerId]); // Start with initial provider
     const [isLoading, setIsLoading] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     // Track current provider (can change when selecting alternative)
     const [currentProviderId, setCurrentProviderId] = useState(providerId);
@@ -303,31 +306,28 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
     };
 
     const handleCancelBooking = () => {
-        Alert.alert(
-            'Cancel Booking?',
-            'Are you sure you want to cancel this booking request?',
-            [
-                { text: 'No, Wait', style: 'cancel' },
-                {
-                    text: 'Yes, Cancel',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const response = await apiService.cancelBookingByMember(bookingId, 'Cancelled by customer from waiting screen');
-                            if (response.success) {
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                navigation.goBack();
-                            } else {
-                                Alert.alert('Error', response.message || 'Failed to cancel booking');
-                            }
-                        } catch (error: any) {
-                            console.error('Cancel error:', error);
-                            Alert.alert('Error', 'Failed to cancel booking. Please try again.');
-                        }
-                    },
-                },
-            ]
-        );
+        setShowCancelModal(true);
+    };
+
+    const confirmCancel = async () => {
+        setIsCancelling(true);
+        try {
+            const response = await apiService.cancelBookingByMember(bookingId, 'Cancelled by customer from waiting screen');
+            if (response.success) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                setShowCancelModal(false);
+                navigation.goBack();
+            } else {
+                setIsCancelling(false);
+                setShowCancelModal(false);
+                Alert.alert('Error', response.message || 'Failed to cancel booking');
+            }
+        } catch (error: any) {
+            console.error('Cancel error:', error);
+            setIsCancelling(false);
+            setShowCancelModal(false);
+            Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+        }
     };
 
     const formatTime = (seconds: number) => {
@@ -528,6 +528,58 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                     </>
                 )}
             </ScrollView>
+
+            {/* Themed Cancel Confirmation Modal */}
+            <Modal
+                visible={showCancelModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => !isCancelling && setShowCancelModal(false)}
+            >
+                <View style={cancelStyles.overlay}>
+                    <View style={cancelStyles.card}>
+                        {/* Red accent bar */}
+                        <View style={cancelStyles.accentBar} />
+
+                        <View style={cancelStyles.content}>
+                            <View style={cancelStyles.iconCircle}>
+                                <Ionicons name="close-circle" size={40} color="#EF4444" />
+                            </View>
+
+                            <Text style={cancelStyles.title}>Cancel Booking?</Text>
+                            <Text style={cancelStyles.subtitle}>
+                                Your request to {currentProviderName} will be cancelled and the amount will be refunded to your wallet.
+                            </Text>
+
+                            <View style={cancelStyles.actions}>
+                                <TouchableOpacity
+                                    style={cancelStyles.keepButton}
+                                    onPress={() => setShowCancelModal(false)}
+                                    disabled={isCancelling}
+                                >
+                                    <Text style={cancelStyles.keepText}>No, Wait</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[cancelStyles.cancelButton, isCancelling && { opacity: 0.6 }]}
+                                    onPress={confirmCancel}
+                                    disabled={isCancelling}
+                                >
+                                    <LinearGradient
+                                        colors={['#EF4444', '#DC2626']}
+                                        style={cancelStyles.cancelGradient}
+                                    >
+                                        <Ionicons name={isCancelling ? 'hourglass-outline' : 'close'} size={18} color="#FFF" />
+                                        <Text style={cancelStyles.cancelText}>
+                                            {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                                        </Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -964,6 +1016,90 @@ const styles = StyleSheet.create({
     changeRangeText: {
         fontSize: 15,
         fontWeight: '600',
+        color: '#FFF',
+    },
+});
+
+const cancelStyles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    card: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        width: '100%',
+        maxWidth: 360,
+        overflow: 'hidden',
+        ...SHADOWS.lg,
+    },
+    accentBar: {
+        height: 4,
+        backgroundColor: '#EF4444',
+    },
+    content: {
+        padding: 28,
+        alignItems: 'center',
+    },
+    iconCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#FEF2F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#0F172A',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: 15,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 28,
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    keepButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 14,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    keepText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#475569',
+    },
+    cancelButton: {
+        flex: 1,
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    cancelGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        gap: 6,
+    },
+    cancelText: {
+        fontSize: 15,
+        fontWeight: '700',
         color: '#FFF',
     },
 });
