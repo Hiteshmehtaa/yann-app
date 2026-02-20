@@ -8,6 +8,7 @@ import {
     Dimensions,
     ScrollView,
     Image,
+    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -301,6 +302,34 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
         }
     };
 
+    const handleCancelBooking = () => {
+        Alert.alert(
+            'Cancel Booking?',
+            'Are you sure you want to cancel this booking request?',
+            [
+                { text: 'No, Wait', style: 'cancel' },
+                {
+                    text: 'Yes, Cancel',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const response = await apiService.cancelBookingByMember(bookingId, 'Cancelled by customer from waiting screen');
+                            if (response.success) {
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                navigation.goBack();
+                            } else {
+                                Alert.alert('Error', response.message || 'Failed to cancel booking');
+                            }
+                        } catch (error: any) {
+                            console.error('Cancel error:', error);
+                            Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -348,7 +377,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+                    onPress={handleCancelBooking}
                 >
                     <Ionicons name="close" size={24} color="#FFF" />
                 </TouchableOpacity>

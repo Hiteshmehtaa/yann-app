@@ -777,7 +777,16 @@ class ApiService {
     return response.data;
   }
 
-  // Alias for cancel - requires providerId for provider cancellations
+  /**
+   * POST /api/bookings/cancel
+   * Cancel a booking as the homeowner (with wallet refund)
+   */
+  async cancelBookingByMember(bookingId: string, reason?: string): Promise<ApiResponse> {
+    const response = await this.client.post('/bookings/cancel', { bookingId, reason });
+    return response.data;
+  }
+
+  // Alias for provider-side cancel
   async cancelBooking(bookingId: string, providerId?: string): Promise<ApiResponse> {
     return this.rejectBooking(bookingId, providerId || '', 'Cancelled by user');
   }
