@@ -81,9 +81,6 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                 <View style={styles.container} onStartShouldSetResponder={() => true}>
                     <View style={styles.header}>
                         <Text style={styles.title}>{title}</Text>
-                        <TouchableOpacity onPress={handleConfirm}>
-                            <Text style={styles.confirmText}>Done</Text>
-                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.pickerContainer}>
@@ -102,7 +99,7 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                                 contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
                                 getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
                                 initialScrollIndex={Math.max(0, HOURS.findIndex(h => h.value === selectedHour) - 1)}
-                                onScrollToIndexFailed={() => {}}
+                                onScrollToIndexFailed={() => { }}
                             />
                         </View>
 
@@ -121,7 +118,7 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                                 contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
                                 getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
                                 initialScrollIndex={Math.max(0, MINUTES.findIndex(m => m.value === selectedMinute) - 1)}
-                                onScrollToIndexFailed={() => {}}
+                                onScrollToIndexFailed={() => { }}
                             />
                         </View>
 
@@ -140,6 +137,16 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                                 ))}
                             </View>
                         </View>
+                    </View>
+
+                    {/* Footer with Cancel and Done buttons */}
+                    <View style={styles.footer}>
+                        <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
+                            <Text style={styles.cancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleConfirm} style={styles.doneButton}>
+                            <Text style={styles.doneText}>Done</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Selection Highlight Bar */}
@@ -167,9 +174,6 @@ const styles = StyleSheet.create({
         ...SHADOWS.lg,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         marginBottom: 20,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.gray100,
@@ -180,10 +184,34 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: COLORS.text,
     },
-    confirmText: {
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.gray100,
+    },
+    cancelButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+    },
+    cancelText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+    },
+    doneButton: {
+        backgroundColor: COLORS.primary,
+        paddingVertical: 10,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+    },
+    doneText: {
         fontSize: 16,
         fontWeight: '700',
-        color: COLORS.primary,
+        color: '#FFFFFF',
     },
     pickerContainer: {
         flexDirection: 'row',

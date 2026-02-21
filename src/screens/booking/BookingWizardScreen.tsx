@@ -264,6 +264,21 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
             if ((isHourlyService || hasOvertimeCharges) && !endTime) errors.endTime = true;
             // Validate logic: End Time > Start Time
             if (bookingTime && endTime && endTime <= bookingTime) errors.endTime = true;
+
+            // Validate: Booking must be at least 45 minutes from now
+            if (bookingDate && bookingTime && !errors.date && !errors.time) {
+                const bookingDateTime = new Date(bookingDate);
+                bookingDateTime.setHours(bookingTime.getHours(), bookingTime.getMinutes(), 0, 0);
+                const minTime = new Date(Date.now() + 45 * 60 * 1000); // now + 45 minutes
+
+                if (bookingDateTime < minTime) {
+                    errors.time = true;
+                    setFormErrors(errors);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    showError('Booking must be at least 45 minutes from now');
+                    return;
+                }
+            }
         } else if (currentStep === 1) {
             if (!selectedAddress) errors.address = true;
         }
