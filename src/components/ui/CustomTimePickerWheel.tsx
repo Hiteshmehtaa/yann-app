@@ -8,6 +8,7 @@ interface CustomTimePickerWheelProps {
     onClose: () => void;
     onConfirm: (date: Date) => void;
     initialDate?: Date;
+    minimumDate?: Date;
     title?: string;
 }
 
@@ -24,6 +25,7 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
     onClose,
     onConfirm,
     initialDate = new Date(),
+    minimumDate,
     title = 'Select Time'
 }) => {
     const [selectedHour, setSelectedHour] = useState(12);
@@ -32,30 +34,49 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
 
     useEffect(() => {
         if (visible) {
-            let h = initialDate.getHours();
-            const m = initialDate.getMinutes();
+            // Determine the effective initial time (clamp to minimum if needed)
+            let effectiveDate = initialDate;
+            if (minimumDate && initialDate < minimumDate) {
+                effectiveDate = minimumDate;
+            }
+
+            let h = effectiveDate.getHours();
+            const m = effectiveDate.getMinutes();
             const p = h >= 12 ? 'PM' : 'AM';
 
             h = h % 12;
             h = h ? h : 12; // the hour '0' should be '12'
 
-            // Round minutes to nearest 5
-            const roundedMinute = Math.round(m / 5) * 5;
+            // Round minutes UP to nearest 5 (for minimum enforcement)
+            const roundedMinute = minimumDate ? Math.ceil(m / 5) * 5 : Math.round(m / 5) * 5;
 
             setSelectedHour(h);
-            setSelectedMinute(roundedMinute === 60 ? 0 : roundedMinute); // Handle 60 as 00
+            setSelectedMinute(roundedMinute >= 60 ? 0 : roundedMinute);
             setSelectedPeriod(p);
         }
-    }, [visible, initialDate]);
+    }, [visible, initialDate, minimumDate]);
+
+    // Check if a given time (hour, minute, period) is before the minimum
+    const isTimeDisabled = (hour: number, minute: number, period: string): boolean => {
+        if (!minimumDate) return false;
+
+        let h = hour;
+        if (period === 'PM' && h !== 12) h += 12;
+        if (period === 'AM' && h === 12) h = 0;
+
+        const testDate = new Date(initialDate);
+        testDate.setHours(h, minute, 0, 0);
+        return testDate < minimumDate;
+    };
 
     // Helpers to render items
-    const renderItem = ({ item, isSelected, onPress }: { item: any, isSelected: boolean, onPress: () => void }) => (
+    const renderItem = ({ item, isSelected, onPress, disabled }: { item: any, isSelected: boolean, onPress: () => void, disabled?: boolean }) => (
         <TouchableOpacity
-            style={[styles.item, isSelected && styles.selectedItem]}
-            onPress={onPress}
-            activeOpacity={0.8}
+            style={[styles.item, isSelected && styles.selectedItem, disabled && styles.disabledItem]}
+            onPress={disabled ? undefined : onPress}
+            activeOpacity={disabled ? 1 : 0.8}
         >
-            <Text style={[styles.itemText, isSelected && styles.selectedItemText]}>{item.label}</Text>
+            <Text style={[styles.itemText, isSelected && styles.selectedItemText, disabled && styles.disabledItemText]}>{item.label}</Text>
         </TouchableOpacity>
     );
 
@@ -67,7 +88,13 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
 
         date.setHours(h);
         date.setMinutes(selectedMinute);
-        onConfirm(date);
+
+        // Clamp to minimum if needed
+        if (minimumDate && date < minimumDate) {
+            onConfirm(minimumDate);
+        } else {
+            onConfirm(date);
+        }
     };
 
     return (
@@ -93,7 +120,8 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                                 renderItem={({ item }) => renderItem({
                                     item,
                                     isSelected: item.value === selectedHour,
-                                    onPress: () => setSelectedHour(item.value)
+                                    onPress: () => setSelectedHour(item.value),
+                                    disabled: MINUTES.every(m => isTimeDisabled(item.value, m.value, selectedPeriod))
                                 })}
                                 showsVerticalScrollIndicator={false}
                                 contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
@@ -112,7 +140,8 @@ export const CustomTimePickerWheel: React.FC<CustomTimePickerWheelProps> = ({
                                 renderItem={({ item }) => renderItem({
                                     item,
                                     isSelected: item.value === selectedMinute,
-                                    onPress: () => setSelectedMinute(item.value)
+                                    onPress: () => setSelectedMinute(item.value),
+                                    disabled: isTimeDisabled(selectedHour, item.value, selectedPeriod)
                                 })}
                                 showsVerticalScrollIndicator={false}
                                 contentContainerStyle={{ paddingVertical: ITEM_HEIGHT }}
@@ -251,5 +280,11 @@ const styles = StyleSheet.create({
         fontSize: 22,
         color: COLORS.primary,
         fontWeight: '700',
+    },
+    disabledItem: {
+        opacity: 0.35,
+    },
+    disabledItemText: {
+        color: COLORS.textTertiary,
     },
 });

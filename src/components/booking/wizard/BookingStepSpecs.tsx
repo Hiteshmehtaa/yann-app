@@ -109,6 +109,11 @@ export const BookingStepSpecs: React.FC<BookingStepSpecsProps> = ({
                                 onChange={onTimeChange}
                                 placeholder="Choose start time"
                                 leftIcon="time"
+                                minimumDate={
+                                    bookingDate && bookingDate.toDateString() === new Date().toDateString()
+                                        ? new Date(Date.now() + 45 * 60 * 1000)
+                                        : undefined
+                                }
                             />
 
                             {/* End Time Picker - Only for Overtime/Hourly Services */}

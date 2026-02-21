@@ -183,6 +183,7 @@ export const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                         onChange(date);
                     }}
                     initialDate={value || new Date()}
+                    minimumDate={minimumDate}
                     title="Select Time"
                 />
             )}
