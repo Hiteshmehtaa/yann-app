@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "associatedDomains": [
         "applinks:yann.app",
         "applinks:www.yann.app"

@@ -133,6 +133,16 @@ export const ServiceCard = React.memo<ServiceCardProps>(({
             </View>
           )}
 
+          {/* Active Partners Count */}
+          {!isComingSoon && partnerCount > 0 && (
+            <View style={[styles.partnerBadge, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.85)' }]}>
+              <View style={[styles.activeDot, { backgroundColor: COLORS.success || '#10B981' }]} />
+              <Text style={[styles.partnerText, { color: colors.textSecondary }]}>
+                {partnerCount} {partnerCount === 1 ? 'Partner' : 'Partners'}
+              </Text>
+            </View>
+          )}
+
           {/* Coming Soon Overlay */}
           {isComingSoon && (
             <View style={styles.comingSoonOverlay}>
@@ -230,5 +240,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  partnerBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  partnerText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

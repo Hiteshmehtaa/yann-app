@@ -14,7 +14,6 @@ import {
   Image,
   RefreshControl,
   StatusBar,
-  ActivityIndicator
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +25,7 @@ import { haptics } from '../../utils/haptics';
 import { useToast } from '../../hooks/useToast';
 import { Toast } from '../../components/Toast';
 import { EmptyState } from '../../components/EmptyState';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useTheme } from '../../contexts/ThemeContext';
 import { TopBar } from '../../components/ui/TopBar';
 import { Button } from '../../components/ui/Button';
@@ -132,7 +132,7 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderEmpty = () => {
-    if (isLoading) return <ActivityIndicator style={{ marginTop: 50 }} color={COLORS.primary} />;
+    if (isLoading) return <LoadingSpinner visible={true} size="small" />;
 
     return (
       <View style={[styles.emptyContainer, { paddingTop: 60 }]}>

@@ -25,6 +25,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../utils/lottieAnimations';
 
 const { width } = Dimensions.get('window');
 
@@ -655,77 +657,80 @@ export const WalletScreen = ({ navigation }: any) => {
 
         {/* Animated wrapper — only wraps the transaction list */}
         <Animated.View style={[styles.animatedListWrapper, { opacity: listOpacity, transform: [{ translateY: listTranslateY }] }]}>
-        <FlatList
-          data={activeTransactions}
-          renderItem={renderTransaction}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderListHeader}
-          ListEmptyComponent={
-            !isLoading ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconContainer}>
-                  <Ionicons name="receipt-outline" size={44} color={COLORS.textTertiary} />
+          <FlatList
+            data={activeTransactions}
+            renderItem={renderTransaction}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={renderListHeader}
+            ListEmptyComponent={
+              !isLoading ? (
+                <View style={styles.emptyState}>
+                  <LottieView
+                    source={LottieAnimations.emptyCart}
+                    autoPlay
+                    loop
+                    style={{ width: 180, height: 180 }}
+                  />
+                  <Text style={styles.emptyTitle}>
+                    {activeFilter === 'all' ? 'No transactions yet' : `No ${activeFilter} transactions`}
+                  </Text>
+                  <Text style={styles.emptyDescription}>
+                    {activeFilter === 'all'
+                      ? 'Your payments and top-ups will appear here'
+                      : `Switch filter to see other transactions`}
+                  </Text>
                 </View>
-                <Text style={styles.emptyTitle}>
-                  {activeFilter === 'all' ? 'No transactions yet' : `No ${activeFilter} transactions`}
-                </Text>
-                <Text style={styles.emptyDescription}>
-                  {activeFilter === 'all'
-                    ? 'Your payments and top-ups will appear here'
-                    : `Switch filter to see other transactions`}
-                </Text>
-              </View>
-            ) : null
-          }
-          onEndReached={() => {
-            if (!isLoadingMore && hasMore && !isLoading && activeFilter === 'all') {
-              setIsLoadingMore(true);
-              loadWalletData(false);
+              ) : null
             }
-          }}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={
-            isLoadingMore ? (
-              <View style={styles.loadMoreFooter}>
-                <LoadingSpinner visible={true} size="small" />
-                <Text style={styles.loadMoreText}>Loading more...</Text>
-              </View>
-            ) : hasMore && activeFilter === 'all' && transactions.length > 0 ? (
-              <View style={styles.paginationFooter}>
-                <TouchableOpacity
-                  style={styles.loadMoreBtn}
-                  onPress={() => {
-                    setIsLoadingMore(true);
-                    loadWalletData(false);
-                  }}
-                >
-                  <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
-                  <Text style={styles.loadMoreBtnText}>Load more</Text>
-                </TouchableOpacity>
-              </View>
-            ) : transactions.length > 0 ? (
-              <View style={styles.endOfListFooter}>
-                <View style={styles.endDivider} />
-                <Text style={styles.endOfListText}>You're all caught up</Text>
-                <View style={styles.endDivider} />
-              </View>
-            ) : null
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => {
-                setIsRefreshing(true);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                loadWalletData(true);
-              }}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-            />
-          }
-        />
+            onEndReached={() => {
+              if (!isLoadingMore && hasMore && !isLoading && activeFilter === 'all') {
+                setIsLoadingMore(true);
+                loadWalletData(false);
+              }
+            }}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              isLoadingMore ? (
+                <View style={styles.loadMoreFooter}>
+                  <LoadingSpinner visible={true} size="small" />
+                  <Text style={styles.loadMoreText}>Loading more...</Text>
+                </View>
+              ) : hasMore && activeFilter === 'all' && transactions.length > 0 ? (
+                <View style={styles.paginationFooter}>
+                  <TouchableOpacity
+                    style={styles.loadMoreBtn}
+                    onPress={() => {
+                      setIsLoadingMore(true);
+                      loadWalletData(false);
+                    }}
+                  >
+                    <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
+                    <Text style={styles.loadMoreBtnText}>Load more</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : transactions.length > 0 ? (
+                <View style={styles.endOfListFooter}>
+                  <View style={styles.endDivider} />
+                  <Text style={styles.endOfListText}>You're all caught up</Text>
+                  <View style={styles.endDivider} />
+                </View>
+              ) : null
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={() => {
+                  setIsRefreshing(true);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  loadWalletData(true);
+                }}
+                colors={[COLORS.primary]}
+                tintColor={COLORS.primary}
+              />
+            }
+          />
         </Animated.View>
 
         {/* FAB - only for customers */}

@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 import { EmptyState } from '../../components/EmptyState';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 import { useNotifications, AppNotification } from '../../contexts/NotificationContext';
 
 // Animated Item Component
@@ -205,6 +206,7 @@ export const NotificationsListScreen = () => {
             <EmptyState
               title="All Caught Up"
               subtitle="No new notifications at the moment."
+              animationSource={LottieAnimations.emailSent}
             />
           </View>
         ) : (

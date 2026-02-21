@@ -31,6 +31,8 @@ import { RotatingLottieBanner } from '../../components/ui/RotatingLottieBanner';
 import { SkeletonServiceCard } from '../../components/ui/SkeletonLoader';
 import { UpdateNotificationBanner } from '../../components/ui/UpdateNotificationBanner';
 import { ErrorDisplay } from '../../components/ui/ErrorDisplay';
+import { EmptyState } from '../../components/EmptyState';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 import { COLORS, SHADOWS } from '../../utils/theme';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useWalletBalance } from '../../hooks/useWalletBalance';
@@ -71,14 +73,15 @@ const SERVICE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   'Garden & Landscaping': 'leaf',
 };
 
-// Empty State Component
-const EmptyState = () => {
-  const { colors } = useTheme();
+// Empty State Component — uses shared Lottie-powered EmptyState
+const SearchEmptyState = () => {
   return (
     <View style={styles.emptyState}>
-      <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
-      <Text style={[styles.emptyText, { color: colors.text }]}>No services found</Text>
-      <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Try a different search term</Text>
+      <EmptyState
+        title="No services found"
+        subtitle="Try a different search term"
+        animationSource={LottieAnimations.emptyCart}
+      />
     </View>
   );
 };
@@ -460,7 +463,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             )}
 
-            {filteredServices.length === 0 && hasFetchedInitial && <EmptyState />}
+            {filteredServices.length === 0 && hasFetchedInitial && <SearchEmptyState />}
           </View>
         )}
       </Animated.ScrollView>

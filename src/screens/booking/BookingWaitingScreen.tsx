@@ -21,6 +21,8 @@ import { COLORS, SHADOWS, RADIUS } from '../../utils/theme';
 import { apiService } from '../../services/api';
 import { useNotifications } from '../../contexts/NotificationContext';
 import * as Haptics from 'expo-haptics';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 const { width, height } = Dimensions.get('window');
 const TIMER_DURATION = 180; // 3 minutes in seconds
@@ -350,9 +352,12 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                 />
                 <View style={styles.centerContent}>
                     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                        <View style={styles.successIcon}>
-                            <Ionicons name="checkmark-circle" size={100} color="#FFF" />
-                        </View>
+                        <LottieView
+                            source={LottieAnimations.success}
+                            autoPlay
+                            loop={false}
+                            style={{ width: 180, height: 180 }}
+                        />
                     </Animated.View>
                     <Text style={styles.statusTitle}>Booking Accepted!</Text>
                     <Text style={styles.statusSubtitle}>
@@ -830,11 +835,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#FFF',
         letterSpacing: 2,
-    },
-    timerLabel: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.8)',
-        marginTop: 8,
     },
     messageCard: {
         backgroundColor: '#FFF',
