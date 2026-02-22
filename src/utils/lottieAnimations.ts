@@ -16,9 +16,9 @@ import emptyCart from '../../assets/lottie/empty cart.json';
 import error from '../../assets/lottie/error.json';
 import loading from '../../assets/lottie/loading.json';
 import mapLocationPicker from '../../assets/lottie/map-location-picker.json';
-
 import taxiBooking from '../../assets/lottie/taxi booking.json';
-
+import notFound404 from '../../assets/lottie/404 error not found.json';
+import searchingProfile from '../../assets/lottie/searching for profile.json';
 export const LottieAnimations = {
     campersWelcome,
     carCleaning,
@@ -35,8 +35,9 @@ export const LottieAnimations = {
     error,
     loading,
     mapLocationPicker,
-
     taxiBooking,
+    notFound404,
+    searchingProfile,
 };
 
 export default LottieAnimations;

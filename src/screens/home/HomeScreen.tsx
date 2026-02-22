@@ -80,7 +80,7 @@ const SearchEmptyState = () => {
       <EmptyState
         title="No services found"
         subtitle="Try a different search term"
-        animationSource={LottieAnimations.emptyCart}
+        animationSource={LottieAnimations.notFound404}
       />
     </View>
   );

@@ -22,6 +22,7 @@ import { apiService } from '../../services/api';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme';
 import * as Haptics from 'expo-haptics';
 import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 const { width, height } = Dimensions.get('window');
 
@@ -273,132 +274,89 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
 
         return (
             <FadeInView delay={index * 100}>
-                <TouchableOpacity
-                    style={styles.driverCard}
-                    onPress={() => handleSelectDriver(item)}
-                    activeOpacity={0.7}
-                >
-                    {/* Top section: Avatar + Info */}
-                    <View style={styles.driverCardTop}>
-                        {/* Avatar */}
+                <View style={styles.providerCard}>
+                    <View style={styles.providerCardInner}>
+                        {/* --- Left: Avatar --- */}
                         <View style={styles.avatarContainer}>
                             {item.profileImage ? (
                                 <Image source={{ uri: item.profileImage }} style={styles.avatar} />
                             ) : (
-                                <LinearGradient
-                                    colors={['#6366F1', '#8B5CF6']}
-                                    style={styles.avatarPlaceholder}
-                                >
-                                    <Text style={styles.avatarText}>
-                                        {item.name?.charAt(0)?.toUpperCase() || 'D'}
-                                    </Text>
-                                </LinearGradient>
-                            )}
-                            {/* Online indicator */}
-                            <View style={[styles.onlineBadge, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
-                        </View>
-
-                        {/* Info */}
-                        <View style={styles.driverInfo}>
-                            <Text style={styles.driverName} numberOfLines={1}>{item.name}</Text>
-
-                            {/* Rating & Experience */}
-                            <View style={styles.driverMeta}>
-                                <View style={styles.ratingBadge}>
-                                    <Ionicons name="star" size={12} color="#F59E0B" />
-                                    <Text style={styles.ratingText}>
-                                        {item.rating > 0 ? item.rating.toFixed(1) : 'New'}
-                                    </Text>
+                                <View style={[styles.avatarPlaceholder, { backgroundColor: '#6366F1' }]}>
+                                    <Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || 'D'}</Text>
                                 </View>
-                                <View style={styles.metaDot} />
-                                <Text style={styles.experienceText}>
-                                    {item.experience} yr{item.experience !== 1 ? 's' : ''} exp
-                                </Text>
-                                {item.totalReviews > 0 && (
-                                    <>
-                                        <View style={styles.metaDot} />
-                                        <Text style={styles.reviewsText}>{item.totalReviews} reviews</Text>
-                                    </>
-                                )}
-                            </View>
+                            )}
+                            <View style={[styles.verifiedBadge, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
                         </View>
 
-                        {/* Price */}
-                        <View style={styles.priceSection}>
-                            <Text style={styles.priceAmount}>₹{rate}</Text>
-                            <Text style={styles.priceUnit}>/hr</Text>
+                        {/* --- Middle & Right: Info + Price --- */}
+                        <View style={styles.providerInfoRow}>
+                            <View style={styles.providerInfo}>
+                                <Text style={styles.providerName} numberOfLines={1}>{item.name}</Text>
+
+                                <View style={styles.ratingRow}>
+                                    <View style={styles.starContainer}>
+                                        <Ionicons name="star" size={12} color="#F59E0B" />
+                                        <Text style={styles.ratingVal}>{item.rating > 0 ? item.rating.toFixed(1) : 'New'}</Text>
+                                    </View>
+                                    <Text style={styles.metaDot}>•</Text>
+                                    <Text style={styles.providerExp}>
+                                        {item.experience} yr{item.experience !== 1 ? 's' : ''} exp
+                                    </Text>
+                                    {item.totalReviews > 0 && (
+                                        <>
+                                            <Text style={styles.metaDot}>•</Text>
+                                            <Text style={styles.providerExp}>{item.totalReviews} reviews</Text>
+                                        </>
+                                    )}
+                                </View>
+                            </View>
+
+                            <View style={styles.priceTag}>
+                                <Text style={styles.priceAmount}>₹{rate}</Text>
+                                <Text style={styles.priceLabel}>/hr</Text>
+                            </View>
                         </View>
                     </View>
 
-                    {/* Tags section */}
-                    <View style={styles.tagsRow}>
-                        {item.vehicleTypes && item.vehicleTypes.length > 0 && (
-                            <View style={styles.matchTag}>
-                                <Ionicons name="car-sport-outline" size={12} color="#4F46E5" />
-                                <Text style={styles.tagText}>
-                                    {item.vehicleTypes.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(', ')}
-                                </Text>
-                            </View>
-                        )}
-                        {item.transmissionTypes && item.transmissionTypes.length > 0 && (
-                            <View style={styles.matchTag}>
-                                <Ionicons name="settings-outline" size={12} color="#4F46E5" />
-                                <Text style={styles.tagText}>
-                                    {item.transmissionTypes.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}
-                                </Text>
-                            </View>
-                        )}
-                        {item.tripPreferences && item.tripPreferences.length > 0 && (
-                            <View style={styles.matchTag}>
-                                <Ionicons name="navigate-outline" size={12} color="#4F46E5" />
-                                <Text style={styles.tagText}>
-                                    {item.tripPreferences.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
+                    {/* Horizontal Divider */}
+                    <View style={styles.cardDivider} />
 
-                    {/* Bio */}
-                    {item.bio && (
-                        <Text style={styles.bioText} numberOfLines={2}>
-                            {item.bio}
-                        </Text>
-                    )}
-
-                    {/* Bottom CTA */}
+                    {/* Bottom Status & CTA */}
                     <View style={styles.cardFooter}>
-                        <View style={styles.statusRow}>
+                        <View style={styles.statusGroup}>
                             <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
                             <Text style={[styles.statusText, { color: isOnline ? '#059669' : '#64748B' }]}>
-                                {isOnline ? 'Available' : 'Offline'}
+                                {isOnline ? 'Available Now' : 'Offline'}
                             </Text>
                         </View>
-                        <View style={styles.selectButton}>
-                            <Text style={styles.selectButtonText}>Select</Text>
+
+                        <TouchableOpacity
+                            style={styles.bookButton}
+                            onPress={() => handleSelectDriver(item)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.bookButtonText}>Book Driver</Text>
                             <Ionicons name="arrow-forward" size={16} color="#FFF" />
-                        </View>
+                        </TouchableOpacity>
                     </View>
-                </TouchableOpacity>
+                </View>
             </FadeInView>
         );
     };
 
     const renderSearching = () => (
         <View style={styles.searchingContainer}>
-            <Animated.View style={[styles.searchIconContainer, { transform: [{ scale: pulseAnim }] }]}>
-                <LinearGradient
-                    colors={['#EEF2FF', '#E0E7FF']}
-                    style={styles.searchIconBg}
-                >
-                    <Ionicons name="search" size={48} color="#6366F1" />
-                </LinearGradient>
-            </Animated.View>
+            <LottieView
+                source={LottieAnimations.searchingProfile}
+                autoPlay
+                loop
+                style={{ width: 200, height: 200, marginBottom: 16 }}
+            />
             <Text style={styles.searchingTitle}>Finding Drivers</Text>
             <Text style={styles.searchingSubtitle}>
                 Searching for {transmission} {vehicleType} drivers for{' '}
                 {tripType === 'incity' ? 'in-city' : 'outstation'} {tripDirection === 'oneway' ? 'one-way' : 'round'} trip...
             </Text>
-            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 24 }} />
         </View>
     );
 
@@ -647,139 +605,128 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.lg,
         paddingBottom: 40,
     },
-    // Driver Card
-    driverCard: {
-        backgroundColor: '#FFF',
-        borderRadius: RADIUS.xlarge,
-        padding: SPACING.lg,
+    // Driver Card Implementation matching User Screenshot
+    providerCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: COLORS.borderLight,
-        ...SHADOWS.md,
+        borderColor: '#F1F5F9', // Very subtle border
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 3,
+        padding: 16,
     },
-    driverCardTop: {
+    providerCardInner: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     avatarContainer: {
         position: 'relative',
+        marginRight: 16,
     },
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 18,
+        width: 65,
+        height: 65,
+        borderRadius: 20, // Squircle shape from screenshot
     },
     avatarPlaceholder: {
-        width: 56,
-        height: 56,
-        borderRadius: 18,
+        width: 65,
+        height: 65,
+        borderRadius: 20, // Squircle shape from screenshot
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarText: {
-        fontSize: 22,
-        fontWeight: '700' as any,
+        fontSize: 26,
+        fontWeight: '600' as any,
         color: '#FFF',
     },
-    onlineBadge: {
+    verifiedBadge: {
         position: 'absolute',
-        bottom: 0,
-        right: 0,
+        bottom: -2,
+        right: -2,
         width: 14,
         height: 14,
         borderRadius: 7,
         borderWidth: 2,
         borderColor: '#FFF',
     },
-    driverInfo: {
+    providerInfoRow: {
         flex: 1,
-        marginLeft: SPACING.md,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
     },
-    driverName: {
-        fontSize: 16,
+    providerInfo: {
+        flex: 1,
+        paddingRight: 8,
+    },
+    providerName: {
+        fontSize: 18,
         fontWeight: '700' as any,
-        color: COLORS.text,
-        marginBottom: 4,
+        color: '#1E293B',
+        marginBottom: 8,
     },
-    driverMeta: {
+    ratingRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        flexWrap: 'wrap',
     },
-    ratingBadge: {
+    starContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
+        backgroundColor: '#FFFBEB', // Light yellow bg from screenshot
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#FEF3C7',
     },
-    ratingText: {
-        fontSize: 13,
-        fontWeight: '600' as any,
-        color: '#92400E',
+    ratingVal: {
+        fontSize: 12,
+        fontWeight: '700' as any,
+        color: '#D97706',
     },
     metaDot: {
-        width: 3,
-        height: 3,
-        borderRadius: 1.5,
-        backgroundColor: '#CBD5E1',
-        marginHorizontal: 8,
+        fontSize: 16,
+        color: '#CBD5E1',
+        marginHorizontal: 6,
+        lineHeight: 16,
     },
-    experienceText: {
+    providerExp: {
         fontSize: 13,
-        color: COLORS.textSecondary,
+        color: '#64748B',
         fontWeight: '500' as any,
     },
-    reviewsText: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-        fontWeight: '500' as any,
-    },
-    priceSection: {
+    priceTag: {
         alignItems: 'flex-end',
     },
     priceAmount: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800' as any,
-        color: COLORS.primary,
+        color: '#1E293B',
+        letterSpacing: -0.5,
     },
-    priceUnit: {
+    priceLabel: {
         fontSize: 12,
-        color: COLORS.textSecondary,
-        fontWeight: '500' as any,
-    },
-    tagsRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: SPACING.md,
-    },
-    matchTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#EEF2FF',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 8,
-    },
-    tagText: {
-        fontSize: 11,
-        fontWeight: '600' as any,
-        color: '#4F46E5',
-    },
-    bioText: {
-        fontSize: 13,
         color: '#64748B',
-        lineHeight: 19,
-        marginTop: SPACING.sm,
+        marginTop: 2,
+    },
+    cardDivider: {
+        height: 1,
+        backgroundColor: '#F1F5F9', // Light gray divider line
+        marginVertical: 16,
     },
     cardFooter: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: SPACING.md,
-        paddingTop: SPACING.md,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
     },
-    statusRow: {
+    statusGroup: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
@@ -790,23 +737,22 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     statusText: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '600' as any,
     },
-    selectButton: {
+    bookButton: {
+        backgroundColor: '#4F46E5', // Solid purple button matching screenshot
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        backgroundColor: COLORS.primary,
-        paddingHorizontal: 18,
+        paddingHorizontal: 16,
         paddingVertical: 10,
-        borderRadius: RADIUS.medium,
-        ...SHADOWS.sm,
+        borderRadius: 12, // Pill shape
+        gap: 6,
     },
-    selectButtonText: {
-        fontSize: 14,
-        fontWeight: '700' as any,
+    bookButtonText: {
         color: '#FFF',
+        fontSize: 14,
+        fontWeight: '600' as any,
     },
     // Searching State
     searchingContainer: {
