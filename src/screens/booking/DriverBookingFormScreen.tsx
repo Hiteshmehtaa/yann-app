@@ -24,7 +24,7 @@ import type { RouteProp } from '@react-navigation/native';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme';
+import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, GRADIENTS } from '../../utils/theme';
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
 import { BookingAnimation } from '../../components/animations';
 import * as Haptics from 'expo-haptics';
@@ -390,7 +390,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                                     <Image source={{ uri: selectedDriver.profileImage }} style={styles.driverAvatar} />
                                 ) : (
                                     <LinearGradient
-                                        colors={['#6366F1', '#8B5CF6']}
+                                        colors={GRADIENTS.primary}
                                         style={styles.driverAvatarPlaceholder}
                                     >
                                         <Text style={styles.driverAvatarText}>
@@ -420,13 +420,13 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                             {/* Trip Summary */}
                             <View style={styles.tripSummaryRow}>
                                 <View style={styles.tripTag}>
-                                    <Ionicons name="navigate-outline" size={12} color="#6366F1" />
+                                    <Ionicons name="navigate-outline" size={12} color={COLORS.primary} />
                                     <Text style={styles.tripTagText}>
                                         {tripType === 'incity' ? 'In-City' : 'Outstation'} • {tripDirection === 'oneway' ? 'One Way' : 'Round Trip'}
                                     </Text>
                                 </View>
                                 <View style={styles.tripTag}>
-                                    <Ionicons name="car-sport-outline" size={12} color="#6366F1" />
+                                    <Ionicons name="car-sport-outline" size={12} color={COLORS.primary} />
                                     <Text style={styles.tripTagText}>
                                         {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • {transmission.charAt(0).toUpperCase() + transmission.slice(1)}
                                     </Text>
@@ -436,12 +436,12 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                             {/* Route Info */}
                             <View style={styles.routeInfo}>
                                 <View style={styles.routePoint}>
-                                    <View style={[styles.routeDot, { backgroundColor: '#10B981' }]} />
+                                    <View style={[styles.routeDot, { backgroundColor: COLORS.success }]} />
                                     <Text style={styles.routeAddress} numberOfLines={1}>{pickupAddress || 'Pickup'}</Text>
                                 </View>
                                 <View style={styles.routeLine} />
                                 <View style={styles.routePoint}>
-                                    <View style={[styles.routeDot, { backgroundColor: '#EF4444' }]} />
+                                    <View style={[styles.routeDot, { backgroundColor: COLORS.error }]} />
                                     <Text style={styles.routeAddress} numberOfLines={1}>{dropAddress || 'Drop'}</Text>
                                 </View>
                                 {routeDistanceKm > 0 && (
@@ -499,7 +499,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                             <Text style={styles.sectionTitle}>Start Time</Text>
                             {bookingTime && (
                                 <View style={styles.selectedTimeBadge}>
-                                    <Ionicons name="time-outline" size={14} color="#6366F1" />
+                                    <Ionicons name="time-outline" size={14} color={COLORS.primary} />
                                     <Text style={styles.selectedTimeText}>{bookingTime}</Text>
                                 </View>
                             )}
@@ -560,7 +560,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                                     >
                                         {isSelected && (
                                             <LinearGradient
-                                                colors={['#6366F1', '#4F46E5']}
+                                                colors={GRADIENTS.primary}
                                                 style={StyleSheet.absoluteFill}
                                                 start={{ x: 0, y: 0 }}
                                                 end={{ x: 1, y: 1 }}
@@ -747,7 +747,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                     >
                         {bookingDate && bookingTime && (
                             <LinearGradient
-                                colors={['#6366F1', '#4F46E5']}
+                                colors={GRADIENTS.primary}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={StyleSheet.absoluteFill}
@@ -796,7 +796,7 @@ const styles = StyleSheet.create({
         width: 300,
         height: 300,
         borderRadius: 150,
-        backgroundColor: '#6366F1',
+        backgroundColor: COLORS.primary,
         opacity: 0.05,
     },
     blob2: {
@@ -806,8 +806,8 @@ const styles = StyleSheet.create({
         width: 200,
         height: 200,
         borderRadius: 100,
-        backgroundColor: '#F97316',
-        opacity: 0.05,
+        backgroundColor: COLORS.primary,
+        opacity: 0.03,
     },
     blob3: {
         position: 'absolute',
@@ -816,8 +816,8 @@ const styles = StyleSheet.create({
         width: 250,
         height: 250,
         borderRadius: 125,
-        backgroundColor: '#6366F1',
-        opacity: 0.03,
+        backgroundColor: COLORS.primary,
+        opacity: 0.04,
     },
     header: {
         zIndex: 100,
@@ -903,7 +903,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 4,
-        backgroundColor: '#6366F1',
+        backgroundColor: COLORS.primary,
     },
     driverRow: {
         flexDirection: 'row',
@@ -979,7 +979,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: COLORS.primaryLight,
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 8,
@@ -987,7 +987,7 @@ const styles = StyleSheet.create({
     tripTagText: {
         fontSize: 11,
         fontWeight: '600' as any,
-        color: '#4F46E5',
+        color: COLORS.primary,
     },
     routeInfo: {
         marginTop: 16,
@@ -1043,8 +1043,8 @@ const styles = StyleSheet.create({
     },
     dateCardSelected: {
         borderWidth: 2,
-        borderColor: '#6366F1',
-        backgroundColor: '#EEF2FF',
+        borderColor: COLORS.primary,
+        backgroundColor: COLORS.primaryLight,
         ...SHADOWS.md,
     },
     dateDay: {
@@ -1065,14 +1065,14 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     textSelected: {
-        color: '#4F46E5',
+        color: COLORS.primary,
     },
     // Time Selection
     selectedTimeBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: COLORS.primaryLight,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 8,
@@ -1080,7 +1080,7 @@ const styles = StyleSheet.create({
     selectedTimeText: {
         fontSize: 13,
         fontWeight: '700' as any,
-        color: '#6366F1',
+        color: COLORS.primary,
     },
     timeStripContainer: {
         paddingHorizontal: 4,
@@ -1097,8 +1097,8 @@ const styles = StyleSheet.create({
     },
     timeChipSelected: {
         borderWidth: 2,
-        borderColor: '#6366F1',
-        backgroundColor: '#EEF2FF',
+        borderColor: COLORS.primary,
+        backgroundColor: COLORS.primaryLight,
     },
     timeText: {
         fontSize: 14,
@@ -1382,7 +1382,7 @@ const styles = StyleSheet.create({
     },
     payNowLabel: {
         fontSize: 11,
-        color: '#6366F1',
+        color: COLORS.primary,
         fontWeight: '600' as any,
         marginTop: 2,
     },

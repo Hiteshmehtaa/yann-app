@@ -11,6 +11,7 @@ import {
     Dimensions,
     StatusBar,
     Platform,
+    ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -274,72 +275,52 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
 
         return (
             <FadeInView delay={index * 100}>
-                <View style={styles.providerCard}>
-                    <View style={styles.providerCardInner}>
-                        {/* --- Left: Avatar --- */}
-                        <View style={styles.avatarContainer}>
+                <TouchableOpacity
+                    style={styles.premiumCard}
+                    onPress={() => handleSelectDriver(item)}
+                    activeOpacity={0.9}
+                >
+                    <View style={styles.cardLayout}>
+                        {/* Avatar */}
+                        <View style={styles.avatarSection}>
                             {item.profileImage ? (
-                                <Image source={{ uri: item.profileImage }} style={styles.avatar} />
+                                <Image source={{ uri: item.profileImage }} style={styles.squircleAvatar} />
                             ) : (
-                                <View style={[styles.avatarPlaceholder, { backgroundColor: '#6366F1' }]}>
-                                    <Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || 'D'}</Text>
+                                <View style={[styles.squircleAvatar, styles.avatarPlaceholder]}>
+                                    <Text style={styles.avatarLetter}>{item.name?.charAt(0)?.toUpperCase() || 'D'}</Text>
                                 </View>
                             )}
-                            <View style={[styles.verifiedBadge, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
+                            <View style={[styles.onlineIndicator, { backgroundColor: isOnline ? COLORS.success : COLORS.textTertiary }]} />
                         </View>
 
-                        {/* --- Middle & Right: Info + Price --- */}
-                        <View style={styles.providerInfoRow}>
-                            <View style={styles.providerInfo}>
-                                <Text style={styles.providerName} numberOfLines={1}>{item.name}</Text>
+                        {/* Mid Info */}
+                        <View style={styles.infoSection}>
+                            <Text style={styles.driverName} numberOfLines={1}>{item.name}</Text>
 
-                                <View style={styles.ratingRow}>
-                                    <View style={styles.starContainer}>
-                                        <Ionicons name="star" size={12} color="#F59E0B" />
-                                        <Text style={styles.ratingVal}>{item.rating > 0 ? item.rating.toFixed(1) : 'New'}</Text>
-                                    </View>
-                                    <Text style={styles.metaDot}>•</Text>
-                                    <Text style={styles.providerExp}>
-                                        {item.experience} yr{item.experience !== 1 ? 's' : ''} exp
-                                    </Text>
-                                    {item.totalReviews > 0 && (
-                                        <>
-                                            <Text style={styles.metaDot}>•</Text>
-                                            <Text style={styles.providerExp}>{item.totalReviews} reviews</Text>
-                                        </>
-                                    )}
-                                </View>
+                            <View style={styles.metaRow}>
+                                <Ionicons name="star" size={14} color={COLORS.warning} />
+                                <Text style={styles.ratingText}>{item.rating > 0 ? item.rating.toFixed(1) : 'New'}</Text>
+                                <Text style={styles.dot}>•</Text>
+                                <Text style={styles.metaText}>{item.experience} yrs exp</Text>
                             </View>
 
-                            <View style={styles.priceTag}>
-                                <Text style={styles.priceAmount}>₹{rate}</Text>
-                                <Text style={styles.priceLabel}>/hr</Text>
+                            <View style={styles.logisticsRow}>
+                                <Text style={styles.metaText}>{transmission === 'automatic' ? 'Auto' : 'Manual'} {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)}</Text>
+                            </View>
+                        </View>
+
+                        {/* Right Price & Action */}
+                        <View style={styles.priceActionSection}>
+                            <View style={styles.priceContainer}>
+                                <Text style={styles.priceValue}>₹{rate}</Text>
+                                <Text style={styles.priceUnit}>/hr</Text>
+                            </View>
+                            <View style={styles.fabArrow}>
+                                <Ionicons name="arrow-forward" size={16} color="#FFF" />
                             </View>
                         </View>
                     </View>
-
-                    {/* Horizontal Divider */}
-                    <View style={styles.cardDivider} />
-
-                    {/* Bottom Status & CTA */}
-                    <View style={styles.cardFooter}>
-                        <View style={styles.statusGroup}>
-                            <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
-                            <Text style={[styles.statusText, { color: isOnline ? '#059669' : '#64748B' }]}>
-                                {isOnline ? 'Available Now' : 'Offline'}
-                            </Text>
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.bookButton}
-                            onPress={() => handleSelectDriver(item)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.bookButtonText}>Book Driver</Text>
-                            <Ionicons name="arrow-forward" size={16} color="#FFF" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                </TouchableOpacity>
             </FadeInView>
         );
     };
@@ -400,68 +381,54 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
-
-            {/* Ambient Blobs */}
-            <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                <View style={styles.blob1} />
-                <View style={styles.blob2} />
-            </View>
+            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
             {/* Header */}
             <View style={[styles.header, { paddingTop: insets.top }]}>
                 {Platform.OS === 'ios' ? (
                     <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
                 ) : (
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.97)' }]} />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(246, 248, 252, 0.95)' }]} /> // Matches COLORS.background basically
                 )}
                 <View style={styles.headerContent}>
                     <TouchableOpacity
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+                        <Ionicons name="arrow-back" size={24} color={COLORS.text} />
                     </TouchableOpacity>
                     <View style={styles.headerCenter}>
                         <Text style={styles.headerTitle}>Available Drivers</Text>
-                        <Text style={styles.headerSubtitle}>
-                            {drivers.length > 0 ? `${drivers.length} drivers found` : 'Searching...'}
-                        </Text>
                     </View>
                     <View style={{ width: 44 }} />
                 </View>
-            </View>
 
-            {/* Trip Summary Card */}
-            {!isLoading && drivers.length > 0 && (
-                <FadeInView style={styles.tripSummary}>
-                    <View style={styles.tripSummaryCard}>
-                        <View style={styles.tripRow}>
-                            <View style={styles.tripDetail}>
-                                <Ionicons name="navigate-outline" size={14} color="#6366F1" />
-                                <Text style={styles.tripLabel}>
-                                    {tripType === 'incity' ? 'In-City' : 'Outstation'} • {tripDirection === 'oneway' ? 'One Way' : 'Round Trip'}
+                {/* Filter Strip */}
+                {!isLoading && drivers.length > 0 && (
+                    <View style={styles.tripSummaryStrip}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.summaryPillScroll}>
+                            <View style={styles.summaryPill}>
+                                <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                                <Text style={styles.summaryPillText}>
+                                    {tripType === 'incity' ? 'In-City' : 'Outstation'} • {tripDirection === 'oneway' ? 'One Way' : 'Round'}
                                 </Text>
                             </View>
-                            <View style={styles.tripDetail}>
-                                <Ionicons name="car-sport-outline" size={14} color="#6366F1" />
-                                <Text style={styles.tripLabel}>
-                                    {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • {transmission.charAt(0).toUpperCase() + transmission.slice(1)}
+                            <View style={styles.summaryPill}>
+                                <Ionicons name="car-outline" size={14} color={COLORS.textSecondary} />
+                                <Text style={styles.summaryPillText}>
+                                    {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • {transmission === 'automatic' ? 'Auto' : 'Manual'}
                                 </Text>
                             </View>
-                        </View>
-                        {routeDistanceKm > 0 && (
-                            <View style={styles.distanceRow}>
-                                <Ionicons name="map-outline" size={14} color="#64748B" />
-                                <Text style={styles.distanceText}>{routeDistanceKm.toFixed(1)} km</Text>
-                                {driverReturnFare > 0 && (
-                                    <Text style={styles.returnFareText}>+₹{driverReturnFare} return fare</Text>
-                                )}
-                            </View>
-                        )}
+                            {routeDistanceKm > 0 && (
+                                <View style={styles.summaryPill}>
+                                    <Ionicons name="map-outline" size={14} color={COLORS.textSecondary} />
+                                    <Text style={styles.summaryPillText}>{routeDistanceKm.toFixed(1)} km</Text>
+                                </View>
+                            )}
+                        </ScrollView>
                     </View>
-                </FadeInView>
-            )}
+                )}
+            </View>
 
             {/* Content */}
             {isLoading ? (
@@ -477,10 +444,10 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
                     renderItem={renderDriverCard}
                     contentContainerStyle={[
                         styles.listContent,
-                        { paddingTop: insets.top + 110 + (routeDistanceKm > 0 ? 70 : 50) },
+                        { paddingTop: insets.top + (routeDistanceKm > 0 ? 110 : 80) },
                     ]}
                     showsVerticalScrollIndicator={false}
-                    ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                    ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
                 />
             )}
         </View>
@@ -490,27 +457,7 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
-    },
-    blob1: {
-        position: 'absolute',
-        top: -80,
-        right: -80,
-        width: 250,
-        height: 250,
-        borderRadius: 125,
-        backgroundColor: '#6366F1',
-        opacity: 0.04,
-    },
-    blob2: {
-        position: 'absolute',
-        bottom: 100,
-        left: -60,
-        width: 200,
-        height: 200,
-        borderRadius: 100,
-        backgroundColor: '#F97316',
-        opacity: 0.04,
+        backgroundColor: COLORS.background, // Global theme Cool Gray
     },
     header: {
         position: 'absolute',
@@ -519,132 +466,103 @@ const styles = StyleSheet.create({
         right: 0,
         zIndex: 100,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        borderBottomColor: 'rgba(0,0,0,0.02)',
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.lg,
-        paddingVertical: SPACING.md,
+        paddingVertical: 12,
     },
     backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: RADIUS.medium,
-        backgroundColor: COLORS.surface,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOWS.sm,
     },
     headerCenter: {
         flex: 1,
         alignItems: 'center',
     },
     headerTitle: {
-        fontSize: TYPOGRAPHY.size.lg,
-        fontWeight: '700' as any,
+        fontSize: 20,
+        fontWeight: '600' as any,
+        color: COLORS.text,
+        letterSpacing: -0.4,
+    },
+    tripSummaryStrip: {
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+    },
+    summaryPillScroll: {
+        flexDirection: 'row',
+        gap: 12,
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    summaryPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.cardBg,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 100,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        elevation: 2,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: COLORS.divider,
+    },
+    summaryPillText: {
+        fontSize: 13,
+        fontWeight: '600' as any,
         color: COLORS.text,
     },
-    headerSubtitle: {
-        fontSize: TYPOGRAPHY.size.xs,
-        color: COLORS.textSecondary,
-        marginTop: 2,
-    },
-    tripSummary: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        paddingHorizontal: SPACING.lg,
-    },
-    tripSummaryCard: {
-        backgroundColor: '#FFF',
-        borderRadius: RADIUS.large,
-        padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.borderLight,
-        ...SHADOWS.sm,
-    },
-    tripRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: SPACING.md,
-    },
-    tripDetail: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    tripLabel: {
-        fontSize: 12,
-        fontWeight: '600' as any,
-        color: '#4F46E5',
-    },
-    distanceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 8,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-    },
-    distanceText: {
-        fontSize: 12,
-        fontWeight: '600' as any,
-        color: '#64748B',
-    },
-    returnFareText: {
-        fontSize: 12,
-        fontWeight: '600' as any,
-        color: '#F97316',
-        marginLeft: 'auto' as any,
-    },
     listContent: {
-        paddingHorizontal: SPACING.lg,
-        paddingBottom: 40,
+        paddingBottom: 60,
     },
-    // Driver Card Implementation matching User Screenshot
-    providerCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#F1F5F9', // Very subtle border
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 3,
+    // Tactile Premium Design System Styles
+    premiumCard: {
+        backgroundColor: COLORS.cardBg,
+        borderRadius: 24,
         padding: 16,
+        marginHorizontal: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.04,
+        shadowRadius: 24,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.02)'
     },
-    providerCardInner: {
+    cardLayout: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    avatarContainer: {
+    avatarSection: {
         position: 'relative',
         marginRight: 16,
     },
-    avatar: {
-        width: 65,
-        height: 65,
-        borderRadius: 20, // Squircle shape from screenshot
+    squircleAvatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 20,
     },
     avatarPlaceholder: {
-        width: 65,
-        height: 65,
-        borderRadius: 20, // Squircle shape from screenshot
+        backgroundColor: COLORS.primary, // Using primary blue instead of dark text
         justifyContent: 'center',
         alignItems: 'center',
     },
-    avatarText: {
-        fontSize: 26,
-        fontWeight: '600' as any,
-        color: '#FFF',
+    avatarLetter: {
+        fontSize: 24,
+        fontWeight: '700' as any,
+        color: COLORS.white,
     },
-    verifiedBadge: {
+    onlineIndicator: {
         position: 'absolute',
         bottom: -2,
         right: -2,
@@ -654,105 +572,74 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#FFF',
     },
-    providerInfoRow: {
+    infoSection: {
         flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        justifyContent: 'center',
     },
-    providerInfo: {
-        flex: 1,
-        paddingRight: 8,
-    },
-    providerName: {
+    driverName: {
         fontSize: 18,
         fontWeight: '700' as any,
-        color: '#1E293B',
-        marginBottom: 8,
+        color: COLORS.text,
+        letterSpacing: -0.3,
+        marginBottom: 4,
     },
-    ratingRow: {
+    metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        flexWrap: 'wrap',
+        marginBottom: 4,
     },
-    starContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        backgroundColor: '#FFFBEB', // Light yellow bg from screenshot
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: '#FEF3C7',
-    },
-    ratingVal: {
-        fontSize: 12,
-        fontWeight: '700' as any,
-        color: '#D97706',
-    },
-    metaDot: {
-        fontSize: 16,
-        color: '#CBD5E1',
-        marginHorizontal: 6,
-        lineHeight: 16,
-    },
-    providerExp: {
+    ratingText: {
         fontSize: 13,
-        color: '#64748B',
-        fontWeight: '500' as any,
+        fontWeight: '700' as any,
+        color: COLORS.text,
+        marginLeft: 4,
     },
-    priceTag: {
+    dot: {
+        fontSize: 14,
+        color: COLORS.textTertiary,
+        marginHorizontal: 6,
+    },
+    metaText: {
+        fontSize: 13,
+        fontWeight: '500' as any,
+        color: COLORS.textSecondary,
+    },
+    logisticsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    priceActionSection: {
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        height: 60,
+    },
+    priceContainer: {
         alignItems: 'flex-end',
     },
-    priceAmount: {
-        fontSize: 24,
+    priceValue: {
+        fontSize: 20,
         fontWeight: '800' as any,
-        color: '#1E293B',
+        color: COLORS.text,
         letterSpacing: -0.5,
     },
-    priceLabel: {
+    priceUnit: {
         fontSize: 12,
-        color: '#64748B',
-        marginTop: 2,
+        fontWeight: '500' as any,
+        color: COLORS.textSecondary,
+        marginTop: -2,
     },
-    cardDivider: {
-        height: 1,
-        backgroundColor: '#F1F5F9', // Light gray divider line
-        marginVertical: 16,
-    },
-    cardFooter: {
-        flexDirection: 'row',
+    fabArrow: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: COLORS.primary, // Changed from text/black to primary blue for brand consistency
+        justifyContent: 'center',
         alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    statusGroup: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    statusDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    statusText: {
-        fontSize: 14,
-        fontWeight: '600' as any,
-    },
-    bookButton: {
-        backgroundColor: '#4F46E5', // Solid purple button matching screenshot
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 12, // Pill shape
-        gap: 6,
-    },
-    bookButtonText: {
-        color: '#FFF',
-        fontSize: 14,
-        fontWeight: '600' as any,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
     },
     // Searching State
     searchingContainer: {
