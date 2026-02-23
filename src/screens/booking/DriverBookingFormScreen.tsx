@@ -26,6 +26,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, GRADIENTS } from '../../utils/theme';
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
+import { CustomDateTimePicker } from '../../components/ui/CustomDateTimePicker';
 import { BookingAnimation } from '../../components/animations';
 import * as Haptics from 'expo-haptics';
 
@@ -94,6 +95,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
     const [notes, setNotes] = useState('');
 
     // UI State
+    const [currentStep, setCurrentStep] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -139,18 +141,6 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
     const completionPayment = Math.round((totalPrice - initialPayment) * 100) / 100;
     const hasInsufficientBalance = walletBalance < initialPayment;
 
-    // Generate time slots based on 30-min intervals
-    const getTimeSlots = () => {
-        const slots: string[] = [];
-        for (let h = 6; h <= 22; h++) {
-            slots.push(`${h.toString().padStart(2, '0')}:00`);
-            if (h < 22) {
-                slots.push(`${h.toString().padStart(2, '0')}:30`);
-            }
-        }
-        return slots;
-    };
-
     // Compute end time display
     const getEndTime = (): string => {
         if (!bookingTime) return '--:--';
@@ -164,19 +154,45 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
     };
 
     const validateForm = (): boolean => {
-        if (!bookingDate) {
-            Alert.alert('Missing Date', 'Please select a booking date');
-            return false;
-        }
-        if (!bookingTime) {
-            Alert.alert('Missing Time', 'Please select a start time');
-            return false;
-        }
-        if (selectedDuration < MINIMUM_HOURS) {
-            Alert.alert('Minimum Duration', `Minimum booking duration is ${MINIMUM_HOURS} hours`);
-            return false;
+        if (currentStep === 0) {
+            if (!bookingDate) {
+                Alert.alert('Missing Date', 'Please select a booking date');
+                return false;
+            }
+            if (!bookingTime) {
+                Alert.alert('Missing Time', 'Please select a start time');
+                return false;
+            }
+            if (selectedDuration < MINIMUM_HOURS) {
+                Alert.alert('Minimum Duration', `Minimum booking duration is ${MINIMUM_HOURS} hours`);
+                return false;
+            }
+            // Check if time is at least 45 minutes from now if booking for today
+            const bookingDateTime = new Date(bookingDate);
+            const [h, m] = bookingTime.split(':').map(Number);
+            bookingDateTime.setHours(h, m, 0, 0);
+            const minTime = new Date(Date.now() + 45 * 60 * 1000); // 45 minutes from now
+
+            if (bookingDateTime < minTime) {
+                Alert.alert('Invalid Time', 'Booking must be at least 45 minutes from now');
+                return false;
+            }
         }
         return true;
+    };
+
+    const handleNext = () => {
+        if (!validateForm()) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setCurrentStep(1);
+    };
+
+    const handleBack = () => {
+        if (currentStep === 1) {
+            setCurrentStep(0);
+        } else {
+            navigation.goBack();
+        }
     };
 
     const handleSubmit = async () => {
@@ -380,338 +396,312 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                         <Text style={styles.heroTitle}>Your Driver Booking</Text>
                     </View>
 
-                    {/* 1. Driver Card */}
-                    <FadeInView delay={100} style={styles.sectionContainer}>
-                        <View style={styles.cardContainer}>
-                            <View style={styles.cardHighlight} />
-                            <View style={styles.driverRow}>
-                                {/* Avatar */}
-                                {selectedDriver.profileImage ? (
-                                    <Image source={{ uri: selectedDriver.profileImage }} style={styles.driverAvatar} />
-                                ) : (
-                                    <LinearGradient
-                                        colors={GRADIENTS.primary}
-                                        style={styles.driverAvatarPlaceholder}
-                                    >
-                                        <Text style={styles.driverAvatarText}>
-                                            {selectedDriver.name?.charAt(0)?.toUpperCase() || 'D'}
-                                        </Text>
-                                    </LinearGradient>
-                                )}
-                                <View style={styles.driverInfo}>
-                                    <Text style={styles.driverName}>{selectedDriver.name}</Text>
-                                    <View style={styles.driverMetaRow}>
-                                        <Ionicons name="star" size={12} color="#F59E0B" />
-                                        <Text style={styles.driverRating}>
-                                            {selectedDriver.rating > 0 ? selectedDriver.rating.toFixed(1) : 'New'}
-                                        </Text>
-                                        <View style={styles.metaDot} />
-                                        <Text style={styles.driverExp}>
-                                            {selectedDriver.experience} yrs exp
-                                        </Text>
+                    {currentStep === 0 ? (
+                        <>
+                            {/* 1. Driver Card */}
+                            <FadeInView delay={100} style={styles.sectionContainer}>
+                                <View style={styles.cardContainer}>
+                                    <View style={styles.cardHighlight} />
+                                    <View style={styles.driverRow}>
+                                        {/* Avatar */}
+                                        {selectedDriver.profileImage ? (
+                                            <Image source={{ uri: selectedDriver.profileImage }} style={styles.driverAvatar} />
+                                        ) : (
+                                            <LinearGradient
+                                                colors={GRADIENTS.primary}
+                                                style={styles.driverAvatarPlaceholder}
+                                            >
+                                                <Text style={styles.driverAvatarText}>
+                                                    {selectedDriver.name?.charAt(0)?.toUpperCase() || 'D'}
+                                                </Text>
+                                            </LinearGradient>
+                                        )}
+                                        <View style={styles.driverInfo}>
+                                            <Text style={styles.driverName}>{selectedDriver.name}</Text>
+                                            <View style={styles.driverMetaRow}>
+                                                <Ionicons name="star" size={12} color="#F59E0B" />
+                                                <Text style={styles.driverRating}>
+                                                    {selectedDriver.rating > 0 ? selectedDriver.rating.toFixed(1) : 'New'}
+                                                </Text>
+                                                <View style={styles.metaDot} />
+                                                <Text style={styles.driverExp}>
+                                                    {selectedDriver.experience} yrs exp
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.driverPriceBox}>
+                                            <Text style={styles.driverPriceAmount}>₹{driverRate}</Text>
+                                            <Text style={styles.driverPriceUnit}>/hr</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Trip Summary */}
+                                    <View style={styles.tripSummaryRow}>
+                                        <View style={styles.tripTag}>
+                                            <Ionicons name="navigate-outline" size={12} color={COLORS.primary} />
+                                            <Text style={styles.tripTagText}>
+                                                {tripType === 'incity' ? 'In-City' : 'Outstation'} • {tripDirection === 'oneway' ? 'One Way' : 'Round Trip'}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.tripTag}>
+                                            <Ionicons name="car-sport-outline" size={12} color={COLORS.primary} />
+                                            <Text style={styles.tripTagText}>
+                                                {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • {transmission.charAt(0).toUpperCase() + transmission.slice(1)}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Route Info */}
+                                    <View style={styles.routeInfo}>
+                                        <View style={styles.routePoint}>
+                                            <View style={[styles.routeDot, { backgroundColor: COLORS.success }]} />
+                                            <Text style={styles.routeAddress} numberOfLines={1}>{pickupAddress || 'Pickup'}</Text>
+                                        </View>
+                                        <View style={styles.routeLine} />
+                                        <View style={styles.routePoint}>
+                                            <View style={[styles.routeDot, { backgroundColor: COLORS.error }]} />
+                                            <Text style={styles.routeAddress} numberOfLines={1}>{dropAddress || 'Drop'}</Text>
+                                        </View>
+                                        {routeDistanceKm > 0 && (
+                                            <Text style={styles.routeDistance}>{routeDistanceKm.toFixed(1)} km</Text>
+                                        )}
                                     </View>
                                 </View>
-                                <View style={styles.driverPriceBox}>
-                                    <Text style={styles.driverPriceAmount}>₹{driverRate}</Text>
-                                    <Text style={styles.driverPriceUnit}>/hr</Text>
-                                </View>
-                            </View>
+                            </FadeInView>
 
-                            {/* Trip Summary */}
-                            <View style={styles.tripSummaryRow}>
-                                <View style={styles.tripTag}>
-                                    <Ionicons name="navigate-outline" size={12} color={COLORS.primary} />
-                                    <Text style={styles.tripTagText}>
-                                        {tripType === 'incity' ? 'In-City' : 'Outstation'} • {tripDirection === 'oneway' ? 'One Way' : 'Round Trip'}
-                                    </Text>
+                            {/* 2. Date & Time Selection */}
+                            <FadeInView delay={200} style={styles.sectionContainer}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={styles.sectionTitle}>When do you need the driver?</Text>
                                 </View>
-                                <View style={styles.tripTag}>
-                                    <Ionicons name="car-sport-outline" size={12} color={COLORS.primary} />
-                                    <Text style={styles.tripTagText}>
-                                        {vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • {transmission.charAt(0).toUpperCase() + transmission.slice(1)}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            {/* Route Info */}
-                            <View style={styles.routeInfo}>
-                                <View style={styles.routePoint}>
-                                    <View style={[styles.routeDot, { backgroundColor: COLORS.success }]} />
-                                    <Text style={styles.routeAddress} numberOfLines={1}>{pickupAddress || 'Pickup'}</Text>
-                                </View>
-                                <View style={styles.routeLine} />
-                                <View style={styles.routePoint}>
-                                    <View style={[styles.routeDot, { backgroundColor: COLORS.error }]} />
-                                    <Text style={styles.routeAddress} numberOfLines={1}>{dropAddress || 'Drop'}</Text>
-                                </View>
-                                {routeDistanceKm > 0 && (
-                                    <Text style={styles.routeDistance}>{routeDistanceKm.toFixed(1)} km</Text>
-                                )}
-                            </View>
-                        </View>
-                    </FadeInView>
-
-                    {/* 2. Date Selection */}
-                    <FadeInView delay={200} style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Select Date</Text>
-                        </View>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.dateStripContainer}
-                        >
-                            {Array.from({ length: 14 }).map((_, i) => {
-                                const date = new Date();
-                                date.setDate(date.getDate() + i);
-                                const isSelected = bookingDate &&
-                                    date.getDate() === bookingDate.getDate() &&
-                                    date.getMonth() === bookingDate.getMonth();
-                                const isToday = i === 0;
-
-                                return (
-                                    <TouchableOpacity
-                                        key={i}
-                                        style={[styles.dateCard, isSelected && styles.dateCardSelected]}
-                                        onPress={() => {
+                                <View style={styles.pickerSection}>
+                                    <CustomDateTimePicker
+                                        label="Select Date"
+                                        mode="date"
+                                        value={bookingDate}
+                                        onChange={(date) => {
                                             Haptics.selectionAsync();
                                             setBookingDate(date);
                                         }}
-                                    >
-                                        <Text style={[styles.dateDay, isSelected && styles.textSelected]}>
-                                            {isToday ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' })}
-                                        </Text>
-                                        <Text style={[styles.dateNum, isSelected && styles.textSelected]}>
-                                            {date.getDate()}
-                                        </Text>
-                                        <Text style={[styles.dateMonth, isSelected && styles.textSelected]}>
-                                            {date.toLocaleDateString('en-US', { month: 'short' })}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                    </FadeInView>
+                                        minimumDate={new Date()}
+                                        placeholder="Choose a date"
+                                        leftIcon="calendar"
+                                    />
 
-                    {/* 4. Time Selection */}
-                    <FadeInView delay={300} style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Start Time</Text>
-                            {bookingTime && (
-                                <View style={styles.selectedTimeBadge}>
-                                    <Ionicons name="time-outline" size={14} color={COLORS.primary} />
-                                    <Text style={styles.selectedTimeText}>{bookingTime}</Text>
-                                </View>
-                            )}
-                        </View>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.timeStripContainer}
-                        >
-                            {getTimeSlots().map((time) => {
-                                const isSelected = bookingTime === time;
-                                return (
-                                    <TouchableOpacity
-                                        key={time}
-                                        style={[styles.timeChip, isSelected && styles.timeChipSelected]}
-                                        onPress={() => {
+                                    <View style={{ height: 16 }} />
+
+                                    <CustomDateTimePicker
+                                        label="Select Start Time"
+                                        mode="time"
+                                        // We need to convert bookingTime string ('09:00') to a Date object for the picker
+                                        value={bookingTime ? (() => {
+                                            const d = new Date();
+                                            const [h, m] = bookingTime.split(':').map(Number);
+                                            d.setHours(h, m, 0);
+                                            return d;
+                                        })() : null}
+                                        onChange={(date) => {
                                             Haptics.selectionAsync();
-                                            setBookingTime(time);
+                                            setBookingTime(`${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`);
                                         }}
-                                    >
-                                        <Text style={[styles.timeText, isSelected && styles.textSelected]}>
-                                            {time}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                    </FadeInView>
-
-                    {/* 5. Duration Selection */}
-                    <FadeInView delay={400} style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                            <View>
-                                <Text style={styles.sectionTitle}>Duration</Text>
-                                <Text style={styles.sectionSubtitle}>Minimum {MINIMUM_HOURS} hours</Text>
-                            </View>
-                            {bookingTime && (
-                                <View style={styles.durationBadge}>
-                                    <Text style={styles.durationBadgeText}>
-                                        {bookingTime} - {getEndTime()}
-                                    </Text>
+                                        placeholder="Choose start time"
+                                        leftIcon="time"
+                                        minimumDate={
+                                            bookingDate && bookingDate.toDateString() === new Date().toDateString()
+                                                ? new Date(Date.now() + 45 * 60 * 1000)
+                                                : undefined
+                                        }
+                                    />
                                 </View>
-                            )}
-                        </View>
+                            </FadeInView>
 
-                        <View style={styles.durationGrid}>
-                            {DURATION_OPTIONS.map((hours) => {
-                                const isSelected = selectedDuration === hours;
-                                const estimatedCost = driverRate * hours;
-                                return (
-                                    <TouchableOpacity
-                                        key={hours}
-                                        style={[styles.durationCard, isSelected && styles.durationCardSelected]}
-                                        onPress={() => {
-                                            Haptics.selectionAsync();
-                                            setSelectedDuration(hours);
+                            {/* 5. Duration Selection */}
+                            <FadeInView delay={400} style={styles.sectionContainer}>
+                                <View style={styles.sectionHeader}>
+                                    <View>
+                                        <Text style={styles.sectionTitle}>Duration</Text>
+                                        <Text style={styles.sectionSubtitle}>Minimum {MINIMUM_HOURS} hours</Text>
+                                    </View>
+                                    {bookingTime && (
+                                        <View style={styles.durationBadge}>
+                                            <Text style={styles.durationBadgeText}>
+                                                {bookingTime} - {getEndTime()}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <View style={styles.durationGrid}>
+                                    {DURATION_OPTIONS.map((hours) => {
+                                        const isSelected = selectedDuration === hours;
+                                        const estimatedCost = driverRate * hours;
+                                        return (
+                                            <TouchableOpacity
+                                                key={hours}
+                                                style={[styles.durationCard, isSelected && styles.durationCardSelected]}
+                                                onPress={() => {
+                                                    Haptics.selectionAsync();
+                                                    setSelectedDuration(hours);
+                                                }}
+                                            >
+                                                {isSelected && (
+                                                    <LinearGradient
+                                                        colors={GRADIENTS.primary}
+                                                        style={StyleSheet.absoluteFill}
+                                                        start={{ x: 0, y: 0 }}
+                                                        end={{ x: 1, y: 1 }}
+                                                    />
+                                                )}
+                                                <Text style={[styles.durationHours, isSelected && styles.textWhite]}>
+                                                    {hours}
+                                                </Text>
+                                                <Text style={[styles.durationLabel, isSelected && styles.textWhiteLight]}>
+                                                    hours
+                                                </Text>
+                                                <Text style={[styles.durationCost, isSelected && styles.textWhiteLight]}>
+                                                    ₹{estimatedCost}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </FadeInView>
+                        </>
+                    ) : (
+                        <>
+                            {/* 6. Notes */}
+                            <FadeInView delay={500} style={styles.sectionContainer}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={styles.sectionTitle}>Additional Notes</Text>
+                                </View>
+                                <View style={styles.notesContainer}>
+                                    <FloatingLabelInput
+                                        label="Any instructions for the driver..."
+                                        value={notes}
+                                        onChangeText={setNotes}
+                                        multiline
+                                        containerStyle={{
+                                            borderWidth: 1,
+                                            borderColor: '#E2E8F0',
+                                            backgroundColor: '#F8FAFC',
+                                            borderRadius: 12,
                                         }}
-                                    >
-                                        {isSelected && (
-                                            <LinearGradient
-                                                colors={GRADIENTS.primary}
-                                                style={StyleSheet.absoluteFill}
-                                                start={{ x: 0, y: 0 }}
-                                                end={{ x: 1, y: 1 }}
-                                            />
-                                        )}
-                                        <Text style={[styles.durationHours, isSelected && styles.textWhite]}>
-                                            {hours}
+                                    />
+                                </View>
+                            </FadeInView>
+
+                            {/* 7. Price Breakdown / Receipt */}
+                            <FadeInView delay={600} style={[styles.sectionContainer, { marginBottom: 160 }]}>
+                                <View style={styles.receiptCard}>
+                                    {/* Receipt Header */}
+                                    <View style={styles.receiptHeader}>
+                                        <Text style={styles.receiptTitle}>BOOKING SUMMARY</Text>
+                                        <Ionicons name="receipt-outline" size={18} color="#94A3B8" />
+                                    </View>
+
+                                    <View style={styles.dashedLine} />
+
+                                    {/* Service Rate */}
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>
+                                            Driver Rate ({selectedDuration}h × ₹{driverRate}/hr)
                                         </Text>
-                                        <Text style={[styles.durationLabel, isSelected && styles.textWhiteLight]}>
-                                            hours
+                                        <Text style={styles.summaryValue}>₹{basePrice.toFixed(2)}</Text>
+                                    </View>
+
+                                    {/* GST */}
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.summaryLabel}>GST ({(serviceGstRate * 100).toFixed(0)}%)</Text>
+                                        <Text style={styles.summaryValue}>₹{gstAmount.toFixed(2)}</Text>
+                                    </View>
+
+                                    {/* Driver Return Fare */}
+                                    {driverReturnFare > 0 && (
+                                        <View style={styles.summaryRow}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                <Text style={styles.summaryLabel}>Driver Return Fare</Text>
+                                                <View style={styles.oneWayTag}>
+                                                    <Text style={styles.oneWayTagText}>ONE WAY</Text>
+                                                </View>
+                                            </View>
+                                            <Text style={[styles.summaryValue, { color: '#F97316' }]}>₹{driverReturnFare.toFixed(2)}</Text>
+                                        </View>
+                                    )}
+                                    {driverReturnFare > 0 && (
+                                        <Text style={styles.returnFareNote}>
+                                            {routeDistanceKm.toFixed(1)} km × ₹2/km for driver's return journey
                                         </Text>
-                                        <Text style={[styles.durationCost, isSelected && styles.textWhiteLight]}>
-                                            ₹{estimatedCost}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </FadeInView>
+                                    )}
 
-                    {/* 6. Notes */}
-                    <FadeInView delay={500} style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Additional Notes</Text>
-                        </View>
-                        <View style={styles.notesContainer}>
-                            <FloatingLabelInput
-                                label="Any instructions for the driver..."
-                                value={notes}
-                                onChangeText={setNotes}
-                                multiline
-                                containerStyle={{
-                                    borderWidth: 1,
-                                    borderColor: '#E2E8F0',
-                                    backgroundColor: '#F8FAFC',
-                                    borderRadius: 12,
-                                }}
-                            />
-                        </View>
-                    </FadeInView>
+                                    <View style={styles.dashedLine} />
 
-                    {/* 7. Price Breakdown / Receipt */}
-                    <FadeInView delay={600} style={[styles.sectionContainer, { marginBottom: 160 }]}>
-                        <View style={styles.receiptCard}>
-                            {/* Receipt Header */}
-                            <View style={styles.receiptHeader}>
-                                <Text style={styles.receiptTitle}>BOOKING SUMMARY</Text>
-                                <Ionicons name="receipt-outline" size={18} color="#94A3B8" />
-                            </View>
+                                    {/* Total */}
+                                    <View style={styles.totalRow}>
+                                        <Text style={styles.totalLabel}>Booking Total</Text>
+                                        <Text style={styles.totalAmount}>₹{totalPrice.toFixed(2)}</Text>
+                                    </View>
 
-                            <View style={styles.dashedLine} />
-
-                            {/* Service Rate */}
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>
-                                    Driver Rate ({selectedDuration}h × ₹{driverRate}/hr)
-                                </Text>
-                                <Text style={styles.summaryValue}>₹{basePrice.toFixed(2)}</Text>
-                            </View>
-
-                            {/* GST */}
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>GST ({(serviceGstRate * 100).toFixed(0)}%)</Text>
-                                <Text style={styles.summaryValue}>₹{gstAmount.toFixed(2)}</Text>
-                            </View>
-
-                            {/* Driver Return Fare */}
-                            {driverReturnFare > 0 && (
-                                <View style={styles.summaryRow}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                        <Text style={styles.summaryLabel}>Driver Return Fare</Text>
-                                        <View style={styles.oneWayTag}>
-                                            <Text style={styles.oneWayTagText}>ONE WAY</Text>
+                                    {/* Staged Payment Breakdown */}
+                                    <View style={styles.stagedPayment}>
+                                        <View style={styles.stagedHeader}>
+                                            <Ionicons name="shield-checkmark" size={16} color="#16A34A" />
+                                            <Text style={styles.stagedTitle}>Secure Staged Payment</Text>
+                                        </View>
+                                        <View style={styles.stagedRow}>
+                                            <View style={styles.stagedDotRow}>
+                                                <View style={[styles.stagedDot, { backgroundColor: '#3B82F6' }]} />
+                                                <Text style={styles.stagedLabel}>After Driver Accepts (25%)</Text>
+                                            </View>
+                                            <Text style={styles.stagedAmount}>₹{initialPayment.toFixed(2)}</Text>
+                                        </View>
+                                        <View style={styles.stagedRow}>
+                                            <View style={styles.stagedDotRow}>
+                                                <View style={[styles.stagedDot, { backgroundColor: '#94A3B8' }]} />
+                                                <Text style={[styles.stagedLabel, { color: '#6B7280' }]}>After Service (75%)</Text>
+                                            </View>
+                                            <Text style={[styles.stagedAmount, { color: '#6B7280' }]}>₹{completionPayment.toFixed(2)}</Text>
                                         </View>
                                     </View>
-                                    <Text style={[styles.summaryValue, { color: '#F97316' }]}>₹{driverReturnFare.toFixed(2)}</Text>
-                                </View>
-                            )}
-                            {driverReturnFare > 0 && (
-                                <Text style={styles.returnFareNote}>
-                                    {routeDistanceKm.toFixed(1)} km × ₹2/km for driver's return journey
-                                </Text>
-                            )}
 
-                            <View style={styles.dashedLine} />
+                                    {/* Wallet Balance */}
+                                    {!loadingWallet && (
+                                        <View style={styles.walletRow}>
+                                            <View style={styles.walletInfo}>
+                                                <Ionicons name="wallet-outline" size={16} color="#64748B" />
+                                                <Text style={styles.walletLabel}>Wallet Balance</Text>
+                                            </View>
+                                            <Text style={[styles.walletAmount, {
+                                                color: hasInsufficientBalance ? '#EF4444' : '#10B981'
+                                            }]}>
+                                                ₹{walletBalance.toFixed(2)}
+                                            </Text>
+                                        </View>
+                                    )}
 
-                            {/* Total */}
-                            <View style={styles.totalRow}>
-                                <Text style={styles.totalLabel}>Booking Total</Text>
-                                <Text style={styles.totalAmount}>₹{totalPrice.toFixed(2)}</Text>
-                            </View>
-
-                            {/* Staged Payment Breakdown */}
-                            <View style={styles.stagedPayment}>
-                                <View style={styles.stagedHeader}>
-                                    <Ionicons name="shield-checkmark" size={16} color="#16A34A" />
-                                    <Text style={styles.stagedTitle}>Secure Staged Payment</Text>
+                                    {/* Insufficient Balance Warning */}
+                                    {hasInsufficientBalance && !loadingWallet && (
+                                        <TouchableOpacity
+                                            style={styles.topUpWarning}
+                                            onPress={() => navigation.navigate('Wallet')}
+                                        >
+                                            <View style={styles.topUpIconBg}>
+                                                <Ionicons name="wallet-outline" size={18} color="#DC2626" />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.topUpTitle}>Top Up Required</Text>
+                                                <Text style={styles.topUpSubtitle}>
+                                                    Add ₹{(initialPayment - walletBalance).toFixed(0)} to book
+                                                </Text>
+                                            </View>
+                                            <View style={styles.topUpButton}>
+                                                <Text style={styles.topUpButtonText}>Top Up</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                                <View style={styles.stagedRow}>
-                                    <View style={styles.stagedDotRow}>
-                                        <View style={[styles.stagedDot, { backgroundColor: '#3B82F6' }]} />
-                                        <Text style={styles.stagedLabel}>After Driver Accepts (25%)</Text>
-                                    </View>
-                                    <Text style={styles.stagedAmount}>₹{initialPayment.toFixed(2)}</Text>
-                                </View>
-                                <View style={styles.stagedRow}>
-                                    <View style={styles.stagedDotRow}>
-                                        <View style={[styles.stagedDot, { backgroundColor: '#94A3B8' }]} />
-                                        <Text style={[styles.stagedLabel, { color: '#6B7280' }]}>After Service (75%)</Text>
-                                    </View>
-                                    <Text style={[styles.stagedAmount, { color: '#6B7280' }]}>₹{completionPayment.toFixed(2)}</Text>
-                                </View>
-                            </View>
-
-                            {/* Wallet Balance */}
-                            {!loadingWallet && (
-                                <View style={styles.walletRow}>
-                                    <View style={styles.walletInfo}>
-                                        <Ionicons name="wallet-outline" size={16} color="#64748B" />
-                                        <Text style={styles.walletLabel}>Wallet Balance</Text>
-                                    </View>
-                                    <Text style={[styles.walletAmount, {
-                                        color: hasInsufficientBalance ? '#EF4444' : '#10B981'
-                                    }]}>
-                                        ₹{walletBalance.toFixed(2)}
-                                    </Text>
-                                </View>
-                            )}
-
-                            {/* Insufficient Balance Warning */}
-                            {hasInsufficientBalance && !loadingWallet && (
-                                <TouchableOpacity
-                                    style={styles.topUpWarning}
-                                    onPress={() => navigation.navigate('Wallet')}
-                                >
-                                    <View style={styles.topUpIconBg}>
-                                        <Ionicons name="wallet-outline" size={18} color="#DC2626" />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.topUpTitle}>Top Up Required</Text>
-                                        <Text style={styles.topUpSubtitle}>
-                                            Add ₹{(initialPayment - walletBalance).toFixed(0)} to book
-                                        </Text>
-                                    </View>
-                                    <View style={styles.topUpButton}>
-                                        <Text style={styles.topUpButtonText}>Top Up</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </FadeInView>
+                            </FadeInView>
+                        </>
+                    )}
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -724,48 +714,76 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                 )}
                 <View style={styles.bottomBarContent}>
                     <View style={styles.priceBlock}>
-                        <Text style={styles.bottomTotalLabel}>Total</Text>
-                        <Text style={styles.bottomTotalAmount}>₹{totalPrice.toFixed(2)}</Text>
-                        <Text style={styles.payNowLabel}>Pay ₹{initialPayment.toFixed(0)} now (25%)</Text>
+                        {currentStep === 1 ? (
+                            <>
+                                <Text style={styles.bottomTotalLabel}>Total</Text>
+                                <Text style={styles.bottomTotalAmount}>₹{totalPrice.toFixed(2)}</Text>
+                                <Text style={styles.payNowLabel}>Pay ₹{initialPayment.toFixed(0)} now (25%)</Text>
+                            </>
+                        ) : (
+                            <TouchableOpacity onPress={handleBack} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name="arrow-back" size={24} color={COLORS.text} style={{ marginRight: 8 }} />
+                                <Text style={{ fontSize: 16, fontWeight: '600', color: COLORS.text }}>Back</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
-                    <TouchableOpacity
-                        style={[
-                            styles.bookButton,
-                            (!bookingDate || !bookingTime) && styles.bookButtonDisabled,
-                        ]}
-                        onPress={() => {
-                            if (!bookingDate || !bookingTime) {
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                                Alert.alert('Missing Info', 'Please select date and time');
-                                return;
-                            }
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            handleSubmit();
-                        }}
-                        disabled={isLoading}
-                    >
-                        {bookingDate && bookingTime && (
+                    {currentStep === 0 ? (
+                        <TouchableOpacity
+                            style={[
+                                styles.bookButton,
+                                (!bookingDate || !bookingTime) && styles.bookButtonDisabled,
+                            ]}
+                            onPress={handleNext}
+                        >
                             <LinearGradient
                                 colors={GRADIENTS.primary}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={StyleSheet.absoluteFill}
                             />
-                        )}
-                        {isLoading ? (
-                            <ActivityIndicator color="#FFF" />
-                        ) : (
-                            <>
-                                <Text style={[styles.bookButtonText, (!bookingDate || !bookingTime) && { color: '#94A3B8' }]}>
-                                    {!bookingDate ? 'Select Date' : !bookingTime ? 'Select Time' : 'Confirm Booking'}
-                                </Text>
-                                {bookingDate && bookingTime && (
-                                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
-                                )}
-                            </>
-                        )}
-                    </TouchableOpacity>
+                            <Text style={styles.bookButtonText}>Next</Text>
+                            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            style={[
+                                styles.bookButton,
+                                (!bookingDate || !bookingTime) && styles.bookButtonDisabled,
+                            ]}
+                            onPress={() => {
+                                if (!bookingDate || !bookingTime) {
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                                    Alert.alert('Missing Info', 'Please select date and time');
+                                    return;
+                                }
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                handleSubmit();
+                            }}
+                            disabled={isLoading}
+                        >
+                            {bookingDate && bookingTime && (
+                                <LinearGradient
+                                    colors={GRADIENTS.primary}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={StyleSheet.absoluteFill}
+                                />
+                            )}
+                            {isLoading ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <>
+                                    <Text style={[styles.bookButtonText, (!bookingDate || !bookingTime) && { color: '#94A3B8' }]}>
+                                        Confirm Booking
+                                    </Text>
+                                    {bookingDate && bookingTime && (
+                                        <Ionicons name="checkmark" size={20} color="#FFF" />
+                                    )}
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
 
@@ -886,6 +904,14 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: COLORS.textSecondary,
         marginTop: 2,
+    },
+    pickerSection: {
+        marginTop: 12,
+        backgroundColor: '#FFF',
+        borderRadius: RADIUS.large,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
     // Driver Card
     cardContainer: {

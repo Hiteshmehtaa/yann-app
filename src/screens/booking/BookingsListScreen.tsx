@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StatusBar,
   Alert,
+  Linking,
 } from 'react-native';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -208,6 +209,25 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     // Get provider name from booking data
     const providerName = (item as any).provider?.name || (item as any).providerName || 'Provider';
     const providerInitial = providerName.charAt(0).toUpperCase();
+    const providerPhone = (item as any).provider?.phone || (item as any).providerPhone || 'N/A';
+
+    // Phone Reveal Logic
+    const isWithinRevealWindow = item.bookingDate && item.bookingTime ? (() => {
+      try {
+        let dateStr = item.bookingDate as unknown as string;
+        if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+
+        const bookingDateTime = new Date(`${dateStr}T${item.bookingTime}`);
+        if (isNaN(bookingDateTime.getTime())) return false;
+
+        const now = new Date();
+        const threeHoursBefore = new Date(bookingDateTime.getTime() - 3 * 60 * 60 * 1000);
+        return now.getTime() >= threeHoursBefore.getTime();
+      } catch (e) {
+        return false;
+      }
+    })() : false;
+
 
     // Check if booking is upcoming (within next 24 hours)
     const isUpcoming = item.bookingDate && item.bookingTime
@@ -268,11 +288,31 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
           </View>
 
           {/* Provider Info (Compact) */}
-          <View style={styles.providerCompact}>
-            <View style={[styles.providerAvatarSmall, { backgroundColor: COLORS.primary + '20' }]}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.primary }}>{providerInitial}</Text>
+          <View style={[styles.providerCompact, { justifyContent: 'space-between' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <View style={[styles.providerAvatarSmall, { backgroundColor: COLORS.primary + '20' }]}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.primary }}>{providerInitial}</Text>
+              </View>
+              <Text style={[styles.providerNameSmall, { color: colors.textSecondary }]} numberOfLines={1}>Service by {providerName}</Text>
             </View>
-            <Text style={[styles.providerNameSmall, { color: colors.textSecondary }]}>Service by {providerName}</Text>
+
+            {(item.status === 'accepted' || item.status === 'in_progress') && (
+              <TouchableOpacity
+                disabled={!isWithinRevealWindow || providerPhone === 'N/A'}
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isWithinRevealWindow ? COLORS.primary + '15' : COLORS.gray100, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, gap: 6 }}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  if (isWithinRevealWindow && providerPhone !== 'N/A') {
+                    Linking.openURL(`tel:${providerPhone}`);
+                  }
+                }}
+              >
+                <Ionicons name={isWithinRevealWindow ? "call" : "lock-closed"} size={12} color={isWithinRevealWindow ? COLORS.primary : COLORS.textTertiary} />
+                <Text style={{ fontSize: 11, fontWeight: '600', color: isWithinRevealWindow ? COLORS.primary : COLORS.textTertiary }}>
+                  {isWithinRevealWindow ? providerPhone : 'Unlocks 3h before'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

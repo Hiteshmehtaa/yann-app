@@ -322,11 +322,6 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     }
   };
 
-  const handleCall = () => {
-    haptics.medium();
-    if (provider.phone) Linking.openURL(`tel:${provider.phone}`);
-  };
-
   const handleToggleFavorite = async () => {
     if (isFavoriteLoading) return;
     setIsFavoriteLoading(true);
@@ -656,14 +651,6 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
               haptics.medium();
               (navigation as any).navigate('MainTabs', { screen: 'Chat' });
             }}
-            style={{ width: 56, aspectRatio: 1, paddingHorizontal: 0, minWidth: 0, backgroundColor: 'transparent' }}
-          />
-          <Button
-            variant="outline"
-            size="medium"
-            title=""
-            icon={<Ionicons name="call-outline" size={22} color={COLORS.primary} />}
-            onPress={handleCall}
             style={{ width: 56, aspectRatio: 1, paddingHorizontal: 0, minWidth: 0, backgroundColor: 'transparent' }}
           />
 

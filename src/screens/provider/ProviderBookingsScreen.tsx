@@ -377,6 +377,40 @@ export const ProviderBookingsScreen = () => {
     const isInProgress = item.status === 'in_progress';
     const session = jobSessions[item.id] || item.jobSession;
 
+    const isWithinRevealWindow = (() => {
+      try {
+        if (!item.rawDate || !item.rawTime) return false;
+
+        let date: Date;
+        if (item.rawDate.includes('T')) {
+          date = new Date(item.rawDate);
+        } else if (item.rawDate.includes('-')) {
+          const parts = item.rawDate.split('-');
+          if (parts[0].length === 4) {
+            date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          } else {
+            date = new Date(item.rawDate);
+          }
+        } else {
+          date = new Date(item.rawDate);
+        }
+
+        if (isNaN(date.getTime())) return false;
+
+        const [hours, minutes] = item.rawTime.split(':').map(Number);
+        if (isNaN(hours) || isNaN(minutes)) return false;
+
+        date.setHours(hours, minutes, 0, 0);
+
+        const now = new Date();
+        const threeHoursBefore = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+        return now.getTime() >= threeHoursBefore.getTime();
+      } catch (e) {
+        return false;
+      }
+    })();
+
+
     return (
       <View key={item.id} style={styles.card}>
 
@@ -620,11 +654,22 @@ export const ProviderBookingsScreen = () => {
                 <Text style={styles.avatarTextMini}>{item.customerName.charAt(0)}</Text>
               </View>
             )}
-            <Text style={styles.customerNameMini}>{item.customerName}</Text>
+            <View>
+              <Text style={styles.customerNameMini}>{item.customerName}</Text>
+              {(isAccepted || isInProgress) && !isWithinRevealWindow && (
+                <Text style={{ fontSize: 10, color: COLORS.textTertiary, marginTop: 2 }}>Number unlocks 3h before</Text>
+              )}
+            </View>
           </View>
-          <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.customerPhone}`)} style={styles.callBtnMini}>
-            <Ionicons name="call" size={14} color={COLORS.primary} />
-          </TouchableOpacity>
+          {(isAccepted || isInProgress) && (
+            <TouchableOpacity
+              disabled={!isWithinRevealWindow}
+              onPress={() => isWithinRevealWindow && Linking.openURL(`tel:${item.customerPhone}`)}
+              style={[styles.callBtnMini, !isWithinRevealWindow && { backgroundColor: COLORS.gray100, borderColor: COLORS.gray200 }]}
+            >
+              <Ionicons name={isWithinRevealWindow ? "call" : "lock-closed"} size={14} color={isWithinRevealWindow ? COLORS.primary : COLORS.textTertiary} />
+            </TouchableOpacity>
+          )}
         </View>
 
       </View >
