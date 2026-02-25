@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 import { apiService } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 
@@ -135,6 +137,18 @@ export const HelpSupportScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
+          {/* Hero Lottie Banner */}
+          <View style={styles.heroBanner}>
+            <LottieView
+              source={LottieAnimations.jumpingLottie}
+              autoPlay
+              loop
+              style={{ width: 120, height: 120 }}
+            />
+            <Text style={styles.heroTitle}>How can we help?</Text>
+            <Text style={styles.heroSubtitle}>We're always here to support you</Text>
+          </View>
+
           {/* Contact Options */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>CONTACT US</Text>
@@ -445,6 +459,23 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: '500',
     color: COLORS.text,
+  },
+  heroBanner: {
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+    marginBottom: SPACING.xl,
+  },
+  heroTitle: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginTop: SPACING.sm,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.textSecondary,
+    marginTop: 4,
   },
   infoCard: {
     flexDirection: 'row',

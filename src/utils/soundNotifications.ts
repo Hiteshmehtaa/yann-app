@@ -26,6 +26,8 @@ export async function initializeBuzzerSound() {
   try {
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
+      allowsRecordingIOS: false,
+      interruptionModeIOS: Audio.InterruptionModeIOS?.DoNotMix ?? 2,
       staysActiveInBackground: true,
       shouldDuckAndroid: false,          // Don't lower other apps — be dominant
       interruptionModeAndroid: Audio.InterruptionModeAndroid?.DoNotMix ?? 1,
@@ -70,6 +72,8 @@ export async function playBookingRequestBuzzer() {
       // Ensure the audio session is configured correctly
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
+        allowsRecordingIOS: false,
+        interruptionModeIOS: Audio.InterruptionModeIOS?.DoNotMix ?? 2,
         staysActiveInBackground: true,
         shouldDuckAndroid: false,
         interruptionModeAndroid: Audio.InterruptionModeAndroid?.DoNotMix ?? 1,

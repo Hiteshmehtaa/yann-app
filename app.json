@@ -12,11 +12,14 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "12",
+      "buildNumber": "13",
       "associatedDomains": [
         "applinks:yann.app",
         "applinks:www.yann.app"
       ],
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "config": {
         "googleMapsApiKey": "AIzaSyDuWW76Kch_KG5n9vxNwSq3GfJCSSZuBOg"
       },

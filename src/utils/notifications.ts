@@ -10,7 +10,8 @@ Notifications.setNotificationHandler({
         const type = notification.request.content.data?.type as string | undefined;
         const isBookingRequest = type === 'booking_request' || type === 'booking_request_reminder';
         return {
-            shouldPlaySound: !isBookingRequest,
+            shouldShowAlert: true,  // Required by older expo-notifications on iOS
+            shouldPlaySound: !isBookingRequest, // In-app buzzer handles booking sound
             shouldSetBadge: true,
             shouldShowBanner: true,
             shouldShowList: true,
@@ -93,7 +94,14 @@ export async function registerForPushNotificationsAsync(): Promise<string | unde
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications.requestPermissionsAsync({
+            ios: {
+                allowAlert: true,
+                allowBadge: true,
+                allowSound: true,
+                allowCriticalAlerts: true, // Bypass Silent Mode & Do Not Disturb on iOS
+            },
+        });
         finalStatus = status;
     }
 

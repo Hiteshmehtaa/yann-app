@@ -22,6 +22,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Address } from '../../types';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 type AddressLabel = 'Home' | 'Work' | 'Other';
 
@@ -528,7 +530,12 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="location-outline" size={48} color={COLORS.textTertiary} />
+              <LottieView
+                source={LottieAnimations.mapLocationPicker}
+                autoPlay
+                loop
+                style={{ width: 150, height: 150 }}
+              />
               <Text style={styles.emptyTitle}>No addresses saved</Text>
               <Text style={styles.emptySubtitle}>Add an address to make booking easier</Text>
               <TouchableOpacity

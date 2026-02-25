@@ -17,6 +17,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useResponsive } from '../../hooks/useResponsive';
 
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../utils/theme';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -249,7 +251,12 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Ionicons name="receipt-outline" size={48} color={COLORS.textTertiary} />
+                <LottieView
+                  source={LottieAnimations.emptyCart}
+                  autoPlay
+                  loop
+                  style={{ width: 140, height: 140 }}
+                />
                 <Text style={styles.emptyTitle}>No transactions yet</Text>
                 <Text style={styles.emptySubtitle}>
                   Your earnings will appear here after completing bookings

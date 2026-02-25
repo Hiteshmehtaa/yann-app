@@ -21,6 +21,8 @@ import { JobTimer } from '../../components/JobTimer';
 import { apiService } from '../../services/api';
 import { useNotifications } from '../../contexts/NotificationContext';
 import type { Booking } from '../../types';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 type Props = {
     navigation: NativeStackNavigationProp<any>;
@@ -415,8 +417,13 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
                 {booking.status === 'completed' && (booking as any).hasBeenRated && (
                     <View style={styles.ratedBadge}>
-                        <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-                        <Text style={styles.ratedText}>You've rated this service</Text>
+                        <LottieView
+                            source={LottieAnimations.success}
+                            autoPlay
+                            loop={false}
+                            style={{ width: 60, height: 60 }}
+                        />
+                        <Text style={styles.ratedText}>You've rated this service ✨</Text>
                     </View>
                 )}
             </ScrollView>

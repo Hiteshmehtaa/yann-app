@@ -29,6 +29,8 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { useTheme } from '../../contexts/ThemeContext';
 import { TopBar } from '../../components/ui/TopBar';
 import { Button } from '../../components/ui/Button';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -136,22 +138,27 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
       <View style={[styles.emptyContainer, { paddingTop: 60 }]}>
-        <EmptyState
-          title="No Favorites"
-          subtitle="Save providers you love to access them quickly here."
-        >
-          <View style={{ marginTop: 24 }}>
-            <Button
-              title="Find Providers"
-              onPress={() => {
-                haptics.medium();
-                (navigation as any).navigate('MainTabs', { screen: 'Home' });
-              }}
-              variant="primary"
-              size="medium"
-            />
-          </View>
-        </EmptyState>
+        <LottieView
+          source={LottieAnimations.emptyCart}
+          autoPlay
+          loop
+          style={{ width: 180, height: 180 }}
+        />
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>No Favorites Yet</Text>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+          Save providers you love to access them quickly here.
+        </Text>
+        <View style={{ marginTop: 24 }}>
+          <Button
+            title="Find Providers"
+            onPress={() => {
+              haptics.medium();
+              (navigation as any).navigate('MainTabs', { screen: 'Home' });
+            }}
+            variant="primary"
+            size="medium"
+          />
+        </View>
       </View>
     );
   };
@@ -289,5 +296,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.xxxl,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: SPACING.md,
+    letterSpacing: -0.3,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    lineHeight: 20,
   },
 });
