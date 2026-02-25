@@ -13,12 +13,16 @@ import {
     ActivityIndicator,
     Platform,
     LayoutAnimation,
-    UIManager
+    UIManager,
+    Image,
+    ScrollView, 
+    Animated
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetScrollView 
+} from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -136,6 +140,9 @@ if (Platform.OS === 'android') {
     }
 }
 
+const ITEM_WIDTH = width * 0.45;
+const ITEM_SPACING = (width - ITEM_WIDTH) / 2;
+
 export const DriverBookingScreen = ({ navigation, route }: any) => {
     const { service } = route.params;
     const { user } = useAuth();
@@ -167,6 +174,9 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
     const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
     const [transmission, setTransmission] = useState<Transmission | null>(null);
     const [routeDistanceKm, setRouteDistanceKm] = useState<number>(0);
+
+    // Carousel State
+    const scrollX = useRef(new Animated.Value(0)).current;
 
     // Computed: driver return fare for one-way trips
     const driverReturnFare = tripDirection === 'oneway' ? Math.round(routeDistanceKm * DRIVER_RETURN_RATE_PER_KM) : 0;
@@ -708,44 +718,91 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                             <TouchableOpacity onPress={goToPreviousStep} style={styles.backButton}>
                                 <Ionicons name="chevron-back" size={20} color={COLORS.text} />
                             </TouchableOpacity>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.stepTitle}>Vehicle Type</Text>
-                                <Text style={styles.stepSubtitle}>Choose your preferred vehicle</Text>
+                            <View style={{ flex: 1, alignItems: 'center' }}>
+                                <Text style={[styles.stepTitle, { color: COLORS.primary, fontSize: 22 }]}>Please select your car</Text>
                             </View>
+                            <View style={{ width: 40 }} />
                         </View>
 
-                        <View style={styles.vehicleGrid}>
-                            {[
-                                { type: 'hatchback', label: 'Hatchback', icon: 'car-outline' },
-                                { type: 'sedan', label: 'Sedan', icon: 'car-sport-outline' },
-                                { type: 'suv', label: 'SUV', icon: 'car-outline' },
-                                { type: 'luxury', label: 'Luxury', icon: 'car-sport-outline' },
-                            ].map((vehicle) => (
-                                <TouchableOpacity
-                                    key={vehicle.type}
-                                    style={[
-                                        styles.vehicleCard,
-                                        vehicleType === vehicle.type && styles.vehicleCardActive
-                                    ]}
-                                    onPress={() => {
-                                        setVehicleType(vehicle.type as VehicleType);
-                                        setTimeout(goToNextStep, 200);
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={[styles.vehicleIconBg, vehicleType === vehicle.type && styles.vehicleIconBgActive]}>
-                                        <Ionicons
-                                            name={vehicle.icon as any}
-                                            size={20}
-                                            color={vehicleType === vehicle.type ? COLORS.accent : COLORS.textSecondary}
-                                        />
+                        <Animated.FlatList
+                            data={[
+                                { type: 'luxury', label: 'Luxury', image: require('../../../assets/images/cars/luxury.png') },
+                                { type: 'sedan', label: 'Electric (EV)', image: require('../../../assets/images/cars/sedan.png') },
+                                { type: 'hatchback', label: 'Hatchback', image: require('../../../assets/images/cars/hatchback.png') },
+                                { type: 'suv', label: 'SUV', image: require('../../../assets/images/cars/suv.png') },
+                            ]}
+                            keyExtractor={(item) => item.type}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.vehicleSlider}
+                            snapToInterval={ITEM_WIDTH}
+                            decelerationRate="fast"
+                            bounces={true}
+                            onScroll={Animated.event(
+                                [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                                { useNativeDriver: true }
+                            )}
+                            scrollEventThrottle={16}
+                            renderItem={({ item, index }) => {
+                                const inputRange = [
+                                    (index - 1) * ITEM_WIDTH,
+                                    index * ITEM_WIDTH,
+                                    (index + 1) * ITEM_WIDTH,
+                                ];
+
+                                const scale = scrollX.interpolate({
+                                    inputRange,
+                                    outputRange: [0.7, 1.2, 0.7],
+                                    extrapolate: 'clamp',
+                                });
+
+                                const opacity = scrollX.interpolate({
+                                    inputRange,
+                                    outputRange: [0.5, 1, 0.5],
+                                    extrapolate: 'clamp',
+                                });
+
+                                const translateY = scrollX.interpolate({
+                                    inputRange,
+                                    outputRange: [20, 0, 20], // Curve effect: items push down as they move aside
+                                    extrapolate: 'clamp',
+                                });
+
+                                return (
+                                    <View style={{ width: ITEM_WIDTH, alignItems: 'center' }}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.vehicleSliderCard,
+                                                vehicleType === item.type && styles.vehicleSliderCardActive
+                                            ]}
+                                            onPress={() => {
+                                                setVehicleType(item.type as VehicleType);
+                                                setTimeout(goToNextStep, 200);
+                                            }}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Animated.View style={[styles.vehicleImageContainer, { transform: [{ scale }, { translateY }], opacity }]}>
+                                                <Image
+                                                    source={item.image}
+                                                    style={styles.vehicleSliderImage}
+                                                    resizeMode="contain"
+                                                />
+                                            </Animated.View>
+                                            <View style={styles.vehicleSliderFooter}>
+                                                <Ionicons
+                                                    name={vehicleType === item.type ? "checkmark-circle" : "ellipse-outline"}
+                                                    size={22}
+                                                    color={vehicleType === item.type ? COLORS.primary : COLORS.textSecondary}
+                                                />
+                                                <Text style={[styles.vehicleSliderLabel, vehicleType === item.type && styles.vehicleSliderLabelActive]}>
+                                                    {item.label}
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
                                     </View>
-                                    <Text style={[styles.vehicleLabel, vehicleType === vehicle.type && styles.vehicleLabelActive]}>
-                                        {vehicle.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                                );
+                            }}
+                        />
                     </View>
                 );
 
@@ -928,7 +985,8 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 backgroundStyle={styles.bottomSheetBackground}
                 handleIndicatorStyle={styles.bottomSheetIndicator}
             >
-                <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+                <BottomSheetScrollView 
+    Animated contentContainerStyle={styles.bottomSheetContent}>
                     {/* Step Progress */}
                     <View style={styles.stepProgress}>
                         {[1, 2, 3, 4].map((step) => (
@@ -949,6 +1007,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
 
                     {renderWizardStep()}
                 </BottomSheetScrollView>
+
             </BottomSheet>
 
             {/* Search Modal */}
@@ -1424,5 +1483,44 @@ const styles = StyleSheet.create({
         color: '#9A3412',
         fontWeight: TYPOGRAPHY.weight.medium,
         textAlign: 'center',
+    },
+    vehicleSlider: {
+        paddingHorizontal: ITEM_SPACING,
+        paddingBottom: SPACING.xxxl,
+    },
+    vehicleSliderCard: {
+        width: ITEM_WIDTH,
+        backgroundColor: 'transparent',
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+    },
+    vehicleSliderCardActive: {
+        opacity: 1,
+    },
+    vehicleImageContainer: {
+        height: 100,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: SPACING.sm,
+    },
+    vehicleSliderImage: {
+        width: 140,
+        height: 80,
+    },
+    vehicleSliderFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: SPACING.xs,
+    },
+    vehicleSliderLabel: {
+        fontSize: TYPOGRAPHY.size.sm,
+        color: COLORS.text,
+        fontWeight: TYPOGRAPHY.weight.medium,
+    },
+    vehicleSliderLabelActive: {
+        color: COLORS.primary,
+        fontWeight: TYPOGRAPHY.weight.bold,
     },
 });
