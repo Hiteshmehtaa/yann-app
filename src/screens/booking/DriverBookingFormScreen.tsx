@@ -98,6 +98,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
     const [currentStep, setCurrentStep] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showDurationModal, setShowDurationModal] = useState(false);
 
     // Wallet
     const [walletBalance, setWalletBalance] = useState(0);
@@ -512,58 +513,36 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                                                 : undefined
                                         }
                                     />
-                                </View>
-                            </FadeInView>
 
-                            {/* 5. Duration Selection */}
-                            <FadeInView delay={400} style={styles.sectionContainer}>
-                                <View style={styles.sectionHeader}>
-                                    <View>
-                                        <Text style={styles.sectionTitle}>Duration</Text>
-                                        <Text style={styles.sectionSubtitle}>Minimum {MINIMUM_HOURS} hours</Text>
-                                    </View>
-                                    {bookingTime && (
-                                        <View style={styles.durationBadge}>
-                                            <Text style={styles.durationBadgeText}>
-                                                {bookingTime} - {getEndTime()}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
+                                    <View style={{ height: 16 }} />
 
-                                <View style={styles.durationGrid}>
-                                    {DURATION_OPTIONS.map((hours) => {
-                                        const isSelected = selectedDuration === hours;
-                                        const estimatedCost = driverRate * hours;
-                                        return (
-                                            <TouchableOpacity
-                                                key={hours}
-                                                style={[styles.durationCard, isSelected && styles.durationCardSelected]}
-                                                onPress={() => {
-                                                    Haptics.selectionAsync();
-                                                    setSelectedDuration(hours);
-                                                }}
-                                            >
-                                                {isSelected && (
-                                                    <LinearGradient
-                                                        colors={GRADIENTS.primary}
-                                                        style={StyleSheet.absoluteFill}
-                                                        start={{ x: 0, y: 0 }}
-                                                        end={{ x: 1, y: 1 }}
-                                                    />
+                                    {/* Duration Picker - same style as date/time */}
+                                    <View style={styles.durationPickerWrapper}>
+                                        <Text style={styles.durationPickerLabel}>SELECT DURATION</Text>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.durationPickerButton,
+                                                showDurationModal && { borderColor: COLORS.primary, backgroundColor: '#F8FAFC' },
+                                            ]}
+                                            onPress={() => setShowDurationModal(true)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <View style={styles.durationPickerIcon}>
+                                                <Ionicons name="hourglass-outline" size={22} color={COLORS.primary} />
+                                            </View>
+                                            <View style={styles.durationPickerContent}>
+                                                <Text style={styles.durationPickerValue}>
+                                                    {selectedDuration} hours  •  ₹{driverRate * selectedDuration}
+                                                </Text>
+                                                {bookingTime && (
+                                                    <Text style={styles.durationPickerSubtext}>
+                                                        {bookingTime} - {getEndTime()}
+                                                    </Text>
                                                 )}
-                                                <Text style={[styles.durationHours, isSelected && styles.textWhite]}>
-                                                    {hours}
-                                                </Text>
-                                                <Text style={[styles.durationLabel, isSelected && styles.textWhiteLight]}>
-                                                    hours
-                                                </Text>
-                                                <Text style={[styles.durationCost, isSelected && styles.textWhiteLight]}>
-                                                    ₹{estimatedCost}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
+                                            </View>
+                                            <Ionicons name="chevron-down" size={18} color={COLORS.textTertiary} />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             </FadeInView>
                         </>
@@ -786,6 +765,53 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                     )}
                 </View>
             </View>
+
+            {/* Duration Selection Modal */}
+            <Modal
+                visible={showDurationModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowDurationModal(false)}
+            >
+                <TouchableOpacity
+                    style={styles.durationModalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowDurationModal(false)}
+                >
+                    <View style={styles.durationModalContainer} onStartShouldSetResponder={() => true}>
+                        <View style={styles.durationModalHeader}>
+                            <Text style={styles.durationModalTitle}>Select Duration</Text>
+                            <Text style={styles.durationModalSubtitle}>Minimum {MINIMUM_HOURS} hours</Text>
+                        </View>
+                        <View style={styles.durationModalDivider} />
+                        {DURATION_OPTIONS.map((hours) => {
+                            const isSelected = selectedDuration === hours;
+                            const estimatedCost = driverRate * hours;
+                            return (
+                                <TouchableOpacity
+                                    key={hours}
+                                    style={[styles.durationModalItem, isSelected && styles.durationModalItemSelected]}
+                                    onPress={() => {
+                                        Haptics.selectionAsync();
+                                        setSelectedDuration(hours);
+                                        setShowDurationModal(false);
+                                    }}
+                                >
+                                    <View>
+                                        <Text style={[styles.durationModalItemText, isSelected && styles.durationModalItemTextSelected]}>
+                                            {hours} hours
+                                        </Text>
+                                        <Text style={[styles.durationModalItemCost, isSelected && styles.durationModalItemCostSelected]}>
+                                            ₹{estimatedCost}
+                                        </Text>
+                                    </View>
+                                    {isSelected && <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                </TouchableOpacity>
+            </Modal>
 
             {/* Success Modal */}
             <Modal visible={showSuccess} transparent animationType="none">
@@ -1131,55 +1157,120 @@ const styles = StyleSheet.create({
         fontWeight: '600' as any,
         color: '#374151',
     },
-    // Duration
-    durationBadge: {
-        backgroundColor: '#F0FDF4',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
+    // Duration Picker (inline style matching date/time)
+    durationPickerWrapper: {
+        marginBottom: 0,
     },
-    durationBadgeText: {
+    durationPickerLabel: {
         fontSize: 12,
         fontWeight: '600' as any,
-        color: '#059669',
+        color: COLORS.textSecondary,
+        marginBottom: 8,
+        marginLeft: 4,
+        textTransform: 'uppercase' as any,
+        letterSpacing: 0.5,
     },
-    durationGrid: {
+    durationPickerButton: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    durationCard: {
-        width: (width - SPACING.lg * 2 - 30) / 4,
-        height: 90,
+        alignItems: 'center',
+        backgroundColor: COLORS.white,
         borderRadius: 16,
-        backgroundColor: '#FFF',
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        height: 64,
+        paddingHorizontal: 16,
+        gap: 12,
+        ...SHADOWS.sm,
+    },
+    durationPickerIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#EFF6FF',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        overflow: 'hidden',
-        ...SHADOWS.sm,
+        borderColor: '#DBEAFE',
     },
-    durationCardSelected: {
-        borderWidth: 0,
-        ...SHADOWS.md,
+    durationPickerContent: {
+        flex: 1,
+        justifyContent: 'center',
     },
-    durationHours: {
-        fontSize: 22,
-        fontWeight: '800' as any,
+    durationPickerValue: {
+        fontSize: 16,
+        fontWeight: '700' as any,
         color: COLORS.text,
     },
-    durationLabel: {
-        fontSize: 11,
+    durationPickerSubtext: {
+        fontSize: 12,
         fontWeight: '500' as any,
-        color: '#94A3B8',
+        color: '#059669',
         marginTop: 2,
     },
-    durationCost: {
-        fontSize: 11,
+    // Duration Modal
+    durationModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        justifyContent: 'center',
+        padding: 24,
+        alignItems: 'center',
+    },
+    durationModalContainer: {
+        backgroundColor: '#F2F2F7',
+        borderRadius: 14,
+        width: '100%',
+        maxWidth: 360,
+        overflow: 'hidden',
+        ...SHADOWS.lg,
+    },
+    durationModalHeader: {
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 12,
+    },
+    durationModalTitle: {
+        fontSize: 17,
         fontWeight: '600' as any,
-        color: '#64748B',
-        marginTop: 4,
+        color: '#1C1C1E',
+        letterSpacing: -0.4,
+    },
+    durationModalSubtitle: {
+        fontSize: 13,
+        color: COLORS.textSecondary,
+        marginTop: 2,
+    },
+    durationModalDivider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: '#C6C6C8',
+    },
+    durationModalItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#E5E5EA',
+    },
+    durationModalItemSelected: {
+        backgroundColor: '#EFF6FF',
+    },
+    durationModalItemText: {
+        fontSize: 17,
+        fontWeight: '500' as any,
+        color: '#1C1C1E',
+    },
+    durationModalItemTextSelected: {
+        fontWeight: '600' as any,
+        color: COLORS.primary,
+    },
+    durationModalItemCost: {
+        fontSize: 13,
+        color: '#8E8E93',
+        marginTop: 2,
+    },
+    durationModalItemCostSelected: {
+        color: COLORS.primary,
     },
     textWhite: {
         color: '#FFF',
