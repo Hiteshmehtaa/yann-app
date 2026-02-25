@@ -93,6 +93,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
     const [bookingTime, setBookingTime] = useState<string | null>(null);
     const [selectedDuration, setSelectedDuration] = useState<number>(MINIMUM_HOURS);
     const [notes, setNotes] = useState('');
+    const [phone, setPhone] = useState(user?.phone || '');
 
     // UI State
     const [currentStep, setCurrentStep] = useState(0);
@@ -178,6 +179,11 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                 Alert.alert('Invalid Time', 'Booking must be at least 45 minutes from now');
                 return false;
             }
+        } else if (currentStep === 1) {
+            if (!phone || phone.trim().length !== 10) {
+                Alert.alert('Missing Contact', 'Please provide a valid 10-digit phone number');
+                return false;
+            }
         }
         return true;
     };
@@ -228,7 +234,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                 providerId: selectedDriver._id || selectedDriver.id,
                 customerId: (user as any)?._id || user?.id,
                 customerName: user?.name || 'Guest',
-                customerPhone: user?.phone || '',
+                customerPhone: phone.trim() || user?.phone || '',
                 customerEmail: user?.email,
                 customerAddress: pickupAddress || '',
                 latitude: pickupCoords?.latitude || 0,
@@ -548,12 +554,26 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                         </>
                     ) : (
                         <>
-                            {/* 6. Notes */}
+                            {/* 6. Contact & Notes */}
                             <FadeInView delay={500} style={styles.sectionContainer}>
                                 <View style={styles.sectionHeader}>
-                                    <Text style={styles.sectionTitle}>Additional Notes</Text>
+                                    <Text style={styles.sectionTitle}>Contact & Notes</Text>
                                 </View>
                                 <View style={styles.notesContainer}>
+                                    <FloatingLabelInput
+                                        label="Contact Number (10 digits)"
+                                        value={phone}
+                                        onChangeText={setPhone}
+                                        keyboardType="phone-pad"
+                                        maxLength={10}
+                                        containerStyle={{
+                                            borderWidth: 1,
+                                            borderColor: '#E2E8F0',
+                                            backgroundColor: '#F8FAFC',
+                                            borderRadius: 12,
+                                            marginBottom: 16,
+                                        }}
+                                    />
                                     <FloatingLabelInput
                                         label="Any instructions for the driver..."
                                         value={notes}
