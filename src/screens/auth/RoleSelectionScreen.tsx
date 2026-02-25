@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+
 import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -162,24 +162,8 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
             >
               <View style={[styles.card, styles.cardBlue]}>
                 <View style={styles.cardHeader}>
-                  <View style={[styles.iconCircleBlue, { backgroundColor: 'transparent', position: 'relative' }]}>
-                    <Video
-                      source={require('../../../assets/lottie/Home.mp4')}
-                      style={{ width: 56, height: 56 }}
-                      resizeMode={ResizeMode.COVER}
-                      shouldPlay
-                      isLooping
-                      isMuted
-                    />
-                    {/* Tiny box with off-white to blend into the mp4 background and cover the watermark */}
-                    <View style={{
-                      position: 'absolute',
-                      width: 14,
-                      height: 5,
-                      backgroundColor: '#F9FAFB',
-                      top: 26.5,
-                      left: 21
-                    }} />
+                  <View style={styles.iconCircleBlue}>
+                    <Ionicons name="home" size={28} color={COLORS.primary} />
                   </View>
                 </View>
 
