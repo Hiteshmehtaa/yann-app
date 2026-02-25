@@ -11,6 +11,7 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { CustomTimePickerWheel } from './CustomTimePickerWheel';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 
 interface CustomDateTimePickerProps {
@@ -63,30 +64,30 @@ export const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
 
     const displayValue = formatValue();
 
-    // Calendar Theme
+    // iOS-style Calendar Theme
     const calendarTheme = {
-        backgroundColor: '#ffffff',
-        calendarBackground: '#ffffff',
-        textSectionTitleColor: '#b6c1cd',
-        selectedDayBackgroundColor: COLORS.primary,
-        selectedDayTextColor: '#ffffff',
+        backgroundColor: '#F2F2F7',
+        calendarBackground: '#F2F2F7',
+        textSectionTitleColor: '#8E8E93',
+        selectedDayBackgroundColor: '#D1E3FF',
+        selectedDayTextColor: COLORS.primary,
         todayTextColor: COLORS.primary,
-        dayTextColor: '#2d4150',
-        textDisabledColor: '#d9e1e8',
+        dayTextColor: '#1C1C1E',
+        textDisabledColor: '#C7C7CC',
         dotColor: COLORS.primary,
-        selectedDotColor: '#ffffff',
+        selectedDotColor: COLORS.primary,
         arrowColor: COLORS.primary,
-        monthTextColor: COLORS.text,
+        monthTextColor: '#1C1C1E',
         indicatorColor: COLORS.primary,
         textDayFontFamily: 'System',
         textMonthFontFamily: 'System',
         textDayHeaderFontFamily: 'System',
         textDayFontWeight: '400',
         textMonthFontWeight: '700',
-        textDayHeaderFontWeight: '400',
-        textDayFontSize: 16,
-        textMonthFontSize: 18,
-        textDayHeaderFontSize: 14,
+        textDayHeaderFontWeight: '600',
+        textDayFontSize: 17,
+        textMonthFontSize: 17,
+        textDayHeaderFontSize: 13,
     };
 
     return (
@@ -123,7 +124,7 @@ export const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
 
             {error && <Text style={styles.errorText}>{error}</Text>}
 
-            {/* Date Picker Modal (react-native-calendars) */}
+            {/* Date Picker Modal (iOS-style) */}
             {mode === 'date' && (
                 <Modal
                     visible={open}
@@ -136,13 +137,22 @@ export const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                         activeOpacity={1}
                         onPress={() => setOpen(false)}
                     >
-                        <TouchableOpacity activeOpacity={1} style={styles.calendarContainer}>
+                        <View
+                            style={styles.calendarContainer}
+                            onStartShouldSetResponder={() => true}
+                        >
+                            {/* iOS-style Header */}
+                            <View style={styles.dateHeader}>
+                                <Text style={styles.dateHeaderTitle}>Select Date</Text>
+                            </View>
+                            <View style={styles.dateHeaderDivider} />
+
                             <Calendar
                                 current={value ? value.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                                 minDate={minimumDate ? minimumDate.toISOString().split('T')[0] : undefined}
                                 onDayPress={(day: { dateString: string; }) => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                     const newDate = new Date(day.dateString);
-                                    // Keep existing time if set, otherwise default to noon to avoid timezone shifts
                                     if (value) {
                                         newDate.setHours(value.getHours(), value.getMinutes());
                                     } else {
@@ -157,18 +167,17 @@ export const CustomDateTimePicker: React.FC<CustomDateTimePickerProps> = ({
                                             [value.toISOString().split('T')[0]]: {
                                                 selected: true,
                                                 disableTouchEvent: true,
-                                                selectedColor: COLORS.primary,
+                                                selectedColor: '#D1E3FF',
+                                                selectedTextColor: COLORS.primary,
                                             },
                                         }
                                         : {}
                                 }
                                 theme={calendarTheme as any}
                                 enableSwipeMonths
+                                style={styles.calendarStyle}
                             />
-                            <TouchableOpacity style={styles.closeButton} onPress={() => setOpen(false)}>
-                                <Text style={styles.closeButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </TouchableOpacity>
+                        </View>
                     </TouchableOpacity>
                 </Modal>
             )}
@@ -255,30 +264,56 @@ const styles = StyleSheet.create({
     // Modal Styles
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.35)',
         justifyContent: 'center',
-        padding: 20,
+        padding: 24,
         alignItems: 'center',
     },
     calendarContainer: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 16,
+        backgroundColor: '#F2F2F7',
+        borderRadius: 14,
+        paddingBottom: 8,
         width: '100%',
         maxWidth: 360,
+        overflow: 'hidden',
         ...SHADOWS.lg,
     },
+    dateHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 12,
+    },
+    dateHeaderTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#1C1C1E',
+        letterSpacing: -0.4,
+    },
+    dateHeaderDivider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: '#C6C6C8',
+        marginHorizontal: 0,
+    },
+    calendarStyle: {
+        backgroundColor: '#F2F2F7',
+        paddingHorizontal: 4,
+    },
     closeButton: {
-        marginTop: 16,
+        marginTop: 12,
+        marginHorizontal: 16,
         alignItems: 'center',
         padding: 12,
-        backgroundColor: COLORS.gray100,
-        borderRadius: 12,
+        backgroundColor: '#E5E5EA',
+        borderRadius: 10,
     },
     closeButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.text,
+        fontSize: 17,
+        fontWeight: '400',
+        color: COLORS.primary,
+        letterSpacing: -0.4,
     },
     // iOS DatePicker Styles
     iosDatePickerContainer: {

@@ -23,6 +23,7 @@ import * as Location from 'expo-location';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
+import { storage } from '../../utils/storage';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../utils/theme';
 import { decodePolyline } from '../../utils/maps';
 
@@ -156,6 +157,9 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
     const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
+    // Recent Searches State
+    const [recentSearches, setRecentSearches] = useState<any[]>([]);
+
     // Wizard State
     const [currentStep, setCurrentStep] = useState(1);
     const [tripType, setTripType] = useState<TripType | null>(null);
@@ -204,6 +208,13 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
             setPickupAddress(address);
         })();
     }, []);
+
+    // Load recent searches when search modal opens
+    useEffect(() => {
+        if (activeInput) {
+            loadRecentSearches();
+        }
+    }, [activeInput]);
 
     // Debounced autocomplete search
     useEffect(() => {
@@ -256,6 +267,53 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
             setRouteCoordinates([]);
         }
     }, [pickupCoords, dropCoords]);
+
+    // Load recent searches from cache
+    const loadRecentSearches = async () => {
+        const searches = await storage.getRecentLocationSearches();
+        setRecentSearches(searches);
+    };
+
+    // Save a location to recent searches cache
+    const saveToRecentSearches = async (suggestion: PlaceSuggestion, coords: LocationCoords) => {
+        await storage.saveRecentLocationSearch({
+            description: suggestion.description,
+            place_id: suggestion.place_id,
+            structured_formatting: suggestion.structured_formatting,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+        });
+    };
+
+    // Handle selecting a recent search
+    const handleSelectRecentSearch = (item: any) => {
+        const coords = { latitude: item.latitude, longitude: item.longitude };
+
+        if (activeInput === 'pickup') {
+            setPickupAddress(item.description);
+            setPickupCoords(coords);
+        } else {
+            setDropAddress(item.description);
+            setDropCoords(coords);
+        }
+
+        mapRef.current?.animateToRegion({
+            ...coords,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+        }, 500);
+
+        setActiveInput(null);
+        setSearchQuery('');
+        setSuggestions([]);
+        Keyboard.dismiss();
+    };
+
+    // Clear all recent searches
+    const handleClearRecentSearches = async () => {
+        await storage.clearRecentLocationSearches();
+        setRecentSearches([]);
+    };
 
     // Fetch place suggestions using backend API proxy
     const fetchPlaceSuggestions = async (input: string) => {
@@ -310,6 +368,9 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
     const handleSelectSuggestion = async (suggestion: PlaceSuggestion) => {
         const coords = await getPlaceCoordinates(suggestion.place_id);
         if (!coords) return;
+
+        // Save to recent searches cache
+        await saveToRecentSearches(suggestion, coords);
 
         if (activeInput === 'pickup') {
             setPickupAddress(suggestion.description);
@@ -450,6 +511,40 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                             </View>
                         </TouchableOpacity>
                     )}
+                    ListHeaderComponent={
+                        searchQuery.length < 2 && recentSearches.length > 0 ? (
+                            <View style={styles.recentSearchesContainer}>
+                                <View style={styles.recentSearchesHeader}>
+                                    <View style={styles.recentSearchesTitleRow}>
+                                        <Ionicons name="time-outline" size={18} color={COLORS.textSecondary} />
+                                        <Text style={styles.recentSearchesTitle}>Recent Searches</Text>
+                                    </View>
+                                    <TouchableOpacity onPress={handleClearRecentSearches}>
+                                        <Text style={styles.clearRecentText}>Clear All</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                {recentSearches.map((item) => (
+                                    <TouchableOpacity
+                                        key={item.place_id}
+                                        style={styles.suggestionItem}
+                                        onPress={() => handleSelectRecentSearch(item)}
+                                    >
+                                        <View style={[styles.suggestionIcon, styles.recentSearchIcon]}>
+                                            <Ionicons name="time-outline" size={18} color={COLORS.primary} />
+                                        </View>
+                                        <View style={styles.suggestionTextContainer}>
+                                            <Text style={styles.suggestionMainText}>
+                                                {item.structured_formatting.main_text}
+                                            </Text>
+                                            <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
+                                                {item.structured_formatting.secondary_text}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        ) : null
+                    }
                     ListEmptyComponent={
                         !isLoadingSuggestions && searchQuery.length >= 2 ? (
                             <View style={styles.emptyState}>
@@ -1051,6 +1146,36 @@ const styles = StyleSheet.create({
         fontSize: TYPOGRAPHY.size.md,
         color: COLORS.textSecondary,
         marginTop: SPACING.md,
+    },
+    recentSearchesContainer: {
+        paddingBottom: SPACING.md,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.borderLight,
+        marginBottom: SPACING.sm,
+    },
+    recentSearchesHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: SPACING.md,
+    },
+    recentSearchesTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+    },
+    recentSearchesTitle: {
+        fontSize: TYPOGRAPHY.size.md,
+        fontWeight: TYPOGRAPHY.weight.semibold,
+        color: COLORS.textSecondary,
+    },
+    clearRecentText: {
+        fontSize: TYPOGRAPHY.size.sm,
+        color: COLORS.error,
+        fontWeight: TYPOGRAPHY.weight.medium,
+    },
+    recentSearchIcon: {
+        backgroundColor: '#F0F4FF',
     },
     bottomSheetBackground: {
         backgroundColor: COLORS.background,

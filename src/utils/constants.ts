@@ -491,6 +491,7 @@ export const STORAGE_KEYS = {
   USER_DATA: 'userData',
   EMAIL: 'email',
   ONBOARDING_COMPLETED: 'onboardingCompleted',
+  RECENT_LOCATION_SEARCHES: '@yann_recent_location_searches',
 } as const;
 
 // Helper function to get service config by title

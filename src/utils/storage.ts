@@ -121,4 +121,42 @@ export const storage = {
       return false;
     }
   },
+
+  // Recent Location Searches
+  async getRecentLocationSearches(): Promise<any[]> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.RECENT_LOCATION_SEARCHES);
+      return data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error('Error getting recent searches:', error);
+      return [];
+    }
+  },
+
+  async saveRecentLocationSearch(location: {
+    description: string;
+    place_id: string;
+    structured_formatting: { main_text: string; secondary_text: string };
+    latitude: number;
+    longitude: number;
+  }): Promise<void> {
+    try {
+      const existing = await this.getRecentLocationSearches();
+      // Remove duplicate if exists
+      const filtered = existing.filter((item: any) => item.place_id !== location.place_id);
+      // Add to beginning and limit to 10 recent searches
+      const updated = [location, ...filtered].slice(0, 10);
+      await AsyncStorage.setItem(STORAGE_KEYS.RECENT_LOCATION_SEARCHES, JSON.stringify(updated));
+    } catch (error) {
+      console.error('Error saving recent search:', error);
+    }
+  },
+
+  async clearRecentLocationSearches(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.RECENT_LOCATION_SEARCHES);
+    } catch (error) {
+      console.error('Error clearing recent searches:', error);
+    }
+  },
 };
