@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "13",
+      "buildNumber": "15",
       "associatedDomains": [
         "applinks:yann.app",
         "applinks:www.yann.app"
@@ -122,7 +122,9 @@
           "color": "#ffffff",
           "defaultChannel": "default",
           "sounds": [
-            "./assets/sounds/booking_request.mp3"
+            "./assets/sounds/booking_request.mp3",
+            "./assets/sounds/booking_request.caf",
+            "./assets/sounds/booking_request.wav"
           ]
         }
       ]
