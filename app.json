@@ -2,7 +2,7 @@
   "expo": {
     "name": "Yann Home",
     "slug": "yann-mobile",
-    "version": "2.2.1",
+    "version": "2.2.2",
     "orientation": "portrait",
     "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
@@ -36,7 +36,7 @@
     "android": {
       "package": "com.yanncare.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 11,
+      "versionCode": 12,
       "userInterfaceStyle": "light",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
@@ -102,6 +102,14 @@
     },
     "plugins": [
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraParams": "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
+          }
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Yann to use your location for accurate service delivery."
@@ -122,12 +130,11 @@
           "color": "#ffffff",
           "defaultChannel": "default",
           "sounds": [
-            "./assets/sounds/booking_request.mp3",
-            "./assets/sounds/booking_request.caf",
             "./assets/sounds/booking_request.wav"
           ]
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

@@ -15,15 +15,17 @@ import {
     LayoutAnimation,
     UIManager,
     Image,
-    ScrollView, 
+    ScrollView,
     Animated
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
-import BottomSheet, { BottomSheetScrollView 
+import BottomSheet, {
+    BottomSheetScrollView
 } from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
+import { FlatList as GestureHandlerFlatList } from 'react-native-gesture-handler';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
@@ -115,7 +117,7 @@ const premiumMapStyle = [
 type TripType = 'incity' | 'outstation';
 type TripDirection = 'oneway' | 'roundtrip';
 type Transmission = 'manual' | 'automatic';
-type VehicleType = 'hatchback' | 'sedan' | 'suv' | 'luxury';
+type VehicleType = 'hatchback' | 'suv' | 'muv' | 'luxury' | 'ev';
 
 const DRIVER_RETURN_RATE_PER_KM = 2; // ₹2/km for driver's return in one-way trips
 
@@ -142,6 +144,8 @@ if (Platform.OS === 'android') {
 
 const ITEM_WIDTH = width * 0.45;
 const ITEM_SPACING = (width - ITEM_WIDTH) / 2;
+
+const AnimatedFlatList = Animated.createAnimatedComponent(GestureHandlerFlatList);
 
 export const DriverBookingScreen = ({ navigation, route }: any) => {
     const { service } = route.params;
@@ -724,14 +728,15 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                             <View style={{ width: 40 }} />
                         </View>
 
-                        <Animated.FlatList
+                        <AnimatedFlatList
                             data={[
-                                { type: 'luxury', label: 'Luxury', image: require('../../../assets/images/cars/luxury.png') },
-                                { type: 'sedan', label: 'Electric (EV)', image: require('../../../assets/images/cars/sedan.png') },
                                 { type: 'hatchback', label: 'Hatchback', image: require('../../../assets/images/cars/hatchback.png') },
                                 { type: 'suv', label: 'SUV', image: require('../../../assets/images/cars/suv.png') },
+                                { type: 'muv', label: 'MUV', image: require('../../../assets/images/cars/muv.png') },
+                                { type: 'luxury', label: 'Luxury', image: require('../../../assets/images/cars/luxury.png') },
+                                { type: 'sedan', label: 'Electric (EV)', image: require('../../../assets/images/cars/sedan.png') },
                             ]}
-                            keyExtractor={(item) => item.type}
+                            keyExtractor={(item: any) => item.type}
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.vehicleSlider}
@@ -743,7 +748,7 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                                 { useNativeDriver: true }
                             )}
                             scrollEventThrottle={16}
-                            renderItem={({ item, index }) => {
+                            renderItem={({ item, index }: { item: any, index: number }) => {
                                 const inputRange = [
                                     (index - 1) * ITEM_WIDTH,
                                     index * ITEM_WIDTH,
@@ -985,8 +990,8 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 backgroundStyle={styles.bottomSheetBackground}
                 handleIndicatorStyle={styles.bottomSheetIndicator}
             >
-                <BottomSheetScrollView 
-    Animated contentContainerStyle={styles.bottomSheetContent}>
+                <BottomSheetScrollView
+                    Animated contentContainerStyle={styles.bottomSheetContent}>
                     {/* Step Progress */}
                     <View style={styles.stepProgress}>
                         {[1, 2, 3, 4].map((step) => (

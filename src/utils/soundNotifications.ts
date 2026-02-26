@@ -91,7 +91,7 @@ export async function playBookingRequestBuzzer() {
 
       try {
         const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sounds/booking_request.mp3'),
+          require('../../assets/sounds/booking_request.wav'),
           { shouldPlay: false, isLooping: true, volume: 1.0 }
         );
 
