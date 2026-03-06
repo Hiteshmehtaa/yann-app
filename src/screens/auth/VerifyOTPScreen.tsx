@@ -190,6 +190,9 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                     maxLength={6}
                     editable={!isLoading}
                     autoFocus
+                    textContentType={identifierType === 'phone' ? 'oneTimeCode' : 'none'}
+                    autoComplete={identifierType === 'phone' ? 'sms-otp' : 'off'}
+                    importantForAutofill={identifierType === 'phone' ? 'auto' : 'no'}
                   />
                   <View style={styles.inputIcon}>
                     <Ionicons name="keypad-outline" size={20} color={COLORS.textTertiary} />
