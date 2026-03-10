@@ -14,6 +14,7 @@ import {
   UIManager,
   Platform,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -152,7 +153,73 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     vehicleTypes: [] as string[],
     transmissionTypes: [] as string[],
     tripPreference: 'both',
+    licenseFrontImage: null as string | null,
+    licenseBackImage: null as string | null,
   });
+
+  const uploadDrivingLicenseImage = async (side: 'front' | 'back') => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsLoading(true);
+        const asset = result.assets[0];
+        let base64Image = asset.base64;
+
+        if (!base64Image && asset.uri) {
+           const response = await fetch(asset.uri);
+           const blob = await response.blob();
+           base64Image = await new Promise<string>((resolve, reject) => {
+             const reader = new FileReader();
+             reader.onloadend = () => {
+               resolve(reader.result as string);
+             };
+             reader.onerror = reject;
+             reader.readAsDataURL(blob);
+           });
+        } else if (base64Image) {
+           const mimeType = asset.mimeType || 'image/jpeg';
+           if (!base64Image.startsWith('data:')) {
+             base64Image = `data:${mimeType};base64,${base64Image}`;
+           }
+        }
+
+        if (base64Image) {
+          const response = await apiService.uploadAvatar(base64Image);
+          if (response.success) {
+            const data = response.data || {};
+            const imageUrl = data.profileImage || data.avatar || data.url || data.image;
+            if (imageUrl) {
+              setFormData(prev => ({
+                ...prev,
+                [side === 'front' ? 'licenseFrontImage' : 'licenseBackImage']: imageUrl
+              }));
+              Alert.alert('Success', `Driving license ${side} photo uploaded successfully!`);
+            }
+          } else {
+             Alert.alert('Error', response.message || 'Failed to upload image');
+          }
+        }
+      }
+    } catch (error) {
+       console.log('Image picker error:', error);
+       Alert.alert('Error', 'Failed to pick or upload image');
+    } finally {
+       setIsLoading(false);
+    }
+  };
 
   const VEHICLE_TYPES = [
     { id: 'hatchback', label: 'Hatchback (Swift, i20, Alto)' },
@@ -327,16 +394,43 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 
   const toggleService = (service: string) => {
     setFormData(prev => {
-      const services = prev.services.includes(service)
-        ? prev.services.filter(s => s !== service)
-        : [...prev.services, service];
+      let newServices = [...prev.services];
+      const category = dynamicServiceCategories.find(c => c.services.includes(service));
+      const isDriverService = category?.id.toLowerCase() === 'driver';
 
-      const serviceRates = services.map(s => {
+      if (prev.services.includes(service)) {
+        newServices = prev.services.filter(s => s !== service);
+      } else {
+        // Enforce exclusivity
+        if (isDriverService) {
+           const hasOtherServices = prev.services.some(s => {
+             const cat = dynamicServiceCategories.find(c => c.services.includes(s));
+             return cat?.id.toLowerCase() !== 'driver';
+           });
+           if (hasOtherServices) {
+             Alert.alert('Constraint', 'Driver services cannot be combined with other service types. First, deselect other services.');
+             return prev;
+           }
+           newServices.push(service);
+        } else {
+           const hasDriverServices = prev.services.some(s => {
+             const cat = dynamicServiceCategories.find(c => c.services.includes(s));
+             return cat?.id.toLowerCase() === 'driver';
+           });
+           if (hasDriverServices) {
+             Alert.alert('Constraint', 'You cannot add other services. First, deselect the Driver services.');
+             return prev;
+           }
+           newServices.push(service);
+        }
+      }
+
+      const serviceRates = newServices.map(s => {
         const existing = prev.serviceRates.find(r => r.serviceName === s);
         return existing || { serviceName: s, price: '' };
       });
 
-      return { ...prev, services, serviceRates };
+      return { ...prev, services: newServices, serviceRates };
     });
   };
 
@@ -443,6 +537,18 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    const hasDriverService = formData.services.some(s => {
+      const cat = dynamicServiceCategories.find(c => c.services.includes(s));
+      return cat?.id.toLowerCase() === 'driver';
+    });
+
+    if (hasDriverService) {
+       if (!formData.licenseFrontImage || !formData.licenseBackImage) {
+          Alert.alert('Error', 'Both front and back photos of your driving license are required for driver services.');
+          return;
+       }
+    }
+
     // Check if all selected services have prices
     const servicesWithoutPrice = formData.services.filter(
       service => !formData.serviceRates.some(r => r.serviceName === service && r.price)
@@ -505,7 +611,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         driverServiceDetails: {
           vehicleTypes: formData.vehicleTypes,
           transmissionTypes: formData.transmissionTypes,
-          tripPreference: formData.tripPreference
+          tripPreference: formData.tripPreference,
+          licenseFrontImage: formData.licenseFrontImage,
+          licenseBackImage: formData.licenseBackImage
         }
       };
 
@@ -1243,6 +1351,32 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                               ))}
                             </View>
                           </View>
+
+                          {/* License Images */}
+                          <View style={styles.driverOptionGroup}>
+                            <Text style={styles.subLabel}>Driving License Photos</Text>
+                            <View style={{ gap: 12 }}>
+                               <TouchableOpacity 
+                                  style={[styles.uploadButton, formData.licenseFrontImage && styles.uploadButtonSuccess]}
+                                  onPress={() => uploadDrivingLicenseImage('front')}
+                               >
+                                  <Ionicons name={formData.licenseFrontImage ? "checkmark-circle" : "camera-outline"} size={20} color={formData.licenseFrontImage ? COLORS.success : COLORS.primary} />
+                                  <Text style={[styles.uploadButtonText, formData.licenseFrontImage && { color: COLORS.success }]}>
+                                    {formData.licenseFrontImage ? "Front Photo Uploaded" : "Upload Front Photo"}
+                                  </Text>
+                               </TouchableOpacity>
+
+                               <TouchableOpacity 
+                                  style={[styles.uploadButton, formData.licenseBackImage && styles.uploadButtonSuccess]}
+                                  onPress={() => uploadDrivingLicenseImage('back')}
+                               >
+                                  <Ionicons name={formData.licenseBackImage ? "checkmark-circle" : "camera-outline"} size={20} color={formData.licenseBackImage ? COLORS.success : COLORS.primary} />
+                                  <Text style={[styles.uploadButtonText, formData.licenseBackImage && { color: COLORS.success }]}>
+                                    {formData.licenseBackImage ? "Back Photo Uploaded" : "Upload Back Photo"}
+                                  </Text>
+                               </TouchableOpacity>
+                            </View>
+                          </View>
                         </View>
                       )}
 
@@ -1943,6 +2077,29 @@ const styles = StyleSheet.create({
   partnerLinkText: {
     fontSize: 14,
     fontWeight: '700',
+    color: COLORS.primary,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: RADIUS.medium,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.primary,
+    backgroundColor: addAlpha(COLORS.primary, 0.05),
+  },
+  uploadButtonSuccess: {
+    borderColor: COLORS.success,
+    backgroundColor: addAlpha(COLORS.success, 0.05),
+    borderStyle: 'solid',
+  },
+  uploadButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: COLORS.primary,
   },
 });

@@ -10,7 +10,7 @@ const getLocalhost = () => {
   const isDevice = Constants.isDevice; // true for physical device, false for simulator/emulator
 
   if (isDevice) {
-    return '192.168.1.11'; // Your computer's local IP - for physical devices on same WiFi
+    return '192.168.31.198'; // Updated to user's current local IP
   }
 
   if (Platform.OS === 'android') {
@@ -56,16 +56,32 @@ async function pingBackend(url: string): Promise<boolean> {
 
 /**
  * Detect which backend is available
- * PRODUCTION ONLY - Always use production backend
+ * Tries local first, falls back to production
  */
 async function detectActiveBackend(): Promise<string> {
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🌐 USING PRODUCTION BACKEND (FORCED)');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  const now = Date.now();
 
-  // FORCE PRODUCTION - User Request
-  cachedApiUrl = PRODUCTION_API_URL;
-  return PRODUCTION_API_URL;
+  // Return cached URL if it's still fresh
+  if (cachedApiUrl && (now - lastCheckTime < CHECK_INTERVAL)) {
+    return cachedApiUrl;
+  }
+
+  console.log('🔎 Detecting active backend...');
+
+  // Try local backend first
+  const localBase = LOCAL_API_URL.replace('/api', '');
+  const isLocalAwake = await pingBackend(localBase);
+
+  if (isLocalAwake) {
+    console.log(`✅ Using LOCAL backend: ${LOCAL_API_URL}`);
+    cachedApiUrl = LOCAL_API_URL;
+  } else {
+    console.log(`⚠️ Local backend unreachable, falling back to PRODUCTION: ${PRODUCTION_API_URL}`);
+    cachedApiUrl = PRODUCTION_API_URL;
+  }
+
+  lastCheckTime = now;
+  return cachedApiUrl;
 }
 
 // Export as a promise that resolves to the active backend URL

@@ -11,6 +11,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -81,8 +82,74 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
   const [driverDetails, setDriverDetails] = useState({
     vehicleTypes: [] as string[],
     transmissionTypes: [] as string[],
-    tripPreference: 'both'
+    tripPreference: 'both',
+    licenseFrontImage: null as string | null,
+    licenseBackImage: null as string | null,
   });
+
+  const uploadDrivingLicenseImage = async (side: 'front' | 'back') => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsLoading(true);
+        const asset = result.assets[0];
+        let base64Image = asset.base64;
+
+        if (!base64Image && asset.uri) {
+           const response = await fetch(asset.uri);
+           const blob = await response.blob();
+           base64Image = await new Promise<string>((resolve, reject) => {
+             const reader = new FileReader();
+             reader.onloadend = () => {
+               resolve(reader.result as string);
+             };
+             reader.onerror = reject;
+             reader.readAsDataURL(blob);
+           });
+        } else if (base64Image) {
+           const mimeType = asset.mimeType || 'image/jpeg';
+           if (!base64Image.startsWith('data:')) {
+             base64Image = `data:${mimeType};base64,${base64Image}`;
+           }
+        }
+
+        if (base64Image) {
+          const response = await apiService.uploadAvatar(base64Image);
+          if (response.success) {
+            const data = response.data || {};
+            const imageUrl = data.profileImage || data.avatar || data.url || data.image;
+            if (imageUrl) {
+              setDriverDetails((prev: any) => ({
+                ...prev,
+                [side === 'front' ? 'licenseFrontImage' : 'licenseBackImage']: imageUrl
+              }));
+              Alert.alert('Success', `Driving license ${side} photo uploaded successfully!`);
+            }
+          } else {
+             Alert.alert('Error', response.message || 'Failed to upload image');
+          }
+        }
+      }
+    } catch (error) {
+       console.log('Image picker error:', error);
+       Alert.alert('Error', 'Failed to pick or upload image');
+    } finally {
+       setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -172,8 +239,25 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
     const service = services.find(s => s.id === serviceId);
     if (!service) return;
 
-    // If turning ON, always show price modal to set/confirm price
+    // Exclusivity Check Before Turning ON
     if (!service.isActive) {
+      const isDriverService = service.category === 'driver' || service.title.toLowerCase().includes('driver');
+      const activeServices = services.filter(s => s.isActive);
+      
+      if (isDriverService) {
+        const hasOtherServices = activeServices.some(s => s.category !== 'driver' && !s.title.toLowerCase().includes('driver'));
+        if (hasOtherServices) {
+           Alert.alert('Constraint', 'Driver services cannot be combined with other service types. First, disable other services.');
+           return;
+        }
+      } else {
+        const hasDriverServices = activeServices.some(s => s.category === 'driver' || s.title.toLowerCase().includes('driver'));
+        if (hasDriverServices) {
+           Alert.alert('Constraint', 'You cannot add other services while Driver services are active. First, disable Driver services.');
+           return;
+        }
+      }
+
       setSelectedService(service);
       setShowPriceModal(true);
       setPriceInput(service.rate > 0 ? service.rate.toString() : '');
@@ -552,6 +636,30 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
                       </TouchableOpacity>
                     ))}
                   </View>
+
+                  {/* License Images */}
+                  <Text style={styles.subLabel}>Driving License Photos</Text>
+                  <View style={{ gap: 12, marginBottom: 16 }}>
+                     <TouchableOpacity 
+                        style={[styles.uploadButton, driverDetails.licenseFrontImage && styles.uploadButtonSuccess]}
+                        onPress={() => uploadDrivingLicenseImage('front')}
+                     >
+                        <Ionicons name={driverDetails.licenseFrontImage ? "checkmark-circle" : "camera-outline"} size={20} color={driverDetails.licenseFrontImage ? THEME.colors.success : THEME.colors.primary} />
+                        <Text style={[styles.uploadButtonText, driverDetails.licenseFrontImage && { color: THEME.colors.success }]}>
+                          {driverDetails.licenseFrontImage ? "Front Photo Uploaded" : "Upload Front Photo"}
+                        </Text>
+                     </TouchableOpacity>
+
+                     <TouchableOpacity 
+                        style={[styles.uploadButton, driverDetails.licenseBackImage && styles.uploadButtonSuccess]}
+                        onPress={() => uploadDrivingLicenseImage('back')}
+                     >
+                        <Ionicons name={driverDetails.licenseBackImage ? "checkmark-circle" : "camera-outline"} size={20} color={driverDetails.licenseBackImage ? THEME.colors.success : THEME.colors.primary} />
+                        <Text style={[styles.uploadButtonText, driverDetails.licenseBackImage && { color: THEME.colors.success }]}>
+                          {driverDetails.licenseBackImage ? "Back Photo Uploaded" : "Upload Back Photo"}
+                        </Text>
+                     </TouchableOpacity>
+                  </View>
                 </View>
               )}
 
@@ -585,6 +693,14 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
                   onPress={async () => {
                     const price = parseInt(priceInput);
                     if (price > 0) {
+                      // Driver specific validation
+                      if (selectedService.category === 'driver' || selectedService.title.toLowerCase().includes('driver')) {
+                        if (!driverDetails.licenseFrontImage || !driverDetails.licenseBackImage) {
+                          Alert.alert('Error', 'Both front and back photos of your driving license are required.');
+                          return;
+                        }
+                      }
+
                       setShowPriceModal(false);
                       setPriceInput('');
 
@@ -915,5 +1031,28 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: THEME.colors.primary,
     fontWeight: '700',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: THEME.radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: THEME.colors.primary,
+    backgroundColor: `${THEME.colors.primary}0D`,
+  },
+  uploadButtonSuccess: {
+    borderColor: THEME.colors.success,
+    backgroundColor: `${THEME.colors.success}0D`,
+    borderStyle: 'solid',
+  },
+  uploadButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.primary,
   },
 });
