@@ -408,6 +408,26 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         }
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
       >
+        {user && user.aadhaarVerified === false && (
+          <View style={{
+            backgroundColor: '#FEF2F2',
+            marginHorizontal: 20,
+            marginTop: 10,
+            padding: 12,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: '#FCA5A5',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10
+          }}>
+            <Ionicons name="warning" size={20} color="#EF4444" />
+            <Text style={{ color: '#991B1B', fontSize: 13, fontWeight: '600', flex: 1 }}>
+              Please verify your Aadhaar to do bookings.
+            </Text>
+          </View>
+        )}
+
         {/* Smart Hero Section */}
         <SmartHero
           userName={user?.name}

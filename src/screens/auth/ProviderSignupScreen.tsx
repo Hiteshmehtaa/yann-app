@@ -197,20 +197,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         }
 
         if (base64Image) {
-          const response = await apiService.uploadAvatar(base64Image);
-          if (response.success) {
-            const data = response.data || {};
-            const imageUrl = data.profileImage || data.avatar || data.url || data.image;
-            if (imageUrl) {
-              setFormData(prev => ({
-                ...prev,
-                [side === 'front' ? 'licenseFrontImage' : 'licenseBackImage']: imageUrl
-              }));
-              Alert.alert('Success', `Driving license ${side} photo uploaded successfully!`);
-            }
-          } else {
-             Alert.alert('Error', response.message || 'Failed to upload image');
-          }
+          setFormData(prev => ({
+            ...prev,
+            [side === 'front' ? 'licenseFrontImage' : 'licenseBackImage']: base64Image
+          }));
+          Alert.alert('Success', `Driving license ${side} photo selected successfully!`);
         }
       }
     } catch (error) {
