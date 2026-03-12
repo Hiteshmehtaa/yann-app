@@ -51,6 +51,7 @@ type MenuItemType = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle: string;
+  subtitleStyle?: object;
   onPress: () => void;
 };
 
@@ -283,6 +284,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
       icon: 'shield-checkmark-outline',
       title: 'Verify Yourself',
       subtitle: getVerificationStatus().text,
+      subtitleStyle: { color: getVerificationStatus().color, fontWeight: '600' as const },
       onPress: handleVerification,
     },
     {
@@ -416,7 +418,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
                 <View style={styles.menuText}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                  <Text style={[styles.menuSubtitle, item.subtitleStyle]}>{item.subtitle}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
