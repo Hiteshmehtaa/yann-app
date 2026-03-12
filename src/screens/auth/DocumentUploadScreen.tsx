@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-// import * as DocumentPicker from 'expo-document-picker'; // TODO: Install expo-document-picker
+import * as FileSystem from 'expo-file-system';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
@@ -191,11 +191,21 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
     setIsLoading(true);
 
     try {
+      // Convert all document URIs to base64 data URLs (same pattern as avatar upload)
+      const base64Documents: Record<string, string> = {};
+      for (const [docType, doc] of Object.entries(documents)) {
+        const base64 = await FileSystem.readAsStringAsync(doc.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const mimeType = doc.mimeType || 'image/jpeg';
+        base64Documents[docType] = `data:${mimeType};base64,${base64}`;
+      }
+
       const response = await apiService.submitIdentityDocuments({
         userId: (user?._id || user?.id) as string,
         userType: user?.role === 'provider' ? 'provider' : 'homeowner',
         identityType,
-        documents,
+        documents: base64Documents,
       });
 
       if (response.success) {

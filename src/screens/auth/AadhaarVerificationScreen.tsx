@@ -1,9 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
@@ -16,7 +15,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Linking from 'expo-linking';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -24,79 +22,62 @@ type Props = {
 
 export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
   const { user, updateUser } = useAuth();
-  const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleVerify = async () => {
-    // Validate Aadhaar number
-    if (!/^\d{12}$/.test(aadhaarNumber)) {
-      Alert.alert('Invalid Aadhaar', 'Please enter a valid 12-digit Aadhaar number');
-      return;
-    }
-
     setIsLoading(true);
-
     try {
-      const redirectUrl = Linking.createURL('verification-success');
-      const response = await apiService.initiateAadhaarVerification({
-        userId: (user?._id || user?.id) as string,
-        userType: user?.role === 'provider' ? 'provider' : 'homeowner',
-        aadhaarNumber,
-        redirectUrl,
-      });
+      const userId = (user?._id || user?.id) as string;
+      const userType = user?.role === 'provider' ? 'provider' : 'homeowner';
 
-      if (response.success && response.data?.verificationUrl) {
-        try {
-          const result = await WebBrowser.openAuthSessionAsync(response.data.verificationUrl, redirectUrl, {
+      // Call Meon Tech DigiLocker API — no Aadhaar number needed, DigiLocker handles auth
+      const response = await apiService.verifyIdentity(userId, userType);
+
+      if (response.success && response.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          response.url,
+          'yannapp://verification-success',
+          {
             presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
             controlsColor: COLORS.primary,
-          });
-
-          if (result.type === 'success') {
-            const role = user?.role === 'provider' ? 'provider' : 'homeowner';
-            const profileResponse = await apiService.getProfile(role);
-            if (profileResponse.user) {
-              updateUser(profileResponse.user);
-            }
-            Alert.alert(
-              'Verified',
-              role === 'provider'
-                ? 'Verification completed. Your profile is now under admin review.'
-                : 'Verification completed. You can now book services!',
-              [{ text: 'OK', onPress: () => navigation.goBack() }]
-            );
           }
-        } catch (authError) {
-          await WebBrowser.openBrowserAsync(response.data.verificationUrl, {
-            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-            controlsColor: COLORS.primary,
-          });
+        );
+
+        if (result.type === 'success' || result.type === 'dismiss') {
+          // Refresh user profile to pick up updated verification status
+          const profileResponse = await apiService.getProfile(userType);
+          if (profileResponse.user) {
+            updateUser(profileResponse.user);
+          }
+          Alert.alert(
+            'Verification Submitted',
+            userType === 'provider'
+              ? 'Your Aadhaar verification is complete. Your profile is now under admin review.'
+              : 'Your Aadhaar verification is complete. You can now book services!',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
         }
       } else {
-        Alert.alert('Error', response.message || 'Failed to initiate verification');
+        Alert.alert('Error', response.message || 'Failed to initiate verification. Please try again.');
       }
     } catch (error: any) {
       console.error('Aadhaar verification error:', error);
-      Alert.alert('Error', error.message || 'Failed to initiate verification');
+      Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Main screen
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verify Aadhaar</Text>
+        <Text style={styles.headerTitle}>Aadhaar Verification</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -104,41 +85,38 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
         {/* Icon */}
         <View style={styles.iconContainer}>
           <View style={styles.iconCircle}>
-            <Ionicons name="shield-checkmark" size={48} color={COLORS.primary} />
+            <Ionicons name="shield-checkmark" size={52} color={COLORS.primary} />
           </View>
         </View>
 
-        {/* Title */}
-        <Text style={styles.title}>Verify Your Identity</Text>
+        <Text style={styles.title}>Verify with DigiLocker</Text>
         <Text style={styles.subtitle}>
           {user?.role === 'provider'
-            ? 'Complete Aadhaar verification to start receiving bookings'
-            : 'Verify your Aadhaar to book services'}
+            ? 'Complete Aadhaar verification via DigiLocker to start receiving bookings'
+            : 'Verify your Aadhaar via DigiLocker to unlock all features'}
         </Text>
 
-        {/* Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Aadhaar Number</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="card-outline" size={20} color={COLORS.textSecondary} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter 12-digit Aadhaar number"
-              placeholderTextColor={COLORS.textSecondary}
-              value={aadhaarNumber}
-              onChangeText={(text) => setAadhaarNumber(text.replace(/\D/g, ''))}
-              keyboardType="number-pad"
-              maxLength={12}
-              editable={!isLoading}
-            />
-          </View>
+        {/* Steps */}
+        <View style={styles.stepsCard}>
+          {[
+            { icon: 'phone-portrait-outline', text: 'You will be redirected to DigiLocker' },
+            { icon: 'finger-print-outline', text: 'Log in with your Aadhaar credentials' },
+            { icon: 'checkmark-circle-outline', text: 'Your identity will be instantly verified' },
+          ].map((step, i) => (
+            <View key={i} style={styles.step}>
+              <View style={styles.stepIcon}>
+                <Ionicons name={step.icon as any} size={20} color={COLORS.primary} />
+              </View>
+              <Text style={styles.stepText}>{step.text}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Info */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
+          <Ionicons name="lock-closed-outline" size={18} color={COLORS.primary} />
           <Text style={styles.infoText}>
-            You'll receive an OTP on your Aadhaar-linked mobile number to complete verification.
+            Powered by Meon Tech. Your data is secure and never stored on our servers.
           </Text>
         </View>
 
@@ -146,7 +124,7 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity
           style={[styles.verifyButton, isLoading && styles.verifyButtonDisabled]}
           onPress={handleVerify}
-          disabled={isLoading || aadhaarNumber.length !== 12}
+          disabled={isLoading}
           activeOpacity={0.8}
         >
           {isLoading ? (
@@ -154,7 +132,7 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
           ) : (
             <>
               <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.white} />
-              <Text style={styles.verifyButtonText}>Verify Aadhaar</Text>
+              <Text style={styles.verifyButtonText}>Continue with DigiLocker</Text>
             </>
           )}
         </TouchableOpacity>
@@ -218,32 +196,35 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.xl,
     lineHeight: 22,
   },
-  inputContainer: {
+  stepsCard: {
     width: '100%',
-    marginBottom: SPACING.lg,
-  },
-  inputLabel: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: COLORS.gray100,
     borderRadius: RADIUS.medium,
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    gap: SPACING.md,
   },
-  input: {
+  step: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  stepIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepText: {
     flex: 1,
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: TYPOGRAPHY.size.sm,
     color: COLORS.text,
-    paddingVertical: SPACING.md,
+    lineHeight: 20,
   },
   infoCard: {
     flexDirection: 'row',
@@ -252,6 +233,8 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     gap: SPACING.sm,
     marginBottom: SPACING.xl,
+    width: '100%',
+    alignItems: 'flex-start',
   },
   infoText: {
     flex: 1,
@@ -268,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm,
     ...SHADOWS.md,
-    minWidth: 200,
+    width: '100%',
     justifyContent: 'center',
   },
   verifyButtonDisabled: {
@@ -278,34 +261,5 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.size.md,
     fontWeight: '600',
     color: COLORS.white,
-  },
-  // WebView styles
-  webViewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
-  webViewTitle: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  webView: {
-    flex: 1,
-  },
-  loadingContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
   },
 });

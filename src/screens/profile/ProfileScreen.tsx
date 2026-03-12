@@ -282,7 +282,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
     
-    // Navigate to identity type selection
+    // Navigate to identity type selection (Indian → Meon DigiLocker, Foreigner/NRI → Document Upload)
     navigation.navigate('IdentityTypeSelection');
   };
 

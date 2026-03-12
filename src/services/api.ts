@@ -1591,34 +1591,9 @@ class ApiService {
     userId: string;
     userType: 'homeowner' | 'provider';
     identityType: 'foreigner' | 'nri';
-    documents: Record<string, { type: string; uri: string; name: string; mimeType?: string }>;
+    documents: Record<string, string>; // docType -> base64 data URL
   }): Promise<ApiResponse<{ user: any }>> {
-    const formData = new FormData();
-    formData.append('userId', data.userId);
-    formData.append('userType', data.userType);
-    formData.append('identityType', data.identityType);
-
-    // Convert documents to files
-    const documentEntries = Object.entries(data.documents);
-    for (let i = 0; i < documentEntries.length; i++) {
-      const [docType, doc] = documentEntries[i];
-      
-      // For React Native, create a file object
-      const file: any = {
-        uri: doc.uri,
-        name: doc.name,
-        type: doc.mimeType || 'image/jpeg',
-      };
-      
-      formData.append('documents', file);
-      formData.append(`documentTypes[${i}]`, docType);
-    }
-
-    const response = await this.client.post('/identity/submit-documents', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await this.client.post('/identity/submit-documents', data);
     return response.data;
   }
 
