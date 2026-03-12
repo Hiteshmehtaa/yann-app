@@ -143,9 +143,15 @@ export const CustomDialog: React.FC<CustomDialogProps> = ({
   if (!visible) return null;
 
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent>
-      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <BlurView intensity={isDark ? 40 : 25} style={StyleSheet.absoluteFill} tint={isDark ? 'dark' : 'light'} />
+    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={() => handleClose()}>
+      <TouchableOpacity
+        style={[styles.overlay, { opacity: 1 }]}
+        activeOpacity={1}
+        onPress={() => handleClose()}
+      >
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
+          <BlurView intensity={isDark ? 40 : 25} style={StyleSheet.absoluteFill} tint={isDark ? 'dark' : 'light'} />
+        </Animated.View>
         
         <Animated.View
           style={[
@@ -245,7 +251,7 @@ export const CustomDialog: React.FC<CustomDialogProps> = ({
             </View>
           )}
         </Animated.View>
-      </Animated.View>
+      </TouchableOpacity>
     </Modal>
   );
 };

@@ -10,6 +10,19 @@ export interface User {
   role?: 'homeowner' | 'provider';
   isVerified?: boolean;
   aadhaarVerified?: boolean;
+  // Identity verification (new system)
+  identityType?: 'indian' | 'foreigner' | 'nri' | null;
+  identityVerificationStatus?: 'not_started' | 'pending' | 'approved' | 'rejected';
+  identitySubmittedAt?: Date | string;
+  identityApprovedAt?: Date | string;
+  identityRejectedAt?: Date | string;
+  identityRejectionReason?: string;
+  identityDocuments?: Array<{
+    documentType: 'passport' | 'visa' | 'residential_certificate' | 'oci_card' | 'other';
+    documentUrl: string;
+    uploadedAt: Date | string;
+  }>;
+  // Other fields
   preferences?: string[];
   savedProviders?: string[];
   addressBook?: Address[];

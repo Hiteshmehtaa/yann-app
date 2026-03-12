@@ -68,7 +68,19 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const hasFetchedRef = useRef(false);
-  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified);
+  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
+  
+  // Get verification status for display
+  const getVerificationStatus = () => {
+    if (user?.identityVerificationStatus === 'pending') {
+      return { text: 'Pending Approval', color: '#FF9800' };
+    } else if (user?.identityVerificationStatus === 'rejected') {
+      return { text: 'Rejected - Retry', color: COLORS.error };
+    } else if (isIdentityVerified) {
+      return { text: 'Verified Partner', color: COLORS.success };
+    }
+    return { text: 'Complete KYC Verification', color: COLORS.textSecondary };
+  };
 
   // Refresh profile data
   const fetchProfile = useCallback(async () => {
@@ -221,39 +233,37 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleVerification = async () => {
+    // If already verified, just show message
     if (isIdentityVerified) {
       Alert.alert('Verified', 'Your identity is already verified.');
       return;
     }
-    try {
-      const userId = user?.id || user?._id;
-      if (!userId) return;
-
-      const redirectUrl = Linking.createURL('verification-success');
-      const response = await apiService.verifyIdentity(userId, 'provider', redirectUrl);
-
-      if (response.success && response.url) {
-        try {
-          const result = await WebBrowser.openAuthSessionAsync(response.url, redirectUrl, {
-            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-          });
-
-          if (result.type === 'success') {
-            const profileResponse = await apiService.getProfile('provider');
-            if (profileResponse.user) {
-              updateUser(profileResponse.user);
-            }
-            Alert.alert('Verified', 'Aadhaar verification completed successfully.');
-          }
-        } catch (authError) {
-          await WebBrowser.openBrowserAsync(response.url);
-        }
-      } else {
-        Alert.alert('Error', response.message || 'Failed to initiate verification');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Verification failed');
+    
+    // If pending, show status
+    if (user?.identityVerificationStatus === 'pending') {
+      Alert.alert(
+        'Verification Pending',
+        'Your documents are under review. You will be notified once the verification is complete.',
+        [{ text: 'OK' }]
+      );
+      return;
     }
+    
+    // If rejected, show reason and allow retry
+    if (user?.identityVerificationStatus === 'rejected') {
+      Alert.alert(
+        'Verification Rejected',
+        user?.identityRejectionReason || 'Your verification was rejected. Please submit valid documents.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => navigation.navigate('IdentityTypeSelection') }
+        ]
+      );
+      return;
+    }
+    
+    // Navigate to identity type selection
+    navigation.navigate('IdentityTypeSelection');
   };
 
   const menuItems: MenuItemType[] = [
@@ -271,8 +281,8 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
     },
     {
       icon: 'shield-checkmark-outline',
-      title: 'Verify Identity',
-      subtitle: isIdentityVerified ? 'Verified Partner' : 'Complete KYC Verification',
+      title: 'Verify Yourself',
+      subtitle: getVerificationStatus().text,
       onPress: handleVerification,
     },
     {

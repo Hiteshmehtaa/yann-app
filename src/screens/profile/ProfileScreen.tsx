@@ -59,7 +59,19 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   });
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified);
+  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
+  
+  // Get verification status for display
+  const getVerificationStatus = () => {
+    if (user?.identityVerificationStatus === 'pending') {
+      return { text: 'Pending Approval', color: '#FF9800' };
+    } else if (user?.identityVerificationStatus === 'rejected') {
+      return { text: 'Rejected - Retry', color: COLORS.error };
+    } else if (isIdentityVerified) {
+      return { text: t('profile.verified'), color: COLORS.success };
+    }
+    return { text: t('profile.notVerified'), color: COLORS.textSecondary };
+  };
 
   // Get correct role display based on user.role
   const getRoleDisplay = () => {
@@ -239,52 +251,39 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleVerification = async () => {
     console.log('Verify button pressed');
+    
+    // If already verified, just show message
     if (isIdentityVerified) {
       console.log('User already verified');
       Alert.alert('Verified', 'Your identity is already verified.');
       return;
     }
-
-    try {
-      const userId = user?.id || user?._id;
-      console.log('Initiating verification for user:', userId);
-      if (!userId) {
-        console.error('User ID missing');
-        return;
-      }
-
-      const redirectUrl = Linking.createURL('verification-success');
-      const response = await apiService.verifyIdentity(userId, user.role || 'homeowner', redirectUrl);
-      console.log('Verification response:', response);
-
-      if (response.success && response.url) {
-        console.log('Opening browser:', response.url);
-        try {
-          const result = await WebBrowser.openAuthSessionAsync(response.url, redirectUrl, {
-            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-          });
-
-          if (result.type === 'success') {
-            const role = user?.role || 'homeowner';
-            const profileResponse = await apiService.getProfile(role);
-            if (profileResponse.user) {
-              updateUser(profileResponse.user);
-            }
-            Alert.alert('Verified', 'Aadhaar verification completed successfully.');
-          }
-        } catch (authError) {
-          await WebBrowser.openBrowserAsync(response.url);
-        }
-      } else {
-        console.error('Verification failed:', response.message);
-        Alert.alert('Error', response.message || 'Failed to initiate verification');
-      }
-    } catch (error: any) {
-      console.error('Verification error details:', error.response?.data || error.message);
-      // Fallback to show the raw message if available, instead of generic mask
-      const serverMsg = error.response?.data?.message || error.message;
-      Alert.alert('Error', serverMsg || 'Verification failed');
+    
+    // If pending, show status
+    if (user?.identityVerificationStatus === 'pending') {
+      Alert.alert(
+        'Verification Pending',
+        'Your documents are under review. You will be notified once the verification is complete.',
+        [{ text: 'OK' }]
+      );
+      return;
     }
+    
+    // If rejected, show reason and allow retry
+    if (user?.identityVerificationStatus === 'rejected') {
+      Alert.alert(
+        'Verification Rejected',
+        user?.identityRejectionReason || 'Your verification was rejected. Please submit valid documents.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => navigation.navigate('IdentityTypeSelection') }
+        ]
+      );
+      return;
+    }
+    
+    // Navigate to identity type selection
+    navigation.navigate('IdentityTypeSelection');
   };
 
   const menuItems: MenuItemType[] = [
@@ -305,8 +304,8 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     },
     {
       icon: 'shield-checkmark-outline',
-      title: t('profile.verifyAadhaar'),
-      subtitle: isIdentityVerified ? t('profile.verified') : t('profile.notVerified'),
+      title: 'Verify Yourself',
+      subtitle: getVerificationStatus().text,
       onPress: () => handleVerification(),
     },
     {

@@ -1579,6 +1579,65 @@ class ApiService {
     return response.data;
   }
 
+  // ====================================================================
+  // IDENTITY VERIFICATION ENDPOINTS (New System)
+  // ====================================================================
+
+  /**
+   * POST /api/identity/submit-documents
+   * Submit identity documents for verification (Foreigners/NRI)
+   */
+  async submitIdentityDocuments(data: {
+    userId: string;
+    userType: 'homeowner' | 'provider';
+    identityType: 'foreigner' | 'nri';
+    documents: Record<string, { type: string; uri: string; name: string; mimeType?: string }>;
+  }): Promise<ApiResponse<{ user: any }>> {
+    const formData = new FormData();
+    formData.append('userId', data.userId);
+    formData.append('userType', data.userType);
+    formData.append('identityType', data.identityType);
+
+    // Convert documents to files
+    const documentEntries = Object.entries(data.documents);
+    for (let i = 0; i < documentEntries.length; i++) {
+      const [docType, doc] = documentEntries[i];
+      
+      // For React Native, create a file object
+      const file: any = {
+        uri: doc.uri,
+        name: doc.name,
+        type: doc.mimeType || 'image/jpeg',
+      };
+      
+      formData.append('documents', file);
+      formData.append(`documentTypes[${i}]`, docType);
+    }
+
+    const response = await this.client.post('/identity/submit-documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  /**
+   * GET /api/identity/status
+   * Get identity verification status for current user
+   */
+  async getIdentityStatus(): Promise<ApiResponse<{
+    identityType: string | null;
+    identityVerificationStatus: string;
+    identitySubmittedAt: string | null;
+    identityApprovedAt: string | null;
+    identityRejectedAt: string | null;
+    identityRejectionReason: string | null;
+  }>> {
+    const response = await this.client.get('/identity/status');
+    return response.data;
+  }
+
 
   // ====================================================================
   // JOB SESSION OTP ENDPOINTS

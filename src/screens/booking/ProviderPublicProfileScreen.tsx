@@ -37,6 +37,7 @@ import { DepthCard } from '../../components/ui/DepthCard';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { GuestLoginModal } from '../../components/GuestLoginModal';
+import { useDialog } from '../../components/CustomDialog';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT_EXPANDED = height * 0.45;
@@ -99,8 +100,9 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const { toast, showSuccess, showInfo, hideToast } = useToast();
-  const { isGuest } = useAuth();
+  const { isGuest, user } = useAuth();
   const [showGuestModal, setShowGuestModal] = useState(false);
+  const { dialogState, hideDialog, showWarning, DialogComponent } = useDialog();
 
   // UGC State
   const [showOptionsModal, setShowOptionsModal] = useState(false);
@@ -172,9 +174,16 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     haptics.selection();
     setShowServiceModal(false);
 
+    // Aadhaar gate — block unverified members before navigating
+    if (!user?.aadhaarVerified) {
+      showWarning(
+        'Aadhaar Verification Required',
+        'Please verify your Aadhaar before making a booking. Go to Profile → Verify Aadhaar.'
+      );
+      return;
+    }
+
     // Determine if this is a driver service
-    // If we have full service object (from params), use that category
-    // If not (from modal selection), check service title or provider type
     const isDriver =
       serviceObj?.category?.toLowerCase() === 'driver' ||
       serviceObj?.title?.toLowerCase().includes('driver') ||
@@ -184,7 +193,6 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
       service: {
         ...serviceObj,
         category: isDriver ? 'driver' : (serviceObj.category || 'general'),
-        // Ensure price is set if available from provider rates
         price: getPriceForService(serviceObj.title) || serviceObj.price
       },
       selectedProvider: provider
@@ -204,6 +212,15 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 
     if (isGuest) {
       setShowGuestModal(true);
+      return;
+    }
+
+    // Aadhaar gate — block unverified members early, before the booking form
+    if (!user?.aadhaarVerified) {
+      showWarning(
+        'Aadhaar Verification Required',
+        'Please verify your Aadhaar before making a booking. Go to Profile → Verify Aadhaar.'
+      );
       return;
     }
 
@@ -761,6 +778,9 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Custom dialog for Aadhaar verification warning */}
+      {DialogComponent}
 
       <GuestLoginModal
         visible={showGuestModal}

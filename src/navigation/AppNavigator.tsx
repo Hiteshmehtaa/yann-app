@@ -72,6 +72,8 @@ import { ProviderEarningsScreen } from '../screens/provider/ProviderEarningsScre
 import { BankDetailsScreen } from '../screens/provider/BankDetailsScreen';
 import { ProviderChatScreen } from '../screens/provider/ProviderChatScreen';
 import { AadhaarVerificationScreen } from '../screens/auth/AadhaarVerificationScreen';
+import { IdentityTypeSelectionScreen } from '../screens/auth/IdentityTypeSelectionScreen';
+import { DocumentUploadScreen } from '../screens/auth/DocumentUploadScreen';
 
 // Legal Screens
 import { TermsConditionsScreen } from '../screens/legal/TermsConditionsScreen';
@@ -124,6 +126,8 @@ type RootStackParamList = {
   ProviderTerms: undefined;
   SafetyPolicy: undefined;
   AadhaarVerification: undefined;
+  IdentityTypeSelection: undefined;
+  DocumentUpload: { identityType: 'foreigner' | 'nri' };
   LanguageSettings: undefined;
   BookingsList: undefined;
   BookingDetail: { booking: any };
@@ -381,6 +385,8 @@ export function AppNavigator() {
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="IdentityTypeSelection" component={IdentityTypeSelectionScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AdminPush" component={AdminPushNotificationScreen as any} options={screenTransitionConfig} />
               </>
@@ -409,6 +415,8 @@ export function AppNavigator() {
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="IdentityTypeSelection" component={IdentityTypeSelectionScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Favorites" component={FavoritesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AdminPush" component={AdminPushNotificationScreen as any} options={screenTransitionConfig} />
