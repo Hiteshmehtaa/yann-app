@@ -1,23 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Alert,
   ScrollView,
   Image,
   ActivityIndicator,
+  Animated,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
+import { COLORS } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { CustomDialog } from '../../components/CustomDialog';
+import { AnimatedButton } from '../../components/AnimatedButton';
+import { ImagePickerBottomSheet } from '../../components/ImagePickerBottomSheet';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -54,111 +58,122 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
   const [documents, setDocuments] = useState<Record<string, DocumentItem>>({});
   const [isLoading, setIsLoading] = useState(false);
 
+  // UI State
+  const [dialogState, setDialogState] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+    onClose: () => void;
+  }>({
+    visible: false,
+    type: 'success',
+    title: '',
+    message: '',
+    onClose: () => {},
+  });
+  
+  // Sheet State
+  const [isSheetVisible, setSheetVisible] = useState(false);
+  const [activeDocType, setActiveDocType] = useState<string | null>(null);
+
   const requiredDocs = documentTypes[identityType];
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const pickDocument = async (docType: string) => {
-    Alert.alert(
-      'Choose Option',
-      'Select how you want to upload the document',
-      [
-        {
-          text: 'Take Photo',
-          onPress: () => void pickImage(docType),
-        },
-        {
-          text: 'Choose from Library',
-          onPress: () => void pickFromLibrary(docType),
-        },
-        // Temporarily disabled until expo-document-picker is installed
-        // {
-        //   text: 'Select File',
-        //   onPress: () => void pickFile(docType),
-        // },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
-  };
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
-  const pickImage = async (docType: string) => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Camera permission is required to take photos');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
+  const showDialog = (type: 'success' | 'error' | 'warning', title: string, message: string, onClose?: () => void) => {
+    setDialogState({
+      visible: true,
+      type,
+      title,
+      message,
+      onClose: () => {
+        setDialogState(prev => ({ ...prev, visible: false }));
+        if (onClose) onClose();
+      }
     });
-
-    if (!result.canceled && result.assets[0]) {
-      setDocuments({
-        ...documents,
-        [docType]: {
-          type: docType,
-          uri: result.assets[0].uri,
-          name: `${docType}_${Date.now()}.jpg`,
-          mimeType: 'image/jpeg',
-        },
-      });
-    }
   };
 
-  const pickFromLibrary = async (docType: string) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Gallery permission is required');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setDocuments({
-        ...documents,
-        [docType]: {
-          type: docType,
-          uri: result.assets[0].uri,
-          name: `${docType}_${Date.now()}.jpg`,
-          mimeType: 'image/jpeg',
-        },
-      });
-    }
+  const pickDocument = (docType: string) => {
+    setActiveDocType(docType);
+    setSheetVisible(true);
   };
 
-  const pickFile = async (docType: string) => {
-    // TODO: Install and enable expo-document-picker
-    Alert.alert('Coming Soon', 'Document picker will be available in the next update');
-    /*
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf'],
-        copyToCacheDirectory: true,
+  const handleCamera = async () => {
+    setSheetVisible(false);
+    if (!activeDocType) return;
+    
+    // Slight delay to allow sheet to close smoothly
+    setTimeout(async () => {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        showDialog('error', 'Permission Required', 'Camera permission is required to take photos');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.8,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setDocuments({
-          ...documents,
-          [docType]: {
-            type: docType,
+        setDocuments(prev => ({
+          ...prev,
+          [activeDocType]: {
+            type: activeDocType,
             uri: result.assets[0].uri,
-            name: result.assets[0].name,
-            mimeType: result.assets[0].mimeType,
+            name: `${activeDocType}_${Date.now()}.jpg`,
+            mimeType: 'image/jpeg',
           },
-        });
+        }));
       }
-    } catch (error) {
-      console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick document');
-    }
-    */
+      setActiveDocType(null);
+    }, 300);
+  };
+
+  const handleLibrary = async () => {
+    setSheetVisible(false);
+    if (!activeDocType) return;
+    
+    setTimeout(async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showDialog('error', 'Permission Required', 'Gallery permission is required');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setDocuments(prev => ({
+          ...prev,
+          [activeDocType]: {
+            type: activeDocType,
+            uri: result.assets[0].uri,
+            name: `${activeDocType}_${Date.now()}.jpg`,
+            mimeType: 'image/jpeg',
+          },
+        }));
+      }
+      setActiveDocType(null);
+    }, 300);
+  };
+
+  const handleDocumentPick = () => {
+    setSheetVisible(false);
+    setTimeout(() => {
+      showDialog('warning', 'Coming Soon', 'Document picker will be available in the next update');
+    }, 300);
   };
 
   const removeDocument = (docType: string) => {
@@ -173,9 +188,10 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
       .map((doc) => doc.label);
 
     if (missingRequired.length > 0) {
-      Alert.alert(
+      showDialog(
+        'error',
         'Missing Documents',
-        `Please upload the following required documents:\n${missingRequired.join(', ')}`
+        `Please upload the following required documents:\n\n${missingRequired.join('\n')}`
       );
       return false;
     }
@@ -184,18 +200,15 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
   };
 
   const handleSubmit = async () => {
-    if (!validateDocuments()) {
-      return;
-    }
+    if (!validateDocuments()) return;
 
     setIsLoading(true);
 
     try {
-      // Convert all document URIs to base64 data URLs (same pattern as avatar upload)
       const base64Documents: Record<string, string> = {};
       for (const [docType, doc] of Object.entries(documents)) {
         const base64 = await FileSystem.readAsStringAsync(doc.uri, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: 'base64',
         });
         const mimeType = doc.mimeType || 'image/jpeg';
         base64Documents[docType] = `data:${mimeType};base64,${base64}`;
@@ -209,30 +222,24 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
       });
 
       if (response.success) {
-        // Update user context
         if (response.data?.user) {
           updateUser(response.data.user);
         }
 
-        Alert.alert(
+        showDialog(
+          'success',
           'Application Submitted',
           'Your documents have been submitted for verification. You will be notified once the review is complete.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Navigate back to profile
-                navigation.navigate(user?.role === 'provider' ? 'ProviderTabs' : 'MainTabs');
-              },
-            },
-          ]
+          () => {
+            navigation.navigate(user?.role === 'provider' ? 'ProviderTabs' : 'MainTabs');
+          }
         );
       } else {
-        Alert.alert('Error', response.message || 'Failed to submit documents');
+        showDialog('error', 'Submission Failed', response.message || 'Failed to submit documents');
       }
     } catch (error: any) {
       console.error('Document submission error:', error);
-      Alert.alert('Error', error.message || 'Failed to submit documents');
+      showDialog('error', 'Error', error.message || 'Failed to submit documents');
     } finally {
       setIsLoading(false);
     }
@@ -240,7 +247,7 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -248,102 +255,134 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Upload Documents</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Title */}
-        <Text style={styles.title}>Upload Your Documents</Text>
-        <Text style={styles.subtitle}>
-          Please upload clear photos or scans of your documents. All required documents must be uploaded to proceed.
-        </Text>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>
+              {identityType === 'foreigner' ? 'Foreigner Verification' : 'NRI Verification'}
+            </Text>
+            <Text style={styles.subtitle}>
+              Please provide clear, readable photos of the following documents to verify your identity.
+            </Text>
+          </View>
 
-        {/* Document List */}
-        <View style={styles.documentsContainer}>
-          {requiredDocs.map((doc) => {
-            const uploaded = documents[doc.value];
-            const isImage = uploaded?.mimeType?.startsWith('image/');
+          <View style={styles.documentList}>
+            {requiredDocs.map((doc) => {
+              const uploadedDoc = documents[doc.value];
+              const isUploaded = !!uploadedDoc;
+              const isImage = isUploaded && uploadedDoc?.mimeType?.startsWith('image/');
 
-            return (
-              <View key={doc.value} style={styles.documentCard}>
-                <View style={styles.documentHeader}>
-                  <View style={styles.documentLabelContainer}>
-                    <Text style={styles.documentLabel}>{doc.label}</Text>
-                    {doc.required && <Text style={styles.requiredBadge}>Required</Text>}
+              return (
+                <View key={doc.value} style={styles.docCard}>
+                  <View style={styles.docHeader}>
+                    <View style={styles.docTitleRow}>
+                      <Text style={styles.docTitle}>{doc.label}</Text>
+                      {doc.required && (
+                        <View style={styles.requiredBadge}>
+                          <Text style={styles.requiredText}>Required</Text>
+                        </View>
+                      )}
+                    </View>
+                    {isUploaded && (
+                      <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
+                    )}
                   </View>
-                  {uploaded && (
-                    <TouchableOpacity onPress={() => removeDocument(doc.value)}>
-                      <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+
+                  {isUploaded ? (
+                    <View style={styles.uploadedContainer}>
+                      {isImage ? (
+                        <Image source={{ uri: uploadedDoc.uri }} style={styles.previewImage} />
+                      ) : (
+                        <View style={styles.filePreview}>
+                          <Ionicons name="document-text" size={40} color={COLORS.primary} />
+                          <Text style={styles.fileName} numberOfLines={1}>{uploadedDoc.name}</Text>
+                        </View>
+                      )}
+                      
+                      <View style={styles.uploadedActions}>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => pickDocument(doc.value)}
+                        >
+                          <Ionicons name="refresh-outline" size={20} color={COLORS.primary} />
+                          <Text style={styles.actionText}>Retake</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.actionButtonDelete]}
+                          onPress={() => removeDocument(doc.value)}
+                        >
+                          <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                          <Text style={[styles.actionText, { color: COLORS.error }]}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={() => pickDocument(doc.value)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.uploadIconContainer}>
+                        <Ionicons name="cloud-upload-outline" size={32} color={COLORS.primary} />
+                      </View>
+                      <Text style={styles.uploadText}>Tap to upload photo</Text>
+                      <Text style={styles.uploadSubtext}>JPG, PNG up to 5MB</Text>
                     </TouchableOpacity>
                   )}
                 </View>
+              );
+            })}
+          </View>
 
-                {uploaded ? (
-                  <View style={styles.uploadedContainer}>
-                    {isImage ? (
-                      <Image source={{ uri: uploaded.uri }} style={styles.uploadedImage} />
-                    ) : (
-                      <View style={styles.filePreview}>
-                        <Ionicons name="document" size={40} color={COLORS.primary} />
-                        <Text style={styles.fileName} numberOfLines={1}>
-                          {uploaded.name}
-                        </Text>
-                      </View>
-                    )}
-                    <TouchableOpacity
-                      style={styles.changeButton}
-                      onPress={() => pickDocument(doc.value)}
-                    >
-                      <Text style={styles.changeButtonText}>Change</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={() => pickDocument(doc.value)}
-                  >
-                    <Ionicons name="cloud-upload-outline" size={32} color={COLORS.primary} />
-                    <Text style={styles.uploadButtonText}>Upload {doc.label}</Text>
-                    <Text style={styles.uploadButtonSubtext}>
-                      Photo, Scan or File
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            );
-          })}
-        </View>
+          <View style={styles.infoCard}>
+            <Ionicons name="shield-checkmark" size={20} color={COLORS.success} />
+            <Text style={styles.infoText}>
+              Your documents are encrypted and securely stored.
+            </Text>
+          </View>
+        </Animated.View>
+      </ScrollView>
 
-        {/* Info */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.infoText}>
-            Your documents will be securely stored and reviewed by our admin team. You'll receive a notification once the review is complete.
-          </Text>
-        </View>
-
-        {/* Submit Button */}
-        <TouchableOpacity
+      <View style={styles.footer}>
+        <AnimatedButton
           style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={isLoading}
-          activeOpacity={0.8}
         >
           {isLoading ? (
             <ActivityIndicator color={COLORS.white} />
           ) : (
-            <>
-              <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
-              <Text style={styles.submitButtonText}>Submit for Verification</Text>
-            </>
+            <Text style={styles.submitButtonText}>Submit for Verification</Text>
           )}
-        </TouchableOpacity>
+        </AnimatedButton>
+      </View>
 
-        <View style={{ height: SPACING.xl }} />
-      </ScrollView>
+      <CustomDialog
+        visible={dialogState.visible}
+        type={dialogState.type}
+        title={dialogState.title}
+        message={dialogState.message}
+        onClose={dialogState.onClose}
+        actions={[{ text: 'OK', style: 'default' }]}
+      />
+
+      <ImagePickerBottomSheet
+        visible={isSheetVisible}
+        onClose={() => setSheetVisible(false)}
+        onCamera={handleCamera}
+        onLibrary={handleLibrary}
+        onDocument={handleDocumentPick}
+      />
     </SafeAreaView>
   );
 };
@@ -351,164 +390,239 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray100,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#F8F9FA',
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
-  content: {
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  scrollView: {
     flex: 1,
-    padding: SPACING.xl,
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  headerTextContainer: {
+    marginBottom: 32,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xxl,
-    lineHeight: 22,
+    fontSize: 15,
+    color: '#666666',
+    lineHeight: 24,
   },
-  documentsContainer: {
-    gap: SPACING.lg,
-    marginBottom: SPACING.xl,
+  documentList: {
+    gap: 24,
   },
-  documentCard: {
-    backgroundColor: COLORS.gray100,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.lg,
+  docCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  documentHeader: {
+  docHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
-  documentLabelContainer: {
+  docTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    flex: 1,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  documentLabel: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '600',
-    color: COLORS.text,
+  docTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   requiredBadge: {
-    fontSize: TYPOGRAPHY.size.xs,
-    color: COLORS.white,
-    backgroundColor: COLORS.error,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: RADIUS.small,
-    overflow: 'hidden',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  requiredText: {
+    color: '#DC2626',
+    fontSize: 11,
+    fontWeight: '600',
   },
   uploadButton: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.xl,
-    alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
   },
-  uploadButtonText: {
-    fontSize: TYPOGRAPHY.size.md,
+  uploadIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  uploadText: {
+    fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
-    marginTop: SPACING.sm,
+    color: COLORS.primary,
+    marginBottom: 4,
   },
-  uploadButtonSubtext: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    marginTop: 4,
+  uploadSubtext: {
+    fontSize: 13,
+    color: '#9CA3AF',
   },
   uploadedContainer: {
-    gap: SPACING.sm,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  uploadedImage: {
+  previewImage: {
     width: '100%',
     height: 200,
-    borderRadius: RADIUS.medium,
-    backgroundColor: COLORS.gray200,
+    resizeMode: 'cover',
   },
   filePreview: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: SPACING.xl,
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.medium,
+    height: 120,
+    backgroundColor: '#F9FAFB',
   },
   fileName: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.text,
-    marginTop: SPACING.sm,
+    marginTop: 8,
+    fontSize: 13,
+    color: '#4B5563',
+    paddingHorizontal: 16,
+    textAlign: 'center',
   },
-  changeButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.small,
+  uploadedActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
-  changeButtonText: {
-    fontSize: TYPOGRAPHY.size.sm,
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    backgroundColor: '#F9FAFB',
+    gap: 6,
+  },
+  actionButtonDelete: {
+    borderLeftWidth: 1,
+    borderLeftColor: '#F3F4F6',
+  },
+  actionText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: COLORS.primary,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: `${COLORS.primary}10`,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
-    gap: SPACING.sm,
-    marginBottom: SPACING.xl,
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 32,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
   },
   infoText: {
     flex: 1,
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
+    marginLeft: 12,
+    fontSize: 13,
+    color: '#166534',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  footer: {
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 0 : 24,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   submitButton: {
-    flexDirection: 'row',
     backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.medium,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xl,
+    height: 56,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.sm,
-    ...SHADOWS.md,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   submitButtonDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#A0AEC0',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitButtonText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '600',
     color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

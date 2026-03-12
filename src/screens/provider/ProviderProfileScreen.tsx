@@ -8,12 +8,13 @@ import {
   StatusBar,
   Animated,
   Image,
-  Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LogoutConfirmModal } from '../../components/LogoutConfirmModal';
+import { useDialog } from '../../components/CustomDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -57,6 +58,7 @@ type MenuItemType = {
 
 export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout, updateUser } = useAuth();
+  const { DialogComponent, showError, showSuccess, showWarning, showInfo, showConfirm } = useDialog();
   // TODO: Remove this mock after verification
   // useEffect(() => {
   //   if (user && !user.hasLateStarts) {
@@ -152,7 +154,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to your photos.');
+        showError('Permission Required', 'Please allow access to your photos to update your profile picture.');
         return;
       }
 
@@ -208,12 +210,12 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
           if (profileResponse.user) {
             updateUser(profileResponse.user);
-            Alert.alert('Success', 'Profile picture updated!');
+            showSuccess('Profile Updated', 'Your profile picture has been updated successfully.');
           } else {
             // Fallback to response data if profile fetch fails
             const newAvatar = response.data.avatar || response.data.profileImage;
             updateUser({ ...user, avatar: newAvatar, profileImage: newAvatar });
-            Alert.alert('Success', 'Profile picture updated!');
+            showSuccess('Profile Updated', 'Your profile picture has been updated successfully.');
           }
         } else {
           console.error('❌ Upload failed:', response.message);
@@ -227,7 +229,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
         response: error.response?.data,
         status: error.response?.status
       });
-      Alert.alert('Upload Failed', error.message || 'Failed to upload profile picture.');
+      showError('Upload Failed', error.message || 'Failed to upload profile picture. Please try again.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -236,29 +238,26 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
   const handleVerification = async () => {
     // If already verified, just show message
     if (isIdentityVerified) {
-      Alert.alert('Verified', 'Your identity is already verified.');
+      showSuccess('Verified Partner', 'Your identity is already verified securely on the platform.');
       return;
     }
     
     // If pending, show status
     if (user?.identityVerificationStatus === 'pending') {
-      Alert.alert(
+      showInfo(
         'Verification Pending',
-        'Your documents are under review. You will be notified once the verification is complete.',
-        [{ text: 'OK' }]
+        'Your documents are under review. You will be notified once the verification is complete.'
       );
       return;
     }
     
     // If rejected, show reason and allow retry
     if (user?.identityVerificationStatus === 'rejected') {
-      Alert.alert(
+      showConfirm(
         'Verification Rejected',
         user?.identityRejectionReason || 'Your verification was rejected. Please submit valid documents.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: () => navigation.navigate('IdentityTypeSelection') }
-        ]
+        () => navigation.navigate('IdentityTypeSelection'),
+        { confirmText: 'Try Again', type: 'error' }
       );
       return;
     }
@@ -333,7 +332,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
               services: user?.services || [],
             });
             if (success) {
-              Alert.alert('Success', 'Profile shared successfully!');
+              showSuccess('Profile Shared', 'Your public profile link has been shared successfully!');
             }
           }}
         >
@@ -392,7 +391,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
                 {user?.hasLateStarts && (
                   <TouchableOpacity
                     style={[styles.roleBadge, { backgroundColor: COLORS.error }]}
-                    onPress={() => Alert.alert(
+                    onPress={() => showWarning(
                       'Late Start History',
                       'You have a history of not starting bookings on time. Please ensure you start jobs within the 2-hour buffer to remove this badge.'
                     )}
@@ -434,24 +433,18 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
           {/* Delete Account */}
           <TouchableOpacity
             style={[styles.logoutBtn, { marginTop: 12, backgroundColor: '#FEF2F2' }]}
-            onPress={() => Alert.alert(
+            onPress={() => showConfirm(
               'Delete Account',
               'Are you sure you want to delete your account? This action is irreversible.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await apiService.deleteAccount();
-                      await logout();
-                    } catch (e: any) {
-                      Alert.alert('Error', e.message || 'Failed to delete account');
-                    }
-                  }
+              async () => {
+                try {
+                  await apiService.deleteAccount();
+                  await logout();
+                } catch (e: any) {
+                  showError('Error', e.message || 'Failed to delete account. Please try again.');
                 }
-              ]
+              },
+              { confirmText: 'Delete', cancelText: 'Cancel' }
             )}
           >
             <Ionicons name="trash-outline" size={22} color={COLORS.error} />
@@ -468,6 +461,8 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
         onConfirm={confirmLogout}
         onCancel={() => setShowLogoutConfirm(false)}
       />
+
+      {DialogComponent}
     </SafeAreaView>
   );
 };

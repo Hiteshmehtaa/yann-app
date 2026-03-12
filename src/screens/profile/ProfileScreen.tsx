@@ -31,6 +31,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import { StatsCard } from '../../components/ui/StatsCard';
 import { Badge } from '../../components/ui/Badge';
 import { useTranslation } from 'react-i18next';
+import { useDialog } from '../../components/CustomDialog';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -47,6 +48,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const { user, logout, updateUser, isGuest } = useAuth();
   const { colors, toggleTheme, isDark } = useTheme();
+  const { DialogComponent, showError, showSuccess, showWarning, showInfo, showConfirm } = useDialog();
   const { isTablet } = useResponsive();
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -206,7 +208,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant camera roll permissions.');
+        showError('Permission Required', 'Please grant camera roll permissions.');
         return;
       }
 
@@ -231,19 +233,19 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           const profileResponse = await apiService.getProfile(role);
           if (profileResponse.user) {
             updateUser(profileResponse.user);
-            Alert.alert('Success', 'Profile picture updated successfully!');
+            showSuccess('Success', 'Profile picture updated successfully!');
           } else {
             // Fallback to response data if profile fetch fails
             const newAvatar = response.data.avatar || response.data.profileImage;
             updateUser({ avatar: newAvatar, profileImage: newAvatar });
-            Alert.alert('Success', 'Profile picture updated successfully!');
+            showSuccess('Success', 'Profile picture updated successfully!');
           }
         } else {
           throw new Error(response.message);
         }
       }
     } catch (error: any) {
-      Alert.alert('Upload Failed', error.message || 'Failed to upload profile picture.');
+      showError('Upload Failed', error.message || 'Failed to upload profile picture.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -255,29 +257,26 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     // If already verified, just show message
     if (isIdentityVerified) {
       console.log('User already verified');
-      Alert.alert('Verified', 'Your identity is already verified.');
+      showSuccess('Verified Partner', 'Your identity is already verified securely on the platform.');
       return;
     }
     
     // If pending, show status
     if (user?.identityVerificationStatus === 'pending') {
-      Alert.alert(
+      showInfo(
         'Verification Pending',
-        'Your documents are under review. You will be notified once the verification is complete.',
-        [{ text: 'OK' }]
+        'Your documents are under review. You will be notified once the verification is complete.'
       );
       return;
     }
     
     // If rejected, show reason and allow retry
     if (user?.identityVerificationStatus === 'rejected') {
-      Alert.alert(
+      showConfirm(
         'Verification Rejected',
         user?.identityRejectionReason || 'Your verification was rejected. Please submit valid documents.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Retry', onPress: () => navigation.navigate('IdentityTypeSelection') }
-        ]
+        () => navigation.navigate('IdentityTypeSelection'),
+        { confirmText: 'Try Again', type: 'error' }
       );
       return;
     }
@@ -564,25 +563,19 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             {/* Delete Account Button */}
             <TouchableOpacity
               style={[styles.logoutButton, { backgroundColor: colors.cardBg, marginTop: 12 }]}
-              onPress={() => Alert.alert(
+              onPress={() => showConfirm(
                 'Delete Account',
                 'Are you sure you want to delete your account? This action is irreversible.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        // Call API to delete account
-                        await apiService.deleteAccount();
-                        await logout();
-                      } catch (e: any) {
-                        Alert.alert('Error', e.message || 'Failed to delete account');
-                      }
-                    }
+                async () => {
+                  try {
+                    // Call API to delete account
+                    await apiService.deleteAccount();
+                    await logout();
+                  } catch (e: any) {
+                    showError('Error', e.message || 'Failed to delete account');
                   }
-                ]
+                },
+                { confirmText: 'Delete', cancelText: 'Cancel' }
               )}
             >
               <Ionicons name="trash-outline" size={20} color={colors.error} />
@@ -605,6 +598,8 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         onConfirm={confirmLogout}
         onCancel={() => setShowLogoutConfirm(false)}
       />
+
+      {DialogComponent}
     </SafeAreaView>
   );
 };

@@ -7,6 +7,7 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
+  Platform
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,33 +40,33 @@ interface CustomDialogProps {
 
 const DIALOG_CONFIG: Record<DialogType, {
   icon: keyof typeof Ionicons.glyphMap;
-  colors: string[];
-  iconColor: string;
+  color: string;
+  bgColor: string;
 }> = {
   success: {
-    icon: 'checkmark-circle',
-    colors: ['#10B981', '#059669'],
-    iconColor: '#10B981',
+    icon: 'checkmark-circle-outline',
+    color: '#10B981',
+    bgColor: '#D1FAE5',
   },
   error: {
-    icon: 'close-circle',
-    colors: ['#EF4444', '#DC2626'],
-    iconColor: '#EF4444',
+    icon: 'close-circle-outline',
+    color: '#EF4444',
+    bgColor: '#FEE2E2',
   },
   warning: {
-    icon: 'warning',
-    colors: ['#F59E0B', '#D97706'],
-    iconColor: '#F59E0B',
+    icon: 'warning-outline',
+    color: '#F59E0B',
+    bgColor: '#FEF3C7',
   },
   info: {
-    icon: 'information-circle',
-    colors: ['#3B82F6', '#2563EB'],
-    iconColor: '#3B82F6',
+    icon: 'information-circle-outline',
+    color: '#3B82F6',
+    bgColor: '#DBEAFE',
   },
   confirm: {
-    icon: 'help-circle',
-    colors: ['#8B5CF6', '#7C3AED'],
-    iconColor: '#8B5CF6',
+    icon: 'help-circle-outline',
+    color: '#6366F1',
+    bgColor: '#E0E7FF',
   },
 };
 
@@ -150,7 +151,7 @@ export const CustomDialog: React.FC<CustomDialogProps> = ({
         onPress={() => handleClose()}
       >
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
-          <BlurView intensity={isDark ? 40 : 25} style={StyleSheet.absoluteFill} tint={isDark ? 'dark' : 'light'} />
+          <BlurView intensity={25} style={StyleSheet.absoluteFill} tint={isDark ? 'dark' : 'light'} />
         </Animated.View>
         
         <Animated.View
@@ -164,16 +165,12 @@ export const CustomDialog: React.FC<CustomDialogProps> = ({
         >
           {/* Icon Header */}
           <View style={styles.iconWrapper}>
-            <LinearGradient
-              colors={config.colors as [string, string]}
-              style={styles.iconGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Animated.View style={{ transform: [{ scale: iconScaleAnim }] }}>
-                <Ionicons name={config.icon} size={48} color="#FFFFFF" />
-              </Animated.View>
-            </LinearGradient>
+            <Animated.View style={[
+              styles.iconCircle, 
+              { backgroundColor: config.bgColor, transform: [{ scale: iconScaleAnim }] }
+            ]}>
+              <Ionicons name={config.icon} size={36} color={config.color} />
+            </Animated.View>
           </View>
 
           {/* Content */}
@@ -192,31 +189,21 @@ export const CustomDialog: React.FC<CustomDialogProps> = ({
                     styles.actionButton,
                     action.style === 'cancel' && styles.actionButtonCancel,
                     action.style === 'destructive' && styles.actionButtonDestructive,
-                    index > 0 && { marginTop: 10 }
+                    (!action.style || action.style === 'default') && { backgroundColor: config.color }
                   ]}
                   onPress={() => handleClose(action.onPress)}
                   activeOpacity={0.8}
                 >
-                  {action.style !== 'cancel' && action.style !== 'destructive' ? (
-                    <LinearGradient
-                      colors={config.colors as [string, string]}
-                      style={styles.actionGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                      <Text style={styles.actionButtonTextPrimary}>{action.text}</Text>
-                    </LinearGradient>
-                  ) : (
-                    <View style={styles.actionButtonContent}>
-                       <Text style={[
-                        styles.actionButtonText,
-                        action.style === 'cancel' && { color: colors.textSecondary },
-                        action.style === 'destructive' && { color: '#EF4444' },
-                      ]}>
-                        {action.text}
-                      </Text>
-                    </View>
-                  )}
+                  <View style={styles.actionButtonContent}>
+                    <Text style={[
+                      styles.actionButtonText,
+                      (!action.style || action.style === 'default') && { color: '#FFFFFF' },
+                      action.style === 'cancel' && { color: colors.textSecondary },
+                      action.style === 'destructive' && { color: '#EF4444' },
+                    ]}>
+                      {action.text}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
@@ -235,18 +222,17 @@ export const CustomDialog: React.FC<CustomDialogProps> = ({
               )}
               
               <TouchableOpacity
-                style={[styles.button, styles.confirmButton]}
+                style={[
+                  styles.button, 
+                  styles.confirmButton, 
+                  { backgroundColor: config.color }
+                ]}
                 onPress={() => handleClose(onConfirm)}
                 activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={config.colors as [string, string]}
-                  style={styles.confirmGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
+                <View style={styles.confirmContent}>
                   <Text style={styles.confirmButtonText}>{confirmText}</Text>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             </View>
           )}
@@ -322,9 +308,9 @@ export const useDialog = () => {
     title: string,
     message: string,
     onConfirm: () => void,
-    options?: { confirmText?: string; cancelText?: string }
+    options?: { confirmText?: string; cancelText?: string; type?: DialogType }
   ) => {
-    showDialog('confirm', title, message, {
+    showDialog(options?.type || 'confirm', title, message, {
       onConfirm,
       showCancel: true,
       ...options,
@@ -369,104 +355,120 @@ export const useDialog = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.lg,
   },
   container: {
     width: Math.min(SCREEN_WIDTH - 48, 340),
-    borderRadius: RADIUS.xlarge,
+    borderRadius: 24,
     overflow: 'hidden',
-    ...SHADOWS.lg,
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   iconWrapper: {
     alignItems: 'center',
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.md,
+    paddingTop: 32,
+    paddingBottom: 24,
   },
-  iconGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.md,
   },
   content: {
-    paddingHorizontal: SPACING.xl,
-    paddingBottom: SPACING.lg,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
     alignItems: 'center',
   },
   title: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     textAlign: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
+    letterSpacing: -0.3,
   },
   message: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 15,
     textAlign: 'center',
     lineHeight: 22,
   },
   buttonContainer: {
-    padding: SPACING.lg,
-    paddingTop: SPACING.sm,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   buttonContainerRow: {
     flexDirection: 'row',
-    gap: SPACING.sm,
+    gap: 12,
   },
   button: {
     flex: 1,
-    borderRadius: RADIUS.medium,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   cancelButton: {
-    borderWidth: 1.5,
     paddingVertical: 14,
     alignItems: 'center',
+    backgroundColor: '#F1F5F9', // Solid light grayish-blue
   },
   cancelButtonText: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 16,
     fontWeight: '600',
+    color: '#475569',
   },
   confirmButton: {
-    ...SHADOWS.sm,
+    // Background color is set dynamically via style prop
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  confirmGradient: {
+  confirmContent: {
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   confirmButtonText: {
     color: '#FFFFFF',
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 16,
     fontWeight: '700',
   },
   actionsList: {
-    padding: SPACING.lg,
-    paddingTop: 0,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
     width: '100%',
+    gap: 12,
   },
   actionButton: {
     width: '100%',
-    borderRadius: RADIUS.medium,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   actionButtonCancel: {
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#F1F5F9',
   },
   actionButtonDestructive: {
-    borderWidth: 1.5,
-    borderColor: '#FCA5A5',
     backgroundColor: '#FEF2F2',
-  },
-  actionGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   actionButtonContent: {
     paddingVertical: 14,
@@ -474,19 +476,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionButtonText: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 16,
     fontWeight: '600',
-  },
-  actionButtonTextPrimary: {
-    color: '#FFFFFF',
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '700',
-  },
-  actionButtonTextCancel: {
-     // color handled inline based on theme
-  },
-  actionButtonTextDestructive: {
-    // color handled inline
   },
 });
 
