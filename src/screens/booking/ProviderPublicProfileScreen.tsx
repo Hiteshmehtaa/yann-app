@@ -174,15 +174,6 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     haptics.selection();
     setShowServiceModal(false);
 
-    const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
-    if (!isIdentityVerified) {
-      showWarning(
-        'Identity Verification Required',
-        'Please complete your Identity Verification before making a booking. Go to Profile → Verify Identity.'
-      );
-      return;
-    }
-
     // Determine if this is a driver service
     const isDriver =
       serviceObj?.category?.toLowerCase() === 'driver' ||
@@ -212,16 +203,6 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 
     if (isGuest) {
       setShowGuestModal(true);
-      return;
-    }
-
-    // Aadhaar gate — block unverified members early, before the booking form
-    const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
-    if (!isIdentityVerified) {
-      showWarning(
-        'Identity Verification Required',
-        'Please complete your Identity Verification before making a booking. Go to Profile → Verify Identity.'
-      );
       return;
     }
 
