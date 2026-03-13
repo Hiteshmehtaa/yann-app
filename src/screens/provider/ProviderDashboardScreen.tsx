@@ -420,7 +420,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.content}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-          {user && user.aadhaarVerified === false && (
+          {user && !(user.isVerified || user.aadhaarVerified || user.identityVerificationStatus === 'approved') && (
             <View style={{
               backgroundColor: '#FEF2F2',
               marginHorizontal: 20,
@@ -436,7 +436,7 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
             }}>
               <Ionicons name="warning" size={20} color="#EF4444" />
               <Text style={{ color: '#991B1B', fontSize: 13, fontWeight: '600', flex: 1 }}>
-                Please verify your Aadhaar to receive bookings.
+                Please complete your identity verification to receive bookings.
               </Text>
             </View>
           )}

@@ -174,11 +174,11 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     haptics.selection();
     setShowServiceModal(false);
 
-    // Aadhaar gate — block unverified members before navigating
-    if (!user?.aadhaarVerified) {
+    const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
+    if (!isIdentityVerified) {
       showWarning(
-        'Aadhaar Verification Required',
-        'Please verify your Aadhaar before making a booking. Go to Profile → Verify Aadhaar.'
+        'Identity Verification Required',
+        'Please complete your Identity Verification before making a booking. Go to Profile → Verify Identity.'
       );
       return;
     }
@@ -216,10 +216,11 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     }
 
     // Aadhaar gate — block unverified members early, before the booking form
-    if (!user?.aadhaarVerified) {
+    const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
+    if (!isIdentityVerified) {
       showWarning(
-        'Aadhaar Verification Required',
-        'Please verify your Aadhaar before making a booking. Go to Profile → Verify Aadhaar.'
+        'Identity Verification Required',
+        'Please complete your Identity Verification before making a booking. Go to Profile → Verify Identity.'
       );
       return;
     }
