@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,11 @@ import {
   StatusBar,
   Animated,
   Image,
-  Alert,
   ActivityIndicator,
   RefreshControl,
   Platform,
+  Dimensions,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ComingSoonModal } from '../../components/ComingSoonModal';
@@ -20,18 +21,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { useTheme } from '../../contexts/ThemeContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { COLORS, SPACING, RADIUS, SHADOWS, ICON_SIZES, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
-import { useResponsive } from '../../hooks/useResponsive';
-import { StatsCard } from '../../components/ui/StatsCard';
-import { Badge } from '../../components/ui/Badge';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../../components/CustomDialog';
+
+const { width, height } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -40,929 +36,618 @@ type Props = {
 type MenuItemType = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   onPress: () => void;
+  showBadge?: boolean;
+  badgeColor?: string;
+};
+
+// DYNAMIC TRANSPARENT UI TOKENS
+const DESIGN = {
+  primary: '#3B82F6',           
+  bg: '#FFFFFF', 
+  glassBg: 'transparent', 
+  glassBorder: 'rgba(148, 163, 184, 0.4)', // Subtle gray for better separation
+  text: '#0F172A',              
+  textSecondary: '#334155',     
+  textTertiary: '#64748B',      
+  divider: 'rgba(0, 0, 0, 0.04)', 
+  error: '#EF4444',
+  success: '#10B981',
+  warning: '#F59E0B',
 };
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { t } = useTranslation();
   const { user, logout, updateUser, isGuest } = useAuth();
-  const { colors, toggleTheme, isDark } = useTheme();
-  const { DialogComponent, showError, showSuccess, showWarning, showInfo, showConfirm } = useDialog();
-  const { isTablet } = useResponsive();
-  const [showComingSoon, setShowComingSoon] = useState(false);
+  const { DialogComponent, showError, showSuccess, showConfirm } = useDialog();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState({
-    bookingsCount: 0,
-    rating: 0,
-    totalSpent: 0,
-  });
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
   
-  // Get verification status for display
+  // Entrances
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(15)).current;
+
+  // Large Background Blobs
+  const blob1X = useRef(new Animated.Value(0)).current;
+  const blob1Y = useRef(new Animated.Value(0)).current;
+  
+  const blob2X = useRef(new Animated.Value(0)).current;
+  const blob2Y = useRef(new Animated.Value(0)).current;
+  
+  const blob3X = useRef(new Animated.Value(0)).current;
+  const blob3Y = useRef(new Animated.Value(0)).current;
+
+  // Small Elements (Particles)
+  const particle1X = useRef(new Animated.Value(0)).current;
+  const particle1Y = useRef(new Animated.Value(0)).current;
+  const particle1Scale = useRef(new Animated.Value(1)).current;
+
+  const particle2X = useRef(new Animated.Value(0)).current;
+  const particle2Y = useRef(new Animated.Value(0)).current;
+
+  const particle3X = useRef(new Animated.Value(0)).current;
+  const particle3Y = useRef(new Animated.Value(0)).current;
+  
+  const particle4X = useRef(new Animated.Value(0)).current;
+  const particle4Y = useRef(new Animated.Value(0)).current;
+  const particle4Rotate = useRef(new Animated.Value(0)).current;
+
+  // Medium Elements (New Shapes)
+  const particle5X = useRef(new Animated.Value(0)).current;
+  const particle5Y = useRef(new Animated.Value(0)).current;
+  const particle5Rotate = useRef(new Animated.Value(0)).current;
+
+  const particle6X = useRef(new Animated.Value(0)).current;
+  const particle6Y = useRef(new Animated.Value(0)).current;
+
+  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
+
   const getVerificationStatus = () => {
     if (user?.identityVerificationStatus === 'pending') {
-      return { text: 'Pending Approval', color: '#FF9800' };
-    } else if (user?.identityVerificationStatus === 'rejected') {
-      return { text: 'Rejected - Retry', color: COLORS.error };
+      return { text: 'Pending Confirmation', color: DESIGN.warning };
     } else if (isIdentityVerified) {
-      return { text: t('profile.verified'), color: COLORS.success };
+      return { text: 'Verified Identity', color: DESIGN.success };
     }
-    return { text: t('profile.notVerified'), color: COLORS.textSecondary };
+    return { text: 'Verify your ID', color: DESIGN.textTertiary };
   };
-
-  // Get correct role display based on user.role
-  const getRoleDisplay = () => {
-    const role = user?.role;
-    if (role === 'provider') return 'PARTNER';
-    if (role === 'homeowner') return 'MEMBER';
-    return 'MEMBER'; // Default
-  };
-
-  const getRoleBadgeIcon = () => {
-    return user?.role === 'provider' ? 'shield-checkmark' : 'star';
-  };
-
-  const getRoleBadgeColor = () => {
-    return user?.role === 'provider' ? colors.primary : colors.warning;
-  };
-
-  // Get membership tier based on bookings
-  const getMembershipTier = () => {
-    const count = stats.bookingsCount;
-    if (count >= 20) return { tier: 'Gold', color: COLORS.warning, icon: '👑' };
-    if (count >= 10) return { tier: 'Silver', color: COLORS.textSecondary, icon: '⭐' };
-    return { tier: 'Bronze', color: '#CD7F32', icon: '🥉' };
-  };
-
-  // Fetch user stats from API
-  const fetchUserStats = useCallback(async () => {
-    if (isGuest) return;
-    try {
-      if (user?.role === 'homeowner') {
-        const response = await apiService.getMyBookings();
-        if (response.success && response.data) {
-          const bookings = response.data;
-          const totalSpent = bookings.reduce((sum: number, booking: any) => {
-            return sum + (booking.totalPrice || booking.price || 0);
-          }, 0);
-
-          const ratedBookings = bookings.filter((b: any) => b.rating && b.rating > 0);
-          const avgRating = ratedBookings.length > 0
-            ? ratedBookings.reduce((sum: number, b: any) => sum + b.rating, 0) / ratedBookings.length
-            : 0;
-
-          setStats({
-            bookingsCount: bookings.length,
-            rating: Number(avgRating.toFixed(1)),
-            totalSpent,
-          });
-        }
-      } else if (user?.role === 'provider') {
-        const response = await apiService.getProviderBookings();
-        if (response.success && response.data) {
-          const bookings = response.data;
-          const totalEarned = bookings.reduce((sum: number, booking: any) => {
-            return sum + (booking.totalPrice || booking.price || 0);
-          }, 0);
-
-          const ratedBookings = bookings.filter((b: any) => b.rating && b.rating > 0);
-          const avgRating = ratedBookings.length > 0
-            ? ratedBookings.reduce((sum: number, b: any) => sum + b.rating, 0) / ratedBookings.length
-            : 0;
-
-          setStats({
-            bookingsCount: bookings.length,
-            rating: Number(avgRating.toFixed(1)),
-            totalSpent: totalEarned,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-    }
-  }, [user?.role]);
 
   const fetchProfile = useCallback(async () => {
     if (isGuest) return;
     try {
-      if (!user?.id && !user?._id && !user?.email) {
-        return;
-      }
-
-      const role = user?.role || 'homeowner';
-      const response = await apiService.getProfile(role);
-      if (response.user) {
-        const hasValidData = response.user.id || response.user._id || response.user.email || response.user.name;
-        if (hasValidData) {
-          updateUser(response.user);
-        }
-      }
-    } catch (error) {
-      console.error('Error refreshing profile:', error);
-    }
-  }, [user?.id, user?._id, user?.email, user?.role, updateUser]);
+      const resp = await apiService.getProfile('homeowner');
+      if (resp.user) updateUser(resp.user);
+    } catch (e) { console.warn(e); }
+  }, [isGuest, updateUser]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchUserStats();
       fetchProfile();
-    }, [fetchUserStats, fetchProfile])
+    }, [fetchProfile])
   );
 
   useEffect(() => {
+    // Entrance
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: ANIMATIONS.slow,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: ANIMATIONS.slow,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
     ]).start();
+
+    // Aggressive Random Wandering Algorithm (for large blobs)
+    const generateRandomPos = () => ({
+      x: (Math.random() * width * 2) - width * 0.5,
+      y: (Math.random() * height * 2) - height * 0.5,
+    });
+
+    // Subtler Wandering Algorithm (for small elements to drift across screen)
+    const generateParticlePos = () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+    });
+
+    const startWander = (animX: Animated.Value, animY: Animated.Value, durationRange: [number, number], generator = generateRandomPos) => {
+      const nextPos = generator();
+      const duration = Math.random() * (durationRange[1] - durationRange[0]) + durationRange[0];
+      
+      Animated.parallel([
+        Animated.timing(animX, { toValue: nextPos.x, duration, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(animY, { toValue: nextPos.y, duration, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ]).start(({ finished }) => {
+        if (finished) startWander(animX, animY, durationRange, generator);
+      });
+    };
+
+    const spinParticle = () => {
+    };
+    
+    // Scale Animation for dots
+    const pulseParticle = () => {
+      Animated.sequence([
+        Animated.timing(particle1Scale, { toValue: 1.5, duration: 3000, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(particle1Scale, { toValue: 1, duration: 3000, useNativeDriver: true, easing: Easing.inOut(Easing.ease) })
+      ]).start(({ finished }) => {
+        if (finished) pulseParticle();
+      });
+    };
+
+    // Fire large blobs
+    startWander(blob1X, blob1Y, [5000, 9000]);
+    startWander(blob2X, blob2Y, [6000, 11000]);
+    startWander(blob3X, blob3Y, [4000, 8000]);
+    
+    // Fire small & medium particles (all circles now)
+    startWander(particle1X, particle1Y, [10000, 15000], generateParticlePos);
+    startWander(particle2X, particle2Y, [12000, 18000], generateParticlePos);
+    startWander(particle3X, particle3Y, [15000, 22000], generateParticlePos);
+    startWander(particle4X, particle4Y, [18000, 25000], generateRandomPos); 
+    startWander(particle5X, particle5Y, [14000, 20000], generateRandomPos); 
+    startWander(particle6X, particle6Y, [16000, 24000], generateParticlePos); 
+    
+    pulseParticle();
+
+    return () => {
+      blob1X.stopAnimation(); blob1Y.stopAnimation();
+      blob2X.stopAnimation(); blob2Y.stopAnimation();
+      blob3X.stopAnimation(); blob3Y.stopAnimation();
+      particle1X.stopAnimation(); particle1Y.stopAnimation(); particle1Scale.stopAnimation();
+      particle2X.stopAnimation(); particle2Y.stopAnimation();
+      particle3X.stopAnimation(); particle3Y.stopAnimation();
+      particle4X.stopAnimation(); particle4Y.stopAnimation(); 
+      particle5X.stopAnimation(); particle5Y.stopAnimation(); 
+      particle6X.stopAnimation(); particle6Y.stopAnimation();
+    };
   }, []);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    Promise.all([fetchUserStats(), fetchProfile()]).finally(() => setRefreshing(false));
-  }, [fetchUserStats, fetchProfile]);
-
-  const handleLogout = () => {
-    setShowLogoutConfirm(true);
-  };
-
+  const handleLogout = () => setShowLogoutConfirm(true);
   const confirmLogout = () => {
     setShowLogoutConfirm(false);
-    logout().catch((error) => console.error('Logout error:', error));
+    logout();
   };
 
   const handleImagePick = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (status !== 'granted') {
-        showError('Permission Required', 'Please grant camera roll permissions.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setIsUploadingAvatar(true);
-        const mimeType = result.assets[0].uri.endsWith('png') ? 'image/png' : 'image/jpeg';
-        const base64Image = `data:${mimeType};base64,${result.assets[0].base64}`;
-
-        const response = await apiService.uploadAvatar(base64Image);
-
-        if (response.success && response.data) {
-          // Fetch fresh profile data from server to ensure avatar is persisted
-          const role = user?.role || 'homeowner';
-          const profileResponse = await apiService.getProfile(role);
-          if (profileResponse.user) {
-            updateUser(profileResponse.user);
-            showSuccess('Success', 'Profile picture updated successfully!');
-          } else {
-            // Fallback to response data if profile fetch fails
-            const newAvatar = response.data.avatar || response.data.profileImage;
-            updateUser({ avatar: newAvatar, profileImage: newAvatar });
-            showSuccess('Success', 'Profile picture updated successfully!');
-          }
-        } else {
-          throw new Error(response.message);
-        }
-      }
-    } catch (error: any) {
-      showError('Upload Failed', error.message || 'Failed to upload profile picture.');
-    } finally {
-      setIsUploadingAvatar(false);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0].base64) {
+      setIsUploadingAvatar(true);
+      try {
+        const mime = result.assets[0].uri.endsWith('png') ? 'image/png' : 'image/jpeg';
+        await apiService.uploadAvatar(`data:${mime};base64,${result.assets[0].base64}`);
+        fetchProfile();
+      } finally { setIsUploadingAvatar(false); }
     }
-  };
-
-  const handleVerification = async () => {
-    console.log('Verify button pressed');
-    
-    // If already verified, just show message
-    if (isIdentityVerified) {
-      console.log('User already verified');
-      showSuccess('Verified Partner', 'Your identity is already verified securely on the platform.');
-      return;
-    }
-    
-    // If pending, show status
-    if (user?.identityVerificationStatus === 'pending') {
-      showInfo(
-        'Verification Pending',
-        'Your documents are under review. You will be notified once the verification is complete.'
-      );
-      return;
-    }
-    
-    // If rejected, show reason and allow retry
-    if (user?.identityVerificationStatus === 'rejected') {
-      showConfirm(
-        'Verification Rejected',
-        user?.identityRejectionReason || 'Your verification was rejected. Please submit valid documents.',
-        () => navigation.navigate('IdentityTypeSelection'),
-        { confirmText: 'Try Again', type: 'error' }
-      );
-      return;
-    }
-    
-    // Navigate to identity type selection (Indian → Meon DigiLocker, Foreigner/NRI → Document Upload)
-    navigation.navigate('IdentityTypeSelection');
   };
 
   const menuItems: MenuItemType[] = [
-    {
-      icon: 'create-outline',
-      title: t('profile.editProfile'),
-      subtitle: '',
-      onPress: () => {
-        if (user?.role === 'provider') navigation.navigate('ProviderEditProfile');
-        else navigation.navigate('EditProfile');
-      },
-    },
-    {
-      icon: 'location-outline',
-      title: t('profile.manageAddress'),
-      subtitle: '',
-      onPress: () => navigation.navigate('SavedAddresses'),
-    },
-    {
-      icon: 'shield-checkmark-outline',
-      title: 'Verify Yourself',
-      subtitle: getVerificationStatus().text,
-      onPress: () => handleVerification(),
-    },
-    {
-      icon: 'wallet-outline',
-      title: t('profile.wallet'),
-      subtitle: '',
-      onPress: () => navigation.navigate('Wallet'),
-    },
-    {
-      icon: 'card-outline',
-      title: t('profile.paymentMethods'),
-      subtitle: '',
-      onPress: () => setShowComingSoon(true),
-    },
-    {
-      icon: 'calendar-outline',
-      title: t('bookings.myBookings'),
-      subtitle: '',
-      onPress: () => navigation.navigate('BookingsList'),
-    },
-    {
-      icon: 'settings-outline',
-      title: t('profile.settings'),
-      subtitle: '',
-      onPress: () => navigation.navigate('Notifications'),
-    },
-    {
-      icon: 'language-outline',
-      title: t('profile.language'),
-      subtitle: '',
-      onPress: () => navigation.navigate('LanguageSettings'),
-    },
-    {
-      icon: 'help-circle-outline',
-      title: t('profile.helpCenter'),
-      subtitle: '',
-      onPress: () => navigation.navigate('HelpSupport'),
-    },
-    // Dark Mode removed - app locked to light mode
+    { icon: 'calendar-outline', title: 'My Bookings', onPress: () => navigation.navigate('BookingsList') },
+    { icon: 'location-outline', title: 'Saved Addresses', onPress: () => navigation.navigate('SavedAddresses') },
+    { icon: 'notifications-outline', title: 'Notifications', onPress: () => navigation.navigate('Notifications') },
+    { icon: 'shield-checkmark-outline', title: 'Identity Status', subtitle: getVerificationStatus().text, onPress: () => !isIdentityVerified && navigation.navigate('IdentityTypeSelection'), badgeColor: getVerificationStatus().color },
+    { icon: 'wallet-outline', title: 'Wallet Balance', onPress: () => navigation.navigate('Wallet') },
+    { icon: 'language-outline', title: 'Language', onPress: () => navigation.navigate('LanguageSettings') },
+    { icon: 'help-circle-outline', title: 'Help & Support', onPress: () => navigation.navigate('HelpSupport') },
   ];
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+  const primaryAddress = useMemo(() => {
+    if (!user?.addressBook || user.addressBook.length === 0) return 'No address set';
+    const primary = user.addressBook.find(addr => addr.isPrimary);
+    return primary?.fullAddress || user.addressBook[0].fullAddress || user.addressBook[0].city || 'Update address';
+  }, [user?.addressBook]);
 
-      {/* Clean Professional Header */}
-      <View style={[styles.cleanHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.divider }]}>
-        <TouchableOpacity
-          style={styles.headerIconButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.cleanHeaderTitle, { color: colors.text }]}>{t('profile.profile')}</Text>
-        <TouchableOpacity style={styles.headerIconButton}>
-          <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* 🌊 DYNAMIC RANDOM BACKGROUND MESH + PARTICLES */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={styles.bgBase} />
+        
+        {/* Large Blobs (Macro-fluidity) */}
+        <Animated.View style={[styles.fluidBlob, { 
+          backgroundColor: 'rgba(59, 130, 246, 0.15)', width: width * 1.2, height: width * 1.2,
+          transform: [{ translateX: blob1X }, { translateY: blob1Y }] 
+        }]} />
+        <Animated.View style={[styles.fluidBlob, { 
+          backgroundColor: 'rgba(139, 92, 246, 0.1)', width: width * 1.5, height: width * 1.5,
+          transform: [{ translateX: blob2X }, { translateY: blob2Y }] 
+        }]} />
+        <Animated.View style={[styles.fluidBlob, { 
+          backgroundColor: 'rgba(59, 130, 246, 0.12)', width: width * 0.8, height: width * 0.8,
+          transform: [{ translateX: blob3X }, { translateY: blob3Y }] 
+        }]} />
+
+        {/* Small Elements (Micro-fluidity & Aesthetic Pop) */}
+        
+        {/* Particle 1 */}
+        <Animated.View style={[styles.smallParticle, { 
+          width: 8, height: 8, borderRadius: 4, backgroundColor: DESIGN.primary, opacity: 0.3,
+          transform: [{ translateX: particle1X }, { translateY: particle1Y }, { scale: particle1Scale }]
+        }]} />
+        
+        {/* Particle 2 */}
+        <Animated.View style={[styles.smallParticle, { 
+          width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(139, 92, 246, 0.4)',
+          transform: [{ translateX: particle2X }, { translateY: particle2Y }]
+        }]} />
+        
+        {/* Particle 3 */}
+        <Animated.View style={[styles.smallParticle, { 
+          width: 6, height: 6, borderRadius: 3, backgroundColor: DESIGN.primary, opacity: 0.2,
+          transform: [{ translateX: particle3X }, { translateY: particle3Y }]
+        }]} />
+        
+        {/* Particle 4 */}
+        <Animated.View style={[styles.smallParticle, { 
+          width: 14, height: 14, borderRadius: 7, backgroundColor: 'rgba(59, 130, 246, 0.25)',
+          transform: [{ translateX: particle4X }, { translateY: particle4Y }]
+        }]} />
+
+        {/* Particle 5 */}
+        <Animated.View style={[styles.smallParticle, { 
+          width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(139, 92, 246, 0.3)',
+          transform: [{ translateX: particle5X }, { translateY: particle5Y }]
+        }]} />
+        
+        {/* Particle 6 */}
+        <Animated.View style={[styles.smallParticle, { 
+          width: 8, height: 8, borderRadius: 4, backgroundColor: DESIGN.primary, opacity: 0.35,
+          transform: [{ translateX: particle6X }, { translateY: particle6Y }]
+        }]} />
+
       </View>
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: isTablet ? 140 : 120 }
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={isGuest ? undefined : <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        {isGuest ? (
-          <View style={styles.guestContainer}>
-            <View style={styles.guestHeroContainer}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                style={styles.guestHeroCard}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.guestIconCircle}>
-                  <Ionicons name="sparkles" size={32} color={COLORS.primary} />
-                </View>
-                <Text style={styles.guestTitle}>Unlock the Full Experience</Text>
-                <Text style={styles.guestSubtitle}>
-                  Join YANN to book services, track requests, and access exclusive member benefits.
-                </Text>
-              </LinearGradient>
-            </View>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={DESIGN.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('EditProfile')}>
+            <Ionicons name="pencil-outline" size={20} color={DESIGN.text} />
+          </TouchableOpacity>
+        </View>
 
-            <View style={styles.guestBenefits}>
-              <View style={styles.benefitItem}>
-                <Ionicons name="calendar-outline" size={24} color={COLORS.primary} />
-                <View style={styles.benefitText}>
-                  <Text style={styles.benefitTitle}>Easy Booking</Text>
-                  <Text style={styles.benefitDesc}>Book professionals in seconds</Text>
-                </View>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="shield-checkmark-outline" size={24} color={COLORS.primary} />
-                <View style={styles.benefitText}>
-                  <Text style={styles.benefitTitle}>Secure Payments</Text>
-                  <Text style={styles.benefitDesc}>Safe & transparent transactions</Text>
-                </View>
-              </View>
-              <View style={styles.benefitItem}>
-                <Ionicons name="chatbubbles-outline" size={24} color={COLORS.primary} />
-                <View style={styles.benefitText}>
-                  <Text style={styles.benefitTitle}>Direct Chat</Text>
-                  <Text style={styles.benefitDesc}>Connect with providers instantly</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.guestActions}>
-              <TouchableOpacity
-                style={[styles.guestButton, styles.signInButton]}
-                onPress={() => logout()}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.signInButtonText}>Sign In / Sign Up</Text>
-                <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Support Links */}
-            <View style={[styles.menuContainer, { marginTop: 32 }]}>
-              <Text style={styles.menuHeader}>Support</Text>
-              <TouchableOpacity
-                style={[styles.menuItem, { borderBottomColor: colors.divider }]}
-                onPress={() => navigation.navigate('LanguageSettings')}
-              >
-                <View style={styles.menuItemLeft}>
-                  <View style={[styles.iconCircle, { backgroundColor: colors.gray100 }]}>
-                    <Ionicons name="language-outline" size={20} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.menuTitle, { color: colors.text }]}>{t('profile.language')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.menuItem, { borderBottomColor: colors.divider, borderBottomWidth: 0 }]}
-                onPress={() => navigation.navigate('HelpSupport')}
-              >
-                <View style={styles.menuItemLeft}>
-                  <View style={[styles.iconCircle, { backgroundColor: colors.gray100 }]}>
-                    <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
-                  </View>
-                  <Text style={[styles.menuTitle, { color: colors.text }]}>{t('profile.helpCenter')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: 'transparent' }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); Promise.all([fetchProfile()]).finally(() => setRefreshing(false)); }} />}
+        >
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-
-            {/* Premium Profile Card */}
-            <View style={[styles.profileCard, { backgroundColor: colors.cardBg }]}>
-              {/* Avatar with Gradient Ring */}
-              <TouchableOpacity
-                onPress={handleImagePick}
-                disabled={isUploadingAvatar}
-                style={styles.avatarWrapper}
-              >
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.avatarGradientRing}
-                >
-                  <View style={[styles.avatarInner, { backgroundColor: colors.cardBg }]}>
-                    {isUploadingAvatar ? (
-                      <ActivityIndicator size="large" color={colors.primary} />
-                    ) : user?.avatar || user?.profileImage ? (
-                      <Image
-                        source={{ uri: user.avatar || user.profileImage }}
-                        style={styles.avatarImage}
+            
+            {/* 🧑 HERO SECTION */}
+            <View style={styles.heroArea}>
+              <TouchableOpacity onPress={handleImagePick} style={styles.avatarContainer}>
+                <View style={[styles.avatarBorder, { borderColor: isUploadingAvatar ? DESIGN.primary : 'rgba(255,255,255,0.6)' }]}>
+                  {isUploadingAvatar ? <ActivityIndicator size="small" color={DESIGN.primary} /> : (
+                    user?.avatar || user?.profileImage ? (
+                      <Image 
+                        source={{ uri: user.avatar || user.profileImage }} 
+                        style={styles.avatarImg} 
                       />
-                    ) : (
-                      <LinearGradient
-                        colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                        style={styles.avatarPlaceholder}
-                      >
-                        <Text style={styles.avatarText}>
-                          {user?.name?.charAt(0).toUpperCase() || 'U'}
-                        </Text>
-                      </LinearGradient>
-                    )}
-                  </View>
-                </LinearGradient>
-                <View style={styles.cameraIconContainer}>
-                  <LinearGradient
-                    colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                    style={styles.cameraIconGradient}
-                  >
-                    <Ionicons name="camera" size={14} color={COLORS.white} />
-                  </LinearGradient>
+                    ) : ( 
+                      <View style={styles.initialsContainer}>
+                        <Text style={styles.avatarInitials}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
+                      </View>
+                    )
+                  )}
+                </View>
+                <View style={styles.cameraBadge}>
+                  <Ionicons name="camera" size={12} color="#fff" />
                 </View>
               </TouchableOpacity>
 
-              {/* User Info */}
-              <View style={styles.profileInfo}>
-                <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'User'}</Text>
-                <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'No email'}</Text>
-                <View style={styles.roleBadge}>
-                  <Ionicons name={getRoleBadgeIcon()} size={12} color={COLORS.white} />
-                  <Text style={styles.roleText}>{getRoleDisplay()}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.userName}>{user?.name || 'User'}</Text>
+              </View>
+              <View style={styles.subHeroRow}>
+                <Text style={styles.userEmail}>{user?.email || 'member@yann.com'}</Text>
+              </View>
+            </View>
+
+            {/* 📝 PERSONAL INFO (Transparent Wireframe Card) */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitleText}>INFO</Text>
+            </View>
+            <View style={styles.transparentPanel}>
+              <View style={styles.infoRowLiquid}>
+                <View style={styles.liquidIconContainer}>
+                  <Ionicons name="call-outline" size={18} color={DESIGN.primary} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Phone</Text>
+                  <Text style={styles.infoValue}>{user?.phone || 'Not provided'}</Text>
+                </View>
+              </View>
+              <View style={styles.panelDivider} />
+              <View style={styles.infoRowLiquid}>
+                <View style={styles.liquidIconContainer}>
+                  <Ionicons name="location-outline" size={18} color={DESIGN.primary} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Address</Text>
+                  <Text style={styles.infoValue} numberOfLines={2}>{primaryAddress}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Membership Tier Badge */}
-            {user?.role === 'homeowner' && (
-              <View style={[styles.membershipCard, { backgroundColor: colors.cardBg }]}>
-                <View style={styles.membershipBadge}>
-                  <Text style={styles.membershipIcon}>{getMembershipTier().icon}</Text>
-                  <View>
-                    <Text style={[styles.membershipTier, { color: colors.text }]}>{getMembershipTier().tier} Member</Text>
-                    <Text style={[styles.membershipSubtext, { color: colors.textSecondary }]}>
-                      {stats.bookingsCount} bookings completed
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Menu Items */}
-            <View style={[styles.menuContainer, { backgroundColor: colors.cardBg }]}>
-              {menuItems.map((item, index) => (
-                <TouchableOpacity
-                  key={item.title}
-                  style={[
-                    styles.menuItem,
-                    { borderBottomColor: colors.divider },
-                    index === menuItems.length - 1 && styles.menuItemLast,
-                  ]}
-                  onPress={item.onPress}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <View style={[styles.iconCircle, { backgroundColor: colors.gray100 }]}>
-                      <Ionicons name={item.icon} size={20} color={colors.primary} />
+            {/* ⚙️ OPTIONS LIST (Transparent Wireframe Card) */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitleText}>ACCOUNT</Text>
+            </View>
+            <View style={styles.transparentPanel}>
+              {menuItems.map((item, idx) => (
+                <View key={idx} style={styles.glassRowWrapper}>
+                  <TouchableOpacity style={styles.menuRowLiquid} onPress={item.onPress} activeOpacity={0.6}>
+                    <View style={styles.liquidIconContainer}>
+                      <Ionicons name={item.icon} size={20} color={DESIGN.primary} />
                     </View>
-                    <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
-                    {item.subtitle ? <Text style={{ marginLeft: 10, color: colors.textSecondary }}>{item.subtitle}</Text> : null}
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-                </TouchableOpacity>
+                    <View style={styles.menuTextContainer}>
+                      <Text style={styles.menuTitle}>{item.title}</Text>
+                      {item.subtitle && <Text style={[styles.menuSubtitle, { color: item.badgeColor || DESIGN.textTertiary }]}>{item.subtitle}</Text>}
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={'rgba(148, 163, 184, 0.4)'} />
+                  </TouchableOpacity>
+                  {idx < menuItems.length - 1 && <View style={styles.panelDivider} />}
+                </View>
               ))}
             </View>
 
-            {/* Logout Button */}
-            <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.cardBg }]} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={20} color={colors.error} />
-              <Text style={[styles.logoutButtonText, { color: colors.error }]}>{t('profile.logout')}</Text>
+            {/* 🚪 ACTIONS (Transparent) */}
+            <TouchableOpacity style={styles.transparentActionBtn} onPress={handleLogout} activeOpacity={0.7}>
+              <Ionicons name="log-out-outline" size={20} color={DESIGN.error} />
+              <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
 
-            {/* Delete Account Button */}
-            <TouchableOpacity
-              style={[styles.logoutButton, { backgroundColor: colors.cardBg, marginTop: 12 }]}
-              onPress={() => showConfirm(
-                'Delete Account',
-                'Are you sure you want to delete your account? This action is irreversible.',
-                async () => {
-                  try {
-                    // Call API to delete account
-                    await apiService.deleteAccount();
-                    await logout();
-                  } catch (e: any) {
-                    showError('Error', e.message || 'Failed to delete account');
-                  }
-                },
-                { confirmText: 'Delete', cancelText: 'Cancel' }
-              )}
+            <TouchableOpacity 
+              style={styles.deleteLink} 
+              onPress={() => showConfirm('Delete Account', 'This action is permanent.', () => apiService.deleteAccount().then(logout))}
             >
-              <Ionicons name="trash-outline" size={20} color={colors.error} />
-              <Text style={[styles.logoutButtonText, { color: colors.error }]}>Delete Account</Text>
+              <Text style={styles.deleteLinkText}>Delete Account</Text>
             </TouchableOpacity>
 
           </Animated.View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
 
-      <ComingSoonModal
-        visible={showComingSoon}
-        title="Coming Soon!"
-        message="This feature is under development and will be available soon. Stay tuned!"
-        onClose={() => setShowComingSoon(false)}
-      />
-
-      <LogoutConfirmModal
-        visible={showLogoutConfirm}
-        onConfirm={confirmLogout}
-        onCancel={() => setShowLogoutConfirm(false)}
-      />
-
+      <LogoutConfirmModal visible={showLogoutConfirm} onConfirm={confirmLogout} onCancel={() => setShowLogoutConfirm(false)} />
       {DialogComponent}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: DESIGN.bg,
+  },
+  bgBase: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: DESIGN.bg,
+  },
+  fluidBlob: {
+    position: 'absolute',
+    borderRadius: 9999, // Make them perfect circles
+    opacity: 0.8, 
+  },
+  smallParticle: {
+    position: 'absolute',
+    // Position driven entirely by animation translation
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    paddingHorizontal: 16,
+    height: 56,
   },
-  backButton: {
+  headerBtn: {
     width: 40,
     height: 40,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerRight: {
-    width: 40,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '700',
+    color: DESIGN.text,
   },
-  content: {
-    padding: SPACING.lg,
-    paddingBottom: 120,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 100, 
   },
-  profileCard: {
-    flexDirection: 'row',
+  heroArea: {
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.large,
-    padding: SPACING.lg,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
+    marginTop: 10,
+    marginBottom: 36, 
   },
   avatarContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.primary,
+    position: 'relative',
+    marginBottom: 16,
+  },
+  avatarBorder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2, 
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.md,
-    position: 'relative',
   },
-  avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
   },
-  avatarText: {
-    fontSize: 28,
+  initialsContainer: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: {
+    fontSize: 36,
     fontWeight: '800',
-    color: COLORS.white,
+    color: DESIGN.primary,
   },
-  cameraIconContainer: {
+  cameraBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
+    backgroundColor: DESIGN.primary,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.white,
+    borderColor: '#FFFFFF',
   },
-  profileInfo: {
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  name: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.text,
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4,
   },
-  email: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
+  userName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: DESIGN.text,
+    letterSpacing: -0.5,
   },
-  menuContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.large,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
-    overflow: 'hidden',
-  },
-  menuItem: {
+  subHeroRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
   },
-  menuItemLast: {
-    borderBottomWidth: 0,
+  userEmail: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: DESIGN.textTertiary,
   },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+
+  // 📝 GLASS PANELS (Transparent Wireframes)
+  sectionHeader: {
+    marginBottom: 6,
+    paddingLeft: 4,
   },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.gray100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  menuTitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.medium,
-    color: COLORS.text,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.large,
-    paddingVertical: SPACING.lg,
-    gap: SPACING.sm,
-    ...SHADOWS.sm,
-  },
-  logoutButtonText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    color: COLORS.error,
-  },
-  membershipCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.large,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.sm,
-  },
-  membershipBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  membershipIcon: {
-    fontSize: 32,
-  },
-  membershipTier: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.text,
-  },
-  membershipSubtext: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  // New gradient header styles
-  gradientHeader: {
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
-    paddingHorizontal: SPACING.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButtonWhite: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerTitleWhite: {
-    fontSize: 20,
+  sectionTitleText: {
+    fontSize: 11, 
     fontWeight: '700',
-    color: COLORS.white,
-    letterSpacing: 0.5,
+    color: DESIGN.textTertiary,
+    letterSpacing: 2, 
   },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  // Avatar gradient ring styles
-  avatarWrapper: {
-    position: 'relative',
-  },
-  avatarGradientRing: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    padding: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
+  transparentPanel: {
+    backgroundColor: DESIGN.glassBg, // 'transparent'
+    borderRadius: 20, 
+    borderWidth: 1,
+    borderColor: DESIGN.glassBorder, // Subtle white border holds the shape
+    marginBottom: 24, 
     overflow: 'hidden',
   },
-  avatarPlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  glassRowWrapper: {
+    backgroundColor: 'transparent',
+  },
+  panelDivider: {
+    height: 1,
+    backgroundColor: DESIGN.divider, 
+    marginHorizontal: 16, 
+  },
+  liquidIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.8)', 
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 16,
   },
-  cameraIconGradient: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Role badge styles
-  roleBadge: {
+
+  // 💧 LIQUID ROWS
+  infoRowLiquid: {
     flexDirection: 'row',
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    paddingRight: 16,
     alignItems: 'center',
-    backgroundColor: COLORS.primary, // #667eea
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    gap: 4,
+    width: '100%',
   },
-  roleText: {
+  infoContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  infoLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: COLORS.white,
-    letterSpacing: 0.5,
-  },
-  // Clean professional header styles
-  cleanHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-  },
-  headerIconButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 20,
-  },
-  cleanHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  guestContainer: {
-    paddingBottom: 20,
-    paddingTop: SPACING.md,
-  },
-  guestHeroContainer: {
-    marginBottom: SPACING.xl,
-    paddingHorizontal: 4,
-  },
-  guestHeroCard: {
-    padding: SPACING.xl,
-    borderRadius: RADIUS.xlarge,
-    alignItems: 'center',
-    ...SHADOWS.md,
-  },
-  guestIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-  },
-  guestTitle: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: '800',
-    color: COLORS.white,
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  guestSubtitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: '90%',
-  },
-  guestBenefits: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.large,
-    padding: SPACING.lg,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  benefitText: {
-    marginLeft: SPACING.md,
-    flex: 1,
-  },
-  benefitTitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '700',
-    color: COLORS.text,
+    color: DESIGN.textTertiary,
     marginBottom: 2,
   },
-  benefitDesc: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textSecondary,
+  infoValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: DESIGN.text,
+    lineHeight: 20,
   },
-  guestActions: {
-    marginBottom: SPACING.lg,
+
+  menuRowLiquid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    paddingRight: 16, 
+    width: '100%',
   },
-  guestButton: {
+  menuTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: DESIGN.text,
+  },
+  menuSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+
+  // 🚪 ACTIONS
+  transparentActionBtn: {
+    backgroundColor: 'transparent', 
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
     paddingVertical: 18,
-    borderRadius: RADIUS.large,
-    gap: SPACING.sm,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)', 
+    marginBottom: 16,
   },
-  signInButton: {
-    backgroundColor: COLORS.primary,
-    ...SHADOWS.md,
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: DESIGN.error,
   },
-  signInButtonText: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: '700',
-    color: COLORS.white,
+  deleteLink: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginBottom: 20,
   },
-  menuHeader: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-    marginLeft: SPACING.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  deleteLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: DESIGN.textTertiary,
   },
 });
