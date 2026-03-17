@@ -28,6 +28,19 @@ import {
   GRADIENTS,
   addAlpha
 } from '../../utils/theme';
+import { GlassCard } from '../../components/ui/GlassCard';
+import { NeoButton } from '../../components/ui/NeoButton';
+import { LiquidBackground } from '../../components/ui/LiquidBackground';
+import { Easing } from 'react-native-reanimated';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
@@ -36,6 +49,239 @@ const { width } = Dimensions.get('window');
 type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ params: { role?: 'customer' | 'provider' } }, 'params'>;
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F6F8FC',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 20,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 10,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  brandNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  brandLetter: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -1,
+  },
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 12,
+  },
+  taglineLine: {
+    width: 24,
+    height: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.2)',
+  },
+  tagline: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+    letterSpacing: 2,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  form: {
+    marginBottom: 24,
+    gap: 16,
+  },
+  fieldGlass: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  formCard: {
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 32,
+  },
+  inputDivider: {
+    height: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.05)',
+    marginHorizontal: 20,
+  },
+  label: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.textTertiary,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  input: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    height: 32,
+    letterSpacing: 0.2,
+    padding: 0, // Reset padding for cleaner alignment
+  },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    marginBottom: 24,
+    gap: 8,
+  },
+  hintText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    fontWeight: '500',
+  },
+  signUpButton: {
+    marginTop: 8,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  footerText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  footerLink: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginTop: 32,
+    marginBottom: 40,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  termsLink: {
+    color: COLORS.textSecondary,
+    fontWeight: '700',
+  },
+});
+
+const AnimatedLetter = ({ letter, index }: { letter: string; index: number }) => {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(30);
+
+  useEffect(() => {
+    opacity.value = withDelay(index * 100, withTiming(1, { duration: 500 }));
+    translateY.value = withDelay(
+      index * 100,
+      withSpring(0, { damping: 12, stiffness: 90 }, (finished) => {
+        if (finished) {
+          translateY.value = withDelay(
+            index * 100,
+            withRepeat(
+              withSequence(
+                withTiming(-5, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
+                withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.quad) })
+              ),
+              -1,
+              true
+            )
+          );
+        }
+      })
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+      transform: [{ translateY: translateY.value }],
+    };
+  });
+
+  return (
+    <Reanimated.Text style={[styles.brandLetter, animatedStyle]}>
+      {letter}
+    </Reanimated.Text>
+  );
 };
 
 export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -155,18 +401,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background Gradient Mesh */}
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={['#F0F9FF', '#F8FAFC', '#FFFFFF']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        {/* Decorative Elements */}
-        <View style={[styles.decorativeCircle, { top: -100, right: -50, backgroundColor: addAlpha(COLORS.primary, 0.05) }]} />
-        <View style={[styles.decorativeCircle, { bottom: 100, left: -100, width: 300, height: 300, backgroundColor: addAlpha(COLORS.accentYellow, 0.05) }]} />
-      </View>
+      <LiquidBackground mode="light" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -199,164 +434,151 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             {/* Header */}
             <View style={styles.header}>
-              <View style={[styles.logoContainer, SHADOWS.sm]}>
-                <Image
-                  source={require('../../../assets/Logo.jpg')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
+              <View style={styles.brandNameContainer}>
+                {"YANN".split('').map((item, idx) => (
+                  <AnimatedLetter key={"Signup-" + idx} letter={item} index={idx} />
+                ))}
               </View>
-              <View style={styles.brandContainer}>
-                <Text style={styles.brandName}>YANN</Text>
+              <View style={styles.taglineRow}>
+                <View style={styles.taglineLine} />
+                <Text style={styles.tagline}>SIGNATURE LUXURY</Text>
+                <View style={styles.taglineLine} />
               </View>
 
-              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.title}>Join the Circle</Text>
               <Text style={styles.subtitle}>
-                Start your journey with us
+                Curated excellence at your fingertips
               </Text>
             </View>
 
-            {/* Form */}
-            <View style={styles.form}>
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>FULL NAME</Text>
+            {/* Main Form Panel */}
+            <GlassCard 
+              intensity={80} 
+              style={styles.formCard} 
+              enableTilt 
+              glowColor="rgba(59, 130, 246, 0.05)"
+            >
+              <View style={styles.form}>
+                {/* Name Field */}
                 <View style={[
-                  styles.inputContainer,
-                  focusedField === 'name' && styles.inputFocused
+                  styles.fieldGlass,
+                  focusedField === 'name' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
                 ]}>
-                  <View style={[styles.inputIcon, focusedField === 'name' && { backgroundColor: addAlpha(COLORS.primary, 0.1) }]}>
-                    <Ionicons
-                      name="person-outline"
-                      size={20}
-                      color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary}
-                    />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your full name"
-                    placeholderTextColor={COLORS.textTertiary}
-                    value={formData.name}
-                    onChangeText={(value) => updateField('name', value)}
-                    autoCapitalize="words"
-                    editable={!isLoading}
-                    onFocus={() => setFocusedField('name')}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                  {formData.name.length > 2 && (
-                    <View style={styles.validationIcon}>
-                      <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                  <View style={styles.inputRow}>
+                    <View style={[styles.iconCircle, focusedField === 'name' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                      <Ionicons name="person-outline" size={18} color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary} />
                     </View>
-                  )}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>FULL NAME</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your full name"
+                        placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                        value={formData.name}
+                        onChangeText={(value) => updateField('name', value)}
+                        onFocus={() => setFocusedField('name')}
+                        onBlur={() => setFocusedField(null)}
+                        autoCapitalize="words"
+                        editable={!isLoading}
+                      />
+                    </View>
+                    {formData.name.length > 2 && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.inputDivider} />
+
+                {/* Email Field */}
+                <View style={[
+                  styles.fieldGlass,
+                  focusedField === 'email' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
+                ]}>
+                  <View style={styles.inputRow}>
+                    <View style={[styles.iconCircle, focusedField === 'email' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                      <Ionicons name="mail-outline" size={18} color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary} />
+                    </View>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>EMAIL ADDRESS (OPTIONAL)</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your email"
+                        placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                        value={formData.email}
+                        onChangeText={(value) => updateField('email', value)}
+                        onFocus={() => setFocusedField('email')}
+                        onBlur={() => setFocusedField(null)}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!isLoading}
+                      />
+                    </View>
+                    {formData.email.length > 0 && validateEmail(formData.email) && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.inputDivider} />
+
+                {/* Phone Field */}
+                <View style={[
+                  styles.fieldGlass,
+                  focusedField === 'phone' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
+                ]}>
+                  <View style={styles.inputRow}>
+                    <View style={[styles.iconCircle, focusedField === 'phone' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                      <Ionicons name="call-outline" size={18} color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary} />
+                    </View>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>PHONE NUMBER (OPTIONAL)</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter 10-digit phone"
+                        placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                        value={formData.phone}
+                        onChangeText={(value) => updateField('phone', value)}
+                        onFocus={() => setFocusedField('phone')}
+                        onBlur={() => setFocusedField(null)}
+                        keyboardType="phone-pad"
+                        maxLength={10}
+                        editable={!isLoading}
+                      />
+                    </View>
+                    {formData.phone.length > 0 && validatePhone(formData.phone) && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </View>
                 </View>
               </View>
+            </GlassCard>
 
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>EMAIL ADDRESS (OPTIONAL)</Text>
-                <View style={[
-                  styles.inputContainer,
-                  focusedField === 'email' && styles.inputFocused
-                ]}>
-                  <View style={[styles.inputIcon, focusedField === 'email' && { backgroundColor: addAlpha(COLORS.primary, 0.1) }]}>
-                    <Ionicons
-                      name="mail-outline"
-                      size={20}
-                      color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary}
-                    />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your email"
-                    placeholderTextColor={COLORS.textTertiary}
-                    value={formData.email}
-                    onChangeText={(value) => updateField('email', value)}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!isLoading}
-                    onFocus={() => setFocusedField('email')}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                  {formData.email.length > 0 && validateEmail(formData.email) && (
-                    <View style={styles.validationIcon}>
-                      <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                    </View>
-                  )}
-                </View>
-              </View>
+            {/* Hint and Button */}
+            <View style={styles.hintContainer}>
+              <Ionicons name="information-circle-outline" size={16} color={COLORS.info} />
+              <Text style={styles.hintText}>
+                Provide at least one: email or phone number.
+              </Text>
+            </View>
 
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>PHONE NUMBER (OPTIONAL)</Text>
-                <View style={[
-                  styles.inputContainer,
-                  focusedField === 'phone' && styles.inputFocused
-                ]}>
-                  <View style={[styles.inputIcon, focusedField === 'phone' && { backgroundColor: addAlpha(COLORS.primary, 0.1) }]}>
-                    <Ionicons
-                      name="call-outline"
-                      size={20}
-                      color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary}
-                    />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter 10-digit phone"
-                    placeholderTextColor={COLORS.textTertiary}
-                    value={formData.phone}
-                    onChangeText={(value) => updateField('phone', value)}
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    editable={!isLoading}
-                    onFocus={() => setFocusedField('phone')}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                  {formData.phone.length > 0 && validatePhone(formData.phone) && (
-                    <View style={styles.validationIcon}>
-                      <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                    </View>
-                  )}
-                </View>
-              </View>
+            <NeoButton
+              title={isLoading ? "CREATING..." : "SIGN UP"}
+              onPress={handleSignup}
+              disabled={isLoading}
+              variant="primary"
+              size="large"
+              style={styles.signUpButton}
+              icon={!isLoading && <Ionicons name="chevron-forward" size={18} color="#fff" />}
+            />
 
-              {/* Helpful message */}
-              <View style={styles.hintContainer}>
-                <Ionicons name="information-circle-outline" size={16} color={COLORS.info} />
-                <Text style={styles.hintText}>
-                  Provide at least one: email or phone number.
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
-                onPress={handleSignup}
-                disabled={isLoading}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={GRADIENTS.primary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
-                  {isLoading ? (
-                    <Text style={styles.buttonText}>CREATING ACCOUNT...</Text>
-                  ) : (
-                    <>
-                      <Text style={styles.buttonText}>SIGN UP</Text>
-                      <View style={styles.buttonIcon}>
-                        <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
-                      </View>
-                    </>
-                  )}
-                </LinearGradient>
+            {/* Sign In Link */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.footerLink}>Sign In</Text>
               </TouchableOpacity>
-
-              {/* Sign In Link */}
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                  <Text style={styles.footerLink}>Sign In</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             <TouchableOpacity
@@ -380,228 +602,3 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  decorativeCircle: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.medium,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: SPACING.lg,
-    marginTop: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  content: {
-    paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: RADIUS.large,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  logoImage: {
-    width: 56,
-    height: 56,
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  brandName: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '800',
-    color: COLORS.primary,
-    letterSpacing: 4,
-    marginRight: SPACING.xs,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: COLORS.text,
-    letterSpacing: -1,
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  form: {
-    marginBottom: SPACING.xl,
-  },
-  inputWrapper: {
-    marginBottom: SPACING.lg,
-  },
-  label: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    letterSpacing: 1,
-    marginBottom: SPACING.xs,
-    marginLeft: SPACING.xs,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.medium,
-    height: 56,
-    overflow: 'hidden',
-    ...SHADOWS.sm,
-  },
-  inputFocused: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.white,
-    ...SHADOWS.md,
-    shadowColor: addAlpha(COLORS.primary, 0.3),
-  },
-  inputIcon: {
-    width: 50,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.gray50,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.border,
-  },
-  input: {
-    flex: 1,
-    paddingHorizontal: SPACING.md,
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '500',
-    color: COLORS.text,
-    height: '100%',
-  },
-  validationIcon: {
-    paddingRight: SPACING.md,
-  },
-  hintContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: addAlpha(COLORS.info, 0.1),
-    padding: SPACING.md,
-    borderRadius: RADIUS.medium,
-    marginBottom: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  hintText: {
-    flex: 1,
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.info,
-    lineHeight: 18,
-  },
-  buttonContainer: {
-    borderRadius: RADIUS.medium,
-    overflow: 'hidden',
-    marginBottom: SPACING.lg,
-    ...SHADOWS.primary,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: SPACING.xl,
-  },
-  buttonText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '700',
-    color: COLORS.white,
-    letterSpacing: 1,
-  },
-  buttonIcon: {
-    marginLeft: SPACING.sm,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  footerText: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-  },
-  footerLink: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  bottomTerms: {
-    alignItems: 'center',
-    paddingBottom: SPACING.lg,
-  },
-  termsText: {
-    fontSize: TYPOGRAPHY.size.sm,
-    color: COLORS.textTertiary,
-    textAlign: 'center',
-  },
-  termsLink: {
-    color: COLORS.textSecondary,
-    fontWeight: '700',
-  },
-  termsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: COLORS.textTertiary,
-    marginRight: SPACING.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-});

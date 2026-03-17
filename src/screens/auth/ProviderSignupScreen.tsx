@@ -31,7 +31,21 @@ import {
   GRADIENTS,
   addAlpha
 } from '../../utils/theme';
+import { GlassCard } from '../../components/ui/GlassCard';
+import { NeoButton } from '../../components/ui/NeoButton';
+import { LiquidBackground } from '../../components/ui/LiquidBackground';
+import { LottieAnimations } from '../../utils/lottieAnimations';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withSpring,
+  withTiming,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useResponsive } from '../../hooks/useResponsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -114,7 +128,33 @@ const SERVICE_CATEGORIES = [
   },
 ];
 
+const AnimatedLetter = ({ letter, index, style }: { letter: string, index: number, style?: any }) => {
+  const animatedValue = useSharedValue(0);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withDelay(index * 100, withTiming(1, { duration: 600 }));
+    animatedValue.value = withDelay(index * 100, withSpring(1, { damping: 12 }));
+  }, [index]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+      transform: [
+        { translateY: interpolate(animatedValue.value, [0, 1], [20, 0]) },
+      ],
+    };
+  });
+
+  return (
+    <Reanimated.View style={[animatedStyle, style]}>
+      <Text style={styles.brandLetter}>{letter}</Text>
+    </Reanimated.View>
+  );
+};
+
 export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
+  const { width: screenWidth, height: screenHeight, isTablet } = useResponsive();
   const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -130,6 +170,25 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCurrentStep(step);
   };
+  const renderStepIndicator = () => (
+    <View style={styles.segmentedProgressContainer}>
+      {[1, 2, 3, 4].map((step) => {
+        const isActive = currentStep === step;
+        const isCompleted = currentStep > step;
+        return (
+          <View 
+            key={step} 
+            style={[
+              styles.progressSegment,
+              isActive && styles.progressSegmentActive,
+              isCompleted && styles.progressSegmentCompleted
+            ]} 
+          />
+        );
+      })}
+    </View>
+  );
+
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [dynamicServiceCategories, setDynamicServiceCategories] = useState(SERVICE_CATEGORIES);
@@ -630,41 +689,58 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const renderStepIndicator = () => (
-    <View style={styles.stepIndicatorContainer}>
-      <View style={styles.stepIndicator}>
-        {[1, 2, 3, 4].map((step, index) => {
-          const isActive = currentStep >= step;
-          const isCurrent = currentStep === step;
+  const renderStep = (step: number) => {
+    switch (step) {
+      case 1: return renderStep1();
+      case 2: return renderStep2();
+      case 3: return renderStep3();
+      case 4: return renderStep4();
+      default: return renderStep1();
+    }
+  };
 
-          return (
-            <React.Fragment key={step}>
-              <View style={styles.stepItem}>
-                <View style={[
-                  styles.stepDot,
-                  isActive && styles.stepDotActive,
-                ]}>
-                  {isActive ? (
-                    isCurrent ? (
-                      <Text style={[styles.stepNumber, styles.stepNumberActive]}>{step}</Text>
-                    ) : (
-                      <Ionicons name="checkmark" size={16} color="#FFF" />
-                    )
-                  ) : (
-                    <Text style={styles.stepNumber}>{step}</Text>
-                  )}
-                </View>
-                <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]}>
-                  {step === 1 ? 'Bio' : step === 2 ? 'Services' : step === 3 ? 'Rates' : 'Hours'}
-                </Text>
-              </View>
-              {step < 4 && (
-                <View style={[styles.stepLine, isActive && styles.stepLineActive]} />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </View>
+  const renderBottomNav = () => (
+    <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
+      <TouchableOpacity
+        style={styles.nextButton}
+        onPress={currentStep === 4 ? handleSubmit : handleNext}
+        activeOpacity={0.8}
+        disabled={isLoading}
+      >
+        <LinearGradient
+          colors={GRADIENTS.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.buttonGradient}
+        >
+          {isLoading ? (
+            <LoadingSpinner visible={true} />
+          ) : (
+            <>
+              <Text style={styles.buttonText}>
+                {currentStep === 4 ? 'COMPLETE REGISTRATION' : 'CONTINUE'}
+              </Text>
+              <Ionicons 
+                name={currentStep === 4 ? 'checkmark-circle' : 'arrow-forward'} 
+                size={20} 
+                color="#FFF" 
+              />
+            </>
+          )}
+        </LinearGradient>
+      </TouchableOpacity>
+      {currentStep === 1 && (
+        <View style={styles.partnerCtaContainer}>
+          <Text style={styles.partnerCtaText}>Already a partner?</Text>
+          <TouchableOpacity 
+            style={styles.partnerLinkButton}
+            onPress={() => navigation.navigate('PartnerLogin')}
+          >
+            <Text style={styles.partnerLinkText}>Sign In</Text>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
@@ -673,32 +749,35 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.stepTitle}>Profile Details</Text>
       <Text style={styles.stepSubtitle}>Let's get your professional profile set up</Text>
 
-      <View style={styles.card}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>FULL NAME</Text>
-          <View style={[
-            styles.inputContainer,
-            focusedField === 'name' && styles.inputFocused,
-            validationState.name === 'invalid' && styles.inputError
-          ]}>
-            <View style={[styles.inputIcon, focusedField === 'name' && styles.inputIconFocused]}>
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary}
+      <GlassCard intensity={80} style={styles.formCard} enableTilt glowColor="rgba(59, 130, 246, 0.05)">
+      <View style={styles.form}>
+        {/* Full Name */}
+        <View style={[
+          styles.fieldGlass,
+          focusedField === 'name' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
+        ]}>
+          <View style={styles.inputRow}>
+            <View style={[styles.iconCircle, focusedField === 'name' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <Ionicons 
+                name="person-outline" 
+                size={18} 
+                color={focusedField === 'name' ? COLORS.primary : COLORS.textTertiary} 
               />
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your full name"
-              placeholderTextColor={COLORS.textTertiary}
-              value={formData.name}
-              onChangeText={(value) => updateField('name', value)}
-              autoCapitalize="words"
-              editable={!isLoading}
-              onFocus={() => setFocusedField('name')}
-              onBlur={() => setFocusedField(null)}
-            />
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>FULL NAME</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your full name"
+                placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                value={formData.name}
+                onChangeText={(value) => updateField('name', value)}
+                autoCapitalize="words"
+                editable={!isLoading}
+                onFocus={() => setFocusedField('name')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
             {validationState.name === 'valid' && (
               <View style={styles.validationIcon}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
@@ -707,187 +786,215 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
+        <View style={styles.inputDivider} />
+
         {/* Mobile Number */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>MOBILE NUMBER</Text>
-          <View style={[
-            styles.inputContainer,
-            focusedField === 'phone' && styles.inputFocused,
-            validationState.phone === 'invalid' && styles.inputError
-          ]}>
-            <View style={[styles.inputIcon, focusedField === 'phone' && styles.inputIconFocused]}>
-              <Ionicons
-                name="call-outline"
-                size={20}
-                color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary}
+        <View style={[
+          styles.fieldGlass,
+          focusedField === 'phone' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
+        ]}>
+          <View style={styles.inputRow}>
+            <View style={[styles.iconCircle, focusedField === 'phone' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <Ionicons 
+                name="call-outline" 
+                size={18} 
+                color={focusedField === 'phone' ? COLORS.primary : COLORS.textTertiary} 
               />
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="10-digit mobile number"
-              placeholderTextColor={COLORS.textTertiary}
-              value={formData.phone}
-              onChangeText={(value) => updateField('phone', value)}
-              keyboardType="phone-pad"
-              maxLength={10}
-              editable={!isLoading}
-              onFocus={() => setFocusedField('phone')}
-              onBlur={() => setFocusedField(null)}
-            />
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>MOBILE NUMBER</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="10-digit mobile number"
+                placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                value={formData.phone}
+                onChangeText={(value) => updateField('phone', value)}
+                keyboardType="phone-pad"
+                maxLength={10}
+                editable={!isLoading}
+                onFocus={() => setFocusedField('phone')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
             {validationState.phone === 'valid' && (
               <View style={styles.validationIcon}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
               </View>
             )}
           </View>
-          {validationState.phone === 'invalid' && (
-            <Text style={styles.validationError}>Please enter a valid 10-digit number</Text>
-          )}
         </View>
+        {validationState.phone === 'invalid' && (
+          <Text style={styles.validationError}>Please enter a valid 10-digit number</Text>
+        )}
+
+        <View style={styles.inputDivider} />
 
         {/* Email Address */}
-        <View style={[styles.inputGroup, { marginBottom: 0 }]}>
-          <Text style={styles.label}>EMAIL ADDRESS</Text>
-          <View style={[
-            styles.inputContainer,
-            focusedField === 'email' && styles.inputFocused,
-            validationState.email === 'invalid' && styles.inputError
-          ]}>
-            <View style={[styles.inputIcon, focusedField === 'email' && styles.inputIconFocused]}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary}
+        <View style={[
+          styles.fieldGlass,
+          focusedField === 'email' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
+        ]}>
+          <View style={styles.inputRow}>
+            <View style={[styles.iconCircle, focusedField === 'email' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <Ionicons 
+                name="mail-outline" 
+                size={18} 
+                color={focusedField === 'email' ? COLORS.primary : COLORS.textTertiary} 
               />
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="name@example.com"
-              placeholderTextColor={COLORS.textTertiary}
-              value={formData.email}
-              onChangeText={(value) => updateField('email', value)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isLoading}
-              onFocus={() => setFocusedField('email')}
-              onBlur={() => setFocusedField(null)}
-            />
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="name@example.com"
+                placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                value={formData.email}
+                onChangeText={(value) => updateField('email', value)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isLoading}
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
             {validationState.email === 'valid' && (
               <View style={styles.validationIcon}>
                 <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
               </View>
             )}
           </View>
-          {validationState.email === 'invalid' && (
-            <Text style={styles.validationError}>Please enter a valid email address</Text>
-          )}
         </View>
+        {validationState.email === 'invalid' && (
+          <Text style={styles.validationError}>Please enter a valid email address</Text>
+        )}
       </View>
-    </View>
-  );
+    </GlassCard>
+  </View>
+);
 
   const renderStep2 = () => (
     <View style={styles.animatableContent}>
-      <Text style={styles.stepTitle}>Select Services</Text>
-      <Text style={styles.stepSubtitle}>Choose the services you want to provide</Text>
+      <Text style={styles.stepTitle}>Your Services</Text>
+      <Text style={styles.stepSubtitle}>Tap a category, then pick what you offer</Text>
 
       {isLoadingServices ? (
         <LoadingSpinner visible={true} />
       ) : (
-        <>
-          {dynamicServiceCategories.map(category => (
-            <View key={category.id} style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <View style={styles.categoryHeaderLeft}>
-                  <View style={styles.categoryIconContainer}>
-                    <Ionicons name={category.icon} size={20} color={COLORS.primary} />
-                  </View>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.experienceDropdown}
-                  onPress={() =>
-                    setOpenExperienceCategory(prev => (prev === category.id ? null : category.id))
-                  }
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.experienceDropdownText}>
-                    {formData.categoryExperience[category.id]
-                      ? `${formData.categoryExperience[category.id]} yrs exp`
-                      : 'add experience'}
-                  </Text>
-                  <Ionicons
-                    name={openExperienceCategory === category.id ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={COLORS.primary}
-                  />
-                </TouchableOpacity>
-              </View>
+        <GlassCard intensity={80} style={styles.formCard} enableTilt glowColor="rgba(59, 130, 246, 0.05)">
+          <View style={styles.form}>
+            {dynamicServiceCategories.map((category, catIndex) => {
+              const isOpen = openExperienceCategory === category.id;
+              const selectedCount = category.services.filter(s => formData.services.includes(s)).length;
+              const hasExperience = !!formData.categoryExperience[category.id];
+              const isComplete = selectedCount > 0 && hasExperience;
 
-              {openExperienceCategory === category.id && (
-                <View style={styles.experienceOptionsContainer}>
-                  <Text style={styles.experienceLabel}>Years of Experience:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.experienceScroll}>
-                    {EXPERIENCE_OPTIONS.map(option => (
-                      <TouchableOpacity
-                        key={option}
-                        style={[
-                          styles.experienceOption,
-                          formData.categoryExperience[category.id] === option && styles.experienceOptionActive,
-                        ]}
-                        onPress={() => {
-                          updateCategoryExperience(category.id, option);
-                          setOpenExperienceCategory(null);
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.experienceOptionText,
-                            formData.categoryExperience[category.id] === option && styles.experienceOptionTextActive,
-                          ]}
-                        >
-                          {option}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-
-              <View style={styles.servicesGrid}>
-                {category.services.map(service => {
-                  const isSelected = formData.services.includes(service);
-                  return (
-                    <TouchableOpacity
-                      key={service}
-                      style={[
-                        styles.serviceChip,
-                        isSelected && styles.serviceChipActive,
-                      ]}
-                      onPress={() => toggleService(service)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[
-                          styles.serviceChipText,
-                          isSelected && styles.serviceChipTextActive,
-                        ]}
-                      >
-                        {service}
-                      </Text>
-                      {isSelected && (
-                        <View style={styles.checkIconContainer}>
-                          <Ionicons name="checkmark" size={10} color="#FFF" />
-                        </View>
+              return (
+                <React.Fragment key={category.id}>
+                  {/* Category Header Row */}
+                  <TouchableOpacity
+                    style={styles.s2CategoryRow}
+                    onPress={() => setOpenExperienceCategory(prev => prev === category.id ? null : category.id)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.iconCircle, selectedCount > 0 && { backgroundColor: addAlpha(COLORS.primary, 0.15) }]}>
+                      <Ionicons
+                        name={category.icon}
+                        size={18}
+                        color={selectedCount > 0 ? COLORS.primary : COLORS.textTertiary}
+                      />
+                    </View>
+                    <View style={styles.s2CategoryInfo}>
+                      <Text style={styles.s2CategoryName}>{category.name}</Text>
+                      {selectedCount > 0 ? (
+                        <Text style={styles.s2SelectedBadge}>{selectedCount} selected</Text>
+                      ) : (
+                        <Text style={styles.s2CategoryHint}>Tap to expand</Text>
                       )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-        </>
+                    </View>
+                    <View style={styles.s2CategoryRight}>
+                      {isComplete && (
+                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} style={{ marginRight: 8 }} />
+                      )}
+                      <Ionicons
+                        name={isOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textTertiary}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Expanded Content */}
+                  {isOpen && (
+                    <View style={styles.s2ExpandedContainer}>
+                      {/* Experience Selector */}
+                      <View style={styles.s2ExperienceSection}>
+                        <Text style={styles.label}>YEARS OF EXPERIENCE</Text>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.s2ExperienceScroll}
+                        >
+                          {['0','1','2','3','5','7','10','15','20+'].map(opt => {
+                            const isActive = formData.categoryExperience[category.id] === opt;
+                            return (
+                              <TouchableOpacity
+                                key={opt}
+                                style={[styles.s2ExperiencePill, isActive && styles.s2ExperiencePillActive]}
+                                onPress={() => updateCategoryExperience(category.id, opt)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={[styles.s2ExperiencePillText, isActive && styles.s2ExperiencePillTextActive]}>
+                                  {opt}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+
+                      {/* Services List */}
+                      <View style={styles.s2ServicesList}>
+                        {category.services.map((service, svcIdx) => {
+                          const isSelected = formData.services.includes(service);
+                          return (
+                            <React.Fragment key={service}>
+                              <TouchableOpacity
+                                style={styles.s2ServiceRow}
+                                onPress={() => toggleService(service)}
+                                activeOpacity={0.7}
+                              >
+                                <View style={[
+                                  styles.s2ServiceCheckbox,
+                                  isSelected && styles.s2ServiceCheckboxActive
+                                ]}>
+                                  {isSelected && <Ionicons name="checkmark" size={12} color="#FFF" />}
+                                </View>
+                                <Text style={[
+                                  styles.s2ServiceName,
+                                  isSelected && styles.s2ServiceNameActive
+                                ]}>
+                                  {service}
+                                </Text>
+                              </TouchableOpacity>
+                              {svcIdx < category.services.length - 1 && (
+                                <View style={styles.s2ServiceDivider} />
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {catIndex < dynamicServiceCategories.length - 1 && (
+                    <View style={styles.inputDivider} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </View>
+        </GlassCard>
       )}
 
       {/* Driver Specific Options */}
@@ -895,95 +1002,90 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         const cat = dynamicServiceCategories.find(c => c.services.includes(s));
         return cat && cat.id.toLowerCase() === 'driver';
       }) && (
-          <View style={styles.driverSectionCard}>
-            <View style={styles.sectionHeaderContainer}>
-              <View style={styles.sectionIcon}>
-                <Ionicons name="car-sport" size={20} color={COLORS.primary} />
-              </View>
-              <Text style={styles.sectionHeaderTitle}>Driver Details</Text>
-            </View>
-
+        <GlassCard intensity={60} style={[styles.formCard, { marginTop: 0 }]} enableTilt>
+          <View style={styles.form}>
             {/* Vehicle Types */}
-            <View style={styles.driverOptionGroup}>
-              <Text style={styles.subLabel}>What vehicles do you drive?</Text>
-              <View style={styles.chipContainer}>
-                {VEHICLE_TYPES.map(type => (
-                  <TouchableOpacity
-                    key={type.id}
-                    style={[
-                      styles.chip,
-                      formData.vehicleTypes.includes(type.id) && styles.chipActive
-                    ]}
-                    onPress={() => {
-                      setFormData(prev => ({
+            <View style={styles.fieldGlass}>
+              <Text style={styles.label}>VEHICLE TYPES</Text>
+              <View style={styles.s2ChipGrid}>
+                {VEHICLE_TYPES.map(type => {
+                  const isActive = formData.vehicleTypes.includes(type.id);
+                  return (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[styles.s2SelectChip, isActive && styles.s2SelectChipActive]}
+                      onPress={() => setFormData(prev => ({
                         ...prev,
                         vehicleTypes: prev.vehicleTypes.includes(type.id)
                           ? prev.vehicleTypes.filter(t => t !== type.id)
                           : [...prev.vehicleTypes, type.id]
-                      }));
-                    }}
-                  >
-                    <Text style={[
-                      styles.chipText,
-                      formData.vehicleTypes.includes(type.id) && styles.chipTextActive
-                    ]}>{type.label}</Text>
-                  </TouchableOpacity>
-                ))}
+                      }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.s2SelectChipText, isActive && styles.s2SelectChipTextActive]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
+            <View style={styles.inputDivider} />
+
             {/* Transmission */}
-            <View style={styles.driverOptionGroup}>
-              <Text style={styles.subLabel}>What kind of vehicles do you drive?</Text>
-              <View style={styles.chipContainer}>
-                {TRANSMISSION_TYPES.map(type => (
-                  <TouchableOpacity
-                    key={type.id}
-                    style={[
-                      styles.chip,
-                      formData.transmissionTypes.includes(type.id) && styles.chipActive
-                    ]}
-                    onPress={() => {
-                      setFormData(prev => ({
+            <View style={styles.fieldGlass}>
+              <Text style={styles.label}>TRANSMISSION</Text>
+              <View style={styles.s2PillRow}>
+                {TRANSMISSION_TYPES.map(type => {
+                  const isActive = formData.transmissionTypes.includes(type.id);
+                  return (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[styles.s2ExperiencePill, isActive && styles.s2ExperiencePillActive, { flex: 1 }]}
+                      onPress={() => setFormData(prev => ({
                         ...prev,
                         transmissionTypes: prev.transmissionTypes.includes(type.id)
                           ? prev.transmissionTypes.filter(t => t !== type.id)
                           : [...prev.transmissionTypes, type.id]
-                      }));
-                    }}
-                  >
-                    <Text style={[
-                      styles.chipText,
-                      formData.transmissionTypes.includes(type.id) && styles.chipTextActive
-                    ]}>{type.label}</Text>
-                  </TouchableOpacity>
-                ))}
+                      }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.s2ExperiencePillText, isActive && styles.s2ExperiencePillTextActive]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
+            <View style={styles.inputDivider} />
+
             {/* Trip Preference */}
-            <View style={styles.driverOptionGroup}>
-              <Text style={styles.subLabel}>Where do you offer your services?</Text>
-              <View style={styles.segmentContainer}>
-                {TRIP_PREFERENCES.map(pref => (
-                  <TouchableOpacity
-                    key={pref.id}
-                    style={[
-                      styles.segment,
-                      formData.tripPreference === pref.id && styles.segmentActive
-                    ]}
-                    onPress={() => setFormData(prev => ({ ...prev, tripPreference: pref.id }))}
-                  >
-                    <Text style={[
-                      styles.segmentText,
-                      formData.tripPreference === pref.id && styles.segmentTextActive
-                    ]}>{pref.label}</Text>
-                  </TouchableOpacity>
-                ))}
+            <View style={styles.fieldGlass}>
+              <Text style={styles.label}>SERVICE AREA</Text>
+              <View style={styles.s2PillRow}>
+                {TRIP_PREFERENCES.map(pref => {
+                  const isActive = formData.tripPreference === pref.id;
+                  return (
+                    <TouchableOpacity
+                      key={pref.id}
+                      style={[styles.s2ExperiencePill, isActive && styles.s2ExperiencePillActive, { flex: 1 }]}
+                      onPress={() => setFormData(prev => ({ ...prev, tripPreference: pref.id }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.s2ExperiencePillText, isActive && styles.s2ExperiencePillTextActive]}>
+                        {pref.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </View>
-        )}
+        </GlassCard>
+      )}
     </View>
   );
 
@@ -992,31 +1094,36 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.stepTitle}>Set Your Rates</Text>
       <Text style={styles.stepSubtitle}>Define fair pricing for your services</Text>
 
-      <View style={styles.card}>
-        {formData.serviceRates.map((rate, index) => (
-          <View key={rate.serviceName} style={[styles.priceRow, index !== formData.serviceRates.length - 1 && styles.priceRowBorder]}>
-            <View style={styles.priceInfo}>
-              <Text style={styles.priceServiceName}>{rate.serviceName}</Text>
-              {getMaxPriceForService(rate.serviceName) > 0 && (
-                <Text style={styles.maxPriceText}>
-                  Max: ₹{getMaxPriceForService(rate.serviceName)}
-                </Text>
-              )}
-            </View>
-            <View style={styles.priceInputWrapper}>
-              <Text style={styles.currencyPrefix}>₹</Text>
-              <TextInput
-                style={styles.priceInputField}
-                placeholder="0"
-                placeholderTextColor={COLORS.textTertiary}
-                value={rate.price}
-                onChangeText={(value) => updateServiceRate(rate.serviceName, value)}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-        ))}
-      </View>
+      <GlassCard intensity={80} style={styles.formCard} enableTilt glowColor="rgba(59, 130, 246, 0.05)">
+        <View style={styles.form}>
+          {formData.serviceRates.map((rate, index) => (
+            <React.Fragment key={rate.serviceName}>
+              <View style={styles.fieldGlass}>
+                <View style={styles.inputRow}>
+                  <View style={styles.iconCircle}>
+                    <Ionicons name="pricetag-outline" size={18} color={COLORS.primary} />
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>{rate.serviceName}</Text>
+                    <View style={styles.priceInputWrapper}>
+                      <Text style={styles.currencyPrefix}>₹</Text>
+                      <TextInput
+                        style={styles.priceInputField}
+                        placeholder="0"
+                        placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                        value={rate.price}
+                        onChangeText={(value) => updateServiceRate(rate.serviceName, value)}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+              {index !== formData.serviceRates.length - 1 && <View style={styles.inputDivider} />}
+            </React.Fragment>
+          ))}
+        </View>
+      </GlassCard>
     </View>
   );
 
@@ -1024,58 +1131,65 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.animatableContent}>
       <Text style={styles.stepTitle}>Availability & Wrap Up</Text>
       <Text style={styles.stepSubtitle}>Set your working hours and review</Text>
-
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>START TIME</Text>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputIcon}>
-                <Ionicons name="time-outline" size={20} color={COLORS.textTertiary} />
+      <GlassCard intensity={80} style={styles.formCard} enableTilt glowColor="rgba(59, 130, 246, 0.05)">
+        <View style={styles.form}>
+          {/* Start Time */}
+          <View style={styles.fieldGlass}>
+            <View style={styles.inputRow}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="time-outline" size={18} color={COLORS.primary} />
               </View>
-              <TextInput
-                style={styles.input}
-                placeholder="09:00"
-                placeholderTextColor={COLORS.textTertiary}
-                value={formData.workingHours.startTime}
-                onChangeText={(value) => updateField('workingHours', { ...formData.workingHours, startTime: value })}
-              />
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>START TIME</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="09:00 AM"
+                  placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                  value={formData.workingHours.startTime}
+                  onChangeText={(value) => updateField('workingHours', { ...formData.workingHours, startTime: value })}
+                />
+              </View>
             </View>
           </View>
 
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>END TIME</Text>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputIcon}>
-                <Ionicons name="time-outline" size={20} color={COLORS.textTertiary} />
+          <View style={styles.inputDivider} />
+
+          {/* End Time */}
+          <View style={styles.fieldGlass}>
+            <View style={styles.inputRow}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="time-outline" size={18} color={COLORS.primary} />
               </View>
-              <TextInput
-                style={styles.input}
-                placeholder="17:00"
-                placeholderTextColor={COLORS.textTertiary}
-                value={formData.workingHours.endTime}
-                onChangeText={(value) => updateField('workingHours', { ...formData.workingHours, endTime: value })}
-              />
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>END TIME</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="06:00 PM"
+                  placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                  value={formData.workingHours.endTime}
+                  onChangeText={(value) => updateField('workingHours', { ...formData.workingHours, endTime: value })}
+                />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.inputDivider} />
+
+          <View style={styles.summaryContainer}>
+            <Text style={styles.summaryHeader}>SUMMARY</Text>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Total Services</Text>
+              <Text style={styles.summaryValue}>{formData.services.length}</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Working Hours</Text>
+              <Text style={styles.summaryValue}>
+                {formData.workingHours.startTime} - {formData.workingHours.endTime}
+              </Text>
             </View>
           </View>
         </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.summaryContainer}>
-          <Text style={styles.summaryHeader}>SUMMARY</Text>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Total Services</Text>
-            <Text style={styles.summaryValue}>{formData.services.length}</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Working Hours</Text>
-            <Text style={styles.summaryValue}>
-              {formData.workingHours.startTime} - {formData.workingHours.endTime}
-            </Text>
-          </View>
-        </View>
-      </View>
+      </GlassCard>
     </View>
   );
 
@@ -1083,18 +1197,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background Gradient Mesh */}
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={['#F0F9FF', '#F8FAFC', '#FFFFFF']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        {/* Decorative Elements */}
-        <View style={[styles.decorativeCircle, { top: -100, right: -50, backgroundColor: addAlpha(COLORS.primary, 0.05) }]} />
-        <View style={[styles.decorativeCircle, { bottom: 100, left: -100, width: 300, height: 300, backgroundColor: addAlpha(COLORS.accentYellow, 0.05) }]} />
-      </View>
+      <LiquidBackground mode="light" />
 
       {/* Back Button */}
       <TouchableOpacity
@@ -1113,315 +1216,39 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 24 }
+            { paddingTop: insets.top + 20 }
           ]}
           showsVerticalScrollIndicator={false}
-          bounces={true}
-          alwaysBounceVertical={true}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../../../assets/Logo.jpg')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
+            {/* Header / Branding */}
+            <View style={styles.headerBranding}>
+              <View style={styles.brandNameContainer}>
+                {['Y', 'A', 'N', 'N'].map((letter, index) => (
+                  <AnimatedLetter
+                    key={index}
+                    letter={letter}
+                    index={index}
+                    style={styles.brandLetter}
+                  />
+                ))}
+              </View>
+              <View style={styles.taglineRow}>
+                <View style={styles.taglineLine} />
+                <Text style={styles.tagline}>SIGNATURE LUXURY</Text>
+                <View style={styles.taglineLine} />
+              </View>
             </View>
-            <Text style={styles.brandName}>YANN</Text>
-            <Text style={styles.title}>Become a Service Partner</Text>
-            <Text style={styles.subtitle}>
-              Join our verified network and grow your business with YANN
-            </Text>
-          </View>
 
-          {renderStepIndicator()}
+            {renderStepIndicator()}
 
-          {currentStep === 1 && renderStep1()}
-
-          {/* Partner Sign-in Link - Below form */}
-          {currentStep === 1 && (
-            <View style={styles.partnerCtaContainer}>
-              <Text style={styles.partnerCtaText}>Already a Partner?</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('PartnerLogin')}
-                activeOpacity={0.7}
-                style={styles.partnerLinkButton}
-              >
-                <Text style={styles.partnerLinkText}>Sign in</Text>
-                <Ionicons name="arrow-forward" size={14} color={COLORS.primary} style={{ marginLeft: 4 }} />
-              </TouchableOpacity>
+            <View style={{ marginTop: 10 }}>
+              {renderStep(currentStep)}
             </View>
-          )}
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-          {currentStep === 2 && (
-            <View style={styles.animatableContent}>
-              <Text style={styles.stepTitle}>Select Services</Text>
-              <Text style={styles.stepSubtitle}>Choose the services you want to provide</Text>
-
-              {isLoadingServices ? (
-                <LoadingSpinner visible={true} />
-              ) : (
-                <>
-                  {dynamicServiceCategories.map(category => (
-                    <View key={category.id} style={styles.categoryCard}>
-                      <View style={styles.categoryHeader}>
-                        <View style={styles.categoryHeaderLeft}>
-                          <View style={styles.categoryIconContainer}>
-                            <Ionicons name={category.icon} size={20} color={COLORS.primary} />
-                          </View>
-                          <Text style={styles.categoryName}>{category.name}</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.experienceDropdown}
-                          onPress={() =>
-                            setOpenExperienceCategory(prev => (prev === category.id ? null : category.id))
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.experienceDropdownText}>
-                            {formData.categoryExperience[category.id]
-                              ? `${formData.categoryExperience[category.id]} yrs exp`
-                              : 'add experience'}
-                          </Text>
-                          <Ionicons
-                            name={openExperienceCategory === category.id ? 'chevron-up' : 'chevron-down'}
-                            size={16}
-                            color={COLORS.primary}
-                          />
-                        </TouchableOpacity>
-                      </View>
-
-                      {openExperienceCategory === category.id && (
-                        <View style={styles.experienceOptionsContainer}>
-                          <Text style={styles.experienceLabel}>Years of Experience:</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.experienceScroll}>
-                            {EXPERIENCE_OPTIONS.map(option => (
-                              <TouchableOpacity
-                                key={option}
-                                style={[
-                                  styles.experienceOption,
-                                  formData.categoryExperience[category.id] === option && styles.experienceOptionActive,
-                                ]}
-                                onPress={() => {
-                                  updateCategoryExperience(category.id, option);
-                                  setOpenExperienceCategory(null);
-                                }}
-                              >
-                                <Text
-                                  style={[
-                                    styles.experienceOptionText,
-                                    formData.categoryExperience[category.id] === option && styles.experienceOptionTextActive,
-                                  ]}
-                                >
-                                  {option}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-
-                      <View style={styles.servicesGrid}>
-                        {category.services.map(service => {
-                          const isSelected = formData.services.includes(service);
-                          return (
-                            <TouchableOpacity
-                              key={service}
-                              style={[
-                                styles.serviceChip,
-                                isSelected && styles.serviceChipActive,
-                              ]}
-                              onPress={() => toggleService(service)}
-                              activeOpacity={0.7}
-                            >
-                              <Text
-                                style={[
-                                  styles.serviceChipText,
-                                  isSelected && styles.serviceChipTextActive,
-                                ]}
-                              >
-                                {service}
-                              </Text>
-                              {isSelected && (
-                                <View style={styles.checkIconContainer}>
-                                  <Ionicons name="checkmark" size={10} color="#FFF" />
-                                </View>
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-
-                      {/* Driver Specific Options - Embed directly in Driver Category Card */}
-                      {category.id.toLowerCase() === 'driver' && formData.services.some(s => category.services.includes(s)) && (
-                        <View style={styles.driverSectionCard}>
-                          <View style={styles.sectionHeaderContainer}>
-                            <View style={styles.sectionIcon}>
-                              <Ionicons name="car-sport" size={20} color={COLORS.white} />
-                            </View>
-                            <Text style={styles.sectionHeaderTitle}>Driver Details</Text>
-                          </View>
-
-                          {/* Vehicle Types */}
-                          <View style={styles.driverOptionGroup}>
-                            <Text style={styles.subLabel}>What vehicles do you drive?</Text>
-                            <View style={styles.chipContainer}>
-                              {VEHICLE_TYPES.map(type => (
-                                <TouchableOpacity
-                                  key={type.id}
-                                  style={[
-                                    styles.chip,
-                                    formData.vehicleTypes.includes(type.id) && styles.chipActive
-                                  ]}
-                                  onPress={() => {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      vehicleTypes: prev.vehicleTypes.includes(type.id)
-                                        ? prev.vehicleTypes.filter(t => t !== type.id)
-                                        : [...prev.vehicleTypes, type.id]
-                                    }));
-                                  }}
-                                >
-                                  <Text style={[
-                                    styles.chipText,
-                                    formData.vehicleTypes.includes(type.id) && styles.chipTextActive
-                                  ]}>{type.label}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </View>
-
-                          {/* Transmission */}
-                          <View style={styles.driverOptionGroup}>
-                            <Text style={styles.subLabel}>What kind of vehicles do you drive?</Text>
-                            <View style={styles.chipContainer}>
-                              {TRANSMISSION_TYPES.map(type => (
-                                <TouchableOpacity
-                                  key={type.id}
-                                  style={[
-                                    styles.chip,
-                                    formData.transmissionTypes.includes(type.id) && styles.chipActive
-                                  ]}
-                                  onPress={() => {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      transmissionTypes: prev.transmissionTypes.includes(type.id)
-                                        ? prev.transmissionTypes.filter(t => t !== type.id)
-                                        : [...prev.transmissionTypes, type.id]
-                                    }));
-                                  }}
-                                >
-                                  <Text style={[
-                                    styles.chipText,
-                                    formData.transmissionTypes.includes(type.id) && styles.chipTextActive
-                                  ]}>{type.label}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </View>
-
-                          {/* Trip Preference */}
-                          <View style={styles.driverOptionGroup}>
-                            <Text style={styles.subLabel}>Where do you offer your services?</Text>
-                            <View style={styles.segmentContainer}>
-                              {TRIP_PREFERENCES.map(pref => (
-                                <TouchableOpacity
-                                  key={pref.id}
-                                  style={[
-                                    styles.segment,
-                                    formData.tripPreference === pref.id && styles.segmentActive
-                                  ]}
-                                  onPress={() => setFormData(prev => ({ ...prev, tripPreference: pref.id }))}
-                                >
-                                  <Text style={[
-                                    styles.segmentText,
-                                    formData.tripPreference === pref.id && styles.segmentTextActive
-                                  ]}>{pref.label}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </View>
-
-                          {/* License Images */}
-                          <View style={styles.driverOptionGroup}>
-                            <Text style={styles.subLabel}>Driving License Photos</Text>
-                            <View style={{ gap: 12 }}>
-                               <TouchableOpacity 
-                                  style={[styles.uploadButton, formData.licenseFrontImage && styles.uploadButtonSuccess]}
-                                  onPress={() => uploadDrivingLicenseImage('front')}
-                               >
-                                  <Ionicons name={formData.licenseFrontImage ? "checkmark-circle" : "camera-outline"} size={20} color={formData.licenseFrontImage ? COLORS.success : COLORS.primary} />
-                                  <Text style={[styles.uploadButtonText, formData.licenseFrontImage && { color: COLORS.success }]}>
-                                    {formData.licenseFrontImage ? "Front Photo Uploaded" : "Upload Front Photo"}
-                                  </Text>
-                               </TouchableOpacity>
-
-                               <TouchableOpacity 
-                                  style={[styles.uploadButton, formData.licenseBackImage && styles.uploadButtonSuccess]}
-                                  onPress={() => uploadDrivingLicenseImage('back')}
-                               >
-                                  <Ionicons name={formData.licenseBackImage ? "checkmark-circle" : "camera-outline"} size={20} color={formData.licenseBackImage ? COLORS.success : COLORS.primary} />
-                                  <Text style={[styles.uploadButtonText, formData.licenseBackImage && { color: COLORS.success }]}>
-                                    {formData.licenseBackImage ? "Back Photo Uploaded" : "Upload Back Photo"}
-                                  </Text>
-                               </TouchableOpacity>
-                            </View>
-                          </View>
-                        </View>
-                      )}
-
-                    </View>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
-          {currentStep === 3 && renderStep3()}
-          {currentStep === 4 && renderStep4()}
-
-          {/* Scrollable Bottom Button */}
-          <View style={{ padding: 24, paddingBottom: 40 }}>
-            {currentStep < 4 ? (
-              <TouchableOpacity
-                style={styles.nextButton}
-                onPress={handleNext}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
-                  <Text style={styles.buttonText}>CONTINUE</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#FFF" />
-                </LinearGradient>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.nextButton}
-                onPress={handleSubmit}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryGradientEnd]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
-                  <Text style={styles.buttonText}>COMPLETE REGISTRATION</Text>
-                  <Ionicons name="checkmark" size={18} color="#FFF" />
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-      <LoadingSpinner visible={isLoading} />
-    </View>
+        {renderBottomNav()}
+      </View>
   );
 };
 
@@ -1542,18 +1369,52 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.primary,
   },
-  stepIndicatorContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  stepIndicator: {
+  segmentedProgressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    paddingVertical: 16,
+    gap: 8,
+    paddingHorizontal: 40,
+    marginBottom: 24,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: addAlpha(COLORS.primary, 0.1),
+  },
+  progressSegmentActive: {
+    backgroundColor: COLORS.primary,
+    height: 6, // Keep it consistent
+  },
+  progressSegmentCompleted: {
+    backgroundColor: addAlpha(COLORS.primary, 0.6),
+  },
+  stepIndicatorContainer: {
     paddingHorizontal: 20,
-    borderRadius: 20,
+    marginBottom: 16,
+  },
+  stepIndicatorCard: {
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderRadius: 24,
+    borderWidth: 0,
+    overflow: 'hidden',
+  },
+  stepIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+  },
+  stepIndicator: { // Deprecated
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
     borderWidth: 0,
   },
   stepItem: {
@@ -1570,7 +1431,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: COLORS.border,
-    marginBottom: 6,
   },
   stepDotActive: {
     backgroundColor: COLORS.primary,
@@ -1608,115 +1468,287 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 2,
     backgroundColor: COLORS.border,
-    marginBottom: 20, // Align with dots
     marginHorizontal: -10,
     zIndex: 1,
   },
   stepLineActive: {
     backgroundColor: COLORS.primary,
   },
+  activeStepIndicator: {
+    position: 'absolute',
+    bottom: -10,
+    width: 20,
+    height: 3,
+    backgroundColor: COLORS.primary,
+    borderRadius: 2,
+    alignSelf: 'center',
+  },
+  headerBranding: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  brandNameContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 4,
+    gap: 8,
+  },
+  brandLetter: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -1,
+  },
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  taglineLine: {
+    height: 1,
+    width: 30,
+    backgroundColor: addAlpha(COLORS.primary, 0.3),
+  },
+  tagline: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: 3,
+  },
   animatableContent: {
     paddingHorizontal: 20,
   },
+  stepDotCompleted: {
+    backgroundColor: COLORS.success,
+    borderColor: COLORS.success,
+  },
+  stepLineCompleted: {
+    backgroundColor: COLORS.success,
+  },
   stepTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '800',
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   stepSubtitle: {
     fontSize: 15,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
+    fontWeight: '500',
   },
-  card: {
-    backgroundColor: 'transparent', // Transparent to match Member layout
-    marginBottom: SPACING.lg,
+  formCard: {
+    borderRadius: 32, // More rounded for Grand Form Panel
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 32,
+    overflow: 'hidden',
+  },
+  form: {
     padding: 0,
-    // borderRadius: 0,
-    // ...SHADOWS.md, // Removed shadow
+    gap: 0,
   },
-  inputGroup: {
-    marginBottom: SPACING.lg,
+  fieldGlass: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  inputDivider: {
+    height: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.05)',
+    marginHorizontal: 20,
   },
   label: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '800',
     color: COLORS.textTertiary,
-    marginBottom: SPACING.xs,
-    marginLeft: 4,
+    letterSpacing: 1.5,
+    marginBottom: 4,
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  inputContainer: {
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5, // Thicker border
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.medium,
-    height: 56, // 56px (Standard Member Signup Height)
-    overflow: 'hidden',
-    ...SHADOWS.sm,
+    gap: 16,
   },
-  inputFocused: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.white,
-    ...SHADOWS.md,
-    shadowColor: addAlpha(COLORS.primary, 0.3),
-    borderWidth: 1.5,
-  },
-  inputIconFocused: {
-    backgroundColor: addAlpha(COLORS.primary, 0.1),
-    // opacity: 1, // Removed
-  },
-  inputError: {
-    borderColor: COLORS.error,
-    backgroundColor: addAlpha(COLORS.error, 0.02),
-  },
-  inputValid: {
-    borderColor: COLORS.success,
-    backgroundColor: addAlpha(COLORS.success, 0.02),
-  },
-  inputInvalid: {
-    borderColor: COLORS.error,
-    backgroundColor: addAlpha(COLORS.error, 0.02),
-  },
-  inputIcon: {
-    width: 50,
-    height: '100%',
-    alignItems: 'center',
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
     justifyContent: 'center',
-    backgroundColor: COLORS.gray50,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.border,
+    alignItems: 'center',
+  },
+  inputContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   input: {
-    flex: 1,
-    fontSize: 16, // Larger font
-    fontWeight: '500',
-    color: COLORS.text,
-    height: '100%',
-    paddingHorizontal: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    height: 32,
+    letterSpacing: 0.2,
+    padding: 0,
   },
   validationIcon: {
-    marginRight: 16,
+    marginLeft: 8,
+  },
+  // ---- Step 2 Accordion Styles ----
+  s2CategoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  s2CategoryInfo: {
+    flex: 1,
+  },
+  s2CategoryName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: -0.2,
+  },
+  s2SelectedBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginTop: 2,
+  },
+  s2CategoryHint: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.textTertiary,
+    marginTop: 2,
+  },
+  s2CategoryRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  s2ExpandedContainer: {
+    backgroundColor: addAlpha(COLORS.primary, 0.02),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(15, 23, 42, 0.05)',
+    paddingBottom: 8,
+  },
+  s2ExperienceSection: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  s2ExperienceScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  s2ExperiencePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 100,
+    backgroundColor: addAlpha(COLORS.primary, 0.06),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  s2ExperiencePillActive: {
+    backgroundColor: COLORS.primary,
+  },
+  s2ExperiencePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  s2ExperiencePillTextActive: {
+    color: '#FFF',
+  },
+  s2ServicesList: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  s2ServiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 12,
+  },
+  s2ServiceCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+  },
+  s2ServiceCheckboxActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  s2ServiceName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  s2ServiceNameActive: {
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  s2ServiceDivider: {
+    height: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.04)',
+  },
+  s2ChipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  s2SelectChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 100,
+    backgroundColor: addAlpha(COLORS.primary, 0.06),
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  s2SelectChipActive: {
+    backgroundColor: addAlpha(COLORS.primary, 0.12),
+    borderColor: COLORS.primary,
+  },
+  s2SelectChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  s2SelectChipTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  s2PillRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
   },
   validationError: {
     marginTop: 6,
-    marginLeft: 4,
+    paddingHorizontal: 24,
     fontSize: 12,
     color: COLORS.error,
     fontWeight: '500',
   },
   categoryCard: {
-    backgroundColor: 'transparent', // Transparent layout
+    backgroundColor: 'transparent',
     marginBottom: SPACING.lg,
-    padding: 0,
-    // borderRadius: 0,
-    // ...SHADOWS.md,
+    padding: 16,
+    borderRadius: RADIUS.xlarge,
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -1958,13 +1990,7 @@ const styles = StyleSheet.create({
   priceInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.medium,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    width: 120,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    gap: 4,
   },
   currencyPrefix: {
     fontSize: 15,
@@ -1992,7 +2018,8 @@ const styles = StyleSheet.create({
     marginVertical: 24,
   },
   summaryContainer: {
-    marginTop: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   summaryHeader: {
     fontSize: 11,

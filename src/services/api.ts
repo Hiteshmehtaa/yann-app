@@ -1091,12 +1091,12 @@ class ApiService {
   }
 
   /**
-   * GET /api/provider/earnings
-   * Get provider earnings with period filter
+   * GET /api/provider/earning
+   * Get provider earnings breakdown (chart data and stats)
+   * Website uses this for earnings dashboard
    */
-  async getProviderEarnings(period?: 'week' | 'month' | 'year'): Promise<ApiResponse<any>> {
-    const params = period ? { period } : {};
-    const response = await this.client.get('/provider/earning', { params });
+  async getProviderEarnings(period: 'week' | 'month' | 'year' | 'all' = 'month'): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/provider/earning', { params: { period } });
     return response.data;
   }
 

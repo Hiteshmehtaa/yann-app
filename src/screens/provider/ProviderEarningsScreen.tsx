@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,23 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
+  Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useResponsive } from '../../hooks/useResponsive';
+import { LineChart } from 'react-native-chart-kit';
+import { format, parseISO } from 'date-fns';
 
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../../utils/theme';
+import { COLORS, SPACING, RADIUS, SHADOWS, addAlpha } from '../../utils/theme';
 import LottieView from 'lottie-react-native';
 import { LottieAnimations } from '../../utils/lottieAnimations';
+
+const { width } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -26,105 +31,103 @@ type Props = {
 
 type Period = 'week' | 'month' | 'year';
 
-interface EarningsData {
+interface EarningsResponse {
   totalEarnings: number;
-  completedBookings: number;
-  averagePerBooking: number;
-  transactions: {
+  bookingsCount: number;
+  averageEarning: number;
+  earningsByDate: { date: string; total: number }[];
+  recentTransactions: {
     id: string;
-    service: string;
-    customer: string;
+    serviceName: string;
+    customerName: string;
     amount: number;
     date: string;
-    status: string;
   }[];
 }
 
 export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
-  const { width: screenWidth, isTablet } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+  
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('month');
-  const [earningsData, setEarningsData] = useState<EarningsData>({
-    totalEarnings: 0,
-    completedBookings: 0,
-    averagePerBooking: 0,
-    transactions: [],
-  });
+  const [earnings, setEarnings] = useState<EarningsResponse | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 400,
+      duration: 500,
       useNativeDriver: true,
     }).start();
-
+    
     fetchEarnings();
-  }, [selectedPeriod]);
+  }, []);
 
-  const fetchEarnings = async () => {
-    setIsLoading(true);
+  const fetchEarnings = async (period: Period = selectedPeriod) => {
+    if (!refreshing) setIsLoading(true);
     try {
-      // Fetch ALL completed bookings directly to ensure Driver bookings are included
-      // The backend /provider/earning endpoint might be filtering them out
-      const response = await apiService.getProviderBookings('completed');
-
-      if (response.success && response.data) {
-        const allCompletedBookings = response.data;
-
-        // Filter by selected period
-        const now = new Date();
-        const startOfPeriod = new Date();
-
-        switch (selectedPeriod) {
-          case 'week':
-            startOfPeriod.setDate(now.getDate() - 7);
-            break;
-          case 'month':
-            startOfPeriod.setMonth(now.getMonth() - 1);
-            break;
-          case 'year':
-            startOfPeriod.setFullYear(now.getFullYear() - 1);
-            break;
-        }
-
-        const filteredBookings = allCompletedBookings.filter((b: any) => {
-          const bookingDate = new Date(b.completedAt || b.bookingDate);
-          return bookingDate >= startOfPeriod && bookingDate <= now;
-        });
-
-        // Calculate stats locally
-        const totalEarnings = filteredBookings.reduce((sum: number, b: any) => sum + (b.totalPrice || 0), 0);
-        const completedCount = filteredBookings.length;
-        const average = completedCount > 0 ? Math.round(totalEarnings / completedCount) : 0;
-
-        setEarningsData({
-          totalEarnings,
-          completedBookings: completedCount,
-          averagePerBooking: average,
-          transactions: filteredBookings.map((b: any) => ({
-            id: b._id || b.id,
-            service: b.serviceName || 'Service',
-            customer: b.customerName || 'Customer',
-            amount: b.totalPrice || 0,
-            date: new Date(b.completedAt || b.bookingDate).toLocaleDateString(),
-            status: b.status || 'completed'
-          })).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()), // Sort by date desc
-        });
+      const response = await apiService.getProviderEarnings(period);
+      if (response.success && response.earnings) {
+        setEarnings(response.earnings);
+        
+        // Trigger content entrance animation
+        contentAnim.setValue(0);
+        Animated.spring(contentAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }).start();
       }
     } catch (error) {
       console.error('Error fetching earnings:', error);
-      setEarningsData({
-        totalEarnings: 0,
-        completedBookings: 0,
-        averagePerBooking: 0,
-        transactions: [],
-      });
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchEarnings(selectedPeriod);
+  };
+
+  const handlePeriodChange = (period: Period) => {
+    if (period === selectedPeriod) return;
+    setSelectedPeriod(period);
+    fetchEarnings(period);
+  };
+
+  const chartData = useMemo(() => {
+    if (!earnings || !earnings.earningsByDate || earnings.earningsByDate.length === 0) {
+      return {
+        labels: ["-"],
+        datasets: [{ data: [0] }]
+      };
+    }
+
+    const data = earnings.earningsByDate;
+    // Limit labels to prevent crowding
+    const labels = data.map((item, index) => {
+      if (data.length <= 7) return format(parseISO(item.date), 'EEE');
+      // Show fewer labels for month/year
+      if (index === 0 || index === data.length - 1 || index === Math.floor(data.length / 2)) {
+         return format(parseISO(item.date), 'MMM d');
+      }
+      return "";
+    });
+
+    return {
+      labels,
+      datasets: [{
+        data: data.map(item => item.total),
+        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`, // Blue 500
+        strokeWidth: 3
+      }]
+    };
+  }, [earnings]);
 
   const periods: { label: string; value: Period }[] = [
     { label: 'Week', value: 'week' },
@@ -132,155 +135,183 @@ export const ProviderEarningsScreen: React.FC<Props> = ({ navigation }) => {
     { label: 'Year', value: 'year' },
   ];
 
-  if (isLoading) {
+  if (isLoading && !earnings) {
     return (
-      <SafeAreaView edges={['top']} style={styles.container}>
+      <View style={styles.loadingContainer}>
         <LoadingSpinner visible={true} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView edges={['top']} style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Analytics</Text>
+          <TouchableOpacity style={styles.infoButton}>
+            <Ionicons name="information-circle-outline" size={24} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Earnings</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+          }
+        >
+          <Animated.View style={{ opacity: fadeAnim }}>
+            
+            {/* Minimalist Top Card */}
+            <Animated.View style={[styles.topCard, { transform: [{ translateY: contentAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+              <View style={styles.topCardContent}>
+                <View>
+                  <Text style={styles.totalLabel}>Total Profit</Text>
+                  <Text style={styles.totalValue}>
+                    ₹{(earnings?.totalEarnings ?? 0).toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                <View style={[styles.growthBadge, { backgroundColor: addAlpha(COLORS.success, 0.1) }]}>
+                  <Ionicons name="trending-up" size={14} color={COLORS.success} />
+                  <Text style={styles.growthText}>+12.5%</Text>
+                </View>
+              </View>
+              <Text style={styles.totalSubtext}>vs. last {selectedPeriod}</Text>
+            </Animated.View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
-        <Animated.View style={{ opacity: fadeAnim }}>
-          {/* Period Selector */}
-          <View style={styles.periodSelector}>
-            {periods.map((period) => (
-              <TouchableOpacity
-                key={period.value}
-                style={[
-                  styles.periodButton,
-                  selectedPeriod === period.value && styles.periodButtonActive,
-                ]}
-                onPress={() => setSelectedPeriod(period.value)}
-              >
-                <Text
-                  style={[
-                    styles.periodButtonText,
-                    selectedPeriod === period.value && styles.periodButtonTextActive,
-                  ]}
+            {/* Period Selector Tabs */}
+            <View style={styles.tabsContainer}>
+              {periods.map((p) => (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[styles.tab, selectedPeriod === p.value && styles.activeTab]}
+                  onPress={() => handlePeriodChange(p.value)}
                 >
-                  {period.label}
-                </Text>
+                  <Text style={[styles.tabText, selectedPeriod === p.value && styles.activeTabText]}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Chart Section */}
+            <View style={styles.chartCard}>
+              <View style={styles.chartHeader}>
+                <Text style={styles.chartTitle}>Earnings Trend</Text>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: COLORS.primary }]} />
+                  <Text style={styles.legendText}>Revenue</Text>
+                </View>
+              </View>
+              
+              <LineChart
+                data={chartData}
+                width={width - SPACING.lg * 3} // Adjust for padding
+                height={220}
+                chartConfig={{
+                  backgroundColor: COLORS.cardBg,
+                  backgroundGradientFrom: COLORS.cardBg,
+                  backgroundGradientTo: COLORS.cardBg,
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                  labelColor: (opacity = 1) => COLORS.textTertiary,
+                  style: {
+                    borderRadius: 16,
+                  },
+                  propsForDots: {
+                    r: "4",
+                    strokeWidth: "2",
+                    stroke: "#fff"
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: "", // solid background lines
+                    stroke: COLORS.gray100,
+                  }
+                }}
+                bezier
+                style={styles.chart}
+                withInnerLines={true}
+                withOuterLines={false}
+                withVerticalLines={false}
+                withDots={true}
+                fromZero={true}
+              />
+            </View>
+
+            {/* Recent Activity */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Jobs</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('ProviderBookings')}>
+                <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Total Earnings Card */}
-          <View style={styles.earningsCard}>
-            <Text style={styles.earningsLabel}>Total Earnings</Text>
-            <Text style={styles.earningsValue}>
-              ₹{(earningsData?.totalEarnings ?? 0).toLocaleString()}
-            </Text>
-            <View style={styles.earningsStats}>
-              <View style={styles.earningsStat}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.success} />
-                <Text style={styles.earningsStatText}>
-                  {earningsData?.completedBookings ?? 0} completed
-                </Text>
-              </View>
-              <View style={styles.earningsStat}>
-                <Ionicons name="trending-up-outline" size={18} color={COLORS.primary} />
-                <Text style={styles.earningsStatText}>
-                  ₹{earningsData?.averagePerBooking ?? 0} avg
-                </Text>
-              </View>
             </View>
-          </View>
 
-          {/* Stats Grid */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${COLORS.success}15` }]}>
-                <Ionicons name="wallet-outline" size={22} color={COLORS.success} />
-              </View>
-              <Text style={styles.statValue}>₹{(earningsData?.totalEarnings ?? 0).toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Received</Text>
-            </View>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: `${COLORS.warning}15` }]}>
-                <Ionicons name="time-outline" size={22} color={COLORS.warning} />
-              </View>
-              <Text style={styles.statValue}>₹0</Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </View>
-          </View>
-
-          {/* Recent Transactions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
-
-            {earningsData.transactions.length > 0 ? (
-              <View style={styles.transactionList}>
-                {earningsData.transactions.map((txn, index) => (
-                  <View
-                    key={txn.id}
-                    style={[
-                      styles.transactionCard,
-                      index === earningsData.transactions.length - 1 && styles.transactionCardLast,
-                    ]}
+            <View style={styles.transactionList}>
+              {earnings?.recentTransactions && earnings.recentTransactions.length > 0 ? (
+                earnings.recentTransactions.map((txn, index) => (
+                  <TouchableOpacity 
+                    key={txn.id} 
+                    style={styles.transactionCard}
+                    onPress={() => navigation.navigate('BookingDetail', { bookingId: txn.id })}
                   >
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionService}>{txn.service}</Text>
-                      <Text style={styles.transactionCustomer}>{txn.customer}</Text>
-                      <Text style={styles.transactionDate}>{txn.date}</Text>
+                    <View style={[styles.txnIconCircle, { backgroundColor: addAlpha(COLORS.primary, 0.1) }]}>
+                      <MaterialCommunityIcons name="briefcase-outline" size={22} color={COLORS.primary} />
                     </View>
-                    <View style={styles.transactionRight}>
-                      <Text style={styles.transactionAmount}>+₹{txn.amount}</Text>
-                      <View style={styles.completedBadge}>
-                        <Text style={styles.completedText}>PAID</Text>
+                    
+                    <View style={styles.txnDetails}>
+                      <Text style={styles.txnService}>{txn.serviceName}</Text>
+                      <Text style={styles.txnCustomer}>{txn.customerName}</Text>
+                      <Text style={styles.txnDate}>{format(parseISO(txn.date), 'MMM d, h:mm a')}</Text>
+                    </View>
+                    
+                    <View style={styles.txnAmountContainer}>
+                      <Text style={styles.txnAmount}>+₹{txn.amount}</Text>
+                      <View style={styles.txnBadge}>
+                        <Text style={styles.txnBadgeText}>PAID</Text>
                       </View>
                     </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <LottieView
-                  source={LottieAnimations.emptyCart}
-                  autoPlay
-                  loop
-                  style={{ width: 140, height: 140 }}
-                />
-                <Text style={styles.emptyTitle}>No transactions yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Your earnings will appear here after completing bookings
-                </Text>
-              </View>
-            )}
-          </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <LottieView
+                    source={LottieAnimations.emptyCart}
+                    autoPlay
+                    loop
+                    style={{ width: 120, height: 120 }}
+                  />
+                  <Text style={styles.emptyText}>No transactions found for this period</Text>
+                </View>
+              )}
+            </View>
 
-          <View style={{ height: 100 }} />
-        </Animated.View>
-      </ScrollView>
-    </SafeAreaView>
+            <View style={{ height: 40 }} />
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.background, // F6F8FC
+  },
+  safeArea: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -288,14 +319,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.background,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.cardBg,
     justifyContent: 'center',
     alignItems: 'center',
@@ -304,186 +332,209 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: COLORS.text, // 0F172A
   },
-  headerSpacer: {
-    width: 40,
-  },
-  content: {
-    padding: SPACING.lg,
-  },
-  periodSelector: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
-    padding: 4,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
-  },
-  periodButton: {
-    flex: 1,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.small,
-    alignItems: 'center',
-  },
-  periodButtonActive: {
-    backgroundColor: COLORS.primary,
-  },
-  periodButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  periodButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  earningsCard: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.large,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
-  },
-  earningsLabel: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-  },
-  earningsValue: {
-    fontSize: 44,
-    fontWeight: '800',
-    color: COLORS.text,
-    letterSpacing: -1,
-  },
-  earningsStats: {
-    flexDirection: 'row',
-    marginTop: SPACING.md,
-    gap: SPACING.xl,
-  },
-  earningsStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  earningsStatText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.xl,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
-    padding: SPACING.md,
-    alignItems: 'center',
-    ...SHADOWS.sm,
-  },
-  statIcon: {
+  infoButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
+  scrollContent: {
+    padding: SPACING.lg,
   },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  section: {
+  topCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.xl,
+    ...SHADOWS.lg,
     marginBottom: SPACING.xl,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    letterSpacing: 0.5,
-    marginBottom: SPACING.md,
-    textTransform: 'uppercase',
-  },
-  transactionList: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
-    ...SHADOWS.sm,
-  },
-  transactionCard: {
+  topCardContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    alignItems: 'flex-start',
   },
-  transactionCardLast: {
-    borderBottomWidth: 0,
-  },
-  transactionInfo: {
-    flex: 1,
-  },
-  transactionService: {
+  totalLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  transactionCustomer: {
-    fontSize: 13,
+    fontWeight: '500',
     color: COLORS.textSecondary,
-    marginTop: 2,
+    marginBottom: 4,
   },
-  transactionDate: {
-    fontSize: 12,
-    color: COLORS.textTertiary,
-    marginTop: 2,
+  totalValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: COLORS.text,
+    letterSpacing: -0.5,
   },
-  transactionRight: {
-    alignItems: 'flex-end',
+  growthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 99,
+    gap: 4,
   },
-  transactionAmount: {
-    fontSize: 16,
+  growthText: {
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.success,
   },
-  completedBadge: {
-    backgroundColor: `${COLORS.success}15`,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 4,
+  totalSubtext: {
+    fontSize: 13,
+    color: COLORS.textTertiary,
+    marginTop: 2,
   },
-  completedText: {
-    fontSize: 10,
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E2E8F0', // Light slate background for the "pill"
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: SPACING.xl,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 11,
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: COLORS.white,
+    ...SHADOWS.sm,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  activeTabText: {
+    color: COLORS.primary,
+  },
+  chartCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.md,
+    ...SHADOWS.md,
+    marginBottom: SPACING.xl,
+    paddingBottom: SPACING.lg,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xs,
+    marginBottom: SPACING.md,
+  },
+  chartTitle: {
+    fontSize: 15,
     fontWeight: '700',
+    color: COLORS.text,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+    marginLeft: -10, // Adjust for chart kit padding
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  transactionList: {
+    gap: SPACING.md,
+  },
+  transactionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.medium,
+    padding: SPACING.md,
+    ...SHADOWS.sm,
+  },
+  txnIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  txnDetails: {
+    flex: 1,
+  },
+  txnService: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  txnCustomer: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: 2,
+  },
+  txnDate: {
+    fontSize: 11,
+    color: COLORS.textTertiary,
+  },
+  txnAmountContainer: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  txnAmount: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.success,
+  },
+  txnBadge: {
+    backgroundColor: addAlpha(COLORS.success, 0.1),
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  txnBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
     color: COLORS.success,
     letterSpacing: 0.5,
   },
   emptyState: {
     alignItems: 'center',
     padding: SPACING.xxl,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.medium,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
     ...SHADOWS.sm,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginTop: SPACING.md,
-  },
-  emptySubtitle: {
-    fontSize: 13,
+  emptyText: {
+    fontSize: 14,
     color: COLORS.textTertiary,
     textAlign: 'center',
-    marginTop: SPACING.xs,
+    marginTop: SPACING.md,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,53 +10,30 @@ import {
   StatusBar,
   Image,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LineChart } from 'react-native-chart-kit';
+import { format, parseISO } from 'date-fns';
+
+import { COLORS, SPACING, RADIUS, SHADOWS, addAlpha } from '../../utils/theme';
+import LottieView from 'lottie-react-native';
+import { LottieAnimations } from '../../utils/lottieAnimations';
 
 const { width } = Dimensions.get('window');
-
-// ============================================
-// 💎 LUMINARY GRAPH CARD AESTHETIC
-// Theme-Consistent, Interactive, Data-Viz
-// ============================================
-const THEME = {
-  colors: {
-    background: '#F8FAFC', // Slate 50
-    surface: '#FFFFFF',
-    textPrimary: '#0F172A', // Slate 900
-    textSecondary: '#64748B', // Slate 500
-    primary: '#60A5FA', // Indigo 500
-    primaryGradient: ['#3B82F6', '#60A5FA', '#93C5FD', '#BAE6FD'] as const, // Sky 600 -> Sky 200 (Sky Blue gradient)
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-  },
-  spacing: {
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-  },
-  radius: {
-    md: 12,
-    lg: 20,
-    xl: 28,
-  }
-};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-type GraphType = 'earnings' | 'ratings' | 'bookings';
+type GraphType = 'bookings' | 'ratings';
 
 export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
@@ -64,225 +41,32 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
-  const [selectedGraph, setSelectedGraph] = useState<GraphType>('earnings');
-  const [tooltip, setTooltip] = useState<{ visible: boolean; value: string; label: string; x: number; y: number } | null>(null);
-  const [chartKey, setChartKey] = useState(0); // Force re-render for animation
-  const [previousDataAvg, setPreviousDataAvg] = useState(0); // Track previous data for comparison
-
+  const [selectedGraph, setSelectedGraph] = useState<GraphType>('bookings');
+  const [chartKey, setChartKey] = useState(0);
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const tabAnim = useRef(new Animated.Value(0)).current;
-  const contentFade = useRef(new Animated.Value(1)).current;
-  const graphScaleAnim = useRef(new Animated.Value(0)).current;
-  const dotAnimations = useRef([
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0)
-  ]).current;
-  const textLabelAnimations = useRef([
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0)
-  ]).current;
-  const lineScaleAnim = useRef(new Animated.Value(0)).current; // For vertical line animation
-  const lineSlideAnim = useRef(new Animated.Value(0)).current; // For horizontal slide
-  const graphRevealAnim = useRef(new Animated.Value(0)).current; // For L-to-R wipe
+  const contentAnim = useRef(new Animated.Value(0)).current;
+  const chartFade = useRef(new Animated.Value(1)).current;
+  const graphTranslateX = useRef(new Animated.Value(0)).current;
+  const tabSlideAnim = useRef(new Animated.Value(0)).current;
 
-  const handleGraphChange = (type: GraphType, index: number) => {
-    setSelectedGraph(type);
-
-    // Force chart re-render for animation
-    setChartKey(prev => prev + 1);
-
-    // Calculate average of new data
-    const newData = CHART_DATA[type].datasets[0].data;
-    const newAvg = newData.reduce((sum: number, val: number) => sum + val, 0) / newData.length;
-
-    // Determine if data increased or decreased
-    const isIncrease = newAvg > previousDataAvg;
-    const scaleStart = isIncrease ? 0 : 1.3; // Start from bottom if increase, top if decrease
-    const scaleEnd = 1;
-
-    // Update previous average for next comparison
-    setPreviousDataAvg(newAvg);
-
-    // Animate line with vertical scaling (up or down based on data)
-    Animated.parallel([
-      Animated.sequence([
-        Animated.timing(lineScaleAnim, {
-          toValue: scaleStart,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.spring(lineScaleAnim, {
-          toValue: scaleEnd,
-          delay: 100,
-          useNativeDriver: true,
-          damping: 15,
-          stiffness: 100,
-        })
-      ]),
-      // Horizontal slide animation
-      Animated.sequence([
-        Animated.timing(lineSlideAnim, {
-          toValue: index > (selectedGraph === 'earnings' ? 0 : selectedGraph === 'ratings' ? 1 : 2) ? 50 : -50,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.spring(lineSlideAnim, {
-          toValue: 0,
-          delay: 50,
-          useNativeDriver: true,
-          damping: 20,
-          stiffness: 150,
-        })
-      ])
-    ]).start();
-
-    // Animate dots with spring effect
-    dotAnimations.forEach((anim, i) => {
-      Animated.spring(anim, {
-        toValue: i === index ? 1 : 0,
-        useNativeDriver: false,
-        damping: 15,
-        stiffness: 200,
-      }).start();
-    });
-
-    // Animate text labels with spring effect
-    textLabelAnimations.forEach((anim, i) => {
-      Animated.spring(anim, {
-        toValue: i === index ? 1 : 0,
-        useNativeDriver: false,
-        damping: 15,
-        stiffness: 200,
-      }).start();
-    });
-
-    // Animate graph content with scale + fade for smoother transition
-    Animated.parallel([
-      Animated.spring(tabAnim, {
-        toValue: index,
-        useNativeDriver: true,
-        damping: 20,
-        stiffness: 150,
-      }),
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(contentFade, {
-            toValue: 0,
-            duration: 150,
-            useNativeDriver: true,
-          }),
-          Animated.timing(graphScaleAnim, {
-            toValue: 0.95,
-            duration: 150,
-            useNativeDriver: true,
-          })
-        ]),
-        Animated.parallel([
-          Animated.timing(contentFade, {
-            toValue: 1,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.spring(graphScaleAnim, {
-            toValue: 1,
-            useNativeDriver: true,
-            damping: 12,
-            stiffness: 100,
-          })
-        ])
-      ])
-    ]).start();
-  };
-
-  // Mock data for graphs since API only returns totals
-  // Graph Data
-  // Checks dashboardData first (automatic updates), otherwise defaults to realistic sample data.
-  const defaultLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-  // Realistic fallback data to show graph shape properly
-  const defaultEarningsData = [120, 250, 180, 420, 350, 280, 450];
-  const defaultRatingsData = [3.5, 4.0, 3.8, 4.5, 4.2, 4.3, 4.7];
-  const defaultBookingsData = [5, 8, 6, 12, 10, 9, 14];
-
-  const CHART_DATA = {
-    earnings: {
-      labels: dashboardData?.stats?.earningsHistory?.labels || defaultLabels,
-      datasets: [{ data: dashboardData?.stats?.earningsHistory?.data || defaultEarningsData }]
+  // Swipe Gesture Handling
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gestureState) => {
+      // Only capture if it's a clear horizontal swipe
+      return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
     },
-    ratings: {
-      labels: dashboardData?.stats?.ratingsHistory?.labels || defaultLabels,
-      datasets: [{ data: dashboardData?.stats?.ratingsHistory?.data || defaultRatingsData }]
+    onPanResponderRelease: (_, gestureState) => {
+      if (gestureState.dx > 50) {
+        // Swipe Right -> Switch to Bookings
+        handleGraphChange('bookings');
+      } else if (gestureState.dx < -50) {
+        // Swipe Left -> Switch to Ratings
+        handleGraphChange('ratings');
+      }
     },
-    bookings: {
-      labels: dashboardData?.stats?.bookingsHistory?.labels || defaultLabels,
-      datasets: [{ data: dashboardData?.stats?.bookingsHistory?.data || defaultBookingsData }]
-    }
-  };
-
-  useEffect(() => {
-    if (!isLoading) {
-      // Entrance animation with scale effect
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.spring(graphScaleAnim, {
-          toValue: 1,
-          delay: 200,
-          useNativeDriver: true,
-          damping: 15,
-          stiffness: 100,
-        }),
-        // Animate line vertically on mount (always up on first load)
-        Animated.spring(lineScaleAnim, {
-          toValue: 1,
-          delay: 300,
-          useNativeDriver: true,
-          damping: 15,
-          stiffness: 100,
-        }),
-        // Initialize horizontal position
-        Animated.timing(lineSlideAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        // L-to-R Wipe Animation
-        Animated.timing(graphRevealAnim, {
-          toValue: 1,
-          duration: 1500, // Show drawing over 1.5s
-          delay: 200,
-          useNativeDriver: false, // Layout property (width) requires JS driver
-        })
-      ]).start();
-
-      // Set initial data average
-      const initialData = CHART_DATA['earnings'].datasets[0].data;
-      const initialAvg = initialData.reduce((sum: number, val: number) => sum + val, 0) / initialData.length;
-      setPreviousDataAvg(initialAvg);
-
-      // Initialize first dot and text label as active
-      Animated.spring(dotAnimations[0], {
-        toValue: 1,
-        delay: 400,
-        useNativeDriver: false,
-        damping: 15,
-        stiffness: 200,
-      }).start();
-
-      Animated.spring(textLabelAnimations[0], {
-        toValue: 1,
-        delay: 400,
-        useNativeDriver: false,
-        damping: 15,
-        stiffness: 200,
-      }).start();
-    }
-  }, [isLoading]);
+  }), [selectedGraph]); // Re-create if needed, though handleGraphChange is stable
 
   useEffect(() => {
     if (user) {
@@ -290,25 +74,18 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
     } else {
       setIsLoading(false);
     }
+
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
   }, [user]);
 
   const fetchDashboardData = async () => {
     try {
-      // Extract provider ID with fallback
       const providerId = user?.id || user?._id;
       const email = user?.email;
-
-      if (!providerId && !email) {
-        console.warn('⚠️ No provider ID or email available');
-        setDashboardData({
-          provider: { name: user?.name || 'Provider', rating: 0, totalReviews: 0 },
-          stats: { totalEarnings: 0, pendingRequests: 0, completedBookings: 0, acceptedBookings: 0 },
-          pendingRequests: [],
-          acceptedBookings: [],
-        });
-        setIsLoading(false);
-        return;
-      }
 
       const response = await apiService.getProviderRequests(providerId, email) as any;
       if (response.success) {
@@ -319,19 +96,69 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
           // Deduplicate accepted bookings
           acceptedBookings: Array.from(new Map((response.acceptedBookings || response.data?.acceptedBookings || []).map((b: any) => [b.id || b._id, b])).values()),
         });
+        
+        // Trigger content entrance animation
+        contentAnim.setValue(0);
+        Animated.spring(contentAnim, {
+          toValue: 1,
+          tension: 40,
+          friction: 7,
+          useNativeDriver: true,
+        }).start();
       }
     } catch (err: any) {
       console.error('❌ Error fetching dashboard:', err);
-      setDashboardData({
-        provider: { name: user?.name, rating: 0, totalReviews: 0 },
-        stats: { totalEarnings: 0, pendingRequests: 0, completedBookings: 0, acceptedBookings: 0 },
-        pendingRequests: [],
-        acceptedBookings: [],
-      });
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const handleGraphChange = (type: GraphType) => {
+    if (type === selectedGraph) return;
+
+    // 1. Animate out
+    Animated.parallel([
+      Animated.timing(chartFade, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(graphTranslateX, {
+        toValue: type === 'ratings' ? -10 : 10,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.spring(tabSlideAnim, {
+        toValue: type === 'ratings' ? 1 : 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+      })
+    ]).start(() => {
+      // 2. Switch data
+      setSelectedGraph(type);
+      setChartKey(prev => prev + 1);
+      
+      // 3. Reset position for slide in
+      graphTranslateX.setValue(type === 'ratings' ? 10 : -10);
+
+      // 4. Animate in
+      Animated.parallel([
+        Animated.spring(chartFade, {
+          toValue: 1,
+          tension: 40,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.spring(graphTranslateX, {
+          toValue: 0,
+          tension: 40,
+          friction: 7,
+          useNativeDriver: true,
+        })
+      ]).start();
+    });
   };
 
   const onRefresh = () => {
@@ -339,798 +166,555 @@ export const ProviderDashboardScreen: React.FC<Props> = ({ navigation }) => {
     fetchDashboardData();
   };
 
-  const getGraphValue = () => {
-    if (selectedGraph === 'earnings') return `₹${(dashboardData?.stats?.totalEarnings ?? 0).toLocaleString()}`;
-    if (selectedGraph === 'ratings') return (dashboardData?.provider?.rating ?? 0).toFixed(1);
-    if (selectedGraph === 'bookings') return dashboardData?.stats?.completedBookings ?? 0;
-    return '0';
-  };
+  // Chart Data preparation
+  const chartData = useMemo(() => {
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const fallbackData = [0, 0, 0, 0, 0, 0, 0];
+    
+    let currentData = fallbackData;
+    let color = COLORS.primary;
 
-  const getGraphLabel = () => {
-    if (selectedGraph === 'earnings') return 'Total Profit';
-    if (selectedGraph === 'ratings') return 'Average Rating';
-    if (selectedGraph === 'bookings') return 'Jobs Completed';
-    return '';
-  };
+    if (selectedGraph === 'bookings') {
+      currentData = dashboardData?.stats?.bookingsHistory?.data || [2, 5, 3, 8, 6, 4, 7];
+      color = COLORS.primary;
+    } else {
+      currentData = dashboardData?.stats?.ratingsHistory?.data || [4.2, 4.5, 4.0, 4.8, 5.0, 4.7, 4.9];
+      color = COLORS.success;
+    }
 
-  // Removed blocking loading spinner to prevent overlap with app splash
-  /*
-  if (isLoading) {
+    return {
+      labels: dashboardData?.stats?.bookingsHistory?.labels || labels,
+      datasets: [{
+        data: currentData,
+        color: (opacity = 1) => addAlpha(color, opacity),
+        strokeWidth: 3
+      }]
+    };
+  }, [dashboardData, selectedGraph]);
+
+  if (isLoading && !dashboardData) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar barStyle="dark-content" />
         <LoadingSpinner visible={true} />
       </View>
     );
   }
-  */
+
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning,';
+    if (hour < 17) return 'Good Afternoon,';
+    return 'Good Evening,';
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-
-      {/* 1. Clean White Header */}
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      
+      {/* 1. Header Section */}
       <SafeAreaView edges={['top']} style={styles.header}>
-        <View style={styles.headerLeft}>
-          {/* App Logo */}
-          <Image
-            source={require('../../../assets/Logo.jpg')}
-            style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
-            resizeMode="contain"
-          />
-
-          <TouchableOpacity onPress={() => navigation.navigate('ProviderProfile')}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
             <Image
-              source={{ uri: user?.avatar || 'https://ui-avatars.com/api/?name=User&background=random' }}
-              style={styles.avatar}
+              source={require('../../../assets/Logo.jpg')}
+              style={styles.logo}
+              resizeMode="contain"
             />
-          </TouchableOpacity>
-          <View style={{ marginLeft: 12 }}>
-            <Text style={styles.welcomeSub}>
-              {(() => {
-                const hour = new Date().getHours();
-                if (hour < 12) return 'Good Morning,';
-                if (hour < 17) return 'Good Afternoon,';
-                return 'Good Evening,';
-              })()}
-            </Text>
-            <Text style={styles.welcomeName}>{user?.name?.split(' ')[0] || 'Partner'}</Text>
+            <View>
+              <Text style={styles.greetingText}>{greeting()}</Text>
+              <Text style={styles.usernameText}>{user?.name?.split(' ')[0] || 'Partner'}</Text>
+            </View>
           </View>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity
-            style={styles.notifBtn}
-            onPress={() => navigation.navigate('Wallet')}
-          >
-            <Ionicons name="wallet-outline" size={24} color={THEME.colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.notifBtn}
-            onPress={() => navigation.navigate('NotificationsList')}
-          >
-            <Ionicons name="notifications-outline" size={24} color={THEME.colors.textPrimary} />
-            {unreadCount > 0 && <View style={styles.redDot} />}
-          </TouchableOpacity>
+          
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              style={styles.iconBtn}
+              onPress={() => navigation.navigate('NotificationsList')}
+            >
+              <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
+              {unreadCount > 0 && <View style={styles.redDot} />}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('ProviderProfile')}>
+              <Image
+                source={{ uri: user?.avatar || 'https://ui-avatars.com/api/?name=User&background=random' }}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        contentContainerStyle={styles.scrollContent}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-
-          {/* 2. The Graph Card (Brand Colors) */}
-          <LinearGradient
-            colors={THEME.colors.primaryGradient} // Midnight -> Indigo
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.graphCard}
-          >
-            {/* Card Header: Value & Selector */}
-            <View style={styles.cardHeader}>
+          
+          {/* 2. Performance Analytics Card */}
+          <Animated.View style={[styles.analyticsCard, { transform: [{ translateY: contentAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+            <View style={styles.analyticsHeader}>
               <View>
-                <Text style={styles.cardLabel}>{getGraphLabel()}</Text>
-                <Text style={styles.cardValue}>{getGraphValue()}</Text>
-                <View style={styles.growthBadge}>
-                  <Ionicons name="trending-up" size={12} color="#FFFFFF" />
-                  <Text style={styles.growthText}>+15% from last week</Text>
-                </View>
+                <Text style={styles.cardTitle}>Performance Analytics</Text>
+                <Text style={styles.cardSubTitle}>Real-time activity tracking</Text>
               </View>
-
-              {/* Visual Tab Indicator (Dots) with Animation */}
-              <View style={styles.tabDots}>
-                {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type, idx) => {
-                  const isActive = selectedGraph === type;
-                  const dotWidth = dotAnimations[idx].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [8, 20]
-                  });
-                  const dotOpacity = dotAnimations[idx].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.3, 1]
-                  });
-
-                  return (
-                    <TouchableOpacity
-                      key={type}
-                      onPress={() => handleGraphChange(type, idx)}
-                      activeOpacity={0.7}
-                    >
-                      <Animated.View
-                        style={[
-                          styles.dotBtn,
-                          {
-                            width: dotWidth,
-                            opacity: dotOpacity,
-                          }
-                        ]}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Chart with Smooth Fade + Scale Animation */}
-            <Animated.View
-              style={{
-                opacity: contentFade,
-                alignItems: 'center',
-                transform: [
-                  {
-                    scale: graphScaleAnim
-                  },
-                  {
-                    translateX: tabAnim.interpolate({
-                      inputRange: [0, 1, 2],
-                      outputRange: [0, 0, 0], // Keep centered
-                    })
-                  }
-                ]
-              }}
-            >
-              {/* L-to-R Reveal Animation Wrapper */}
-              <Animated.View
-                style={{
-                  width: graphRevealAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, width - 80]
-                  }),
-                  overflow: 'hidden', // Clips the chart as it "draws"
-                  alignItems: 'flex-start', // Anchors chart to left
-                }}
-              >
-                {/* Wrapper for vertical line scaling animation */}
-                <Animated.View
-                  style={{
-                    width: width - 80, // Force full width for inner content
-                    transform: [
-                      { scaleY: lineScaleAnim },
-                      { translateX: lineSlideAnim },
-                    ],
-                  }}
+              <View style={styles.graphToggle}>
+                {/* Animated Background for Toggle */}
+                <Animated.View 
+                  style={[
+                    styles.toggleIndicator, 
+                    { 
+                      transform: [{ 
+                        translateX: tabSlideAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 60] // Width of one button
+                        }) 
+                      }] 
+                    }
+                  ]} 
+                />
+                <TouchableOpacity 
+                  onPress={() => handleGraphChange('bookings')}
+                  style={styles.toggleBtn}
+                  activeOpacity={0.7}
                 >
-                  <LineChart
-                    key={chartKey} // Force re-render for animation
-                    data={CHART_DATA[selectedGraph]}
-                    width={width - 80}
-                    height={160}
-                    yAxisLabel=""
-                    yAxisSuffix=""
-                    withInnerLines={false}
-                    withOuterLines={false}
-                    withVerticalLabels={false}
-                    withHorizontalLabels={false}
-                    withDots={true}
-                    withShadow={true}
-                    fromZero={true}
-                    segments={4}
-                    onDataPointClick={(data) => {
-                      const value = data.value;
-                      const label = CHART_DATA[selectedGraph].labels[data.index];
-                      const formattedValue = selectedGraph === 'earnings'
-                        ? `₹${value}`
-                        : selectedGraph === 'ratings'
-                          ? value.toFixed(1)
-                          : value.toString();
-
-                      // Position tooltip to the right of the dot
-                      setTooltip({
-                        visible: true,
-                        value: formattedValue,
-                        label: label,
-                        x: data.x + 15, // Position to the right of the dot
-                        y: data.y - 25, // Slightly above to center vertically
-                      });
-
-                      // Auto-hide after 2.5 seconds
-                      setTimeout(() => setTooltip(null), 2500);
-                    }}
-                    chartConfig={{
-                      backgroundColor: 'transparent',
-                      backgroundGradientFrom: 'transparent',
-                      backgroundGradientTo: 'transparent',
-                      backgroundGradientFromOpacity: 0,
-                      backgroundGradientToOpacity: 0,
-                      fillShadowGradientFrom: '#FFFFFF',
-                      fillShadowGradientTo: '#FFFFFF',
-                      fillShadowGradientFromOpacity: 0.6,
-                      fillShadowGradientToOpacity: 0.05,
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.8})`,
-                      style: { borderRadius: 20 },
-                      propsForDots: {
-                        r: "6",
-                        strokeWidth: "3",
-                        stroke: "#3B82F6",
-                        fill: "#FFFFFF"
-                      },
-                      propsForBackgroundLines: {
-                        strokeWidth: 0,
-                      }
-                    }}
-                    bezier
-                    style={styles.chart}
-                  />
-                </Animated.View>
-              </Animated.View>
-            </Animated.View>
-
-            {/* Tab Buttons (Text) at bottom of card with Animation */}
-            <View style={styles.textTabs}>
-              {(['earnings', 'ratings', 'bookings'] as GraphType[]).map((type, idx) => {
-                const scale = textLabelAnimations[idx].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 1.08]
-                });
-                const backgroundColor = textLabelAnimations[idx].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['rgba(255,255,255,0.1)', '#FFFFFF']
-                });
-
-                return (
-                  <TouchableOpacity
-                    key={type}
-                    onPress={() => handleGraphChange(type, idx)}
-                    activeOpacity={0.7}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.textTabBtn,
-                        {
-                          backgroundColor,
-                          transform: [{ scale }]
-                        }
-                      ]}
-                    >
-                      <Text style={[
-                        styles.textTabLabel,
-                        selectedGraph === type && styles.textTabLabelActive
-                      ]}>
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </Text>
-                    </Animated.View>
-                  </TouchableOpacity>
-                );
-              })}
+                  <Text style={[styles.toggleText, selectedGraph === 'bookings' && styles.toggleTextActive]}>Jobs</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => handleGraphChange('ratings')}
+                  style={styles.toggleBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.toggleText, selectedGraph === 'ratings' && styles.toggleTextActive]}>Rating</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </LinearGradient>
 
-          {/* Tooltip */}
-          {tooltip?.visible && (
-            <View
+            <Animated.View 
+              {...panResponder.panHandlers}
               style={[
-                styles.tooltip,
-                {
-                  position: 'absolute',
-                  left: tooltip.x,
-                  top: tooltip.y,
+                styles.chartWrapper, 
+                { 
+                  opacity: chartFade,
+                  transform: [{ translateX: graphTranslateX }]
                 }
               ]}
             >
-              <View style={styles.tooltipCard}>
-                <Text style={styles.tooltipLabel}>{tooltip.label}</Text>
-                <Text style={styles.tooltipValue}>{tooltip.value}</Text>
-                {/* Small arrow pointing left to the dot */}
-                <View style={styles.tooltipArrow} />
-              </View>
-            </View>
-          )}
+              <LineChart
+                key={chartKey}
+                data={chartData}
+                width={width - SPACING.lg * 3}
+                height={180}
+                chartConfig={{
+                  backgroundColor: COLORS.white,
+                  backgroundGradientFrom: COLORS.white,
+                  backgroundGradientTo: COLORS.white,
+                  decimalPlaces: selectedGraph === 'ratings' ? 1 : 0,
+                  color: (opacity = 1) => addAlpha(selectedGraph === 'bookings' ? COLORS.primary : COLORS.success, opacity),
+                  labelColor: (opacity = 1) => COLORS.textTertiary,
+                  propsForDots: {
+                    r: "4",
+                    strokeWidth: "2",
+                    stroke: "#fff"
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: "",
+                    stroke: COLORS.gray100,
+                  }
+                }}
+                bezier
+                style={styles.chart}
+                withInnerLines={true}
+                withOuterLines={false}
+                withVerticalLines={false}
+                fromZero={true}
+              />
+            </Animated.View>
+          </Animated.View>
 
-          {/* 3. Recent Bookings List */}
-          <View style={styles.listHeader}>
-            <Text style={styles.sectionTitle}>Recent Bookings</Text>
+          {/* 3. Daily Insight Card */}
+          <View style={styles.insightCard}>
+            <View style={styles.insightIconCircle}>
+              <Ionicons name="sparkles" size={18} color={COLORS.primary} />
+            </View>
+            <View style={styles.insightContent}>
+              <Text style={styles.insightText}>
+                You've completed <Text style={styles.boldText}>{dashboardData?.stats?.completedBookings || 0} jobs</Text> this week. Keep it up!
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} />
+          </View>
+
+          {/* 4. Today's Schedule Timeline */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Schedule</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ProviderBookings')}>
-              <Text style={styles.seeAll}>See All</Text>
+              <Text style={styles.seeAllText}>Manage</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.bookingsList}>
-            {(dashboardData?.acceptedBookings?.slice(0, 5) || []).length > 0 ? (
-              (dashboardData?.acceptedBookings?.slice(0, 5) || []).map((item: any, index: number) => (
-                <BookingListItem
-                  key={item.id || item._id}
-                  item={item}
-                  index={index}
-                  navigation={navigation}
-                />
+          <View style={styles.timelineContainer}>
+            {dashboardData?.acceptedBookings && dashboardData.acceptedBookings.length > 0 ? (
+              dashboardData.acceptedBookings.slice(0, 5).map((booking: any, index: number) => (
+                <View key={booking.id || booking._id} style={styles.timelineItem}>
+                  {/* Left Timeline Line */}
+                  <View style={styles.timelineLeft}>
+                    <View style={[styles.timelineDot, { backgroundColor: index === 0 ? COLORS.primary : COLORS.textTertiary }]} />
+                    {index < 4 && <View style={styles.timelineLine} />}
+                  </View>
+
+                  {/* Right Job Card */}
+                  <View style={styles.scheduleCard}>
+                    <View style={styles.cardTop}>
+                      <View style={styles.customerInfo}>
+                        <Image
+                          source={{ uri: booking.customerAvatar || `https://ui-avatars.com/api/?name=${booking.customerName || 'C'}&background=random` }}
+                          style={styles.cardAvatar}
+                        />
+                        <View>
+                          <Text style={styles.cardCustomerName}>{booking.customerName || 'Customer'}</Text>
+                          <Text style={styles.cardServiceType}>{booking.serviceName || 'Service'}</Text>
+                        </View>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: addAlpha(booking.status === 'completed' ? COLORS.success : COLORS.primary, 0.1) }]}>
+                        <Text style={[styles.statusText, { color: booking.status === 'completed' ? COLORS.success : COLORS.primary }]}>
+                          {booking.status?.toUpperCase() || 'CONFIRMED'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardBottom}>
+                      <View style={styles.timeInfo}>
+                        <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+                        <Text style={styles.timeText}>
+                          {booking.bookingDate ? format(parseISO(booking.bookingDate), 'hh:mm a') : '09:00 AM'} - {' '}
+                          {booking.bookingDate ? format(new Date(new Date(parseISO(booking.bookingDate)).getTime() + 2*60*60*1000), 'hh:mm a') : '11:00 AM'}
+                        </Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.ghostBtn}
+                        onPress={() => navigation.navigate('BookingDetail', { booking })}
+                      >
+                        <Text style={styles.ghostBtnText}>Directions</Text>
+                        <Ionicons name="navigate-circle-outline" size={16} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
               ))
             ) : (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>No recent bookings</Text>
+              <View style={styles.emptyState}>
+                <LottieView
+                  source={LottieAnimations.emptyCart}
+                  autoPlay
+                  loop
+                  style={{ width: 120, height: 120 }}
+                />
+                <Text style={styles.emptyText}>No scheduled jobs for today</Text>
               </View>
             )}
           </View>
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 60 }} />
         </Animated.View>
       </ScrollView>
     </View>
   );
 };
 
-const BookingListItem = ({ item, index, navigation }: { item: any; index: number; navigation: any }) => {
-  const animatedValue = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(animatedValue, {
-        toValue: 1,
-        duration: 500,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(animatedValue, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        delay: index * 100,
-        useNativeDriver: true,
-      })
-    ]).start();
-  }, []);
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'accepted': return '#10B981';
-      case 'pending': return '#F59E0B';
-      case 'completed': return '#3B82F6';
-      default: return '#64748B';
-    }
-  };
-
-  return (
-    <Animated.View
-      style={{
-        opacity: animatedValue,
-        marginBottom: 16,
-        transform: [
-          { translateY: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) },
-          { scale: animatedValue.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }
-        ]
-      }}
-    >
-      <TouchableOpacity
-        onPress={() => navigation.navigate('ProviderBookings')} // Navigate to full list
-        activeOpacity={0.9}
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          overflow: 'visible', // For shadows
-          shadowColor: '#64748B',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 3,
-        }}
-      >
-        {/* Ticket Header (Service & Price) */}
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: '#F1F5F9',
-          borderStyle: 'dashed'
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{
-              width: 36, height: 36, borderRadius: 10,
-              backgroundColor: '#F0F9FF', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Ionicons name="calendar" size={18} color="#0EA5E9" />
-            </View>
-            <View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>{item.serviceName || 'Service'}</Text>
-              <Text style={{ fontSize: 11, color: '#64748B' }}>{new Date(item.bookingDate || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric' })}</Text>
-            </View>
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A' }}>₹{item.totalPrice || 0}</Text>
-        </View>
-
-        {/* Ticket Body (Customer) */}
-        <View style={{ padding: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {item.customerAvatar ? (
-                <Image source={{ uri: item.customerAvatar }} style={{ width: 24, height: 24, borderRadius: 12 }} />
-              ) : (
-                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748B' }}>{item.customerName?.charAt(0) || 'C'}</Text>
-                </View>
-              )}
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#334155' }}>{item.customerName || 'Customer'}</Text>
-            </View>
-
-            <View style={{
-              paddingHorizontal: 8, paddingVertical: 4,
-              backgroundColor: getStatusColor(item.status) + '15',
-              borderRadius: 6
-            }}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: getStatusColor(item.status), textTransform: 'uppercase' }}>
-                {item.status || 'Pending'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Ticket Notches */}
-        <View style={{ position: 'absolute', top: 58, left: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: '#F8FAFC' }} />
-        <View style={{ position: 'absolute', top: 58, right: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: '#F8FAFC' }} />
-
-      </TouchableOpacity>
-    </Animated.View>
-  );
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background,
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.colors.background,
+    backgroundColor: COLORS.background,
   },
-
-  // Header
   header: {
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: THEME.spacing.lg,
-    paddingBottom: THEME.spacing.md,
-    backgroundColor: THEME.colors.background,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  logo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
   },
-  welcomeSub: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-    marginBottom: 2,
+  greetingText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
-  welcomeName: {
-    fontSize: 16,
+  usernameText: {
+    fontSize: 18,
     fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    color: COLORS.text,
   },
-  notifBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+  headerRight: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    gap: 16,
+  },
+  iconBtn: {
+    padding: 4,
+    position: 'relative',
   },
   redDot: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 4,
+    right: 4,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: THEME.colors.error,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    backgroundColor: COLORS.error,
+    borderWidth: 1.5,
+    borderColor: COLORS.white,
   },
-
-  content: {
-    padding: THEME.spacing.lg,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray100,
   },
-
-  // Graph Card
-  graphCard: {
-    borderRadius: THEME.radius.xl,
-    padding: THEME.spacing.lg,
-    minHeight: 300,
-    shadowColor: '#60A5FA',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 8,
-    marginBottom: THEME.spacing.xl,
+  scrollContent: {
+    padding: SPACING.lg,
   },
-  cardHeader: {
+  analyticsCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.lg,
+    ...SHADOWS.md,
+    marginBottom: SPACING.lg,
+  },
+  analyticsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: THEME.spacing.md,
-  },
-  cardLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  cardValue: {
-    color: '#FFF',
-    fontSize: 32,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  growthBadge: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    gap: 4,
+    marginBottom: SPACING.lg,
   },
-  growthText: {
-    color: '#FFF',
-    fontSize: 11,
+  cardTitle: {
+    fontSize: 16,
     fontWeight: '700',
+    color: COLORS.text,
   },
-  tabDots: {
+  cardSubTitle: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    marginTop: 2,
+  },
+  graphToggle: {
     flexDirection: 'row',
-    gap: 6,
-    paddingTop: 8,
+    backgroundColor: COLORS.gray100,
+    borderRadius: 8,
+    padding: 3,
+    position: 'relative',
+    width: 126, // 60 * 2 + padding
   },
-  dotBtn: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFF',
+  toggleIndicator: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    width: 60,
+    height: 28, // Matches button height approximately
+    backgroundColor: COLORS.white,
+    borderRadius: 6,
+    ...SHADOWS.sm,
   },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
-    paddingRight: 0,
-    paddingLeft: 0,
-  },
-  textTabs: {
-    flexDirection: 'row',
+  toggleBtn: {
+    width: 60,
+    height: 28,
     justifyContent: 'center',
-    gap: 16,
-    marginTop: 8,
+    alignItems: 'center',
+    zIndex: 2,
   },
-  textTabBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  textTabLabel: {
-    color: 'rgba(255,255,255,0.7)',
+  toggleText: {
     fontSize: 12,
     fontWeight: '600',
+    color: COLORS.textSecondary,
   },
-  textTabLabelActive: {
-    color: '#0C4A6E', // Darker sky blue for contrast
+  toggleTextActive: {
+    color: COLORS.primary,
   },
-
-  // Grid
-  gridContainer: {
+  chartWrapper: {
+    alignItems: 'center',
+    marginLeft: -15,
+  },
+  chart: {
+    borderRadius: 16,
+  },
+  insightCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    marginBottom: THEME.spacing.xl,
-  },
-  gridItem: {
-    width: (width - 48 - 16) / 2, // 2 columns
-    backgroundColor: '#FFF',
-    borderRadius: THEME.radius.lg,
-    padding: 16,
-    height: 140,
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    alignItems: 'center',
+    backgroundColor: addAlpha(COLORS.primary, 0.05),
+    borderRadius: RADIUS.medium,
+    padding: SPACING.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: addAlpha(COLORS.primary, 0.1),
+    marginBottom: SPACING.xl,
   },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+  insightIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  gridLabel: {
+  insightContent: {
+    flex: 1,
+  },
+  insightText: {
     fontSize: 13,
-    color: THEME.colors.textSecondary,
-    marginBottom: 4,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
   },
-  gridValue: {
-    fontSize: 22,
+  boldText: {
     fontWeight: '700',
-    color: THEME.colors.textPrimary,
-    marginBottom: 4,
+    color: COLORS.text,
   },
-  gridDate: {
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
-  },
-
-  // Recent Btn
-  recentBtn: {
-    backgroundColor: THEME.colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: THEME.radius.lg,
-    gap: 8,
-    shadowColor: '#60A5FA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  recentBtnText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-
-  // List Styles
-  listHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16, // More breathing room
-    marginTop: 12,
+    marginBottom: SPACING.lg,
     paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 20, // Larger
-    fontWeight: '800', // Bolder
-    color: '#0F172A', // Darkest Slate
-    letterSpacing: -0.5,
-  },
-  seeAll: {
-    color: THEME.colors.primary,
+    fontSize: 18,
     fontWeight: '700',
+    color: COLORS.text,
+  },
+  seeAllText: {
     fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
-  bookingsList: {
-    gap: 16, // More spacing between cards
-    marginBottom: THEME.spacing.xl,
+  timelineContainer: {
+    paddingLeft: 8,
   },
-  bookingRow: {
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 0,
+  },
+  timelineLeft: {
+    width: 20,
+    alignItems: 'center',
+    paddingTop: 10,
+  },
+  timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    zIndex: 2,
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: COLORS.gray200,
+    marginVertical: 4,
+  },
+  scheduleCard: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    padding: SPACING.md,
+    ...SHADOWS.sm,
+    marginBottom: 20,
+    marginLeft: 10,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  customerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 18, // More internal padding
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20, // Softer corners
-    // No Border - Modern Shadow Only
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 6,
+    gap: 12,
   },
-  bookingIconCircle: {
+  cardAvatar: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#DBEAFE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
+    backgroundColor: COLORS.gray100,
   },
-  bookingDetails: {
-    flex: 1,
-  },
-  bookingService: {
+  cardCustomerName: {
     fontSize: 15,
     fontWeight: '700',
-    color: THEME.colors.textPrimary,
-    marginBottom: 2,
+    color: COLORS.text,
   },
-  bookingCustomer: {
+  cardServiceType: {
     fontSize: 13,
-    color: THEME.colors.textSecondary,
+    color: COLORS.textSecondary,
   },
-  bookingMeta: {
-    alignItems: 'flex-end',
-    gap: 4,
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  bookingPrice: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: THEME.colors.textPrimary,
+  statusText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  bookingTime: {
-    fontSize: 12,
-    color: THEME.colors.textSecondary,
-  },
-  emptyBox: {
-    padding: 24,
+  cardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderStyle: 'dashed',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray100,
+    paddingTop: 12,
+  },
+  timeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  timeText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  ghostBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  ghostBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: SPACING.xxl,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.large,
+    ...SHADOWS.sm,
   },
   emptyText: {
-    color: THEME.colors.textSecondary,
     fontSize: 14,
-  },
-
-  // Tooltip Styles
-  tooltip: {
-    zIndex: 1000,
-  },
-  tooltipCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 70,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(14, 165, 233, 0.2)',
-  },
-  tooltipLabel: {
-    color: '#3B82F6',
-    fontSize: 10,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  tooltipValue: {
-    color: '#0C4A6E',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  tooltipArrow: {
-    position: 'absolute',
-    left: -6,
-    top: '50%',
-    marginTop: -6,
-    width: 0,
-    height: 0,
-    borderTopWidth: 6,
-    borderBottomWidth: 6,
-    borderRightWidth: 6,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderRightColor: '#FFFFFF',
+    color: COLORS.textTertiary,
+    marginTop: 12,
   },
 });

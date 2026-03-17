@@ -29,8 +29,22 @@ import {
   GRADIENTS,
   addAlpha
 } from '../../utils/theme';
+import { GlassCard } from '../../components/ui/GlassCard';
+import { NeoButton } from '../../components/ui/NeoButton';
+import { LiquidBackground } from '../../components/ui/LiquidBackground';
+import { LottieAnimations } from '../../utils/lottieAnimations';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withSpring,
+  withTiming,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const { width } = Dimensions.get('window');
 
@@ -48,15 +62,45 @@ type Props = {
   }, 'params'>;
 };
 
+const AnimatedLetter = ({ letter, index, style }: { letter: string, index: number, style?: any }) => {
+  const animatedValue = useSharedValue(0);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withDelay(index * 100, withTiming(1, { duration: 600 }));
+    animatedValue.value = withDelay(index * 100, withSpring(1, { damping: 12 }));
+  }, [index]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+      transform: [
+        { translateY: interpolate(animatedValue.value, [0, 1], [20, 0]) },
+      ],
+    };
+  });
+
+  return (
+    <Reanimated.View style={[animatedStyle, style]}>
+      <Text style={styles.brandLetter}>{letter}</Text>
+    </Reanimated.View>
+  );
+};
+
 export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { width: screenWidth, height: screenHeight, isTablet } = useResponsive();
   const insets = useSafeAreaInsets();
-  const identifier = route.params?.identifier || route.params?.email || '';
-  const identifierType = route.params?.identifierType || 'email';
-  const { isSignup, isPartner, signupData } = route.params;
+  const params = route.params || {};
+  const identifier = params.identifier || params.email || '';
+  const identifierType = params.identifierType || 'email';
+  const isSignup = params.isSignup;
+  const isPartner = params.isPartner;
+  const signupData = params.signupData;
 
   const [otp, setOTP] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const { login, loginAsProvider, sendOTP, sendProviderOTP } = useAuth();
 
   // Animation refs
@@ -122,17 +166,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background Gradient Mesh */}
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={['#F0F9FF', '#F8FAFC', '#FFFFFF']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        <View style={[styles.decorativeCircle, { top: -100, right: -50, backgroundColor: addAlpha(COLORS.primary, 0.05) }]} />
-        <View style={[styles.decorativeCircle, { bottom: 100, left: -100, width: 300, height: 300, backgroundColor: addAlpha(COLORS.accentYellow, 0.05) }]} />
-      </View>
+      <LiquidBackground mode="light" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -165,61 +199,80 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             {/* Header */}
             <View style={styles.header}>
-              <View style={[styles.logoContainer, SHADOWS.sm]}>
-                <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
+              <View style={styles.brandNameContainer}>
+                {"YANN".split('').map((item, idx) => (
+                  <AnimatedLetter key={"Verify-" + idx} letter={item} index={idx} />
+                ))}
               </View>
-              <Text style={styles.title}>Verify Code</Text>
+              <View style={styles.taglineRow}>
+                <View style={styles.taglineLine} />
+                <Text style={styles.tagline}>SIGNATURE LUXURY</Text>
+                <View style={styles.taglineLine} />
+              </View>
+
+              <Text style={styles.title}>Security Verification</Text>
               <Text style={styles.subtitle}>
-                We've sent a code to{' '}
+                A premium code has been sent to{"\n"}
                 <Text style={styles.highlight}>{identifier}</Text>
               </Text>
             </View>
 
-            {/* OTP Input Card */}
-            <View style={[styles.formCard, SHADOWS.md]}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>ENTER VERIFICATION CODE</Text>
-                <View style={styles.inputContainer}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="000000"
-                    placeholderTextColor={COLORS.textTertiary}
-                    value={otp}
-                    onChangeText={setOTP}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    editable={!isLoading}
-                    autoFocus
-                    textContentType={identifierType === 'phone' ? 'oneTimeCode' : 'none'}
-                    autoComplete={identifierType === 'phone' ? 'sms-otp' : 'off'}
-                    importantForAutofill={identifierType === 'phone' ? 'auto' : 'no'}
-                  />
-                  <View style={styles.inputIcon}>
-                    <Ionicons name="keypad-outline" size={20} color={COLORS.textTertiary} />
+            {/* OTP Form Panel */}
+            <GlassCard 
+              intensity={85} 
+              style={styles.formCard} 
+              enableTilt 
+              glowColor="rgba(59, 130, 246, 0.05)"
+            >
+              <View style={styles.formContainer}>
+                <View style={[
+                  styles.fieldGlass,
+                  focusedField === 'otp' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
+                ]}>
+                  <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
+                  <View style={styles.inputRow}>
+                    <View style={[styles.iconCircle, focusedField === 'otp' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                      <Ionicons 
+                        name="shield-checkmark-outline" 
+                        size={18} 
+                        color={focusedField === 'otp' ? COLORS.primary : COLORS.textTertiary} 
+                      />
+                    </View>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="000 000"
+                        placeholderTextColor={addAlpha(COLORS.textTertiary, 0.4)}
+                        value={otp}
+                        onChangeText={setOTP}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        editable={!isLoading}
+                        autoFocus
+                        onFocus={() => setFocusedField('otp')}
+                        onBlur={() => setFocusedField(null)}
+                        textContentType={identifierType === 'phone' ? 'oneTimeCode' : 'none'}
+                        autoComplete={identifierType === 'phone' ? 'sms-otp' : 'off'}
+                      />
+                    </View>
                   </View>
                 </View>
-              </View>
 
-              <TouchableOpacity
-                style={[styles.verifyButton, (isLoading || otp.length < 4) && styles.buttonDisabled]}
-                onPress={handleVerifyOTP}
-                disabled={isLoading || otp.length < 4}
-                activeOpacity={0.8}
-              >
-                {isLoading ? (
-                  <LoadingSpinner visible={true} size="small" color="#FFF" />
-                ) : (
-                  <>
-                    <Text style={styles.buttonText}>Verify Account</Text>
-                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+                <NeoButton
+                  title={isLoading ? "VERIFYING..." : "VERIFY ACCOUNT"}
+                  onPress={handleVerifyOTP}
+                  disabled={isLoading || otp.length < 4}
+                  variant="primary"
+                  size="large"
+                  style={styles.verifyButton}
+                  icon={!isLoading && <Ionicons name="checkmark-circle" size={18} color="#fff" />}
+                />
+              </View>
+            </GlassCard>
 
             {/* Resend Options */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Didn't receive code?</Text>
+              <Text style={styles.footerText}>Haven't received the code?</Text>
               <View style={styles.resendActions}>
                 <TouchableOpacity
                   onPress={handleResendOTP}
@@ -227,7 +280,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                   style={styles.resendButton}
                 >
                   <Text style={[styles.resendLink, (resending || isLoading) && styles.disabledText]}>
-                    {resending ? 'Sending...' : 'Resend SMS'}
+                    {resending ? 'SENDING...' : 'RESEND SMS'}
                   </Text>
                 </TouchableOpacity>
 
@@ -238,7 +291,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                     try {
                       setIsLoading(true);
                       await apiService.requestCallOTP(identifier);
-                      Alert.alert('Call Requested', 'You will receive a call shortly with your code.');
+                      Alert.alert('Call Requested', 'Our concierge will call you shortly with your code.');
                     } catch (error: any) {
                       Alert.alert('Error', error.message || 'Failed to request call');
                     } finally {
@@ -249,7 +302,7 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                   style={styles.resendButton}
                 >
                   <Text style={[styles.resendLink, isLoading && styles.disabledText]}>
-                    Get a Call
+                    GET A CALL
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -264,162 +317,166 @@ export const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  decorativeCircle: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    backgroundColor: '#F6F8FC',
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: 24,
   },
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.white,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.xl,
-    ...SHADOWS.sm,
-    zIndex: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
   },
   content: {
     flex: 1,
-    zIndex: 1,
+    paddingTop: 10,
   },
   header: {
-    marginBottom: SPACING.xxl,
     alignItems: 'center',
+    marginBottom: 40,
   },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.xlarge,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  title: {
-    fontSize: TYPOGRAPHY.size.heading,
-    fontWeight: TYPOGRAPHY.weight.heavy,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.medium,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: SPACING.xl,
-  },
-  highlight: {
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.primary,
-  },
-  formCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.xlarge,
-    padding: SPACING.xl,
-    marginBottom: SPACING.xxl,
-    ...SHADOWS.md,
-  },
-  inputGroup: {
-    marginBottom: SPACING.xl,
-  },
-  label: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: TYPOGRAPHY.weight.semibold,
-    color: COLORS.textTertiary,
-    marginBottom: SPACING.sm,
-    letterSpacing: 1,
-  },
-  inputContainer: {
-    position: 'relative',
-    height: 60,
-  },
-  inputIcon: {
-    position: 'absolute',
-    right: SPACING.lg,
-    top: 20,
-    zIndex: 2,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: COLORS.background, // F8F9FB
-    borderRadius: RADIUS.large,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: SPACING.lg,
-    fontSize: 24, // Large text for OTP
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: 8,
-    textAlign: 'center',
-  },
-  verifyButton: {
-    backgroundColor: COLORS.primary,
-    height: 56,
-    borderRadius: RADIUS.medium,
+  brandNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.sm,
-    ...SHADOWS.md,
+    gap: 8,
+    marginBottom: 8,
   },
-  buttonDisabled: {
-    opacity: 0.7,
-    backgroundColor: COLORS.disabled,
+  brandLetter: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -1,
   },
-  buttonText: {
-    fontSize: TYPOGRAPHY.size.lg,
-    fontWeight: TYPOGRAPHY.weight.bold,
-    color: COLORS.white,
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 12,
+  },
+  taglineLine: {
+    width: 24,
+    height: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.2)',
+  },
+  tagline: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+    letterSpacing: 2,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  highlight: {
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  formContainer: {
+    padding: 4,
+  },
+  formCard: {
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 40,
+  },
+  fieldGlass: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderRadius: 28,
+    marginBottom: 12,
+  },
+  inputLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.textTertiary,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  input: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#0F172A',
+    height: 44,
+    letterSpacing: 10,
+    padding: 0,
+  },
+  verifyButton: {
+    marginTop: 8,
   },
   footer: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    paddingBottom: 20,
   },
   footerText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.medium,
+    fontSize: 14,
     color: COLORS.textTertiary,
-    marginBottom: SPACING.md,
+    fontWeight: '500',
+    marginBottom: 16,
   },
   resendActions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: RADIUS.large,
-    ...SHADOWS.sm,
+    gap: 16,
   },
   resendButton: {
-    paddingVertical: SPACING.xs,
+    paddingVertical: 8,
   },
   resendLink: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: TYPOGRAPHY.weight.semibold,
+    fontSize: 12,
+    fontWeight: '800',
     color: COLORS.primary,
+    letterSpacing: 1,
   },
   disabledText: {
     color: COLORS.textTertiary,
+    opacity: 0.5,
   },
   dotSeparator: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
-    marginHorizontal: SPACING.md,
+    backgroundColor: 'rgba(15, 23, 42, 0.1)',
   },
 });

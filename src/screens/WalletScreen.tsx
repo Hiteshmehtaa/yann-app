@@ -394,7 +394,13 @@ export const WalletScreen = ({ navigation }: any) => {
     const statusLabel = isProvider ? (isDebit ? 'Expense' : 'Income') : (isDebit ? 'Debit' : 'Credit');
 
     return (
-      <View key={item._id} style={styles.transactionCard}>
+      <Animated.View
+        key={item._id}
+        style={[
+          styles.transactionCard,
+          { opacity: listOpacity, transform: [{ translateY: listTranslateY }] }
+        ]}
+      >
         <View style={[styles.transactionIconCircle, { backgroundColor: bgColor }]}>
           <MaterialCommunityIcons name={iconName} size={20} color={tintColor} />
         </View>
@@ -420,7 +426,7 @@ export const WalletScreen = ({ navigation }: any) => {
             </Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -652,21 +658,23 @@ export const WalletScreen = ({ navigation }: any) => {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
 
-        {/* Static section — wallet card, stats, quick actions. Never re-renders on filter change */}
-        {renderStaticTop()}
-
-        {/* Animated wrapper — only wraps the transaction list */}
-        <Animated.View style={[styles.animatedListWrapper, { opacity: listOpacity, transform: [{ translateY: listTranslateY }] }]}>
-          <FlatList
-            data={activeTransactions}
+        {/* Entire screen content is now within the scrollable FlatList */}
+        <FlatList
+          style={{ flex: 1 }}
+          data={activeTransactions}
             renderItem={renderTransaction}
             keyExtractor={(item) => item._id}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
-            ListHeaderComponent={renderListHeader}
+            ListHeaderComponent={() => (
+              <>
+                {renderStaticTop()}
+                {renderListHeader()}
+              </>
+            )}
             ListEmptyComponent={
               !isLoading ? (
-                <View style={styles.emptyState}>
+                <Animated.View style={[styles.emptyState, { opacity: listOpacity, transform: [{ translateY: listTranslateY }] }]}>
                   <LottieView
                     source={LottieAnimations.emptyCart}
                     autoPlay
@@ -681,7 +689,7 @@ export const WalletScreen = ({ navigation }: any) => {
                       ? 'Your payments and top-ups will appear here'
                       : `Switch filter to see other transactions`}
                   </Text>
-                </View>
+                </Animated.View>
               ) : null
             }
             onEndReached={() => {
@@ -698,7 +706,7 @@ export const WalletScreen = ({ navigation }: any) => {
                   <Text style={styles.loadMoreText}>Loading more...</Text>
                 </View>
               ) : hasMore && activeFilter === 'all' && transactions.length > 0 ? (
-                <View style={styles.paginationFooter}>
+                <Animated.View style={[styles.paginationFooter, { opacity: listOpacity }]}>
                   <TouchableOpacity
                     style={styles.loadMoreBtn}
                     onPress={() => {
@@ -709,13 +717,13 @@ export const WalletScreen = ({ navigation }: any) => {
                     <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
                     <Text style={styles.loadMoreBtnText}>Load more</Text>
                   </TouchableOpacity>
-                </View>
+                </Animated.View>
               ) : transactions.length > 0 ? (
-                <View style={styles.endOfListFooter}>
+                <Animated.View style={[styles.endOfListFooter, { opacity: listOpacity }]}>
                   <View style={styles.endDivider} />
                   <Text style={styles.endOfListText}>You're all caught up</Text>
                   <View style={styles.endDivider} />
-                </View>
+                </Animated.View>
               ) : null
             }
             refreshControl={
@@ -731,8 +739,6 @@ export const WalletScreen = ({ navigation }: any) => {
               />
             }
           />
-        </Animated.View>
-
         {/* FAB - only for customers */}
         {user?.role !== 'provider' && (
           <AnimatedButton style={styles.fab} onPress={openAmountModal}>

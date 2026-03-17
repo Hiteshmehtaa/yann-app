@@ -30,10 +30,50 @@ import {
   GRADIENTS,
   addAlpha
 } from '../../utils/theme';
+import { GlassCard } from '../../components/ui/GlassCard';
+import { NeoButton } from '../../components/ui/NeoButton';
+import { LiquidBackground } from '../../components/ui/LiquidBackground';
+import { LottieAnimations } from '../../utils/lottieAnimations';
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+  interpolate,
+} from 'react-native-reanimated';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useResponsive } from '../../hooks/useResponsive';
 
 const { width } = Dimensions.get('window');
+
+const AnimatedLetter = ({ letter, index, style }: { letter: string, index: number, style?: any }) => {
+  const animatedValue = useSharedValue(0);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withDelay(index * 100, withTiming(1, { duration: 600 }));
+    animatedValue.value = withDelay(index * 100, withSpring(1, { damping: 12 }));
+  }, [index]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+      transform: [
+        { translateY: interpolate(animatedValue.value, [0, 1], [20, 0]) },
+      ],
+    };
+  });
+
+  return (
+    <Reanimated.View style={[animatedStyle, style]}>
+      <Text style={styles.brandLetter}>{letter}</Text>
+    </Reanimated.View>
+  );
+};
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -128,23 +168,13 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const inputType = detectInputType(identifier);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background Gradient Mesh */}
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={['#F0F9FF', '#F8FAFC', '#FFFFFF']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        {/* Decorative Elements */}
-        <View style={[styles.decorativeCircle, { top: -100, right: -50, backgroundColor: addAlpha(COLORS.primary, 0.05) }]} />
-        <View style={[styles.decorativeCircle, { bottom: 100, left: -100, width: 300, height: 300, backgroundColor: addAlpha(COLORS.accentYellow, 0.05) }]} />
-      </View>
+      <LiquidBackground mode="light" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -154,7 +184,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + SPACING.md, paddingBottom: insets.bottom + SPACING.lg }
+            { paddingTop: insets.top + SPACING.md, paddingBottom: Math.max(insets.bottom + SPACING.xl, 40) }
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -177,109 +207,101 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           >
             {/* Header */}
             <View style={styles.header}>
-              <View style={[styles.logoContainer, SHADOWS.sm]}>
-                <Image
-                  source={require('../../../assets/Logo.jpg')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
+              <View style={styles.brandNameContainer}>
+                {"YANN".split('').map((item, idx) => (
+                  <AnimatedLetter key={"Login-" + idx} letter={item} index={idx} />
+                ))}
               </View>
-              <View style={styles.brandContainer}>
-                <Text style={styles.brandName}>YANN</Text>
+              <View style={styles.taglineRow}>
+                <View style={styles.taglineLine} />
+                <Text style={styles.tagline}>SIGNATURE LUXURY</Text>
+                <View style={styles.taglineLine} />
               </View>
 
               <Text style={styles.title}>Welcome Back</Text>
               <Text style={styles.subtitle}>
-                Sign in to manage your bookings
+                Curated excellence awaits you
               </Text>
             </View>
 
-            {/* Illustration */}
+            {/* Illustration - Camper's Welcome */}
             <View style={styles.illustrationContainer}>
               <LottieView
-                source={require('../../../assets/lottie/Campers-Welcome.json')}
+                source={LottieAnimations.campersWelcome}
                 autoPlay
                 loop
                 style={styles.welcomeAnimation}
               />
             </View>
 
-            {/* Form */}
-            <View style={styles.form}>
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>EMAIL OR PHONE</Text>
+            {/* Main Form Panel */}
+            <GlassCard 
+              intensity={80} 
+              style={styles.formCard} 
+              enableTilt 
+              glowColor="rgba(59, 130, 246, 0.05)"
+            >
+              <View style={styles.formContainer}>
+                {/* Identifier Field */}
                 <View style={[
-                  styles.inputContainer,
-                  isFocused && styles.inputFocused,
-                  identifier.length > 0 && !isValidInput(identifier) && styles.inputError
+                  styles.fieldGlass,
+                  focusedField === 'identifier' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
                 ]}>
-                  <View style={[styles.inputIcon, isFocused && { backgroundColor: addAlpha(COLORS.primary, 0.1) }]}>
-                    <Ionicons
-                      name={inputType === 'phone' ? 'call-outline' : 'mail-outline'}
-                      size={20}
-                      color={isFocused ? COLORS.primary : COLORS.textTertiary}
-                    />
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="name@example.com or phone"
-                    placeholderTextColor={COLORS.textTertiary}
-                    value={identifier}
-                    onChangeText={setIdentifier}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!isLoading}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
-                  />
-                  {isValidInput(identifier) && (
-                    <View style={styles.validationIcon}>
-                      <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                  <View style={styles.inputRow}>
+                    <View style={[styles.iconCircle, focusedField === 'identifier' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                      <Ionicons 
+                        name={inputType === 'phone' ? 'call-outline' : 'mail-outline'} 
+                        size={18} 
+                        color={focusedField === 'identifier' ? COLORS.primary : COLORS.textTertiary} 
+                      />
                     </View>
-                  )}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>EMAIL OR PHONE</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter email or phone"
+                        placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                        value={identifier}
+                        onChangeText={setIdentifier}
+                        onFocus={() => setFocusedField('identifier')}
+                        onBlur={() => setFocusedField(null)}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!isLoading}
+                      />
+                    </View>
+                    {isValidInput(identifier) && (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    )}
+                  </View>
                 </View>
               </View>
+            </GlassCard>
 
-              <TouchableOpacity
-                style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
-                onPress={handleSendOTP}
-                disabled={isLoading}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={GRADIENTS.primary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                >
-                  {isLoading ? (
-                    <Text style={styles.buttonText}>SENDING CODE...</Text>
-                  ) : (
-                    <>
-                      <Text style={styles.buttonText}>CONTINUE</Text>
-                      <View style={styles.buttonIcon}>
-                        <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
-                      </View>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
+            <NeoButton
+              title={isLoading ? "SENDING..." : "CONTINUE"}
+              onPress={handleSendOTP}
+              disabled={isLoading}
+              variant="primary"
+              size="large"
+              style={styles.continueButton}
+              icon={!isLoading && <Ionicons name="chevron-forward" size={18} color="#fff" />}
+            />
 
-              <Text style={styles.infoText}>
-                We will send a verification code to your email or phone number.
-              </Text>
-            </View>
+            {/* Hint Text */}
+            <Text style={styles.infoText}>
+              We'll send a premium verification code to your device.
+            </Text>
 
-            {/* Sign Up Link */}
+            {/* Footer Links */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>New to YANN? </Text>
+              <Text style={styles.footerText}>New here? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('RoleSelection')}>
-                <Text style={styles.footerLink}>Create Account</Text>
+                <Text style={styles.footerLink}>Become a Member</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Guest Mode Action */}
             <TouchableOpacity
               style={styles.guestButton}
               onPress={async () => {
@@ -290,7 +312,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 }
               }}
             >
-              <Text style={styles.guestButtonText}>Continue as Guest</Text>
+              <Text style={styles.guestButtonText}>Explore as Guest</Text>
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
@@ -306,19 +328,24 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       {/* OTP Sent Animation Overlay */}
       {showEmailSent && (
         <View style={styles.emailSentOverlay}>
-          <View style={[styles.emailSentContainer, SHADOWS.xl]}>
+          <GlassCard 
+            intensity={95} 
+            style={styles.emailSentCard}
+            glowColor="rgba(59, 130, 246, 0.2)"
+          >
             <LottieView
-              source={require('../../../assets/lottie/Email-Sent.json')}
+              source={LottieAnimations.emailSent}
               autoPlay
               loop={false}
               style={styles.emailSentAnimation}
             />
             <Text style={styles.emailSentText}>Code Sent Successfully!</Text>
-            <Text style={styles.emailSentSubText}>Check your inbox</Text>
-          </View>
+            <Text style={styles.emailSentSubText}>Check your inbox for the premium code</Text>
+          </GlassCard>
         </View>
       )}
 
+      <LoadingSpinner visible={isLoading} />
     </View>
   );
 };
@@ -326,13 +353,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  decorativeCircle: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    borderRadius: 200,
+    backgroundColor: '#F6F8FC',
   },
   keyboardView: {
     flex: 1,
@@ -343,228 +364,198 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: RADIUS.medium,
-    backgroundColor: COLORS.white,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: SPACING.lg,
-    marginTop: SPACING.md,
-    ...SHADOWS.sm,
+    marginLeft: 20,
+    marginTop: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
   },
   content: {
-    paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
+    paddingHorizontal: 24,
+    paddingTop: 10,
   },
   header: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: 20,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: RADIUS.large,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  logoImage: {
-    width: 56,
-    height: 56,
-  },
-  brandContainer: {
+  brandNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
-  brandName: {
-    fontSize: TYPOGRAPHY.size.sm,
-    fontWeight: '800',
-    color: COLORS.primary,
-    letterSpacing: 4,
-    marginRight: SPACING.xs,
+  brandLetter: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -1,
+  },
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 12,
+  },
+  taglineLine: {
+    width: 24,
+    height: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.2)',
+  },
+  tagline: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+    letterSpacing: 2,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    color: COLORS.text,
-    letterSpacing: -1,
-    marginBottom: SPACING.xs,
+    color: '#0F172A',
+    marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    fontWeight: '500',
   },
   illustrationContainer: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
-    marginTop: -SPACING.md,
-    height: 180,
+    justifyContent: 'center',
+    height: 140,
+    marginBottom: 24,
   },
   welcomeAnimation: {
-    width: 240,
-    height: 240,
+    width: 200,
+    height: 200,
   },
-  form: {
-    marginBottom: SPACING.xxl,
+  formContainer: {
+    padding: 4,
   },
-  inputWrapper: {
-    marginBottom: SPACING.lg,
+  formCard: {
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 32,
+  },
+  fieldGlass: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 28,
   },
   label: {
-    fontSize: TYPOGRAPHY.size.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    letterSpacing: 1,
-    marginBottom: SPACING.xs,
-    marginLeft: SPACING.xs,
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.textTertiary,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.medium,
-    height: 56,
-    overflow: 'hidden',
-    ...SHADOWS.sm,
-  },
-  inputFocused: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.white,
-    ...SHADOWS.md,
-    shadowColor: addAlpha(COLORS.primary, 0.3),
-  },
-  inputError: {
-    borderColor: COLORS.error,
-  },
-  inputIcon: {
-    width: 50,
-    height: '100%',
+    flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.gray50,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.border,
   },
   input: {
-    flex: 1,
-    paddingHorizontal: SPACING.md,
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '500',
-    color: COLORS.text,
-    height: '100%',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    height: 32,
+    letterSpacing: 0.2,
+    padding: 0,
   },
-  validationIcon: {
-    paddingRight: SPACING.md,
-  },
-  buttonContainer: {
-    borderRadius: RADIUS.medium,
-    overflow: 'hidden',
-    marginBottom: SPACING.md,
-    ...SHADOWS.primary,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: SPACING.xl,
-  },
-  buttonText: {
-    fontSize: TYPOGRAPHY.size.md,
-    fontWeight: '700',
-    color: COLORS.white,
-    letterSpacing: 1,
-  },
-  buttonIcon: {
-    marginLeft: SPACING.sm,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
+  continueButton: {
+    marginBottom: 20,
   },
   infoText: {
-    fontSize: TYPOGRAPHY.size.sm,
+    fontSize: 12,
     color: COLORS.textTertiary,
     textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: SPACING.md,
+    marginBottom: 32,
+    paddingHorizontal: 20,
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: SPACING.xxl,
+    marginBottom: 16,
   },
   footerText: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 14,
     color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   footerLink: {
-    fontSize: TYPOGRAPHY.size.md,
+    fontSize: 14,
     color: COLORS.primary,
     fontWeight: '700',
   },
-  emailSentOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  emailSentContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.xlarge,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    width: width * 0.85,
-    maxWidth: 340,
-  },
-  emailSentAnimation: {
-    width: 160,
-    height: 160,
-    marginBottom: SPACING.md,
-  },
-  emailSentText: {
-    fontSize: TYPOGRAPHY.size.xl,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  emailSentSubText: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
   guestButton: {
     alignSelf: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    marginBottom: SPACING.xl,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginBottom: 20,
   },
   guestButtonText: {
-    fontSize: TYPOGRAPHY.size.md,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: COLORS.textTertiary,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  emailSentOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    padding: 24,
+  },
+  emailSentCard: {
+    width: width * 0.85,
+    maxWidth: 340,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  emailSentAnimation: {
+    width: 140,
+    height: 140,
+    marginBottom: 20,
+  },
+  emailSentText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  emailSentSubText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 20,
   },
 });
