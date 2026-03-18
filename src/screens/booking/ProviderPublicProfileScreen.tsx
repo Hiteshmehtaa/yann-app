@@ -103,6 +103,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const { isGuest, user } = useAuth();
   const [showGuestModal, setShowGuestModal] = useState(false);
   const { dialogState, hideDialog, showWarning, DialogComponent } = useDialog();
+  const isAadhaarVerified = !!user?.aadhaarVerified;
 
   // UGC State
   const [showOptionsModal, setShowOptionsModal] = useState(false);
@@ -203,6 +204,14 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
 
     if (isGuest) {
       setShowGuestModal(true);
+      return;
+    }
+
+    if (!isAadhaarVerified) {
+      showWarning(
+        'Aadhaar Verification Required',
+        'Please complete Aadhaar verification before booking services.',
+      );
       return;
     }
 

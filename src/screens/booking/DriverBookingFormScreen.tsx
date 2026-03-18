@@ -85,6 +85,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
     } = route.params;
 
     const { user } = useAuth();
+    const isAadhaarVerified = !!user?.aadhaarVerified;
     const insets = useSafeAreaInsets();
     const scrollViewRef = useRef<ScrollView>(null);
 
@@ -204,6 +205,16 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
 
     const handleSubmit = async () => {
         if (!validateForm()) return;
+
+        if (!user) {
+            Alert.alert('Sign In Required', 'Please sign in to book.');
+            return;
+        }
+
+        if (!isAadhaarVerified) {
+            Alert.alert('Aadhaar Verification Required', 'Please complete Aadhaar verification before booking services.');
+            return;
+        }
 
         // Check wallet balance
         if (hasInsufficientBalance) {

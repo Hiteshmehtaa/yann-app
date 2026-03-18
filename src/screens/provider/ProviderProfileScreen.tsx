@@ -80,7 +80,7 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
 
 
   const hasFetchedRef = useRef(false);
-  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
+  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified);
   
   // Get verification status for display
   const getVerificationStatus = () => {
@@ -275,7 +275,6 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
     
-    // Navigate to identity type selection (Indian → Meon DigiLocker, Foreigner/NRI → Document Upload)
     navigation.navigate('IdentityTypeSelection');
   };
 

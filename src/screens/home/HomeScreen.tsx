@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   StatusBar,
+  Alert,
   Animated,
   RefreshControl,
   ScrollView,
@@ -114,6 +115,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   // Error states
   const [error, setError] = useState<Error | null>(null);
   const [isNetworkError, setIsNetworkError] = useState(false);
+  const isAadhaarVerified = !!user?.aadhaarVerified;
 
   useWalletBalance(); // usage to init if needed, though mostly for global state
 
@@ -452,6 +454,10 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 onPressService={(service) => {
                   // Direct navigation for Driver services
                   if (service.title.toLowerCase().includes('driver')) {
+                    if (!isAadhaarVerified) {
+                      Alert.alert('Aadhaar Verification Required', 'Please complete Aadhaar verification before booking driver services.');
+                      return;
+                    }
                     navigation.navigate('DriverBooking', { service });
                   } else {
                     navigation.navigate('ServiceDetail', { service });

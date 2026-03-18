@@ -13,6 +13,7 @@ export const GlobalBookingRequestModal: React.FC = () => {
   const { incomingBookingRequest, setIncomingBookingRequest, ignoreBookingRequest, cancelledBookingMessage } = useNotifications();
   const { user } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const isPartnerVerified = !!(user?.isVerified || user?.aadhaarVerified);
 
   const providerId = user?._id || user?.id || '';
 
@@ -60,7 +61,7 @@ export const GlobalBookingRequestModal: React.FC = () => {
   return (
     <>
       <ProviderIncomingRequest
-        visible={!!incomingBookingRequest}
+        visible={!!incomingBookingRequest && isPartnerVerified}
         requestData={incomingBookingRequest}
         providerId={providerId}
         onAccept={handleAccept}

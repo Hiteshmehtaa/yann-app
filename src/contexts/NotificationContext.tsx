@@ -85,12 +85,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Track ignored bookings to prevent re-fetching (race condition fix)
   const ignoredBookingIds = useRef<Set<string>>(new Set());
   const { user } = useAuth();
+  const isPartnerVerified = !!(user?.isVerified || user?.aadhaarVerified);
+  const isProvider = !!user && (user.role === 'provider' || (user as any).audience === 'provider');
 
   // Initialise the audio session once at startup so it is ready before the
   // first booking request notification arrives.
   useEffect(() => {
     initializeBuzzerSound().catch(() => { });
   }, []);
+
+  useEffect(() => {
+    if (isProvider && !isPartnerVerified && incomingBookingRequest) {
+      setIncomingBookingRequest(null);
+      stopBuzzer();
+    }
+  }, [isProvider, isPartnerVerified, incomingBookingRequest]);
 
   const ignoreBookingRequest = (bookingId: string) => {
     console.log('🔇 Ignoring booking and STOPPING buzzer:', bookingId);
@@ -121,7 +130,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     } else {
       setNotifications([]);
     }
-  }, [user]);
+  }, [user, isProvider, isPartnerVerified]);
 
   // Listen for incoming notifications (app in foreground)
   useEffect(() => {
@@ -207,6 +216,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // BOOKING REQUEST for providers (no logging needed)
       if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId && data.expiresAt) {
+        if (isProvider && !isPartnerVerified) {
+          return;
+        }
+
         // Dismiss old booking notifications to prevent stacking
         Notifications.dismissAllNotificationsAsync()
           .then(() => console.log('✅ Old booking notifications cleared'))
@@ -288,7 +301,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     });
 
     return () => subscription.remove();
-  }, [user]);
+  }, [user, isPartnerVerified]);
 
   // Listen for notification taps (when user opens app from notification)
   useEffect(() => {
@@ -312,6 +325,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       if ((data.type === 'booking_request' || data.type === 'booking_request_reminder') && data.bookingId) {
         // Only check if user is a provider
         if (user.role === 'provider' || (user as any).audience === 'provider') {
+          if (!isPartnerVerified) {
+            return;
+          }
+
           // Dismiss all system notifications to stop notification buzzer
           Notifications.dismissAllNotificationsAsync()
             .then(() => console.log('✅ System notifications dismissed on tap'))
@@ -371,25 +388,30 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (!user) return;
 
     // Only for providers
-    if (user.role === 'provider' || (user as any).audience === 'provider') {
+    if ((user.role === 'provider' || (user as any).audience === 'provider') && isPartnerVerified) {
       checkPendingBookingRequests();
     }
-  }, [user]);
+  }, [user, isPartnerVerified]);
 
   // Poll every 3s while a booking modal is showing — catch cancellations instantly
   useEffect(() => {
     if (!incomingBookingRequest) return;
     if (!user || (user.role !== 'provider' && (user as any).audience !== 'provider')) return;
+    if (!isPartnerVerified) return;
 
     const interval = setInterval(() => {
       checkPendingBookingRequests();
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [incomingBookingRequest, user]);
+  }, [incomingBookingRequest, user, isPartnerVerified]);
 
   // Check for a specific pending booking request (when notification tapped)
   const checkPendingBookingRequest = async (bookingId: string) => {
+    if (!isPartnerVerified) {
+      return;
+    }
+
     // Respect the ignore list — prevents re-showing a booking the provider already
     // acted on (accept/reject) if the notification tap fires slightly late.
     if (ignoredBookingIds.current.has(bookingId)) {
@@ -452,6 +474,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Check for any pending booking requests assigned to this provider
   const checkPendingBookingRequests = async () => {
+    if (!isPartnerVerified) {
+      return;
+    }
+
     try {
       const userId = user?.id || user?._id;
       if (!userId) return;

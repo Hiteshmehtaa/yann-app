@@ -76,6 +76,7 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
     const { user } = useAuth();
     const { showError } = useToast();
     const insets = useSafeAreaInsets();
+    const isAadhaarVerified = !!user?.aadhaarVerified;
 
     // -- STATE --
     const [currentStep, setCurrentStep] = useState(0);
@@ -328,6 +329,11 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
         // Guest Check
         if (!user) { // Simplified guest check
             Alert.alert('Sign In Required', 'Please sign in to book.');
+            return;
+        }
+
+        if (!isAadhaarVerified) {
+            Alert.alert('Aadhaar Verification Required', 'Please complete Aadhaar verification before booking services.');
             return;
         }
 

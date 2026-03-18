@@ -28,10 +28,10 @@ const fadeTransitionConfig = {
 import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { RoleSelectionScreen } from '../screens/auth/RoleSelectionScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
-import { PartnerLoginScreen } from '../screens/auth/PartnerLoginScreen';
 import { VerifyOTPScreen } from '../screens/auth/VerifyOTPScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
 import { ProviderSignupScreen } from '../screens/auth/ProviderSignupScreen';
+const PartnerLoginScreen = require('../screens/auth/PartnerLoginScreen').PartnerLoginScreen;
 
 // Common Screens
 import { ComingSoonScreen } from '../screens/common/ComingSoonScreen';
@@ -43,7 +43,6 @@ import { HomeScreen } from '../screens/home/HomeScreen';
 import { ServiceDetailScreen } from '../screens/booking/ServiceDetailScreen';
 import { BookingsListScreen } from '../screens/booking/BookingsListScreen';
 import { BookingDetailScreen } from '../screens/booking/BookingDetailScreen';
-// import { BookingFormScreen } from '../screens/booking/BookingFormScreen';
 import { BookingWizardScreen } from '../screens/booking/BookingWizardScreen';
 import { BookingWaitingScreen } from '../screens/booking/BookingWaitingScreen';
 import { ProviderPublicProfileScreen } from '../screens/booking/ProviderPublicProfileScreen';
@@ -415,8 +414,6 @@ export function AppNavigator() {
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
-                <Stack.Screen name="IdentityTypeSelection" component={IdentityTypeSelectionScreen as any} options={screenTransitionConfig} />
-                <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Favorites" component={FavoritesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AdminPush" component={AdminPushNotificationScreen as any} options={screenTransitionConfig} />
@@ -425,22 +422,20 @@ export function AppNavigator() {
           </>
         ) : (
           <>
-            <>
-              {!hasSeenOnboarding ? (
-                <Stack.Screen name="Onboarding" options={fadeTransitionConfig}>
-                  {(props) => <OnboardingScreen {...props} onComplete={completeOnboarding} />}
-                </Stack.Screen>
-              ) : (
-                <>
-                  <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={fadeTransitionConfig} />
-                  <Stack.Screen name="Login" component={LoginScreen} options={screenTransitionConfig} />
-                  <Stack.Screen name="PartnerLogin" component={PartnerLoginScreen} options={screenTransitionConfig} />
-                  <Stack.Screen name="Signup" component={SignupScreen as any} options={screenTransitionConfig} />
-                  <Stack.Screen name="ProviderSignup" component={ProviderSignupScreen} options={screenTransitionConfig} />
-                  <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen as any} options={screenTransitionConfig} />
-                </>
-              )}
-            </>
+            {hasSeenOnboarding ? (
+              <>
+                <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={fadeTransitionConfig} />
+                <Stack.Screen name="Login" component={LoginScreen} options={screenTransitionConfig} />
+                <Stack.Screen name="PartnerLogin" component={PartnerLoginScreen} options={screenTransitionConfig} />
+                <Stack.Screen name="Signup" component={SignupScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="ProviderSignup" component={ProviderSignupScreen} options={screenTransitionConfig} />
+                <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen as any} options={screenTransitionConfig} />
+              </>
+            ) : (
+              <Stack.Screen name="Onboarding" options={fadeTransitionConfig}>
+                {(props) => <OnboardingScreen {...props} onComplete={completeOnboarding} />}
+              </Stack.Screen>
+            )}
           </>
         )}
       </Stack.Navigator>

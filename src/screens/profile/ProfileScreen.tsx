@@ -70,15 +70,15 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
 
 
-  const isIdentityVerified = !!(user?.isVerified || user?.aadhaarVerified || user?.identityVerificationStatus === 'approved');
+  const isIdentityVerified = !!user?.aadhaarVerified;
 
   const getVerificationStatus = () => {
     if (user?.identityVerificationStatus === 'pending') {
-      return { text: 'Pending Confirmation', color: DESIGN.warning };
+      return { text: 'Aadhaar Verification Pending', color: DESIGN.warning };
     } else if (isIdentityVerified) {
-      return { text: 'Verified Identity', color: DESIGN.success };
+      return { text: 'Aadhaar Verified', color: DESIGN.success };
     }
-    return { text: 'Verify your ID', color: DESIGN.textTertiary };
+    return { text: 'Verify your Aadhaar', color: DESIGN.textTertiary };
   };
 
   const fetchProfile = useCallback(async () => {
@@ -135,7 +135,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     { icon: 'calendar-outline', title: 'My Bookings', onPress: () => navigation.navigate('BookingsList') },
     { icon: 'location-outline', title: 'Saved Addresses', onPress: () => navigation.navigate('SavedAddresses') },
     { icon: 'notifications-outline', title: 'Notifications', onPress: () => navigation.navigate('Notifications') },
-    { icon: 'shield-checkmark-outline', title: 'Identity Status', subtitle: getVerificationStatus().text, onPress: () => !isIdentityVerified && navigation.navigate('IdentityTypeSelection'), badgeColor: getVerificationStatus().color },
+    { icon: 'shield-checkmark-outline', title: 'Aadhaar Status', subtitle: getVerificationStatus().text, onPress: () => !isIdentityVerified && navigation.navigate('AadhaarVerification'), badgeColor: getVerificationStatus().color },
     { icon: 'wallet-outline', title: 'Wallet Balance', onPress: () => navigation.navigate('Wallet') },
     { icon: 'language-outline', title: 'Language', onPress: () => navigation.navigate('LanguageSettings') },
     { icon: 'help-circle-outline', title: 'Help & Support', onPress: () => navigation.navigate('HelpSupport') },
