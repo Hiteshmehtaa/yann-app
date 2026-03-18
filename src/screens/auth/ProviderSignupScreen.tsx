@@ -1231,9 +1231,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       </TouchableOpacity>
 
       <KeyboardAvoidingView
-        behavior="padding"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={{ flex: 1 }}>
           <ScrollView
@@ -1575,18 +1574,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
   },
   stepTitle: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
     letterSpacing: -0.5,
   },
   stepSubtitle: {
-    fontSize: 16,
+    fontSize: 17,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
     fontWeight: '500',
   },
   formCard: {
@@ -1602,7 +1601,7 @@ const styles = StyleSheet.create({
   },
   fieldGlass: {
     paddingHorizontal: 20,
-    paddingVertical: 11,
+    paddingVertical: 24,
   },
   inputDivider: {
     height: 1,
@@ -1610,7 +1609,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   label: {
-    fontSize: 9.5,
+    fontSize: 12,
     fontWeight: '800',
     color: COLORS.textTertiary,
     letterSpacing: 1.5,
@@ -1623,9 +1622,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 60,
+    height: 60,
+    borderRadius: 18,
     backgroundColor: 'rgba(59, 130, 246, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1635,10 +1634,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
     color: '#0F172A',
-    height: 34,
+    height: 54,
     letterSpacing: 0.2,
     padding: 0,
   },
@@ -1651,7 +1650,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     paddingHorizontal: 20,
-    paddingVertical: 13,
+    paddingVertical: 24,
   },
   s2CategoryInfo: {
     flex: 1,
@@ -2092,8 +2091,8 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     backgroundColor: addAlpha(COLORS.white, 0.95), // Glass-ish
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     borderTopLeftRadius: RADIUS.xlarge,
     borderTopRightRadius: RADIUS.xlarge,
     ...SHADOWS.xl,
