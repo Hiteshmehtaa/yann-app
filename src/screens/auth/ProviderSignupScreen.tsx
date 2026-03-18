@@ -172,7 +172,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   };
   const renderStepIndicator = () => (
     <View style={styles.segmentedProgressContainer}>
-      {[1, 2, 3, 4].map((step) => {
+      {[1, 2].map((step) => {
         const isActive = currentStep === step;
         const isCompleted = currentStep > step;
         return (
@@ -508,41 +508,6 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       changeStep(2);
-    } else if (currentStep === 2) {
-      if (formData.services.length === 0) {
-        Alert.alert('Error', 'Please select at least one service');
-        return;
-      }
-      const missingCategoryExperience = dynamicServiceCategories.find(category => {
-        const hasSelectedService = formData.services.some(service =>
-          category.services.includes(service)
-        );
-        if (!hasSelectedService) return false;
-        const value = formData.categoryExperience[category.id];
-        return value === undefined || value === '';
-      });
-      if (missingCategoryExperience) {
-        Alert.alert('Error', `Please select experience for ${missingCategoryExperience.name}`);
-        return;
-      }
-      changeStep(3);
-    } else if (currentStep === 3) {
-      const missingPrices = formData.serviceRates.filter(r => !r.price || Number.parseFloat(r.price) <= 0);
-      if (missingPrices.length > 0) {
-        Alert.alert('Error', 'Please enter valid prices for all selected services');
-        return;
-      }
-      const overLimit = formData.serviceRates.find(rate => {
-        const maxAllowed = getMaxPriceForService(rate.serviceName);
-        const priceValue = Number(rate.price || 0);
-        return maxAllowed > 0 && priceValue > maxAllowed;
-      });
-      if (overLimit) {
-        const maxAllowed = getMaxPriceForService(overLimit.serviceName);
-        Alert.alert('Error', `Maximum price for ${overLimit.serviceName} is ₹${maxAllowed}`);
-        return;
-      }
-      changeStep(4);
     }
   };
 
@@ -693,8 +658,6 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     switch (step) {
       case 1: return renderStep1();
       case 2: return renderStep2();
-      case 3: return renderStep3();
-      case 4: return renderStep4();
       default: return renderStep1();
     }
   };
@@ -703,7 +666,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
       <TouchableOpacity
         style={styles.nextButton}
-        onPress={currentStep === 4 ? handleSubmit : handleNext}
+        onPress={currentStep === 2 ? handleSubmit : handleNext}
         activeOpacity={0.8}
         disabled={isLoading}
       >
@@ -718,10 +681,10 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           ) : (
             <>
               <Text style={styles.buttonText}>
-                {currentStep === 4 ? 'COMPLETE REGISTRATION' : 'CONTINUE'}
+                {currentStep === 2 ? 'COMPLETE REGISTRATION' : 'CONTINUE'}
               </Text>
               <Ionicons 
-                name={currentStep === 4 ? 'checkmark-circle' : 'arrow-forward'} 
+                name={currentStep === 2 ? 'checkmark-circle' : 'arrow-forward'} 
                 size={20} 
                 color="#FFF" 
               />
@@ -895,15 +858,48 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     </View>
   );
 
-  const renderStep2 = () => (
+  const renderStep2 = () => {
+    const missingCategoryExperience = dynamicServiceCategories.find(category => {
+      const hasSelectedService = formData.services.some(service =>
+        category.services.includes(service)
+      );
+      if (!hasSelectedService) return false;
+      const value = formData.categoryExperience[category.id];
+      return value === undefined || value === '';
+    });
+
+    const isServiceCardComplete =
+      formData.services.length > 0 &&
+      !missingCategoryExperience &&
+      formData.services.every(service => {
+        const enteredPrice = Number(formData.serviceRates.find(rate => rate.serviceName === service)?.price || 0);
+        return enteredPrice > 0;
+      });
+
+    const hasDriverService = formData.services.some(s => {
+      const cat = dynamicServiceCategories.find(c => c.services.includes(s));
+      return cat && cat.id.toLowerCase() === 'driver';
+    });
+
+    const isDriverDetailsCardComplete =
+      formData.vehicleTypes.length > 0 &&
+      formData.transmissionTypes.length > 0 &&
+      !!formData.tripPreference;
+
+    return (
     <View style={styles.animatableContent}>
       <Text style={styles.stepTitle}>Your Services</Text>
-      <Text style={styles.stepSubtitle}>Tap a category, then pick what you offer</Text>
+      <Text style={styles.stepSubtitle}>Tap a category, pick services, and set your rates</Text>
 
       {isLoadingServices ? (
         <LoadingSpinner visible={true} />
       ) : (
-        <GlassCard intensity={80} style={styles.formCard} enableTilt glowColor="rgba(59, 130, 246, 0.05)">
+        <GlassCard
+          intensity={80}
+          style={[styles.formCard, styles.s2ThreeDCard]}
+          enableTilt={openExperienceCategory === null && !isServiceCardComplete}
+          glowColor="rgba(59, 130, 246, 0.05)"
+        >
           <View style={styles.form}>
             {dynamicServiceCategories.map((category, catIndex) => {
               const isOpen = openExperienceCategory === category.id;
@@ -916,7 +912,10 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                   {/* Category Header Row */}
                   <TouchableOpacity
                     style={styles.s2CategoryRow}
-                    onPress={() => setOpenExperienceCategory(prev => prev === category.id ? null : category.id)}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setOpenExperienceCategory(prev => prev === category.id ? null : category.id);
+                    }}
                     activeOpacity={0.75}
                   >
                     <View style={[styles.iconCircle, selectedCount > 0 && { backgroundColor: addAlpha(COLORS.primary, 0.15) }]}>
@@ -979,6 +978,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                       <View style={styles.s2ServicesList}>
                         {category.services.map((service, svcIdx) => {
                           const isSelected = formData.services.includes(service);
+                          const selectedRate = formData.serviceRates.find(rate => rate.serviceName === service);
+                          const maxAllowed = getMaxPriceForService(service);
                           return (
                             <React.Fragment key={service}>
                               <TouchableOpacity
@@ -999,6 +1000,27 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                                   {service}
                                 </Text>
                               </TouchableOpacity>
+
+                              {isSelected && (
+                                <View style={styles.s2RateContainer}>
+                                  <Text style={styles.s2RateLabel}>Set rate</Text>
+                                  <View style={styles.s2RateInputWrapper}>
+                                    <Text style={styles.currencyPrefix}>₹</Text>
+                                    <TextInput
+                                      style={styles.s2RateInputField}
+                                      placeholder="0"
+                                      placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                                      value={selectedRate?.price || ''}
+                                      onChangeText={(value) => updateServiceRate(service, value)}
+                                      keyboardType="numeric"
+                                    />
+                                  </View>
+                                  {maxAllowed > 0 && (
+                                    <Text style={styles.s2RateHint}>Max: ₹{maxAllowed}</Text>
+                                  )}
+                                </View>
+                              )}
+
                               {svcIdx < category.services.length - 1 && (
                                 <View style={styles.s2ServiceDivider} />
                               )}
@@ -1020,11 +1042,12 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       )}
 
       {/* Driver Specific Options */}
-      {formData.services.some(s => {
-        const cat = dynamicServiceCategories.find(c => c.services.includes(s));
-        return cat && cat.id.toLowerCase() === 'driver';
-      }) && (
-        <GlassCard intensity={60} style={[styles.formCard, { marginTop: 0 }]} enableTilt>
+      {hasDriverService && (
+        <GlassCard
+          intensity={60}
+          style={[styles.formCard, { marginTop: 0 }, styles.s2ThreeDCard]}
+          enableTilt={!isDriverDetailsCardComplete}
+        >
           <View style={styles.form}>
             {/* Vehicle Types */}
             <View style={styles.fieldGlass}>
@@ -1109,7 +1132,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         </GlassCard>
       )}
     </View>
-  );
+    );
+  };
 
   const renderStep3 = () => (
     <View style={styles.animatableContent}>
@@ -1234,14 +1258,14 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <View style={{ flex: 1 }}>
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingTop: insets.top + 20 }
+              { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 180 }
             ]}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
               {/* Header / Branding */}
               <View style={styles.headerBranding}>
@@ -1268,10 +1292,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                 {renderStep(currentStep)}
               </View>
             </ScrollView>
-
-            {renderBottomNav()}
-          </View>
         </KeyboardAvoidingView>
+
+        {renderBottomNav()}
       </View>
   );
 };
@@ -1564,7 +1587,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   animatableContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
   },
   stepDotCompleted: {
     backgroundColor: COLORS.success,
@@ -1574,18 +1597,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
   },
   stepTitle: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '800',
     color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     letterSpacing: -0.5,
   },
   stepSubtitle: {
-    fontSize: 17,
+    fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
     fontWeight: '500',
   },
   formCard: {
@@ -1595,13 +1618,22 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     overflow: 'hidden',
   },
+  s2ThreeDCard: {
+    transform: [{ perspective: 1000 }, { rotateX: '1.2deg' }, { rotateY: '-1deg' }],
+    ...SHADOWS.lg,
+    shadowColor: addAlpha(COLORS.primary, 0.5),
+    shadowOpacity: 0.42,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 22,
+  },
   form: {
     padding: 0,
-    gap: 0,
+    gap: 16,
   },
   fieldGlass: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingVertical: 14,
   },
   inputDivider: {
     height: 1,
@@ -1609,7 +1641,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   label: {
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: '800',
     color: COLORS.textTertiary,
     letterSpacing: 1.5,
@@ -1622,9 +1654,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     backgroundColor: 'rgba(59, 130, 246, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1634,10 +1666,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
     color: '#0F172A',
-    height: 54,
+    height: 36,
     letterSpacing: 0.2,
     padding: 0,
   },
@@ -1650,7 +1682,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingVertical: 12,
   },
   s2CategoryInfo: {
     flex: 1,
@@ -1678,10 +1710,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   s2ExpandedContainer: {
-    backgroundColor: addAlpha(COLORS.primary, 0.02),
+    backgroundColor: 'rgba(15, 23, 42, 0.03)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(15, 23, 42, 0.05)',
-    paddingBottom: 8,
+    paddingBottom: 0,
   },
   s2ExperienceSection: {
     paddingHorizontal: 20,
@@ -1746,6 +1778,41 @@ const styles = StyleSheet.create({
   s2ServiceNameActive: {
     color: COLORS.text,
     fontWeight: '600',
+  },
+  s2RateContainer: {
+    marginLeft: 36,
+    marginRight: 4,
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
+  },
+  s2RateLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  s2RateInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  s2RateInputField: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    paddingVertical: 0,
+  },
+  s2RateHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   s2ServiceDivider: {
     height: 1,
@@ -2090,9 +2157,13 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: addAlpha(COLORS.white, 0.95), // Glass-ish
     paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingTop: 16,
     borderTopLeftRadius: RADIUS.xlarge,
     borderTopRightRadius: RADIUS.xlarge,
     ...SHADOWS.xl,

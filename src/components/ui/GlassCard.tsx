@@ -42,7 +42,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   const rotateY = useSharedValue(0);
   const scale = useSharedValue(1);
 
-  const gesture = Gesture.Pan()
+  const tiltGesture = Gesture.Pan()
     .onBegin(() => {
       scale.value = withSpring(1.02);
     })
@@ -56,7 +56,14 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       rotateX.value = withSpring(0);
       rotateY.value = withSpring(0);
       scale.value = withSpring(1);
+    })
+    .onFinalize(() => {
+      rotateX.value = withSpring(0);
+      rotateY.value = withSpring(0);
+      scale.value = withSpring(1);
     });
+
+  const gesture = Gesture.Simultaneous(Gesture.Native(), tiltGesture);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

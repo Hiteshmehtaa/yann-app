@@ -39,10 +39,7 @@ import Reanimated, {
   useAnimatedStyle,
   withDelay,
   withSpring,
-  withRepeat,
-  withSequence,
   withTiming,
-  Easing,
   interpolate,
 } from 'react-native-reanimated';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -328,11 +325,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       {/* OTP Sent Animation Overlay */}
       {showEmailSent && (
         <View style={styles.emailSentOverlay}>
-          <GlassCard 
-            intensity={95} 
-            style={styles.emailSentCard}
-            glowColor="rgba(59, 130, 246, 0.2)"
-          >
+          <View style={[styles.emailSentCard, SHADOWS.xl]}>
             <LottieView
               source={LottieAnimations.emailSent}
               autoPlay
@@ -341,7 +334,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             />
             <Text style={styles.emailSentText}>Code Sent Successfully!</Text>
             <Text style={styles.emailSentSubText}>Check your inbox for the premium code</Text>
-          </GlassCard>
+          </View>
         </View>
       )}
 
@@ -529,6 +522,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   emailSentCard: {
+    backgroundColor: COLORS.white,
     width: width * 0.85,
     maxWidth: 340,
     paddingVertical: 40,
@@ -536,7 +530,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 32,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(15, 23, 42, 0.06)',
   },
   emailSentAnimation: {
     width: 140,

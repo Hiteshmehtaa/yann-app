@@ -12,16 +12,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS, SPACING, RADIUS, SHADOWS, LAYOUT } from '../../utils/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useAuth } from '../../contexts/AuthContext';
 import { MD2Colors } from 'react-native-paper';
-import LottieView from 'lottie-react-native';
-import { LottieAnimations } from '../../utils/lottieAnimations';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -31,10 +27,8 @@ import Reanimated, {
   withSequence,
   withTiming,
   Easing,
-  interpolate,
 } from 'react-native-reanimated';
 import { GlassCard } from '../../components/ui/GlassCard';
-import { NeoButton } from '../../components/ui/NeoButton';
 import { LiquidBackground } from '../../components/ui/LiquidBackground';
 
 type Props = {
@@ -120,6 +114,12 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.8)',
+    ...SHADOWS.lg,
+    shadowColor: 'rgba(15, 23, 42, 0.45)',
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 20,
   },
   roleCardContent: {
     flex: 1,
