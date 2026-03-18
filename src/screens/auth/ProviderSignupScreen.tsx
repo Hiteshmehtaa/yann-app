@@ -1562,7 +1562,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   animatableContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   stepDotCompleted: {
     backgroundColor: COLORS.success,
@@ -1572,7 +1572,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
   },
   stepTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: COLORS.text,
     textAlign: 'center',
@@ -1580,7 +1580,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   stepSubtitle: {
-    fontSize: 15,
+    fontSize: 16,
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: 32,
@@ -1599,7 +1599,7 @@ const styles = StyleSheet.create({
   },
   fieldGlass: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 18,
   },
   inputDivider: {
     height: 1,
@@ -1607,7 +1607,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   label: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '800',
     color: COLORS.textTertiary,
     letterSpacing: 1.5,
@@ -1620,9 +1620,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: 'rgba(59, 130, 246, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1632,10 +1632,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#0F172A',
-    height: 32,
+    height: 44,
     letterSpacing: 0.2,
     padding: 0,
   },
@@ -1648,7 +1648,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 18,
   },
   s2CategoryInfo: {
     flex: 1,
