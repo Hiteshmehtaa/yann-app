@@ -309,7 +309,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
           </Animated.View>
 
           <View style={styles.welcomeSection}>
-            <Text style={styles.title}>Select Your Journey</Text>
+            <Text style={styles.title}> Get started with YANN</Text>
           </View>
 
           {/* Side-by-Side Role Options */}
@@ -328,7 +328,7 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                   <View style={styles.roleTextContainer}>
                     <Text style={styles.roleTitle}>MEMBER</Text>
                     <Text style={styles.roleDescription}>
-                      Premium home management services
+                      Verified Professionals at your doorstep
                     </Text>
                   </View>
                   <View style={styles.actionArrow}>
@@ -350,9 +350,9 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                     <Ionicons name="briefcase" size={42} color="#FF8A3D" />
                   </View>
                   <View style={styles.roleTextContainer}>
-                    <Text style={styles.roleTitle}>SPECIALIST</Text>
+                    <Text style={styles.roleTitle}>PARTNER</Text>
                     <Text style={styles.roleDescription}>
-                      Professional tools & platform
+                      Your skills, Your Rates, Your Income, Our Platform
                     </Text>
                   </View>
                   <View style={styles.actionArrow}>

@@ -1231,45 +1231,48 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       </TouchableOpacity>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingTop: insets.top + 20 }
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-            {/* Header / Branding */}
-            <View style={styles.headerBranding}>
-              <View style={styles.brandNameContainer}>
-                {['Y', 'A', 'N', 'N'].map((letter, index) => (
-                  <AnimatedLetter
-                    key={index}
-                    letter={letter}
-                    index={index}
-                    style={styles.brandLetter}
-                  />
-                ))}
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingTop: insets.top + 20 }
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+              {/* Header / Branding */}
+              <View style={styles.headerBranding}>
+                <View style={styles.brandNameContainer}>
+                  {['Y', 'A', 'N', 'N'].map((letter, index) => (
+                    <AnimatedLetter
+                      key={index}
+                      letter={letter}
+                      index={index}
+                      style={styles.brandLetter}
+                    />
+                  ))}
+                </View>
+                <View style={styles.taglineRow}>
+                  <View style={styles.taglineLine} />
+                  <Text style={styles.tagline}>SIGNATURE LUXURY</Text>
+                  <View style={styles.taglineLine} />
+                </View>
               </View>
-              <View style={styles.taglineRow}>
-                <View style={styles.taglineLine} />
-                <Text style={styles.tagline}>SIGNATURE LUXURY</Text>
-                <View style={styles.taglineLine} />
+
+              {renderStepIndicator()}
+
+              <View style={{ marginTop: 10 }}>
+                {renderStep(currentStep)}
               </View>
-            </View>
+            </ScrollView>
 
-            {renderStepIndicator()}
-
-            <View style={{ marginTop: 10 }}>
-              {renderStep(currentStep)}
-            </View>
-          </ScrollView>
+            {renderBottomNav()}
+          </View>
         </KeyboardAvoidingView>
-
-        {renderBottomNav()}
       </View>
   );
 };
@@ -1285,7 +1288,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 120,
+    paddingBottom: 40,
   },
   backButton: {
     position: 'absolute',
@@ -1599,7 +1602,7 @@ const styles = StyleSheet.create({
   },
   fieldGlass: {
     paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingVertical: 14,
   },
   inputDivider: {
     height: 1,
@@ -1607,7 +1610,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: COLORS.textTertiary,
     letterSpacing: 1.5,
@@ -1620,9 +1623,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: 'rgba(59, 130, 246, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1632,10 +1635,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: '#0F172A',
-    height: 44,
+    height: 38,
     letterSpacing: 0.2,
     padding: 0,
   },
@@ -1648,7 +1651,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingVertical: 15,
   },
   s2CategoryInfo: {
     flex: 1,
@@ -2088,13 +2091,9 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: addAlpha(COLORS.white, 0.95), // Glass-ish
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 16,
     borderTopLeftRadius: RADIUS.xlarge,
     borderTopRightRadius: RADIUS.xlarge,
     ...SHADOWS.xl,
