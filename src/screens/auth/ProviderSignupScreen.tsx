@@ -1231,9 +1231,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       </TouchableOpacity>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         style={styles.keyboardView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={{ flex: 1 }}>
           <ScrollView
@@ -1496,7 +1496,7 @@ const styles = StyleSheet.create({
   },
   headerBranding: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   brandNameContainer: {
     flexDirection: 'row',
@@ -1602,7 +1602,7 @@ const styles = StyleSheet.create({
   },
   fieldGlass: {
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 11,
   },
   inputDivider: {
     height: 1,
@@ -1610,7 +1610,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
     color: COLORS.textTertiary,
     letterSpacing: 1.5,
@@ -1623,8 +1623,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   iconCircle: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 14,
     backgroundColor: 'rgba(59, 130, 246, 0.08)',
     justifyContent: 'center',
@@ -1635,10 +1635,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: '#0F172A',
-    height: 38,
+    height: 34,
     letterSpacing: 0.2,
     padding: 0,
   },
@@ -1651,7 +1651,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 13,
   },
   s2CategoryInfo: {
     flex: 1,
@@ -2093,7 +2093,7 @@ const styles = StyleSheet.create({
   bottomBar: {
     backgroundColor: addAlpha(COLORS.white, 0.95), // Glass-ish
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopLeftRadius: RADIUS.xlarge,
     borderTopRightRadius: RADIUS.xlarge,
     ...SHADOWS.xl,
