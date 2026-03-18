@@ -746,8 +746,23 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderStep1 = () => (
     <View style={styles.animatableContent}>
-      <Text style={styles.stepTitle}>Profile Details</Text>
-      <Text style={styles.stepSubtitle}>Let's get your professional profile set up</Text>
+      <Text style={styles.stepTitle}>Partner with Yann</Text>
+      <Text style={styles.stepSubtitle}>Join our network of elite service providers</Text>
+
+      <View style={styles.benefitsRow}>
+        <View style={styles.benefitPill}>
+          <Ionicons name="shield-checkmark" size={14} color={COLORS.primary} />
+          <Text style={styles.benefitPillText}>Verified</Text>
+        </View>
+        <View style={styles.benefitPill}>
+          <Ionicons name="card" size={14} color={COLORS.primary} />
+          <Text style={styles.benefitPillText}>Weekly Payouts</Text>
+        </View>
+        <View style={styles.benefitPill}>
+          <Ionicons name="time" size={14} color={COLORS.primary} />
+          <Text style={styles.benefitPillText}>Flexible</Text>
+        </View>
+      </View>
 
       <GlassCard intensity={80} style={styles.formCard} enableTilt glowColor="rgba(59, 130, 246, 0.05)">
       <View style={styles.form}>
@@ -868,10 +883,17 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         {validationState.email === 'invalid' && (
           <Text style={styles.validationError}>Please enter a valid email address</Text>
         )}
+        </View>
+      </GlassCard>
+
+      <View style={styles.trustHintContainer}>
+        <Ionicons name="lock-closed-outline" size={14} color={COLORS.textTertiary} />
+        <Text style={styles.trustHintText}>
+          Your professional details are encrypted & secure.
+        </Text>
       </View>
-    </GlassCard>
-  </View>
-);
+    </View>
+  );
 
   const renderStep2 = () => (
     <View style={styles.animatableContent}>
@@ -1471,7 +1493,7 @@ const styles = StyleSheet.create({
   },
   headerBranding: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 40,
   },
   brandNameContainer: {
     flexDirection: 'row',
@@ -1480,7 +1502,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brandLetter: {
-    fontSize: 42,
+    fontSize: 48,
     fontWeight: '900',
     color: '#0F172A',
     letterSpacing: -1,
@@ -1494,14 +1516,50 @@ const styles = StyleSheet.create({
   },
   taglineLine: {
     height: 1,
-    width: 30,
-    backgroundColor: addAlpha(COLORS.primary, 0.3),
+    width: 24,
+    backgroundColor: 'rgba(15, 23, 42, 0.2)',
   },
   tagline: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+    letterSpacing: 2,
+  },
+  benefitsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  benefitPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  benefitPillText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: COLORS.primary,
-    letterSpacing: 3,
+  },
+  trustHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: -8,
+    marginBottom: 20,
+    opacity: 0.8,
+  },
+  trustHintText: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    fontWeight: '500',
   },
   animatableContent: {
     paddingHorizontal: 20,
