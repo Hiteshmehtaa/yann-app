@@ -1257,21 +1257,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background, // Changed from #F8F9FC
   },
-  bgPattern: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    overflow: 'hidden',
-    zIndex: -1,
-  },
-  decorativeCircle: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-  },
+
   keyboardView: {
     flex: 1,
   },

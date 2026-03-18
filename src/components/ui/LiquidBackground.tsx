@@ -18,7 +18,6 @@ export const LiquidBackground: React.FC<LiquidBackgroundProps> = ({ mode = 'ligh
   return (
     <View style={StyleSheet.absoluteFill}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: mode === 'light' ? '#F6F8FC' : '#0F172A' }]} />
-      <RisingBubbles mode={mode} />
     </View>
   );
 };

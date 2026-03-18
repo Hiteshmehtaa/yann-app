@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { LiquidBackground } from '../../components/ui/LiquidBackground';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   COLORS,
@@ -116,18 +117,7 @@ export const PartnerLoginScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Background Gradient Mesh */}
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={['#F0F9FF', '#F8FAFC', '#FFFFFF']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        {/* Decorative Elements */}
-        <View style={[styles.decorativeCircle, { top: -100, right: -50, backgroundColor: addAlpha(COLORS.primary, 0.05) }]} />
-        <View style={[styles.decorativeCircle, { bottom: 100, left: -100, width: 300, height: 300, backgroundColor: addAlpha(COLORS.accentYellow, 0.05) }]} />
-      </View>
+      <LiquidBackground mode="light" />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -303,12 +293,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  decorativeCircle: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-  },
+
   keyboardView: {
     flex: 1,
   },
