@@ -4,10 +4,10 @@
     "slug": "yann-mobile",
     "version": "2.2.4",
     "orientation": "portrait",
-    "icon": "./assets/LOGO.jpeg",
+    "icon": "./assets/Logo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/LOGO.jpeg",
+      "image": "./assets/Logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -44,7 +44,7 @@
       "versionCode": 14,
       "userInterfaceStyle": "light",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/LOGO.jpeg",
+        "foregroundImage": "./assets/Logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -131,7 +131,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/LOGO.jpeg",
+          "icon": "./assets/Logo.png",
           "color": "#ffffff",
           "defaultChannel": "default",
           "sounds": [
