@@ -69,6 +69,31 @@ interface ServiceItem {
   category?: string;
 }
 
+const mergeServicesByTitle = (backendServices: any[], localServices: any[]) => {
+  const mergedMap = new Map<string, any>();
+
+  for (const localService of localServices) {
+    const title = String(localService?.title || localService?.name || '').trim();
+    if (!title) continue;
+    mergedMap.set(title.toLowerCase(), { ...localService, title });
+  }
+
+  for (const backendService of backendServices) {
+    const title = String(backendService?.title || backendService?.name || '').trim();
+    if (!title) continue;
+
+    const key = title.toLowerCase();
+    const localBase = mergedMap.get(key) || {};
+    mergedMap.set(key, {
+      ...localBase,
+      ...backendService,
+      title,
+    });
+  }
+
+  return Array.from(mergedMap.values());
+};
+
 export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
   const { user, updateUser } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -166,10 +191,9 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       // Fetch services from backend API
       const response = await apiService.getAllServices();
 
-      let backendServices = response.data || [];
-      if (backendServices.length === 0) {
-        backendServices = SERVICES;
-      }
+      const backendServices = response.data || [];
+      const mergedCatalog = mergeServicesByTitle(backendServices, SERVICES as any[]);
+      const catalogToUse = mergedCatalog.length > 0 ? mergedCatalog : SERVICES;
 
       const userServices = user?.services || [];
       const userRates: Record<string, number> = {};
@@ -184,12 +208,12 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
       }
 
       // Map backend services to our ServiceItem format
-      const mappedServices: ServiceItem[] = backendServices.map((service: any) => ({
+      const mappedServices: ServiceItem[] = catalogToUse.map((service: any) => ({
         id: service._id || service.id || Math.random(),
         title: service.title || service.name,
         icon: service.icon || '✨',
         isActive: userServices.includes(service.title || service.name),
-        rate: userRates[service.title || service.name] || service.price || 0,
+        rate: userRates[service.title || service.name] || Number(service.price) || 0,
         category: service.category,
       }));
 

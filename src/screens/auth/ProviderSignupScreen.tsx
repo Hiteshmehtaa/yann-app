@@ -128,6 +128,41 @@ const SERVICE_CATEGORIES = [
   },
 ];
 
+const formatCategoryName = (rawCategory: string): string => {
+  return rawCategory
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
+const mergeServicesByTitle = (backendServices: any[], localServices: any[]) => {
+  const mergedMap = new Map<string, any>();
+
+  // Keep local catalog as baseline so app can still expose latest services
+  for (const localService of localServices) {
+    const title = String(localService?.title || localService?.name || '').trim();
+    if (!title) continue;
+    mergedMap.set(title.toLowerCase(), { ...localService, title });
+  }
+
+  // Backend values override local defaults when title matches
+  for (const backendService of backendServices) {
+    const title = String(backendService?.title || backendService?.name || '').trim();
+    if (!title) continue;
+
+    const key = title.toLowerCase();
+    const localBase = mergedMap.get(key) || {};
+    mergedMap.set(key, {
+      ...localBase,
+      ...backendService,
+      title,
+    });
+  }
+
+  return Array.from(mergedMap.values());
+};
+
 const AnimatedLetter = ({ letter, index, style }: { letter: string, index: number, style?: any }) => {
   const animatedValue = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -296,6 +331,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     laundry: 2000,
     pujari: 25000,
     driver: 2500,
+    electrical: 4000,
+    'appliance-repair': 12000,
     other: 10000,
   };
 
@@ -308,13 +345,15 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setIsLoadingServices(true);
       const response = await apiService.getAllServices();
+      const backendServices = response.data || [];
+      const mergedServices = mergeServicesByTitle(backendServices, DB_SERVICES as any[]);
 
-      if (response.data && response.data.length > 0) {
+      if (mergedServices.length > 0) {
         const limitMap: Record<string, any> = {};
         // Group services by category
         const categoriesMap: Record<string, string[]> = {};
 
-        for (const service of response.data) {
+        for (const service of mergedServices) {
           const category = (service.category || 'other').toLowerCase();
           if (!categoriesMap[category]) {
             categoriesMap[category] = [];
@@ -330,7 +369,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         // Build category structure
         const newCategories = Object.keys(categoriesMap).map((catKey) => ({
           id: catKey,
-          name: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+          name: formatCategoryName(catKey),
           icon: getCategoryIcon(catKey),
           services: categoriesMap[catKey],
         }));
@@ -361,7 +400,7 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
 
       const fallbackCategories = Object.keys(categoriesMap).map((catKey) => ({
         id: catKey,
-        name: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+        name: formatCategoryName(catKey),
         icon: getCategoryIcon(catKey),
         services: categoriesMap[catKey],
       }));
@@ -379,6 +418,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       laundry: 'shirt-outline',
       pujari: 'flame-outline',
       driver: 'car-outline',
+      electrical: 'flash-outline',
+      'appliance-repair': 'build-outline',
       other: 'construct-outline',
     };
     return iconMap[category] || 'grid-outline';

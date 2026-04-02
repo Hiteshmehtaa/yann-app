@@ -32,6 +32,14 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
         onSelectCategory(category);
     };
 
+    const formatCategoryLabel = (category: string) => {
+        return category
+            .split(/[-_\s]+/)
+            .filter(Boolean)
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+    };
+
     return (
         <View style={styles.container}>
             {/* Search Section - Floating Glass Pill */}
@@ -78,7 +86,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                                 { color: selectedCategory === cat ? '#FFF' : colors.text }
                             ]}
                         >
-                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                            {formatCategoryLabel(cat)}
                         </Text>
                     </TouchableOpacity>
                 ))}
