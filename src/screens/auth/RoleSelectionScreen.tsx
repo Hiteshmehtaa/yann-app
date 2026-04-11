@@ -169,25 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statsBar: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 40,
-  },
-  statBox: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  statDesc: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: COLORS.textTertiary,
-    letterSpacing: 1,
-  },
   footer: {
     width: '100%',
     alignItems: 'center',
@@ -361,18 +342,6 @@ export const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               </GlassCard>
             </TouchableOpacity>
-          </Animated.View>
-
-          {/* Stats Bar */}
-          <Animated.View style={[styles.statsBar, { opacity: fadeAnim }]}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>10K+</Text>
-              <Text style={styles.statDesc}>EXPERTS</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>4.9 ⭐</Text>
-              <Text style={styles.statDesc}>RATING</Text>
-            </View>
           </Animated.View>
 
           {/* Footer */}

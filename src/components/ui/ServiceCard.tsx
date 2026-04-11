@@ -1,12 +1,10 @@
 import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Image, ImageSourcePropType, Animated, Platform } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SPACING, RADIUS, SHADOWS, COLORS } from '../../utils/theme';
+import { COLORS } from '../../utils/theme';
 import { ServiceIcon } from '../icons/ServiceIcon';
-import { Badge } from './Badge';
-import { DepthCard } from './DepthCard';
 import { haptics } from '../../utils/haptics';
 import { useTheme } from '../../contexts/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 type ServiceCardProps = {
   title: string;
@@ -20,6 +18,7 @@ type ServiceCardProps = {
   isNew?: boolean;
   onPress: () => void;
   style?: ViewStyle;
+  variant?: 'list' | 'grid';
 };
 
 export const ServiceCard = React.memo<ServiceCardProps>(({
@@ -34,6 +33,7 @@ export const ServiceCard = React.memo<ServiceCardProps>(({
   isNew = false,
   onPress,
   style,
+  variant = 'list',
 }) => {
   const { colors, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -66,211 +66,226 @@ export const ServiceCard = React.memo<ServiceCardProps>(({
     }
   };
 
-  // Service-specific image scaling
-  const getImageScale = () => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('mahamrityunjay') || titleLower.includes('satyanarayan')) {
-      return 0.85; // Zoom out
-    }
-    if (titleLower.includes('lakshmi') || titleLower.includes('ganesh') || titleLower.includes('vishnu')) {
-      return 1.15; // Zoom in
-    }
-    return 1; // Default
-  };
-
-  const imageScale = getImageScale();
-
   return (
     <TouchableOpacity
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
-      style={[styles.container, style]}
+      style={[style, variant === 'grid' && styles.gridContainer]}
       disabled={isComingSoon}
     >
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <View style={[
-          styles.card,
-          {
-            backgroundColor: colors.cardBg,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-            opacity: isComingSoon ? 0.6 : 1,
-          }
-        ]}>
-          {/* Image Section - Centered */}
-          <View style={styles.imageSection}>
-            {iconImage ? (
-              <Image
-                source={iconImage}
-                style={[styles.serviceImage, { transform: [{ scale: imageScale }] }]}
-                resizeMode="contain"
-              />
-            ) : icon && typeof icon === 'string' && icon.length < 5 ? (
-              <Text style={styles.emojiIcon}>{icon}</Text>
-            ) : (
-              <ServiceIcon
-                size={48}
-                color={COLORS.primary}
-              />
-            )}
+      <Animated.View style={[
+        variant === 'grid' ? styles.gridCard : styles.rowCard,
+        { 
+          transform: [{ scale: scaleAnim }],
+          ...(variant === 'list' ? { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' } : {}),
+          opacity: isComingSoon ? 0.5 : 1,
+          backgroundColor: variant === 'grid' ? (isDark ? '#1F2937' : '#FFFFFF') : 'transparent',
+          // Use very light, thin border instead of heavy shadow
+          borderColor: variant === 'grid' ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.03)') : 'transparent',
+          borderWidth: variant === 'grid' ? 1.5 : 0,
+        }
+      ]}>
+        
+        {/* Grid Badge */}
+        {variant === 'grid' && (
+          <View style={styles.gridBadgeContainer}>
+            <View style={[styles.gridBadgeDot, { backgroundColor: isComingSoon ? '#EF4444' : '#10B981' }]} />
+            <Text style={styles.gridBadgeText}>
+              {isComingSoon 
+                ? 'Coming Soon' 
+                : `${partnerCount} Partner${partnerCount !== 1 ? 's' : ''}`
+              }
+            </Text>
           </View>
+        )}
 
-          {/* Title - Below Image */}
-          <View style={styles.titleSection}>
-            <Text
-              style={[styles.serviceTitle, { color: colors.text }]}
-              numberOfLines={2}
+        {/* Icon */}
+        <View style={[
+          variant === 'grid' ? styles.gridIconContainer : styles.iconContainer, 
+          { backgroundColor: variant === 'grid' ? 'transparent' : (isDark ? 'rgba(255,255,255,0.03)' : '#F3F4F6') }
+        ]}>
+          {iconImage ? (
+            <Image
+              source={iconImage}
+              style={variant === 'grid' ? styles.gridServiceImage : styles.serviceImage}
+              resizeMode="contain"
+            />
+          ) : icon && typeof icon === 'string' && icon.length < 5 ? (
+            <Text style={variant === 'grid' ? styles.gridEmojiIcon : styles.emojiIcon}>{icon}</Text>
+          ) : (
+            <ServiceIcon
+              size={variant === 'grid' ? 48 : 24}
+              color={isDark ? '#E5E7EB' : '#374151'}
+            />
+          )}
+        </View>
+
+        {/* Text Content */}
+        <View style={variant === 'grid' ? styles.gridTextContent : styles.textContent}>
+          <View style={variant === 'grid' ? styles.gridTitleRow : styles.titleRow}>
+            <Text 
+              style={[variant === 'grid' ? styles.gridTitle : styles.title, { color: isDark ? '#FFFFFF' : '#111827' }]}
+              numberOfLines={variant === 'grid' ? 2 : 1}
             >
               {title}
             </Text>
-          </View>
-
-          {/* Status Tag */}
-          {isNew && !isComingSoon && (
-            <View style={styles.newBadge}>
-              <Text style={styles.newText}>NEW</Text>
-            </View>
-          )}
-
-          {/* Active Partners Count */}
-          {!isComingSoon && partnerCount > 0 && (
-            <View style={[styles.partnerBadge, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.85)' }]}>
-              <View style={[styles.activeDot, { backgroundColor: COLORS.success || '#10B981' }]} />
-              <Text style={[styles.partnerText, { color: colors.textSecondary }]}>
-                {partnerCount} {partnerCount === 1 ? 'Partner' : 'Partners'}
-              </Text>
-            </View>
-          )}
-
-          {/* Coming Soon Overlay */}
-          {isComingSoon && (
-            <View style={styles.comingSoonOverlay}>
-              <View style={[styles.comingSoonBadge, {
-                backgroundColor: isDark ? 'rgba(156, 163, 175, 0.9)' : 'rgba(156, 163, 175, 0.85)'
-              }]}>
-                <Text style={styles.comingSoonText}>Coming Soon</Text>
+            {isNew && !isComingSoon && variant === 'list' && (
+              <View style={styles.newPill}>
+                <Text style={styles.newText}>NEW</Text>
               </View>
-            </View>
+            )}
+          </View>
+          
+          {variant === 'list' && (
+            <Text 
+              style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#6B7280' }]}
+              numberOfLines={1}
+            >
+              {isComingSoon 
+                ? 'Available Soon' 
+                : partnerCount > 0 
+                  ? `${partnerCount} providers`
+                  : 'Explore services'
+              }
+            </Text>
           )}
         </View>
+
+        {/* Right Arrow for list variant */}
+        {variant === 'list' && (
+          <View style={styles.rightContent}>
+            <Ionicons 
+              name="chevron-forward" 
+              size={18} 
+              color={isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'} 
+            />
+          </View>
+        )}
+
       </Animated.View>
     </TouchableOpacity>
   );
 });
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  rowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  card: {
-    height: 160,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  imageSection: {
-    height: 110,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 16,
+    marginRight: 16,
   },
   serviceImage: {
-    width: 85,
-    height: 85,
+    width: 28,
+    height: 28,
   },
   emojiIcon: {
-    fontSize: 56,
+    fontSize: 24,
   },
-  titleSection: {
+  textContent: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
     justifyContent: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 4,
   },
-  serviceTitle: {
+  title: {
+    fontSize: 16,
+    fontWeight: '500',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
     fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
-    letterSpacing: -0.2,
-    textAlign: 'center',
+    fontWeight: '400',
   },
-  newBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  newPill: {
+    marginLeft: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   newText: {
     fontSize: 9,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  comingSoonOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  comingSoonBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  comingSoonText: {
-    fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#10B981',
   },
-  partnerBadge: {
+  rightContent: {
+    paddingLeft: 12,
+  },
+  // Grid Variant Styles
+  gridContainer: {
+    width: '100%',
+  },
+  gridCard: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 24, // Sightly softer round corners are nicer without shadows
+    minHeight: 180,
+    // Removed harsh shadow/elevation
+  },
+  gridBadgeContainer: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 14,
+    left: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: 'rgba(243, 244, 246, 0.8)',
     paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+    zIndex: 2,
   },
-  activeDot: {
+  gridBadgeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
+    marginRight: 4,
   },
-  partnerText: {
+  gridBadgeText: {
     fontSize: 10,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  gridIconContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24, // Space for the absolute badge
+    marginBottom: 16,
+  },
+  gridServiceImage: {
+    width: 70,
+    height: 70,
+  },
+  gridEmojiIcon: {
+    fontSize: 48,
+  },
+  gridTextContent: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  gridTitleRow: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  gridTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
 });

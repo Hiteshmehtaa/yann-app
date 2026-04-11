@@ -414,6 +414,8 @@ export function AppNavigator() {
                 <Stack.Screen name="ProviderTerms" component={ProviderTermsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SafetyPolicy" component={SafetyPolicyScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="IdentityTypeSelection" component={IdentityTypeSelectionScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="LanguageSettings" component={LanguageSettingsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Favorites" component={FavoritesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="AdminPush" component={AdminPushNotificationScreen as any} options={screenTransitionConfig} />

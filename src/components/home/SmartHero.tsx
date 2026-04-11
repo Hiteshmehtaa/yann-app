@@ -70,24 +70,24 @@ export const SmartHero: React.FC<SmartHeroProps> = ({
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 24,
-        paddingTop: 30, // More breathing room
-        paddingBottom: 20,
+        paddingTop: 20,
+        paddingBottom: 12,
     },
     headerContent: {
-        marginBottom: 8,
+        marginBottom: 4,
     },
     greeting: {
-        fontSize: 18,
-        fontWeight: '400', // Thinner, more elegant
+        fontSize: 14,
+        fontWeight: '300',
         marginBottom: 2,
         letterSpacing: 0.5,
-        opacity: 0.8,
+        opacity: 0.7,
     },
     name: {
-        fontSize: 42, // Massive editorial size
-        fontWeight: '300', // Light font weight for premium feel
-        letterSpacing: -1.5,
-        marginBottom: 16,
+        fontSize: 28,
+        fontWeight: '400',
+        letterSpacing: -0.5,
+        marginBottom: 12,
     },
     statsPill: {
         flexDirection: 'row',

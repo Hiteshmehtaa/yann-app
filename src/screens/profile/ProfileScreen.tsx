@@ -70,15 +70,45 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
 
 
-  const isIdentityVerified = !!user?.aadhaarVerified;
-
+  const isIdentityVerified = !!(user?.aadhaarVerified || user?.isVerified);
   const getVerificationStatus = () => {
     if (user?.identityVerificationStatus === 'pending') {
-      return { text: 'Aadhaar Verification Pending', color: DESIGN.warning };
+      return { text: 'Verification Pending', color: DESIGN.warning };
+    } else if (user?.identityVerificationStatus === 'rejected') {
+      return { text: 'Rejected - Retry', color: DESIGN.error };
     } else if (isIdentityVerified) {
-      return { text: 'Aadhaar Verified', color: DESIGN.success };
+      return { text: 'Identity Verified', color: DESIGN.success };
     }
-    return { text: 'Verify your Aadhaar', color: DESIGN.textTertiary };
+    return { text: 'Verify your Identity', color: DESIGN.textTertiary };
+  };
+
+  const handleVerification = () => {
+    if (isIdentityVerified) {
+      showSuccess('Verified', 'Your identity is already verified securely on the platform.');
+      return;
+    }
+    
+    if (user?.identityVerificationStatus === 'pending') {
+      showConfirm(
+        'Verification Pending',
+        'Your documents are under review. You will be notified once the verification is complete.',
+        () => {},
+        { confirmText: 'OK', type: 'info' }
+      );
+      return;
+    }
+
+    if (user?.identityVerificationStatus === 'rejected') {
+      showConfirm(
+        'Verification Rejected',
+        user?.identityRejectionReason || 'Your verification was rejected. Please submit valid documents.',
+        () => navigation.navigate('IdentityTypeSelection'),
+        { confirmText: 'Try Again', type: 'error' }
+      );
+      return;
+    }
+
+    navigation.navigate('IdentityTypeSelection');
   };
 
   const fetchProfile = useCallback(async () => {
@@ -135,7 +165,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     { icon: 'calendar-outline', title: 'My Bookings', onPress: () => navigation.navigate('BookingsList') },
     { icon: 'location-outline', title: 'Saved Addresses', onPress: () => navigation.navigate('SavedAddresses') },
     { icon: 'notifications-outline', title: 'Notifications', onPress: () => navigation.navigate('Notifications') },
-    { icon: 'shield-checkmark-outline', title: 'Aadhaar Status', subtitle: getVerificationStatus().text, onPress: () => !isIdentityVerified && navigation.navigate('AadhaarVerification'), badgeColor: getVerificationStatus().color },
+    { icon: 'shield-checkmark-outline', title: 'Verify Identity', subtitle: getVerificationStatus().text, onPress: handleVerification, badgeColor: getVerificationStatus().color },
     { icon: 'wallet-outline', title: 'Wallet Balance', onPress: () => navigation.navigate('Wallet') },
     { icon: 'language-outline', title: 'Language', onPress: () => navigation.navigate('LanguageSettings') },
     { icon: 'help-circle-outline', title: 'Help & Support', onPress: () => navigation.navigate('HelpSupport') },
