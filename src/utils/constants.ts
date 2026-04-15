@@ -19,7 +19,7 @@ const getLocalhost = () => {
   return 'localhost'; // iOS simulator
 };
 const LOCAL_API_URL = `http://${getLocalhost()}:3000/api`;
-const PRODUCTION_API_URL = 'https://yann-care.vercel.app/api';
+const PRODUCTION_API_URL = 'https://yann-production.up.railway.app/api';
 
 // Dynamic API URL with caching
 let cachedApiUrl: string | null = null;

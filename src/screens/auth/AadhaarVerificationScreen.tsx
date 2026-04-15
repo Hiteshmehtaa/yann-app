@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { COLORS, SPACING, TYPOGRAPHY, RADIUS, SHADOWS } from '../../utils/theme';
@@ -130,12 +129,12 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={22} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Aadhaar Verification</Text>
         <View style={{ width: 44 }} />
@@ -151,15 +150,10 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
         ]}
       >
         {/* Icon */}
-        <View style={styles.iconContainer}>
-          <LinearGradient
-            colors={['#E0F2FE', '#F0F9FF']}
-            style={styles.iconCircle}
-          >
-            <View style={styles.iconInner}>
-              <Ionicons name="finger-print" size={48} color={COLORS.primary} />
-            </View>
-          </LinearGradient>
+        <View style={styles.iconWrapper}>
+          <View style={styles.iconInnerRing}>
+            <Ionicons name="finger-print" size={40} color="#3B82F6" />
+          </View>
         </View>
 
         <Text style={styles.title}>Verify with DigiLocker</Text>
@@ -170,15 +164,15 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
         </Text>
 
         {/* Steps */}
-        <View style={styles.stepsCard}>
+        <View style={styles.stepsContainer}>
           {[
             { icon: 'open-outline', text: 'You will be redirected safely to DigiLocker website' },
             { icon: 'key-outline', text: 'Log in with your Aadhaar number & OTP credentials' },
-            { icon: 'checkmark-done-circle-outline', text: 'Your identity will be instantly securely verified' },
+            { icon: 'checkmark-circle-outline', text: 'Your identity will be instantly securely verified' },
           ].map((step, i) => (
             <View key={i} style={styles.step}>
               <View style={styles.stepIconBox}>
-                <Ionicons name={step.icon as any} size={20} color={COLORS.primary} />
+                <Ionicons name={step.icon as any} size={22} color="#4B5563" />
               </View>
               <Text style={styles.stepText}>{step.text}</Text>
             </View>
@@ -188,10 +182,10 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
         <View style={{ flex: 1 }} />
 
         {/* Info */}
-        <View style={styles.infoCard}>
-          <Ionicons name="shield-checkmark" size={20} color={COLORS.success} />
+        <View style={styles.infoRow}>
+          <Ionicons name="shield-checkmark" size={18} color="#059669" />
           <Text style={styles.infoText}>
-            Powered by Meon Tech. Your data is encrypted and never stored on our servers.
+            Your data is encrypted and never stored on our servers.
           </Text>
         </View>
 
@@ -202,12 +196,9 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color={COLORS.white} />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <>
-              <Text style={styles.verifyButtonText}>Continue with DigiLocker</Text>
-              <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
-            </>
+            <Text style={styles.verifyButtonText}>Continue with DigiLocker  →</Text>
           )}
         </AnimatedButton>
       </Animated.View>
@@ -227,111 +218,78 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F3F5',
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
   },
   backButton: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 22,
   },
   content: {
     flex: 1,
-    padding: 24,
-    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+    paddingTop: 24,
+    alignItems: 'stretch',
   },
-  iconContainer: {
+  iconWrapper: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 32,
+    marginTop: 56,
+    marginBottom: 36,
   },
-  iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
-    ...Platform.select({
-      ios: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.15,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
-  },
-  iconInner: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: COLORS.white,
+  iconInnerRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1A1A1A',
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 12,
-    textAlign: 'center',
     letterSpacing: -0.5,
+    textAlign: 'left',
   },
   subtitle: {
-    fontSize: 15,
-    color: '#666666',
-    textAlign: 'center',
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'left',
     marginBottom: 40,
     lineHeight: 24,
-    paddingHorizontal: 20,
+    fontWeight: '400',
   },
-  stepsCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 24,
-    padding: 24,
+  stepsContainer: {
     width: '100%',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
   },
   step: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+    alignItems: 'flex-start',
+    marginBottom: 28,
   },
   stepIconBox: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F0F9FF',
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -339,58 +297,41 @@ const styles = StyleSheet.create({
   stepText: {
     flex: 1,
     fontSize: 15,
-    color: '#4A4A4A',
+    color: '#374151',
     lineHeight: 22,
     fontWeight: '500',
+    marginTop: 8,
   },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
-  },
-  infoText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 13,
-    color: '#166534',
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  verifyButton: {
-    backgroundColor: COLORS.primary,
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 20,
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  infoText: {
+    marginLeft: 8,
+    fontSize: 13,
+    color: '#059669',
+    lineHeight: 18,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  verifyButton: {
+    backgroundColor: '#3B82F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 56,
+    borderRadius: 28,
     width: '100%',
-    ...Platform.select({
-      ios: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
   verifyButtonDisabled: {
-    backgroundColor: '#A0AEC0',
-    shadowOpacity: 0,
-    elevation: 0,
+    backgroundColor: '#9CA3AF',
   },
   verifyButtonText: {
-    color: COLORS.white,
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
-    marginRight: 8,
-    letterSpacing: 0.5,
+    fontWeight: '600',
   },
 });
