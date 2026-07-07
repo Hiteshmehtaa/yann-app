@@ -35,6 +35,7 @@ import { getServiceIconImage } from '../../utils/serviceImages';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { SkeletonLoader } from '../../components/ui/SkeletonLoader';
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 import type { Service, ServiceProvider } from '../../types';
 
 // Types
@@ -187,7 +188,7 @@ const ModernProviderCard = ({
 // --- Main Screen ---
 
 export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-    const { service } = route.params;
+    const { service } = route.params || ({} as any);
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
 
@@ -203,6 +204,8 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Fetch Data
     useEffect(() => {
+        if (!service) return;
+
         const fetchData = async () => {
             try {
                 const response = await apiService.getProvidersByService(service.title);
@@ -240,7 +243,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             }
         };
         fetchData();
-    }, [service.title]);
+    }, [service?.title]);
 
     // Animated Styles
     const heroImageStyle = useAnimatedStyle(() => {
@@ -260,6 +263,17 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         const translateY = interpolate(scrollY.value, [HERO_HEIGHT - 80, HERO_HEIGHT - 40], [10, 0], Extrapolation.CLAMP);
         return { opacity, transform: [{ translateY }] };
     });
+
+    // Guard: this screen requires a valid service to render (all hooks above must run
+    // unconditionally on every render, so this check comes after them)
+    if (!service) {
+        return (
+            <MissingDataFallback
+                onGoBack={() => navigation.goBack()}
+                message="This service could not be loaded. Please go back and try again."
+            />
+        );
+    }
 
     return (
         <View style={styles.container}>

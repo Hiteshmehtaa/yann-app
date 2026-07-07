@@ -316,7 +316,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
-      storage.saveUserData(updatedUser);
+      storage.saveUserData(updatedUser).catch((error) => {
+        console.error('Failed to persist updated user data:', error);
+      });
     }
   };
 

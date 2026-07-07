@@ -18,6 +18,7 @@ Yann_app/
 Yann app/
 Yann-Website/
 yann/
+Server/
 # Expo
 .expo/
 dist/

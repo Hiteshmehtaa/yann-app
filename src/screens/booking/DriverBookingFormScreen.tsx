@@ -28,6 +28,7 @@ import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, GRADIENTS } from '../../u
 import { FloatingLabelInput } from '../../components/ui/FloatingLabelInput';
 import { CustomDateTimePicker } from '../../components/ui/CustomDateTimePicker';
 import { BookingAnimation } from '../../components/animations';
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
@@ -82,10 +83,10 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
         routeDistanceKm,
         driverReturnFare,
         driverRate,
-    } = route.params;
+    } = route.params || ({} as any);
 
     const { user } = useAuth();
-    const isAadhaarVerified = !!user?.aadhaarVerified;
+    const isAadhaarVerified = !!(user?.aadhaarVerified || user?.isVerified);
     const insets = useSafeAreaInsets();
     const scrollViewRef = useRef<ScrollView>(null);
 
@@ -104,6 +105,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
 
     // Wallet
     const [walletBalance, setWalletBalance] = useState(0);
+    const [maxBonusUsable, setMaxBonusUsable] = useState(0);
     const [loadingWallet, setLoadingWallet] = useState(true);
 
     // Auto-select defaults
@@ -121,6 +123,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                 const response = await apiService.getWalletBalance();
                 if (response.success) {
                     setWalletBalance(response.data?.balance || 0);
+                    setMaxBonusUsable(response.data?.maxBonusUsable || 0);
                 }
             } catch (e) {
                 console.log('Wallet fetch failed:', e);
@@ -130,6 +133,17 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
         };
         fetchWallet();
     }, []);
+
+    // Guard: this screen requires a valid service/driver/rate to render (all hooks above
+    // must run unconditionally on every render, so this check comes after them)
+    if (!service || !selectedDriver || typeof driverRate !== 'number') {
+        return (
+            <MissingDataFallback
+                onGoBack={() => navigation.goBack()}
+                message="This booking form is missing required details. Please go back and try again."
+            />
+        );
+    }
 
     // Price Calculations
     const basePrice = driverRate * selectedDuration; // hourly rate x hours
@@ -142,7 +156,8 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
     // The 25% payment INCLUDES the driver return fare
     const initialPayment = Math.round(totalPrice * 0.25 * 100) / 100;
     const completionPayment = Math.round((totalPrice - initialPayment) * 100) / 100;
-    const hasInsufficientBalance = walletBalance < initialPayment;
+    const effectiveWalletBalance = walletBalance + Math.min(maxBonusUsable, initialPayment);
+    const hasInsufficientBalance = effectiveWalletBalance < initialPayment;
 
     // Compute end time display
     const getEndTime = (): string => {
@@ -651,6 +666,21 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                                         <Text style={styles.totalAmount}>₹{totalPrice.toFixed(2)}</Text>
                                     </View>
 
+                                    {/* Payment Method */}
+                                    <Text style={styles.paymentMethodTitle}>Payment Method</Text>
+                                    <View style={styles.paymentMethodCard}>
+                                        <View style={styles.paymentMethodIcon}>
+                                            <Ionicons name="wallet-outline" size={22} color="#3B82F6" />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.paymentMethodLabel}>Yann Wallet</Text>
+                                            <Text style={styles.paymentMethodDesc}>Pay 25% now, 75% after service</Text>
+                                        </View>
+                                        <View style={styles.paymentMethodRadio}>
+                                            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                                        </View>
+                                    </View>
+
                                     {/* Staged Payment Breakdown */}
                                     <View style={styles.stagedPayment}>
                                         <View style={styles.stagedHeader}>
@@ -673,18 +703,32 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                                         </View>
                                     </View>
 
-                                    {/* Wallet Balance */}
+                                    {/* Wallet Balance + Bonus Credits */}
                                     {!loadingWallet && (
-                                        <View style={styles.walletRow}>
-                                            <View style={styles.walletInfo}>
-                                                <Ionicons name="wallet-outline" size={16} color="#64748B" />
-                                                <Text style={styles.walletLabel}>Wallet Balance</Text>
+                                        <View style={styles.walletInfoBox}>
+                                            <View style={styles.walletRow}>
+                                                <View style={styles.walletInfo}>
+                                                    <Ionicons name="wallet-outline" size={16} color="#64748B" />
+                                                    <Text style={styles.walletLabel}>Wallet Balance</Text>
+                                                </View>
+                                                <Text style={[styles.walletAmount, {
+                                                    color: hasInsufficientBalance ? '#EF4444' : '#10B981'
+                                                }]}>
+                                                    ₹{walletBalance.toFixed(2)}
+                                                </Text>
                                             </View>
-                                            <Text style={[styles.walletAmount, {
-                                                color: hasInsufficientBalance ? '#EF4444' : '#10B981'
-                                            }]}>
-                                                ₹{walletBalance.toFixed(2)}
-                                            </Text>
+
+                                            {maxBonusUsable > 0 && (
+                                                <View style={styles.walletRow}>
+                                                    <View style={styles.walletInfo}>
+                                                        <Ionicons name="gift-outline" size={16} color="#2563EB" />
+                                                        <Text style={styles.walletLabel}>Bonus/Referral Credits</Text>
+                                                    </View>
+                                                    <Text style={[styles.walletAmount, { color: '#2563EB' }]}>
+                                                        ₹{maxBonusUsable.toFixed(2)}
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
                                     )}
 
@@ -700,7 +744,7 @@ export const DriverBookingFormScreen: React.FC<Props> = ({ navigation, route }) 
                                             <View style={{ flex: 1 }}>
                                                 <Text style={styles.topUpTitle}>Top Up Required</Text>
                                                 <Text style={styles.topUpSubtitle}>
-                                                    Add ₹{(initialPayment - walletBalance).toFixed(0)} to book
+                                                    Add ₹{Math.max(0, initialPayment - walletBalance - maxBonusUsable).toFixed(0)} to book
                                                 </Text>
                                             </View>
                                             <View style={styles.topUpButton}>
@@ -1392,6 +1436,50 @@ const styles = StyleSheet.create({
         fontWeight: '800' as any,
         color: COLORS.primary,
     },
+    // Payment Method
+    paymentMethodTitle: {
+        fontSize: 13,
+        fontWeight: '700' as any,
+        color: '#374151',
+        marginBottom: 8,
+    },
+    paymentMethodCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EFF6FF',
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 12,
+        borderWidth: 1.5,
+        borderColor: '#3B82F6',
+        gap: 12,
+    },
+    paymentMethodIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    paymentMethodLabel: {
+        fontSize: 14,
+        fontWeight: '700' as any,
+        color: '#1E3A8A',
+    },
+    paymentMethodDesc: {
+        fontSize: 12,
+        color: '#3B82F6',
+        marginTop: 2,
+    },
+    paymentMethodRadio: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#3B82F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     // Staged Payment
     stagedPayment: {
         backgroundColor: '#F0FDF4',
@@ -1438,11 +1526,17 @@ const styles = StyleSheet.create({
         color: '#1F2937',
     },
     // Wallet
+    walletInfoBox: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        padding: 10,
+        gap: 6,
+        marginTop: 4,
+    },
     walletRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 8,
     },
     walletInfo: {
         flexDirection: 'row',

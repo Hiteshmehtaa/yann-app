@@ -32,6 +32,7 @@ import { apiService } from '../../services/api';
 import { storage } from '../../utils/storage';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../utils/theme';
 import { decodePolyline } from '../../utils/maps';
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 
 const { width } = Dimensions.get('window');
 
@@ -148,7 +149,7 @@ const ITEM_SPACING = (width - ITEM_WIDTH) / 2;
 const AnimatedFlatList = Animated.createAnimatedComponent(GestureHandlerFlatList);
 
 export const DriverBookingScreen = ({ navigation, route }: any) => {
-    const { service } = route.params;
+    const { service } = route.params || ({} as any);
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
     const mapRef = useRef<MapView>(null);
@@ -899,6 +900,18 @@ export const DriverBookingScreen = ({ navigation, route }: any) => {
                 return null;
         }
     };
+
+    // Guard: this screen requires a valid service to render (all hooks above must run
+    // unconditionally on every render, so this check comes after them and after all
+    // function definitions the hooks/effects above may reference)
+    if (!service) {
+        return (
+            <MissingDataFallback
+                onGoBack={() => navigation.goBack()}
+                message="This booking is missing service details. Please start again."
+            />
+        );
+    }
 
     return (
         <View style={styles.container}>

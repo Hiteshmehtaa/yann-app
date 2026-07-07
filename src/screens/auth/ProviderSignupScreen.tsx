@@ -249,9 +249,18 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     tripPreference: 'both',
     licenseFrontImage: null as string | null,
     licenseBackImage: null as string | null,
+    policeVerificationDoc: null as string | null,
   });
 
-  const uploadDrivingLicenseImage = async (side: 'front' | 'back') => {
+  type DriverDocField = 'licenseFrontImage' | 'licenseBackImage' | 'policeVerificationDoc';
+
+  const DRIVER_DOC_LABELS: Record<DriverDocField, string> = {
+    licenseFrontImage: 'driving license front',
+    licenseBackImage: 'driving license back',
+    policeVerificationDoc: 'police verification',
+  };
+
+  const uploadDriverDocument = async (field: DriverDocField) => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -293,9 +302,9 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         if (base64Image) {
           setFormData(prev => ({
             ...prev,
-            [side === 'front' ? 'licenseFrontImage' : 'licenseBackImage']: base64Image
+            [field]: base64Image
           }));
-          Alert.alert('Success', `Driving license ${side} photo selected successfully!`);
+          Alert.alert('Success', `${DRIVER_DOC_LABELS[field]} photo selected successfully!`);
         }
       }
     } catch (error) {
@@ -599,8 +608,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
     });
 
     if (hasDriverService) {
-       if (!formData.licenseFrontImage || !formData.licenseBackImage) {
-          Alert.alert('Error', 'Both front and back photos of your driving license are required for driver services.');
+       if (!formData.licenseFrontImage || !formData.licenseBackImage || !formData.policeVerificationDoc) {
+          Alert.alert('Error', 'Driving license front/back photos and police verification document are required for driver services.');
           return;
        }
     }
@@ -669,7 +678,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
           transmissionTypes: formData.transmissionTypes,
           tripPreference: formData.tripPreference,
           licenseFrontImage: formData.licenseFrontImage,
-          licenseBackImage: formData.licenseBackImage
+          licenseBackImage: formData.licenseBackImage,
+          policeVerificationDoc: formData.policeVerificationDoc
         }
       };
 
@@ -1168,6 +1178,53 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                   );
                 })}
               </View>
+            </View>
+
+            <View style={styles.inputDivider} />
+
+            {/* Driver Documents */}
+            <View style={styles.fieldGlass}>
+              <Text style={styles.label}>DRIVING LICENSE PHOTOS</Text>
+              <View style={{ gap: 12 }}>
+                <TouchableOpacity
+                  style={[styles.uploadButton, formData.licenseFrontImage && styles.uploadButtonSuccess]}
+                  onPress={() => uploadDriverDocument('licenseFrontImage')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={formData.licenseFrontImage ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.licenseFrontImage ? COLORS.success : COLORS.primary} />
+                  <Text style={[styles.uploadButtonText, formData.licenseFrontImage && { color: COLORS.success }]}>
+                    {formData.licenseFrontImage ? 'Front Photo Uploaded' : 'Upload Front Photo'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.uploadButton, formData.licenseBackImage && styles.uploadButtonSuccess]}
+                  onPress={() => uploadDriverDocument('licenseBackImage')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={formData.licenseBackImage ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.licenseBackImage ? COLORS.success : COLORS.primary} />
+                  <Text style={[styles.uploadButtonText, formData.licenseBackImage && { color: COLORS.success }]}>
+                    {formData.licenseBackImage ? 'Back Photo Uploaded' : 'Upload Back Photo'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputDivider} />
+
+            {/* Police Verification */}
+            <View style={styles.fieldGlass}>
+              <Text style={styles.label}>POLICE VERIFICATION</Text>
+              <TouchableOpacity
+                style={[styles.uploadButton, formData.policeVerificationDoc && styles.uploadButtonSuccess]}
+                onPress={() => uploadDriverDocument('policeVerificationDoc')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name={formData.policeVerificationDoc ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.policeVerificationDoc ? COLORS.success : COLORS.primary} />
+                <Text style={[styles.uploadButtonText, formData.policeVerificationDoc && { color: COLORS.success }]}>
+                  {formData.policeVerificationDoc ? 'Document Uploaded' : 'Upload Police Verification Document'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </GlassCard>

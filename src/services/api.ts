@@ -183,7 +183,7 @@ class ApiService {
     return response.data;
   }
 
-  async sendSignupOTP(identifier: string, metadata: { name: string; phone?: string; email?: string }): Promise<ApiResponse> {
+  async sendSignupOTP(identifier: string, metadata: { name: string; phone?: string; email?: string; referralCode?: string }): Promise<ApiResponse> {
     const response = await this.client.post('/auth/send-otp', {
       identifier,            // Can be email or phone number
       audience: 'homeowner',
@@ -235,6 +235,9 @@ class ApiService {
       totalReviews: rawUserData.totalReviews,
       avatar: rawUserData.avatar || rawUserData.profileImage || '',
       profileImage: rawUserData.profileImage || rawUserData.avatar || '',
+      isVerified: rawUserData.isVerified || false,
+      aadhaarVerified: rawUserData.aadhaarVerified || false,
+      identityVerificationStatus: rawUserData.identityVerificationStatus,
     };
 
     // console.log('✅ Mapped provider data:', userData);
@@ -296,7 +299,10 @@ class ApiService {
       role: response.data.audience || 'homeowner',
       preferences: rawUserData.preferences || [],
       savedProviders: rawUserData.savedProviders || [],
-      addressBook: rawUserData.addressBook || []
+      addressBook: rawUserData.addressBook || [],
+      isVerified: rawUserData.isVerified || false,
+      aadhaarVerified: rawUserData.aadhaarVerified || false,
+      identityVerificationStatus: rawUserData.identityVerificationStatus,
     };
 
     // Use actual JWT token from backend response
@@ -341,8 +347,7 @@ class ApiService {
   }
 
   async markNotificationsRead(notificationIds: string[]): Promise<ApiResponse> {
-    const userStr = await AsyncStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    const user = await storage.getUserData();
     const userId = user?.id || user?._id;
 
     const response = await this.client.post('/notifications/mark-read', {
@@ -1346,6 +1351,9 @@ class ApiService {
    */
   async getWalletBalance(page: number = 1, limit: number = 20): Promise<ApiResponse<{
     balance: number;
+    bonusBalance?: number;
+    bonusSpendCapPercent?: number;
+    maxBonusUsable?: number;
     currency: string;
     transactions: any[];
     meta?: {
@@ -1359,6 +1367,40 @@ class ApiService {
     const response = await this.client.get('/wallet', {
       params: { page, limit }
     });
+    return response.data;
+  }
+
+  /**
+   * GET /api/homeowner/referral
+   * Get the caller's own referral code, stats, and program terms
+   */
+  async getReferralInfo(): Promise<ApiResponse<{
+    referralCode: string;
+    hasAppliedCode: boolean;
+    totalReferred: number;
+    totalReferralEarnings: number;
+    bonusBalance: number;
+    enabled: boolean;
+    refereeSignupBonus: number;
+    referrerBonus: number;
+    bonusSpendCapPercent: number;
+    shareMessage: string;
+  }>> {
+    const response = await this.client.get('/homeowner/referral');
+    return response.data;
+  }
+
+  /**
+   * POST /api/homeowner/referral/apply
+   * Apply a referral code to the caller's account (one-time use)
+   */
+  async applyReferralCode(code: string): Promise<ApiResponse<{
+    refereeBonus: number;
+    referrerBonus: number;
+    referrerName: string;
+    newBonusBalance: number;
+  }>> {
+    const response = await this.client.post('/homeowner/referral/apply', { code });
     return response.data;
   }
 

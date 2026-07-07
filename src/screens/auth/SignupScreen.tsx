@@ -289,6 +289,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
     name: '',
     email: '',
     phone: '',
+    referralCode: '',
     agreedToTerms: false,
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -366,6 +367,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
       const metadata: any = { name: formData.name.trim() };
       if (hasEmail) metadata.email = formData.email.trim();
       if (hasPhone) metadata.phone = formData.phone.trim();
+      if (formData.referralCode.trim()) metadata.referralCode = formData.referralCode.trim().toUpperCase();
 
       await apiService.sendSignupOTP(primaryIdentifier, metadata);
 
@@ -550,6 +552,34 @@ export const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
                     {formData.phone.length > 0 && validatePhone(formData.phone) && (
                       <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
                     )}
+                  </View>
+                </View>
+
+                <View style={styles.inputDivider} />
+
+                {/* Referral Code Field */}
+                <View style={[
+                  styles.fieldGlass,
+                  focusedField === 'referralCode' && { backgroundColor: 'rgba(59, 130, 246, 0.03)' }
+                ]}>
+                  <View style={styles.inputRow}>
+                    <View style={[styles.iconCircle, focusedField === 'referralCode' && { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                      <Ionicons name="gift-outline" size={18} color={focusedField === 'referralCode' ? COLORS.primary : COLORS.textTertiary} />
+                    </View>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>REFERRAL CODE (OPTIONAL)</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Have a code? Enter it here"
+                        placeholderTextColor={addAlpha(COLORS.textTertiary, 0.6)}
+                        value={formData.referralCode}
+                        onChangeText={(value) => updateField('referralCode', value.toUpperCase())}
+                        onFocus={() => setFocusedField('referralCode')}
+                        onBlur={() => setFocusedField(null)}
+                        autoCapitalize="characters"
+                        editable={!isLoading}
+                      />
+                    </View>
                   </View>
                 </View>
               </View>

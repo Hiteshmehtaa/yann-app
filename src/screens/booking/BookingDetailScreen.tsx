@@ -20,6 +20,7 @@ import { RatingModal } from '../../components/RatingModal';
 import { JobTimer } from '../../components/JobTimer';
 import { apiService } from '../../services/api';
 import { useNotifications } from '../../contexts/NotificationContext';
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 import type { Booking } from '../../types';
 import LottieView from 'lottie-react-native';
 import { LottieAnimations } from '../../utils/lottieAnimations';
@@ -30,7 +31,7 @@ type Props = {
 };
 
 export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-    const { booking: initialBooking } = route.params;
+    const { booking: initialBooking } = route.params || ({} as { booking?: Booking });
     const [booking, setBooking] = useState<Booking>(initialBooking);
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -39,6 +40,9 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Poll for booking status updates (to detect completion and trigger payment modal)
     useEffect(() => {
+        // Guard: booking may be undefined if this screen was opened without valid params
+        if (!booking) return;
+
         // Only poll if booking is in progress or awaiting completion payment
         if (booking.status !== 'in_progress' && booking.status !== 'accepted' && booking.status !== 'awaiting_completion_payment') {
             return;
@@ -98,7 +102,18 @@ export const BookingDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             console.log('🛑 Stopping booking status polling');
             clearInterval(pollInterval);
         };
-    }, [booking.status, booking._id]);
+    }, [booking?.status, booking?._id]);
+
+    // Guard: this screen requires a valid booking to render (all hooks above must run
+    // unconditionally on every render, so this check comes after them, not before)
+    if (!booking) {
+        return (
+            <MissingDataFallback
+                onGoBack={() => navigation.goBack()}
+                message="This booking could not be loaded. Please go back and try again."
+            />
+        );
+    }
 
     // Check if booking needs 75% completion payment
     const needsCompletionPayment = () => {

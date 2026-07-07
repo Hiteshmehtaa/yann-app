@@ -115,7 +115,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   // Error states
   const [error, setError] = useState<Error | null>(null);
   const [isNetworkError, setIsNetworkError] = useState(false);
-  const isAadhaarVerified = !!user?.aadhaarVerified;
+  const isAadhaarVerified = !!(user?.aadhaarVerified || user?.isVerified);
 
   useWalletBalance(); // usage to init if needed, though mostly for global state
 

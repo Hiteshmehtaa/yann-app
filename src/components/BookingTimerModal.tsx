@@ -64,6 +64,7 @@ export const BookingTimerModal: React.FC<BookingTimerModalProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const buzzerRef = useRef<NodeJS.Timeout | null>(null);
+  const outcomeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const appStateRef = useRef(AppState.currentState);
 
   // Pulse animation for waiting state
@@ -177,17 +178,17 @@ export const BookingTimerModal: React.FC<BookingTimerModalProps> = ({
           setStatus('accepted');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           clearAllIntervals();
-          setTimeout(onAccepted, 1500); // Show success state briefly
+          outcomeTimeoutRef.current = setTimeout(onAccepted, 1500); // Show success state briefly
         } else if (newStatus === 'rejected') {
           setStatus('rejected');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           clearAllIntervals();
-          setTimeout(onRejected, 1500);
+          outcomeTimeoutRef.current = setTimeout(onRejected, 1500);
         } else if (newStatus === 'expired') {
           setStatus('expired');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           clearAllIntervals();
-          setTimeout(onTimeout, 1500);
+          outcomeTimeoutRef.current = setTimeout(onTimeout, 1500);
         }
       }
     } catch (error) {
@@ -213,6 +214,14 @@ export const BookingTimerModal: React.FC<BookingTimerModalProps> = ({
     if (pollRef.current) clearInterval(pollRef.current);
     if (buzzerRef.current) clearInterval(buzzerRef.current);
   };
+
+  // Clear the pending outcome timeout on unmount so onAccepted/onRejected/onTimeout
+  // never fire against a torn-down modal
+  useEffect(() => {
+    return () => {
+      if (outcomeTimeoutRef.current) clearTimeout(outcomeTimeoutRef.current);
+    };
+  }, []);
 
   const handleCancel = () => {
     clearAllIntervals();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Clipboard, Alert, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Clipboard, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -76,6 +76,8 @@ export const NotificationsListScreen = () => {
       } else {
         navigation.navigate('MainTabs', { screen: 'BookingsList' });
       }
+    } else if (notification.type === 'referral_success') {
+      navigation.navigate('Referral');
     }
   };
 
@@ -86,6 +88,7 @@ export const NotificationsListScreen = () => {
       case 'booking_accepted': return 'checkmark-circle';
       case 'booking_rejected': return 'close-circle';
       case 'booking_completed': return 'checkmark-done-circle';
+      case 'referral_success': return 'gift';
       default: return 'notifications';
     }
   };
@@ -97,6 +100,7 @@ export const NotificationsListScreen = () => {
       case 'booking_accepted': return ['#10B981', '#059669'];
       case 'booking_rejected': return ['#EF4444', '#DC2626'];
       case 'booking_completed': return ['#8B5CF6', '#7C3AED'];
+      case 'referral_success': return ['#F59E0B', '#D97706'];
       default: return ['#6B7280', '#4B5563'];
     }
   };
@@ -189,9 +193,12 @@ export const NotificationsListScreen = () => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
+      <FlatList
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
+        data={notifications}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => renderNotification(item, index)}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -200,8 +207,7 @@ export const NotificationsListScreen = () => {
             colors={[COLORS.primary]}
           />
         }
-      >
-        {notifications.length === 0 ? (
+        ListEmptyComponent={
           <View style={styles.emptyState}>
             <EmptyState
               title="All Caught Up"
@@ -209,10 +215,8 @@ export const NotificationsListScreen = () => {
               animationSource={LottieAnimations.emailSent}
             />
           </View>
-        ) : (
-          notifications.map((n, i) => renderNotification(n, i))
-        )}
-      </ScrollView>
+        }
+      />
     </SafeAreaView>
   );
 };

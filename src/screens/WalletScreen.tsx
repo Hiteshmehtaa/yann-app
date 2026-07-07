@@ -91,6 +91,8 @@ export const WalletScreen = ({ navigation }: any) => {
   const { toast, showSuccess, showError, hideToast } = useToast();
 
   const [balance, setBalance] = useState(0);
+  const [bonusBalance, setBonusBalance] = useState(0);
+  const [bonusSpendCapPercent, setBonusSpendCapPercent] = useState(20);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -145,6 +147,8 @@ export const WalletScreen = ({ navigation }: any) => {
 
       if (response.success && response.data) {
         setBalance(response.data.balance || 0);
+        setBonusBalance(response.data.bonusBalance || 0);
+        setBonusSpendCapPercent(response.data.bonusSpendCapPercent ?? 20);
 
         const newTransactions = response.data.transactions || [];
 
@@ -617,6 +621,23 @@ export const WalletScreen = ({ navigation }: any) => {
               </AnimatedButton>
             ))}
           </ScrollView>
+
+          <TouchableOpacity
+            style={styles.bonusRow}
+            onPress={() => navigation.navigate('Referral' as never)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.bonusIconCircle}>
+              <Ionicons name="gift-outline" size={20} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bonusLabel}>Bonus Credit</Text>
+              <Text style={styles.bonusValue}>
+                ₹{bonusBalance.toLocaleString('en-IN')} · usable up to {bonusSpendCapPercent}% per payment
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
+          </TouchableOpacity>
         </View>
       )}
     </>
@@ -1250,6 +1271,36 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  bonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: addAlpha(COLORS.primary, 0.06),
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: addAlpha(COLORS.primary, 0.15),
+  },
+  bonusIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: addAlpha(COLORS.primary, 0.12),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bonusLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  bonusValue: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+    marginTop: 2,
   },
 
   // ── Transactions Section ─────────────────────────────────────────────────────

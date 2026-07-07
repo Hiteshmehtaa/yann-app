@@ -167,6 +167,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     { icon: 'notifications-outline', title: 'Notifications', onPress: () => navigation.navigate('Notifications') },
     { icon: 'shield-checkmark-outline', title: 'Verify Identity', subtitle: getVerificationStatus().text, onPress: handleVerification, badgeColor: getVerificationStatus().color },
     { icon: 'wallet-outline', title: 'Wallet Balance', onPress: () => navigation.navigate('Wallet') },
+    { icon: 'gift-outline', title: 'Refer & Earn', onPress: () => navigation.navigate('Referral') },
     { icon: 'language-outline', title: 'Language', onPress: () => navigation.navigate('LanguageSettings') },
     { icon: 'help-circle-outline', title: 'Help & Support', onPress: () => navigation.navigate('HelpSupport') },
   ];

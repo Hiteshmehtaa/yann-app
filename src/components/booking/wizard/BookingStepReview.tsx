@@ -13,6 +13,7 @@ interface BookingStepReviewProps {
     paymentMethod: string;
     onPaymentMethodChange: (method: string) => void;
     walletBalance: number;
+    maxBonusUsable?: number;
     loadingWallet: boolean;
     initialPayment: number;
     completionPayment: number;
@@ -34,6 +35,7 @@ export const BookingStepReview: React.FC<BookingStepReviewProps> = ({
     paymentMethod,
     onPaymentMethodChange,
     walletBalance,
+    maxBonusUsable = 0,
     loadingWallet,
     initialPayment,
     completionPayment,
@@ -101,21 +103,26 @@ export const BookingStepReview: React.FC<BookingStepReviewProps> = ({
                                                 </Text>
                                             )}
 
-                                            {/* Wallet Balance Inline */}
+                                            {/* Wallet Balance + Bonus Credits */}
                                             {isWallet && !loadingWallet && (
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-                                                    <Text style={{ fontSize: 12, color: COLORS.textSecondary }}>Balance: </Text>
-                                                    <Text style={{
-                                                        fontSize: 13,
-                                                        fontWeight: '700',
-                                                        color: walletBalance >= initialPayment ? COLORS.success : COLORS.error,
-                                                    }}>
-                                                        ₹{walletBalance.toFixed(2)}
-                                                    </Text>
-                                                    {walletBalance < initialPayment && (
-                                                        <Text style={{ fontSize: 11, color: COLORS.error, marginLeft: 6 }}>
-                                                            (Need ₹{initialPayment.toFixed(0)})
-                                                        </Text>
+                                                <View style={styles.walletInfoBox}>
+                                                    <View style={styles.walletInfoRow}>
+                                                        <View style={styles.walletInfoLabelRow}>
+                                                            <Ionicons name="wallet-outline" size={13} color={COLORS.textSecondary} />
+                                                            <Text style={styles.walletInfoLabel}>Wallet Balance</Text>
+                                                        </View>
+                                                        <Text style={styles.walletInfoValue}>₹{walletBalance.toFixed(2)}</Text>
+                                                    </View>
+                                                    {maxBonusUsable > 0 && (
+                                                        <View style={styles.walletInfoRow}>
+                                                            <View style={styles.walletInfoLabelRow}>
+                                                                <Ionicons name="gift-outline" size={13} color={COLORS.primary} />
+                                                                <Text style={[styles.walletInfoLabel, { color: COLORS.primary }]}>Bonus/Referral Credits</Text>
+                                                            </View>
+                                                            <Text style={[styles.walletInfoValue, { color: COLORS.primary }]}>
+                                                                ₹{maxBonusUsable.toFixed(2)}
+                                                            </Text>
+                                                        </View>
                                                     )}
                                                 </View>
                                             )}
@@ -170,7 +177,7 @@ export const BookingStepReview: React.FC<BookingStepReviewProps> = ({
                                     <View style={{ flex: 1, marginLeft: 12 }}>
                                         <Text style={styles.insufficientTitle}>Top Up Required</Text>
                                         <Text style={styles.insufficientDesc}>
-                                            Add ₹{(initialPayment - walletBalance).toFixed(0)} to book this service
+                                            Add ₹{Math.max(0, initialPayment - walletBalance - maxBonusUsable).toFixed(0)} to book this service
                                         </Text>
                                     </View>
                                     <View style={styles.topUpButton}>
@@ -263,6 +270,14 @@ export const BookingStepReview: React.FC<BookingStepReviewProps> = ({
                                 <Text style={styles.walletText}>Pay Now (25%)</Text>
                                 <Text style={styles.walletAmount}>₹{initialPayment.toFixed(2)}</Text>
                             </View>
+                            {maxBonusUsable > 0 && (
+                                <View style={[styles.walletRow, { paddingLeft: 24 }]}>
+                                    <Text style={styles.walletSubText}>Incl. bonus credit</Text>
+                                    <Text style={styles.walletSubAmount}>
+                                        - ₹{Math.min(maxBonusUsable, initialPayment).toFixed(2)}
+                                    </Text>
+                                </View>
+                            )}
                             <View style={styles.walletRow}>
                                 <Ionicons name="time" size={16} color={COLORS.textTertiary} />
                                 <Text style={[styles.walletText, { color: COLORS.textSecondary }]}>Pay Later (75%)</Text>
@@ -522,6 +537,44 @@ const styles = StyleSheet.create({
         color: COLORS.primary,
         marginLeft: 8,
         flex: 1,
+    },
+    walletSubText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: COLORS.textTertiary,
+        flex: 1,
+    },
+    walletSubAmount: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: COLORS.textTertiary,
+    },
+    walletInfoBox: {
+        marginTop: 10,
+        backgroundColor: COLORS.gray50,
+        borderRadius: 10,
+        padding: 10,
+        gap: 6,
+    },
+    walletInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    walletInfoLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    walletInfoLabel: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        fontWeight: '500',
+    },
+    walletInfoValue: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.text,
     },
     walletAmount: {
         fontSize: 13,

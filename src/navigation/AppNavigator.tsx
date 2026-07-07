@@ -53,6 +53,7 @@ import { DriverBookingFormScreen } from '../screens/booking/DriverBookingFormScr
 // Profile Screens
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { WalletScreen } from '../screens/WalletScreen';
+import { ReferralScreen } from '../screens/ReferralScreen';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { SavedAddressesScreen } from '../screens/profile/SavedAddressesScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
@@ -118,6 +119,7 @@ type RootStackParamList = {
   NotificationsList: undefined;
   HelpSupport: undefined;
   Wallet: undefined;
+  Referral: undefined;
   // Legal screens
   Terms: undefined;
   Privacy: undefined;
@@ -405,6 +407,7 @@ export function AppNavigator() {
                 <Stack.Screen name="EditProfile" component={EditProfileScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Wallet" component={WalletScreen as any} options={screenTransitionConfig} />
+                <Stack.Screen name="Referral" component={ReferralScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="Notifications" component={NotificationsScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="NotificationsList" component={NotificationsListScreen as any} options={screenTransitionConfig} />
                 <Stack.Screen name="HelpSupport" component={HelpSupportScreen as any} options={screenTransitionConfig} />

@@ -8,7 +8,7 @@ import { stopBuzzer, initializeBuzzerSound } from '../utils/soundNotifications';
 
 export interface AppNotification {
   id: string;
-  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'booking_expired' | 'booking_request' | 'booking_request_reminder' | 'booking_cancelled' | 'payment_required' | 'completion_payment_required' | 'general';
+  type: 'otp_start' | 'otp_end' | 'booking_accepted' | 'booking_rejected' | 'booking_completed' | 'booking_expired' | 'booking_request' | 'booking_request_reminder' | 'booking_cancelled' | 'payment_required' | 'completion_payment_required' | 'referral_success' | 'general';
   title: string;
   message: string;
   otp?: string;
@@ -606,14 +606,24 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       // 2. Fallback to local storage if backend empty or failed
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setNotifications(JSON.parse(stored));
+        try {
+          setNotifications(JSON.parse(stored));
+        } catch (parseError) {
+          console.error('Failed to parse cached notifications, clearing cache:', parseError);
+          await AsyncStorage.removeItem(STORAGE_KEY);
+        }
       }
     } catch (error) {
       console.error('Failed to load notifications:', error);
       // Try local storage as last resort
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setNotifications(JSON.parse(stored));
+        try {
+          setNotifications(JSON.parse(stored));
+        } catch (parseError) {
+          console.error('Failed to parse cached notifications, clearing cache:', parseError);
+          await AsyncStorage.removeItem(STORAGE_KEY);
+        }
       }
     }
   };

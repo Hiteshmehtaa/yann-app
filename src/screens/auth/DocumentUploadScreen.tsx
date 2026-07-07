@@ -22,6 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CustomDialog } from '../../components/CustomDialog';
 import { AnimatedButton } from '../../components/AnimatedButton';
 import { ImagePickerBottomSheet } from '../../components/ImagePickerBottomSheet';
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -53,7 +54,7 @@ const documentTypes = {
 };
 
 export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { identityType } = route.params;
+  const { identityType } = route.params || ({} as any);
   const { user, updateUser } = useAuth();
   const [documents, setDocuments] = useState<Record<string, DocumentItem>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +89,18 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
     }).start();
   }, []);
 
-  const showDialog = (type: 'success' | 'error' | 'warning', title: string, message: string, onClose?: () => void) => {
+  // Guard: this screen requires a valid identityType to render (all hooks above must run
+  // unconditionally on every render, so this check comes after them)
+  if (!requiredDocs) {
+    return (
+      <MissingDataFallback
+        onGoBack={() => navigation.goBack()}
+        message="We couldn't determine the required documents. Please go back and try again."
+      />
+    );
+  }
+
+  const showDialog =(type: 'success' | 'error' | 'warning', title: string, message: string, onClose?: () => void) => {
     setDialogState({
       visible: true,
       type,

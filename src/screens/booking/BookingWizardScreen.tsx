@@ -38,6 +38,7 @@ import { BookingStepLocation } from '../../components/booking/wizard/BookingStep
 import { BookingStepReview } from '../../components/booking/wizard/BookingStepReview';
 import { BookingTimerModal } from '../../components/BookingTimerModal';
 import { BookingAnimation } from '../../components/animations'; // Assuming this exists given original file
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 
 const { width, height } = Dimensions.get('window');
 
@@ -72,11 +73,11 @@ const STEPS = [
 ];
 
 export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
-    const { service, selectedProvider: initialProvider, selectedAddress: initialAddress } = route.params;
+    const { service, selectedProvider: initialProvider, selectedAddress: initialAddress } = route.params || ({} as any);
     const { user } = useAuth();
     const { showError } = useToast();
     const insets = useSafeAreaInsets();
-    const isAadhaarVerified = !!user?.aadhaarVerified;
+    const isAadhaarVerified = !!(user?.aadhaarVerified || user?.isVerified);
 
     // -- STATE --
     const [currentStep, setCurrentStep] = useState(0);
@@ -95,6 +96,7 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Wallet State
     const [walletBalance, setWalletBalance] = useState<number>(0);
+    const [maxBonusUsable, setMaxBonusUsable] = useState<number>(0);
     const [loadingWallet, setLoadingWallet] = useState(true);
 
     // UI State
@@ -134,7 +136,10 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
             try {
                 setLoadingWallet(true);
                 const balanceRes = await apiService.getWalletBalance();
-                if (balanceRes.success) setWalletBalance(balanceRes.data?.balance || 0);
+                if (balanceRes.success) {
+                    setWalletBalance(balanceRes.data?.balance || 0);
+                    setMaxBonusUsable(balanceRes.data?.maxBonusUsable || 0);
+                }
 
                 // Refresh Provider if ID exists
                 if (initialProvider?.id || initialProvider?._id) {
@@ -185,6 +190,29 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
         }).start();
     }, [currentStep]);
 
+    // Back Handler for Android
+    useEffect(() => {
+        const onBackPress = () => {
+            if (currentStep > 0) {
+                setCurrentStep(currentStep - 1);
+                return true;
+            }
+            return false;
+        };
+        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+        return () => subscription.remove();
+    }, [currentStep]);
+
+    // Guard: this screen requires a valid service to render (all hooks above must run
+    // unconditionally on every render, so this check comes after them, not before)
+    if (!service) {
+        return (
+            <MissingDataFallback
+                onGoBack={() => navigation.goBack()}
+                message="This booking is missing service details. Please start again."
+            />
+        );
+    }
 
     // -- COMPUTED VALUES (PRICING) --
 
@@ -238,7 +266,9 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
     const initialPaymentPercentage = 25;
     const initialPayment = Math.round(totalPrice * 0.25 * 100) / 100;
     const completionPayment = Math.round((totalPrice - initialPayment) * 100) / 100;
-    const hasInsufficientBalance = walletBalance < initialPayment;
+    // Bonus (referral) credit can cover part of the initial payment, capped server-side
+    const effectiveWalletBalance = walletBalance + Math.min(maxBonusUsable, initialPayment);
+    const hasInsufficientBalance = effectiveWalletBalance < initialPayment;
 
     // Booked Hours for Overtime
     const calculateBookedHours = (): number => {
@@ -309,20 +339,6 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
             navigation.goBack();
         }
     };
-
-    // Back Handler for Android
-    useEffect(() => {
-        const onBackPress = () => {
-            if (currentStep > 0) {
-                setCurrentStep(currentStep - 1);
-                return true;
-            }
-            return false;
-        };
-        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-        return () => subscription.remove();
-    }, [currentStep]);
-
 
     // -- SUBMISSION LOGIC -- (Core logic from original)
     const handleSubmitBooking = async () => {
@@ -480,7 +496,7 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
                         {currentStep === 1 && (
                             <BookingStepLocation
                                 selectedAddress={selectedAddress}
-                                onSelectAddressPress={() => navigation.navigate('SavedAddresses', { fromBooking: true })}
+                                onSelectAddressPress={() => navigation.push('SavedAddresses', { fromBooking: true })}
                                 notes={notes}
                                 onNotesChange={setNotes}
                                 formErrors={formErrors}
@@ -496,6 +512,7 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
                                 paymentMethod={paymentMethod}
                                 onPaymentMethodChange={setPaymentMethod}
                                 walletBalance={walletBalance}
+                                maxBonusUsable={maxBonusUsable}
                                 loadingWallet={loadingWallet}
                                 initialPayment={initialPayment}
                                 completionPayment={completionPayment}

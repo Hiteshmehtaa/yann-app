@@ -23,6 +23,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import * as Haptics from 'expo-haptics';
 import LottieView from 'lottie-react-native';
 import { LottieAnimations } from '../../utils/lottieAnimations';
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 
 const { width, height } = Dimensions.get('window');
 const TIMER_DURATION = 180; // 3 minutes in seconds
@@ -41,7 +42,7 @@ type Props = {
 };
 
 export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => {
-    const { bookingId, providerId, providerName, serviceName, experienceRange } = route.params;
+    const { bookingId, providerId, providerName, serviceName, experienceRange } = route.params || ({} as any);
     const insets = useSafeAreaInsets();
     const { setPaymentModalData } = useNotifications();
 
@@ -124,6 +125,8 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
 
     // Poll for booking status
     useEffect(() => {
+        if (!bookingId) return;
+
         const pollInterval = setInterval(async () => {
             try {
                 // Check booking request status from backend
@@ -343,6 +346,17 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
         outputRange: ['0deg', '360deg'],
     });
 
+    // Guard: this screen requires a valid bookingId/providerId to render (all hooks above
+    // must run unconditionally on every render, so this check comes after them)
+    if (!bookingId || !providerId) {
+        return (
+            <MissingDataFallback
+                onGoBack={() => navigation.goBack()}
+                message="This booking request is missing required details. Please go back and try again."
+            />
+        );
+    }
+
     if (status === 'accepted') {
         return (
             <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -502,6 +516,7 @@ export const BookingWaitingScreen: React.FC<Props> = ({ navigation, route }) => 
                                         style={styles.providerCard}
                                         onPress={() => selectAlternativeProvider(provider)}
                                         activeOpacity={0.7}
+                                        disabled={isLoading}
                                     >
                                         <View style={styles.providerAvatar}>
                                             {provider.profileImage ? (

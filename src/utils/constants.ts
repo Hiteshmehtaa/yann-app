@@ -818,6 +818,8 @@ export const STATUS_COLORS = {
   awaiting_response: COLORS.warning,
   pending_payment: COLORS.warning,
   accepted: COLORS.success,
+  confirmed: COLORS.success,
+  active: COLORS.info,
   in_progress: COLORS.info, // or COLORS.primary
   rejected: COLORS.error,
   awaiting_completion_payment: COLORS.accentOrange,  // Orange - action needed from member

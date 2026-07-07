@@ -38,6 +38,7 @@ import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { GuestLoginModal } from '../../components/GuestLoginModal';
 import { useDialog } from '../../components/CustomDialog';
+import { MissingDataFallback } from '../../components/MissingDataFallback';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT_EXPANDED = height * 0.45;
@@ -86,7 +87,7 @@ const FadeInView = ({ children, delay = 0, style }: any) => {
 };
 
 export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { provider: initialProvider } = route.params;
+  const { provider: initialProvider } = route.params || ({} as any);
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -103,7 +104,7 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   const { isGuest, user } = useAuth();
   const [showGuestModal, setShowGuestModal] = useState(false);
   const { dialogState, hideDialog, showWarning, DialogComponent } = useDialog();
-  const isAadhaarVerified = !!user?.aadhaarVerified;
+  const isAadhaarVerified = !!(user?.aadhaarVerified || user?.isVerified);
 
   // UGC State
   const [showOptionsModal, setShowOptionsModal] = useState(false);
@@ -227,6 +228,8 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
   };
 
   useEffect(() => {
+    if (!initialProvider) return;
+
     const fetchProviderDetails = async () => {
       try {
         const id = (initialProvider as any).id || initialProvider._id;
@@ -266,6 +269,17 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
     };
     checkFavoriteStatus();
   }, [initialProvider]);
+
+  // Guard: this screen requires a valid provider to render (all hooks above must run
+  // unconditionally on every render, so this check comes after them)
+  if (!provider) {
+    return (
+      <MissingDataFallback
+        onGoBack={() => navigation.goBack()}
+        message="This provider profile could not be loaded. Please go back and try again."
+      />
+    );
+  }
 
   // -- Animations --
   const headerTranslateY = scrollY.interpolate({

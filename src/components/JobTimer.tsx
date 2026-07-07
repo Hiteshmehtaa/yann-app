@@ -52,7 +52,7 @@ export const JobTimer: React.FC<JobTimerProps> = ({
     }, 1000);
 
     // Pulse animation for the "Active" indicator
-    Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 0.4,
@@ -65,9 +65,13 @@ export const JobTimer: React.FC<JobTimerProps> = ({
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    pulseLoop.start();
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      pulseLoop.stop();
+    };
   }, [startTime, expectedDuration]);
 
   // ... helper functions ...

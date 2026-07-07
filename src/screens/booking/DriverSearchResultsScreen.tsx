@@ -99,7 +99,7 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
         dropCoords,
         routeDistanceKm,
         driverReturnFare,
-    } = route.params;
+    } = route.params || ({} as any);
 
     const insets = useSafeAreaInsets();
     const [drivers, setDrivers] = useState<DriverResult[]>([]);
@@ -166,6 +166,12 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
     };
 
     const fetchMatchingDrivers = async () => {
+        if (!service || !vehicleType || !transmission || !tripType) {
+            setIsLoading(false);
+            setError('Missing search details. Please go back and try again.');
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         try {

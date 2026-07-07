@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   Platform,
@@ -729,26 +730,28 @@ export const ProviderBookingsScreen = () => {
       </View>
 
       {/* List */}
-      <ScrollView
+      <FlatList
         style={styles.content}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
+        data={isLoading ? [] : filteredBookings}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => renderBookingCard(item, index)}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
         showsVerticalScrollIndicator={false}
-      >
-        {isLoading ? (
-          <View style={styles.center}>
-            <LottieView source={require('../../../assets/lottie/loading.json')} autoPlay loop style={{ width: 120, height: 120 }} />
-          </View>
-        ) : filteredBookings.length === 0 ? (
-          <View style={styles.center}>
-            <View style={styles.emptyIcon}><Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} /></View>
-            <Text style={styles.emptyText}>No bookings found</Text>
-            <Text style={styles.emptySub}>Your scheduled jobs will appear here</Text>
-          </View>
-        ) : (
-          filteredBookings.map((b, i) => renderBookingCard(b, i))
-        )}
-      </ScrollView>
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.center}>
+              <LottieView source={require('../../../assets/lottie/loading.json')} autoPlay loop style={{ width: 120, height: 120 }} />
+            </View>
+          ) : (
+            <View style={styles.center}>
+              <View style={styles.emptyIcon}><Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} /></View>
+              <Text style={styles.emptyText}>No bookings found</Text>
+              <Text style={styles.emptySub}>Your scheduled jobs will appear here</Text>
+            </View>
+          )
+        }
+      />
 
       {/* Navigation Modal */}
       <Modal visible={navModalVisible} transparent animationType="slide" onRequestClose={() => setNavModalVisible(false)}>
