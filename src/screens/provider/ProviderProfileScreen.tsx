@@ -23,6 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
+import { convertToWebP } from '../../utils/imageCompression';
 import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
 import { shareProviderProfile } from '../../utils/shareUtils';
@@ -176,22 +177,18 @@ export const ProviderProfileScreen: React.FC<Props> = ({ navigation }) => {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        base64: true,
       });
 
       console.log('📸 Image picker result:', {
         canceled: result.canceled,
         hasAssets: !!result.assets,
-        hasBase64: result.assets?.[0]?.base64 ? 'yes' : 'no'
       });
 
-      if (!result.canceled && result.assets[0].base64) {
+      if (!result.canceled && result.assets[0]) {
         setIsUploadingAvatar(true);
-        const mimeType = result.assets[0].uri.endsWith('png') ? 'image/png' : 'image/jpeg';
-        const base64Image = `data:${mimeType};base64,${result.assets[0].base64}`;
+        const base64Image = await convertToWebP(result.assets[0].uri, { maxWidth: 800 });
 
         console.log('📸 Image details:', {
-          mimeType,
           sizeKB: Math.round(base64Image.length / 1024),
           uri: result.assets[0].uri
         });

@@ -14,10 +14,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { COLORS } from '../../utils/theme';
+import { convertToWebP } from '../../utils/imageCompression';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CustomDialog } from '../../components/CustomDialog';
 import { AnimatedButton } from '../../components/AnimatedButton';
@@ -219,11 +219,7 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
     try {
       const base64Documents: Record<string, string> = {};
       for (const [docType, doc] of Object.entries(documents)) {
-        const base64 = await FileSystem.readAsStringAsync(doc.uri, {
-          encoding: 'base64',
-        });
-        const mimeType = doc.mimeType || 'image/jpeg';
-        base64Documents[docType] = `data:${mimeType};base64,${base64}`;
+        base64Documents[docType] = await convertToWebP(doc.uri, { maxWidth: 1600 });
       }
 
       const response = await apiService.submitIdentityDocuments({

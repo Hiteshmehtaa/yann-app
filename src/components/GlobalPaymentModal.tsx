@@ -4,7 +4,7 @@ import { CompletionPaymentModal } from './CompletionPaymentModal';
 import { InitialPaymentModal } from './InitialPaymentModal';
 import { useNotifications } from '../contexts/NotificationContext';
 import { apiService } from '../services/api';
-import { navigationRef } from '../navigation/AppNavigator';
+import { navigationRef } from '../navigation/navigationRef';
 import type { Booking } from '../types';
 
 /**

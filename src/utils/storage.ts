@@ -1,6 +1,35 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from './constants';
 
+// Strips base64 data URIs (data:image/...;base64,...) from an object before
+// it's persisted to AsyncStorage. Several fields in this app (avatar,
+// identity verification documents, driver license/police-verification
+// photos) are stored as raw base64 rather than uploaded-file URLs, and can
+// easily exceed Android's AsyncStorage (SQLite-backed) per-row CursorWindow
+// size limit (~2MB), causing "Row too big to fit into CursorWindow" crashes
+// on every subsequent read. Stripped fields remain available in-memory for
+// the current session (this only affects what gets written to disk) and are
+// refetched from the server - a normal DB read, not row-size-constrained -
+// on next app launch.
+function stripDataUris(value: any, depth = 0): any {
+  if (depth > 6) return value;
+  if (typeof value === 'string') {
+    return value.startsWith('data:') ? undefined : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(v => stripDataUris(v, depth + 1));
+  }
+  if (value && typeof value === 'object') {
+    const result: any = {};
+    for (const key of Object.keys(value)) {
+      const stripped = stripDataUris(value[key], depth + 1);
+      if (stripped !== undefined) result[key] = stripped;
+    }
+    return result;
+  }
+  return value;
+}
+
 export const storage = {
   // Save token
   async saveToken(token: string): Promise<void> {
@@ -35,9 +64,8 @@ export const storage = {
   // Save user data
   async saveUserData(user: any): Promise<void> {
     try {
-      // console.log('💾 Saving user data to storage:', { ... }); // Commented out
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
-      // console.log('✅ User data saved successfully'); // Commented out
+      const sanitized = stripDataUris(user);
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(sanitized));
     } catch (error) {
       console.error('Error saving user data:', error);
       throw error;
@@ -49,10 +77,18 @@ export const storage = {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
       const parsed = data ? JSON.parse(data) : null;
-      // console.log('📂 Loaded user data from storage:', { ... }); // Commented out
       return parsed;
     } catch (error) {
       console.error('Error getting user data:', error);
+      // The stored row is corrupted/oversized (e.g. Android's "Row too big to
+      // fit into CursorWindow") and will fail on every future read too until
+      // it's cleared - remove it so the next login can write a clean, smaller
+      // entry instead of looping on this error forever.
+      try {
+        await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
+      } catch (removeError) {
+        console.error('Error clearing corrupted user data:', removeError);
+      }
       return null;
     }
   },

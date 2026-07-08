@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { convertToWebP } from '../../utils/imageCompression';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -134,47 +135,25 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
-        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
         setIsLoading(true);
-        const asset = result.assets[0];
-        let base64Image = asset.base64;
+        const webpImage = await convertToWebP(result.assets[0].uri, { maxWidth: 1600 });
 
-        if (!base64Image && asset.uri) {
-           const response = await fetch(asset.uri);
-           const blob = await response.blob();
-           base64Image = await new Promise<string>((resolve, reject) => {
-             const reader = new FileReader();
-             reader.onloadend = () => {
-               resolve(reader.result as string);
-             };
-             reader.onerror = reject;
-             reader.readAsDataURL(blob);
-           });
-        } else if (base64Image) {
-           const mimeType = asset.mimeType || 'image/jpeg';
-           if (!base64Image.startsWith('data:')) {
-             base64Image = `data:${mimeType};base64,${base64Image}`;
-           }
-        }
-
-        if (base64Image) {
-          const response = await apiService.uploadAvatar(base64Image);
-          if (response.success) {
-            const data = response.data || {};
-            const imageUrl = data.profileImage || data.avatar || data.url || data.image;
-            if (imageUrl) {
-              setDriverDetails((prev: any) => ({
-                ...prev,
-                [field]: imageUrl
-              }));
-              Alert.alert('Success', `${DRIVER_DOC_LABELS[field]} photo uploaded successfully!`);
-            }
-          } else {
-             Alert.alert('Error', response.message || 'Failed to upload image');
+        const response = await apiService.uploadAvatar(webpImage);
+        if (response.success) {
+          const data = response.data || {};
+          const imageUrl = data.profileImage || data.avatar || data.url || data.image;
+          if (imageUrl) {
+            setDriverDetails((prev: any) => ({
+              ...prev,
+              [field]: imageUrl
+            }));
+            Alert.alert('Success', `${DRIVER_DOC_LABELS[field]} photo uploaded successfully!`);
           }
+        } else {
+           Alert.alert('Error', response.message || 'Failed to upload image');
         }
       }
     } catch (error) {

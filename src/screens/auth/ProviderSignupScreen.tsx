@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { convertToWebP } from '../../utils/imageCompression';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -273,39 +274,17 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
-        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
         setIsLoading(true);
-        const asset = result.assets[0];
-        let base64Image = asset.base64;
+        const webpImage = await convertToWebP(result.assets[0].uri, { maxWidth: 1600 });
 
-        if (!base64Image && asset.uri) {
-           const response = await fetch(asset.uri);
-           const blob = await response.blob();
-           base64Image = await new Promise<string>((resolve, reject) => {
-             const reader = new FileReader();
-             reader.onloadend = () => {
-               resolve(reader.result as string);
-             };
-             reader.onerror = reject;
-             reader.readAsDataURL(blob);
-           });
-        } else if (base64Image) {
-           const mimeType = asset.mimeType || 'image/jpeg';
-           if (!base64Image.startsWith('data:')) {
-             base64Image = `data:${mimeType};base64,${base64Image}`;
-           }
-        }
-
-        if (base64Image) {
-          setFormData(prev => ({
-            ...prev,
-            [field]: base64Image
-          }));
-          Alert.alert('Success', `${DRIVER_DOC_LABELS[field]} photo selected successfully!`);
-        }
+        setFormData(prev => ({
+          ...prev,
+          [field]: webpImage
+        }));
+        Alert.alert('Success', `${DRIVER_DOC_LABELS[field]} photo selected successfully!`);
       }
     } catch (error) {
        console.log('Image picker error:', error);
@@ -927,16 +906,6 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         return enteredPrice > 0;
       });
 
-    const hasDriverService = formData.services.some(s => {
-      const cat = dynamicServiceCategories.find(c => c.services.includes(s));
-      return cat && cat.id.toLowerCase() === 'driver';
-    });
-
-    const isDriverDetailsCardComplete =
-      formData.vehicleTypes.length > 0 &&
-      formData.transmissionTypes.length > 0 &&
-      !!formData.tripPreference;
-
     return (
     <View style={styles.animatableContent}>
       <Text style={styles.stepTitle}>Your Services</Text>
@@ -947,8 +916,8 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
       ) : (
         <GlassCard
           intensity={80}
-          style={[styles.formCard, styles.s2ThreeDCard]}
-          enableTilt={openExperienceCategory === null && !isServiceCardComplete}
+          style={styles.formCard}
+          enableTilt={false}
           glowColor="rgba(59, 130, 246, 0.05)"
         >
           <View style={styles.form}>
@@ -1079,6 +1048,134 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                           );
                         })}
                       </View>
+
+                      {/* Driver Specific Options - shown inline as soon as a driver service is selected */}
+                      {category.id.toLowerCase() === 'driver' && selectedCount > 0 && (
+                        <View style={styles.s2DriverDetails}>
+                          <View style={styles.inputDivider} />
+
+                          {/* Vehicle Details (types + transmission combined) */}
+                          <View style={styles.fieldGlass}>
+                            <Text style={styles.label}>VEHICLE DETAILS</Text>
+
+                            <Text style={styles.s2SubLabel}>Type</Text>
+                            <View style={styles.s2ChipGrid}>
+                              {VEHICLE_TYPES.map(type => {
+                                const isActive = formData.vehicleTypes.includes(type.id);
+                                return (
+                                  <TouchableOpacity
+                                    key={type.id}
+                                    style={[styles.s2SelectChip, isActive && styles.s2SelectChipActive]}
+                                    onPress={() => setFormData(prev => ({
+                                      ...prev,
+                                      vehicleTypes: prev.vehicleTypes.includes(type.id)
+                                        ? prev.vehicleTypes.filter(t => t !== type.id)
+                                        : [...prev.vehicleTypes, type.id]
+                                    }))}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Text style={[styles.s2SelectChipText, isActive && styles.s2SelectChipTextActive]}>
+                                      {type.label}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+
+                            <Text style={[styles.s2SubLabel, { marginTop: 12 }]}>Transmission</Text>
+                            <View style={styles.s2PillRow}>
+                              {TRANSMISSION_TYPES.map(type => {
+                                const isActive = formData.transmissionTypes.includes(type.id);
+                                return (
+                                  <TouchableOpacity
+                                    key={type.id}
+                                    style={[styles.s2ExperiencePill, isActive && styles.s2ExperiencePillActive, { flex: 1 }]}
+                                    onPress={() => setFormData(prev => ({
+                                      ...prev,
+                                      transmissionTypes: prev.transmissionTypes.includes(type.id)
+                                        ? prev.transmissionTypes.filter(t => t !== type.id)
+                                        : [...prev.transmissionTypes, type.id]
+                                    }))}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Text style={[styles.s2ExperiencePillText, isActive && styles.s2ExperiencePillTextActive]}>
+                                      {type.label}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+
+                          <View style={styles.inputDivider} />
+
+                          {/* Trip Preference */}
+                          <View style={styles.fieldGlass}>
+                            <Text style={styles.label}>SERVICE AREA</Text>
+                            <View style={styles.s2PillRow}>
+                              {TRIP_PREFERENCES.map(pref => {
+                                const isActive = formData.tripPreference === pref.id;
+                                return (
+                                  <TouchableOpacity
+                                    key={pref.id}
+                                    style={[styles.s2ExperiencePill, isActive && styles.s2ExperiencePillActive, { flex: 1 }]}
+                                    onPress={() => setFormData(prev => ({ ...prev, tripPreference: pref.id }))}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Text style={[styles.s2ExperiencePillText, isActive && styles.s2ExperiencePillTextActive]}>
+                                      {pref.label}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+
+                          <View style={styles.inputDivider} />
+
+                          {/* Documents: license photos + police verification, grouped under one heading */}
+                          <View style={styles.fieldGlass}>
+                            <Text style={styles.label}>DOCUMENTS</Text>
+
+                            <Text style={styles.s2SubLabel}>Driving License</Text>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                              <TouchableOpacity
+                                style={[styles.docTile, formData.licenseFrontImage && styles.docTileSuccess]}
+                                onPress={() => uploadDriverDocument('licenseFrontImage')}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name={formData.licenseFrontImage ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.licenseFrontImage ? COLORS.success : COLORS.primary} />
+                                <Text style={[styles.docTileText, formData.licenseFrontImage && { color: COLORS.success }]}>
+                                  {formData.licenseFrontImage ? 'Front ✓' : 'Front Photo'}
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[styles.docTile, formData.licenseBackImage && styles.docTileSuccess]}
+                                onPress={() => uploadDriverDocument('licenseBackImage')}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name={formData.licenseBackImage ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.licenseBackImage ? COLORS.success : COLORS.primary} />
+                                <Text style={[styles.docTileText, formData.licenseBackImage && { color: COLORS.success }]}>
+                                  {formData.licenseBackImage ? 'Back ✓' : 'Back Photo'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            <Text style={[styles.s2SubLabel, { marginTop: 12 }]}>Police Verification</Text>
+                            <TouchableOpacity
+                              style={[styles.uploadButton, formData.policeVerificationDoc && styles.uploadButtonSuccess]}
+                              onPress={() => uploadDriverDocument('policeVerificationDoc')}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name={formData.policeVerificationDoc ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.policeVerificationDoc ? COLORS.success : COLORS.primary} />
+                              <Text style={[styles.uploadButtonText, formData.policeVerificationDoc && { color: COLORS.success }]}>
+                                {formData.policeVerificationDoc ? 'Document Uploaded' : 'Upload Document'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
                     </View>
                   )}
 
@@ -1088,144 +1185,6 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
                 </React.Fragment>
               );
             })}
-          </View>
-        </GlassCard>
-      )}
-
-      {/* Driver Specific Options */}
-      {hasDriverService && (
-        <GlassCard
-          intensity={60}
-          style={[styles.formCard, { marginTop: 0 }, styles.s2ThreeDCard]}
-          enableTilt={!isDriverDetailsCardComplete}
-        >
-          <View style={styles.form}>
-            {/* Vehicle Types */}
-            <View style={styles.fieldGlass}>
-              <Text style={styles.label}>VEHICLE TYPES</Text>
-              <View style={styles.s2ChipGrid}>
-                {VEHICLE_TYPES.map(type => {
-                  const isActive = formData.vehicleTypes.includes(type.id);
-                  return (
-                    <TouchableOpacity
-                      key={type.id}
-                      style={[styles.s2SelectChip, isActive && styles.s2SelectChipActive]}
-                      onPress={() => setFormData(prev => ({
-                        ...prev,
-                        vehicleTypes: prev.vehicleTypes.includes(type.id)
-                          ? prev.vehicleTypes.filter(t => t !== type.id)
-                          : [...prev.vehicleTypes, type.id]
-                      }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.s2SelectChipText, isActive && styles.s2SelectChipTextActive]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.inputDivider} />
-
-            {/* Transmission */}
-            <View style={styles.fieldGlass}>
-              <Text style={styles.label}>TRANSMISSION</Text>
-              <View style={styles.s2PillRow}>
-                {TRANSMISSION_TYPES.map(type => {
-                  const isActive = formData.transmissionTypes.includes(type.id);
-                  return (
-                    <TouchableOpacity
-                      key={type.id}
-                      style={[styles.s2ExperiencePill, isActive && styles.s2ExperiencePillActive, { flex: 1 }]}
-                      onPress={() => setFormData(prev => ({
-                        ...prev,
-                        transmissionTypes: prev.transmissionTypes.includes(type.id)
-                          ? prev.transmissionTypes.filter(t => t !== type.id)
-                          : [...prev.transmissionTypes, type.id]
-                      }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.s2ExperiencePillText, isActive && styles.s2ExperiencePillTextActive]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.inputDivider} />
-
-            {/* Trip Preference */}
-            <View style={styles.fieldGlass}>
-              <Text style={styles.label}>SERVICE AREA</Text>
-              <View style={styles.s2PillRow}>
-                {TRIP_PREFERENCES.map(pref => {
-                  const isActive = formData.tripPreference === pref.id;
-                  return (
-                    <TouchableOpacity
-                      key={pref.id}
-                      style={[styles.s2ExperiencePill, isActive && styles.s2ExperiencePillActive, { flex: 1 }]}
-                      onPress={() => setFormData(prev => ({ ...prev, tripPreference: pref.id }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.s2ExperiencePillText, isActive && styles.s2ExperiencePillTextActive]}>
-                        {pref.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.inputDivider} />
-
-            {/* Driver Documents */}
-            <View style={styles.fieldGlass}>
-              <Text style={styles.label}>DRIVING LICENSE PHOTOS</Text>
-              <View style={{ gap: 12 }}>
-                <TouchableOpacity
-                  style={[styles.uploadButton, formData.licenseFrontImage && styles.uploadButtonSuccess]}
-                  onPress={() => uploadDriverDocument('licenseFrontImage')}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name={formData.licenseFrontImage ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.licenseFrontImage ? COLORS.success : COLORS.primary} />
-                  <Text style={[styles.uploadButtonText, formData.licenseFrontImage && { color: COLORS.success }]}>
-                    {formData.licenseFrontImage ? 'Front Photo Uploaded' : 'Upload Front Photo'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.uploadButton, formData.licenseBackImage && styles.uploadButtonSuccess]}
-                  onPress={() => uploadDriverDocument('licenseBackImage')}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name={formData.licenseBackImage ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.licenseBackImage ? COLORS.success : COLORS.primary} />
-                  <Text style={[styles.uploadButtonText, formData.licenseBackImage && { color: COLORS.success }]}>
-                    {formData.licenseBackImage ? 'Back Photo Uploaded' : 'Upload Back Photo'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.inputDivider} />
-
-            {/* Police Verification */}
-            <View style={styles.fieldGlass}>
-              <Text style={styles.label}>POLICE VERIFICATION</Text>
-              <TouchableOpacity
-                style={[styles.uploadButton, formData.policeVerificationDoc && styles.uploadButtonSuccess]}
-                onPress={() => uploadDriverDocument('policeVerificationDoc')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name={formData.policeVerificationDoc ? 'checkmark-circle' : 'camera-outline'} size={20} color={formData.policeVerificationDoc ? COLORS.success : COLORS.primary} />
-                <Text style={[styles.uploadButtonText, formData.policeVerificationDoc && { color: COLORS.success }]}>
-                  {formData.policeVerificationDoc ? 'Document Uploaded' : 'Upload Police Verification Document'}
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </GlassCard>
       )}
@@ -1716,15 +1675,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     overflow: 'hidden',
   },
-  s2ThreeDCard: {
-    transform: [{ perspective: 1000 }, { rotateX: '1.2deg' }, { rotateY: '-1deg' }],
-    ...SHADOWS.lg,
-    shadowColor: addAlpha(COLORS.primary, 0.5),
-    shadowOpacity: 0.42,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 22,
-  },
   form: {
     padding: 0,
     gap: 16,
@@ -1745,6 +1695,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 4,
     textTransform: 'uppercase',
+  },
+  s2SubLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
   },
   inputRow: {
     flexDirection: 'row',
@@ -1844,6 +1800,10 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   s2ServicesList: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  s2DriverDetails: {
     paddingHorizontal: 20,
     paddingBottom: 8,
   },
@@ -2325,6 +2285,28 @@ const styles = StyleSheet.create({
     borderColor: COLORS.success,
     backgroundColor: addAlpha(COLORS.success, 0.05),
     borderStyle: 'solid',
+  },
+  docTile: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 16,
+    borderRadius: RADIUS.medium,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.primary,
+    backgroundColor: addAlpha(COLORS.primary, 0.05),
+  },
+  docTileSuccess: {
+    borderColor: COLORS.success,
+    backgroundColor: addAlpha(COLORS.success, 0.05),
+    borderStyle: 'solid',
+  },
+  docTileText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   uploadButtonText: {
     fontSize: 14,

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { AnimatedButton } from '../../components/AnimatedButton';
 import * as ImagePicker from 'expo-image-picker';
+import { convertToWebP } from '../../utils/imageCompression';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
@@ -74,45 +75,15 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        base64: true, // Request base64 encoding
       });
 
       if (!result.canceled && result.assets[0]) {
         setIsSaving(true);
-        const asset = result.assets[0];
-
-        // Get the base64 string or read from URI
-        let base64Image = asset.base64;
-
-        if (!base64Image && asset.uri) {
-          // Fallback: read file and convert to base64 if needed
-          const response = await fetch(asset.uri);
-          const blob = await response.blob();
-          base64Image = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const dataUrl = reader.result as string;
-              resolve(dataUrl);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        } else if (base64Image) {
-          // Add data URL prefix if not present
-          const mimeType = asset.mimeType || 'image/jpeg';
-          if (!base64Image.startsWith('data:')) {
-            base64Image = `data:${mimeType};base64,${base64Image}`;
-          }
-        }
-
-        if (!base64Image) {
-          Alert.alert('Error', 'Failed to process image');
-          return;
-        }
+        const webpImage = await convertToWebP(result.assets[0].uri, { maxWidth: 800 });
 
         // Upload as JSON with base64 image
         console.log('Uploading avatar...');
-        const response = await apiService.uploadAvatar(base64Image);
+        const response = await apiService.uploadAvatar(webpImage);
 
         if (response.success) {
           // Support multiple response formats from backend

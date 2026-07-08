@@ -24,6 +24,7 @@ import { apiService } from '../../services/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { convertToWebP } from '../../utils/imageCompression';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '../../components/CustomDialog';
 
@@ -149,13 +150,12 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: true,
     });
-    if (!result.canceled && result.assets[0].base64) {
+    if (!result.canceled && result.assets[0]) {
       setIsUploadingAvatar(true);
       try {
-        const mime = result.assets[0].uri.endsWith('png') ? 'image/png' : 'image/jpeg';
-        await apiService.uploadAvatar(`data:${mime};base64,${result.assets[0].base64}`);
+        const webpImage = await convertToWebP(result.assets[0].uri, { maxWidth: 800 });
+        await apiService.uploadAvatar(webpImage);
         fetchProfile();
       } finally { setIsUploadingAvatar(false); }
     }
