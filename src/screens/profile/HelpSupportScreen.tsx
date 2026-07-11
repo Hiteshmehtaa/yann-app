@@ -18,6 +18,7 @@ import LottieView from 'lottie-react-native';
 import { LottieAnimations } from '../../utils/lottieAnimations';
 import { apiService } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
+import { Toast } from '../../components/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -52,7 +53,7 @@ const FAQ_DATA: FAQItem[] = [
 ];
 
 export const HelpSupportScreen: React.FC<Props> = ({ navigation }) => {
-  const { showSuccess, showError, showWarning } = useToast();
+  const { toast, showSuccess, showError, showWarning, hideToast } = useToast();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [expandedFAQ, setExpandedFAQ] = React.useState<number | null>(null);
   const [showCallOptions, setShowCallOptions] = React.useState(false);
@@ -328,6 +329,8 @@ export const HelpSupportScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
       )}
+
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
     </SafeAreaView>
   );
 };

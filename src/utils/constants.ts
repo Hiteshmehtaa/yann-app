@@ -19,7 +19,7 @@ const getLocalhost = () => {
   return 'localhost'; // iOS simulator
 };
 const LOCAL_API_URL = `http://${getLocalhost()}:3000/api`;
-const PRODUCTION_API_URL = 'https://yann-production.up.railway.app/api';
+export const PRODUCTION_API_URL = 'https://yann-production.up.railway.app/api';
 
 // Dynamic API URL with caching
 let cachedApiUrl: string | null = null;
@@ -63,6 +63,15 @@ async function detectActiveBackend(): Promise<string> {
 
   // Return cached URL if it's still fresh
   if (cachedApiUrl && (now - lastCheckTime < CHECK_INTERVAL)) {
+    return cachedApiUrl;
+  }
+
+  // Only probe for a local dev server in development builds. Preview/production
+  // builds have no dev server to find, so skip the multi-second network probe
+  // (and its 5s timeout against a hardcoded local IP) and go straight to production.
+  if (!__DEV__) {
+    cachedApiUrl = PRODUCTION_API_URL;
+    lastCheckTime = now;
     return cachedApiUrl;
   }
 

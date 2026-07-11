@@ -3,7 +3,7 @@
 // import { io, Socket } from 'socket.io-client';
 
 // Socket.IO server URL
-const SOCKET_URL = 'https://yann-care.vercel.app';
+const SOCKET_URL = 'https://yann-production.up.railway.app';
 
 class SocketService {
   private socket: any = null;

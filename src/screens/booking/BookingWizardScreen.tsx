@@ -30,6 +30,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { useResponsive } from '../../hooks/useResponsive';
 import { COLORS, SPACING, SHADOWS } from '../../utils/theme';
+import { Toast } from '../../components/Toast';
 import type { Service, Address } from '../../types';
 
 // Components
@@ -75,7 +76,7 @@ const STEPS = [
 export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
     const { service, selectedProvider: initialProvider, selectedAddress: initialAddress } = route.params || ({} as any);
     const { user } = useAuth();
-    const { showError } = useToast();
+    const { toast, showError, hideToast } = useToast();
     const insets = useSafeAreaInsets();
     const isAadhaarVerified = !!(user?.aadhaarVerified || user?.isVerified);
 
@@ -417,7 +418,7 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
                             experienceRange: selectedExperienceRange,
                         });
                     } else {
-                        throw new Error("Failed to send request");
+                        throw new Error(reqRes.message || "Failed to send request");
                     }
                 } else {
                     throw new Error(response.message || "Booking failed");
@@ -557,6 +558,8 @@ export const BookingWizardScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             {/* Success Animation Modal would go here */}
+
+            <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
         </View>
     );
 };

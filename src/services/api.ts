@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { getApiBaseUrl } from '../utils/constants';
+import { getApiBaseUrl, PRODUCTION_API_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
 import { getErrorMessage } from '../utils/errorMessages';
 import type { AuthResponse, ApiResponse, Booking, ServiceProvider, User, Service, ServiceProviderListItem, ServiceCount, ProviderDashboardData, Address } from '../types';
@@ -42,7 +42,7 @@ class ApiService {
 
   constructor() {
     this.client = axios.create({
-      baseURL: 'https://yann-care.vercel.app/api', // Initial default
+      baseURL: PRODUCTION_API_URL, // Initial default, overwritten once initializeBackend() resolves
       timeout: 30000, // Increased for Vercel cold starts
       headers: {
         'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ class ApiService {
       }, 30000);
     } catch (error) {
       console.error('❌ Failed to detect backend, using production:', error);
-      this.client.defaults.baseURL = 'https://yann-care.vercel.app/api';
+      this.client.defaults.baseURL = PRODUCTION_API_URL;
       console.log('🔗 API initialized with production fallback');
     }
   }

@@ -20,6 +20,7 @@ import { convertToWebP } from '../../utils/imageCompression';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
+import { Toast } from '../../components/Toast';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY, ANIMATIONS } from '../../utils/theme';
 
@@ -29,7 +30,7 @@ type Props = {
 
 export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { user, updateUser } = useAuth();
-  const { showSuccess, showError } = useToast();
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -278,6 +279,8 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </Animated.View>
       </ScrollView>
+
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
     </SafeAreaView>
   );
 };

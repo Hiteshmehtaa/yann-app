@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { MapLocationPickerModal } from '../../components/ui/MapLocationPickerModal';
 import { apiService } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
+import { Toast } from '../../components/Toast';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { Address } from '../../types';
@@ -35,7 +36,7 @@ type Props = {
 export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => {
   const { fromBooking } = route.params || {};
   const { user, updateUser } = useAuth();
-  const { showSuccess, showError } = useToast();
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -557,6 +558,8 @@ export const SavedAddressesScreen: React.FC<Props> = ({ navigation, route }) => 
         onLocationSelect={handleLocationSelect}
         initialLocation={selectedCoordinates || undefined}
       />
+
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
     </SafeAreaView>
   );
 };
