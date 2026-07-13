@@ -987,7 +987,11 @@ class ApiService {
     const response = await this.client.post('/verification/initiate', {
       userId,
       userType,
-      redirectUrl,
+      // Server (verification/initiate/route.js) reads this as `returnUrl`,
+      // not `redirectUrl` - keep the outward-facing param name (it matches
+      // what WebBrowser.openAuthSessionAsync calls it) but send the key the
+      // backend actually expects.
+      returnUrl: redirectUrl,
     });
     return response.data;
   }

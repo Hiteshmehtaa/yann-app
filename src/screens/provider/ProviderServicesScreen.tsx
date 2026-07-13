@@ -335,7 +335,8 @@ export const ProviderServicesScreen: React.FC<Props> = ({ navigation }) => {
 
     } catch (error: any) {
       console.error('❌ Failed to update service:', error);
-      Alert.alert('Error', 'Failed to update service details');
+      const errorMessage = error.response?.data?.message || 'Failed to update service details. Please try again.';
+      Alert.alert('Error', errorMessage);
     }
   };
 

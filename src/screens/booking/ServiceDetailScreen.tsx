@@ -36,6 +36,7 @@ import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme'
 import { useTheme } from '../../contexts/ThemeContext';
 import { SkeletonLoader } from '../../components/ui/SkeletonLoader';
 import { MissingDataFallback } from '../../components/MissingDataFallback';
+import { useDialog } from '../../components/CustomDialog';
 import type { Service, ServiceProvider } from '../../types';
 
 // Types
@@ -195,6 +196,7 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const [providers, setProviders] = useState<ServiceProvider[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
+    const { showWarning, DialogComponent } = useDialog();
 
     // Animations
     const scrollY = useSharedValue(0);
@@ -224,10 +226,9 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         priceForService: p.price || service.price || 0,
                         experience: p.experience || 2,
                         bio: p.bio,
-                        experience: p.experience || 2,
-                        bio: p.bio,
                         reviews: p.reviews || [],
                         hasLateStarts: p.hasLateStarts || false,
+                        aadhaarVerified: p.aadhaarVerified || false,
                     }));
                     setProviders(mapped);
                     // Pre-select the best rated or first provider
@@ -419,6 +420,15 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                         <TouchableOpacity
                             style={styles.bookButton}
                             onPress={() => {
+                                if (!(selectedProvider as any).aadhaarVerified) {
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                                    showWarning(
+                                        'Provider Not Verified',
+                                        `${selectedProvider.name} has not completed Aadhaar verification yet and cannot accept bookings right now. Please choose another provider.`,
+                                    );
+                                    return;
+                                }
+
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                 navigation.navigate('ProviderPublicProfile', {
                                     provider: selectedProvider,
@@ -432,6 +442,8 @@ export const ServiceDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     </View>
                 </Animated.View>
             )}
+
+            {DialogComponent}
         </View>
     );
 };

@@ -216,6 +216,14 @@ export const ProviderPublicProfileScreen: React.FC<Props> = ({ navigation, route
       return;
     }
 
+    if (!(provider as any).aadhaarVerified) {
+      showWarning(
+        'Provider Not Verified',
+        `${provider.name} has not completed Aadhaar verification yet and cannot accept bookings right now. Please choose another provider.`,
+      );
+      return;
+    }
+
     if (route.params.service) {
       const isDriver = route.params.service.category?.toLowerCase() === 'driver';
       navigation.navigate(isDriver ? 'DriverBooking' : 'BookingForm', {

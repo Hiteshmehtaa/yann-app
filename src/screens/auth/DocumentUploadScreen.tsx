@@ -130,21 +130,16 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
         return;
       }
 
+      // allowsEditing (native crop UI) is intentionally left off: on some iOS
+      // versions/devices its crop screen leaves the app frozen and unresponsive
+      // after a photo is selected (known expo-image-picker issue, e.g.
+      // github.com/expo/expo/issues/38424 and #11435).
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
         quality: 0.8,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setDocuments(prev => ({
-          ...prev,
-          [activeDocType]: {
-            type: activeDocType,
-            uri: result.assets[0].uri,
-            name: `${activeDocType}_${Date.now()}.jpg`,
-            mimeType: 'image/jpeg',
-          },
-        }));
+        await addDocument(activeDocType, result.assets[0].uri);
       }
       setActiveDocType(null);
     }, 300);
@@ -153,7 +148,7 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
   const handleLibrary = async () => {
     setSheetVisible(false);
     if (!activeDocType) return;
-    
+
     setTimeout(async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -161,24 +156,45 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
         return;
       }
 
+      // allowsEditing (native crop UI) is intentionally left off: on some iOS
+      // versions/devices its crop screen leaves the app frozen and unresponsive
+      // after a photo is selected (known expo-image-picker issue, e.g.
+      // github.com/expo/expo/issues/38424 and #11435).
       const result = await ImagePicker.launchImageLibraryAsync({
-        allowsEditing: true,
         quality: 0.8,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setDocuments(prev => ({
-          ...prev,
-          [activeDocType]: {
-            type: activeDocType,
-            uri: result.assets[0].uri,
-            name: `${activeDocType}_${Date.now()}.jpg`,
-            mimeType: 'image/jpeg',
-          },
-        }));
+        await addDocument(activeDocType, result.assets[0].uri);
       }
       setActiveDocType(null);
     }, 300);
+  };
+
+  // Converts to WebP right after picking, one document at a time, instead of
+  // batching every document's conversion at submit time - that used to hold
+  // several full-size images in memory at once and do all the heavy native
+  // work back-to-back right before a large network request, which is what
+  // was causing the lag/crashes during document upload.
+  const addDocument = async (docType: string, pickedUri: string) => {
+    setIsLoading(true);
+    try {
+      const webpImage = await convertToWebP(pickedUri, { maxWidth: 1600 });
+      setDocuments(prev => ({
+        ...prev,
+        [docType]: {
+          type: docType,
+          uri: webpImage,
+          name: `${docType}_${Date.now()}.webp`,
+          mimeType: 'image/webp',
+        },
+      }));
+    } catch (error) {
+      console.error('Document conversion error:', error);
+      showDialog('error', 'Error', 'Failed to process the selected photo. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDocumentPick = () => {
@@ -217,9 +233,11 @@ export const DocumentUploadScreen: React.FC<Props> = ({ navigation, route }) => 
     setIsLoading(true);
 
     try {
+      // Each document was already converted to a WebP base64 URI when it was
+      // picked (see addDocument), so this is just the already-processed data.
       const base64Documents: Record<string, string> = {};
       for (const [docType, doc] of Object.entries(documents)) {
-        base64Documents[docType] = await convertToWebP(doc.uri, { maxWidth: 1600 });
+        base64Documents[docType] = doc.uri;
       }
 
       const response = await apiService.submitIdentityDocuments({

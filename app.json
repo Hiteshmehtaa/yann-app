@@ -17,7 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yanncare.mobile",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "17",
+      "buildNumber": "21",
       "associatedDomains": [
         "applinks:yann.app",
         "applinks:www.yann.app"
@@ -41,7 +41,7 @@
     "android": {
       "package": "com.yanncare.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 14,
+      "versionCode": 21,
       "userInterfaceStyle": "light",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Logo.png",
@@ -110,7 +110,7 @@
         "expo-build-properties",
         {
           "android": {
-            "extraParams": "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
+            "extraParams": "-Xmx4096m -XX:MaxMetaspaceSize=2048m"
           }
         }
       ],
@@ -139,7 +139,8 @@
           ]
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      "expo-font"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

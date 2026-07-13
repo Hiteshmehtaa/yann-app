@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
+  Keyboard,
   ScrollView,
   StatusBar,
   Image,
@@ -262,6 +263,10 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const uploadDriverDocument = async (field: DriverDocField) => {
+    // Dismiss any open keyboard (e.g. from a service rate input) before picking -
+    // otherwise the heavy form state update below can leave a focused TextInput's
+    // keyboard stuck on screen with nothing driving it, freezing the form.
+    Keyboard.dismiss();
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -269,10 +274,13 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
 
+      // allowsEditing (native crop UI) is intentionally left off here: on some
+      // iOS versions/devices its crop screen leaves the app frozen and
+      // unresponsive after a photo is selected (known expo-image-picker issue,
+      // e.g. github.com/expo/expo/issues/38424 and #11435) - free-form cropping
+      // isn't essential for photographing a license/ID document anyway.
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
         quality: 0.8,
       });
 
@@ -280,6 +288,11 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
         setIsLoading(true);
         const webpImage = await convertToWebP(result.assets[0].uri, { maxWidth: 1600 });
 
+        // Dismiss again right before the heavy state update - the picker UI can
+        // re-grant focus to a field during its own dismiss animation, and this is
+        // the update that triggers the expensive full-form re-render, so this is
+        // the last safe point to guarantee no keyboard is fighting it.
+        Keyboard.dismiss();
         setFormData(prev => ({
           ...prev,
           [field]: webpImage
@@ -550,6 +563,10 @@ export const ProviderSignupScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
+    // Submission also does heavy work (assembling every uploaded document into
+    // one payload) that can trigger the same stuck-keyboard failure mode as
+    // uploadDriverDocument if a field still has focus when this is tapped.
+    Keyboard.dismiss();
     // Validation
     if (!formData.name.trim()) {
       Alert.alert('Error', 'Please enter your full name');

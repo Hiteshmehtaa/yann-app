@@ -24,6 +24,7 @@ import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/theme'
 import * as Haptics from 'expo-haptics';
 import LottieView from 'lottie-react-native';
 import { LottieAnimations } from '../../utils/lottieAnimations';
+import { useDialog } from '../../components/CustomDialog';
 
 const { width, height } = Dimensions.get('window');
 
@@ -67,6 +68,7 @@ interface DriverResult {
     status?: string;
     bio?: string;
     priceForService?: number;
+    aadhaarVerified?: boolean;
 }
 
 // Fade in wrapper
@@ -102,6 +104,7 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
     } = route.params || ({} as any);
 
     const insets = useSafeAreaInsets();
+    const { showWarning, DialogComponent } = useDialog();
     const [drivers, setDrivers] = useState<DriverResult[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -149,6 +152,7 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
             status: d.status,
             bio: d.bio,
             priceForService: d.price || d.priceForService || 0,
+            aadhaarVerified: d.aadhaarVerified || false,
         };
     };
 
@@ -257,6 +261,15 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
     };
 
     const handleSelectDriver = (driver: DriverResult) => {
+        if (!driver.aadhaarVerified) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            showWarning(
+                'Driver Not Verified',
+                `${driver.name} has not completed Aadhaar verification yet and cannot accept bookings right now. Please select another driver.`,
+            );
+            return;
+        }
+
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         navigation.navigate('DriverBookingForm', {
             service,
@@ -456,6 +469,8 @@ export const DriverSearchResultsScreen: React.FC<Props> = ({ navigation, route }
                     ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
                 />
             )}
+
+            {DialogComponent}
         </View>
     );
 };

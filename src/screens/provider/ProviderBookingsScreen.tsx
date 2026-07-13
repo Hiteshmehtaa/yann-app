@@ -193,12 +193,24 @@ export const ProviderBookingsScreen = () => {
   const handleAcceptBooking = async (id: string) => {
     setActionLoadingId(id);
     const userId = user?._id || user?.id || '';
-    try { const r = await apiService.acceptBooking(id, userId, user?.name); if (r.success) fetchBookings(); } catch { Alert.alert('Error', 'Failed to accept'); } finally { setActionLoadingId(null); }
+    try {
+      const r = await apiService.acceptBooking(id, userId, user?.name);
+      if (r.success) fetchBookings();
+      else Alert.alert('Error', r.message || 'Failed to accept');
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || error?.message || 'Failed to accept');
+    } finally { setActionLoadingId(null); }
   };
   const handleRejectBooking = async (id: string) => {
     setActionLoadingId(id);
     const userId = user?._id || user?.id || '';
-    try { const r = await apiService.rejectBooking(id, userId); if (r.success) fetchBookings(); } catch { Alert.alert('Error', 'Failed to reject'); } finally { setActionLoadingId(null); }
+    try {
+      const r = await apiService.rejectBooking(id, userId);
+      if (r.success) fetchBookings();
+      else Alert.alert('Error', r.message || 'Failed to reject');
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || error?.message || 'Failed to reject');
+    } finally { setActionLoadingId(null); }
   };
   const handleStatusChange = async (id: string, status: string) => {
     const userId = user?._id || user?.id || '';

@@ -87,34 +87,50 @@ export const AadhaarVerificationScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const userId = (user?._id || user?.id) as string;
       const userType = user?.role === 'provider' ? 'provider' : 'homeowner';
+      // Must match app.json's `expo.scheme` exactly - this is what the
+      // backend's DigiLocker callback page redirects to on completion.
+      const redirectUrl = 'yann://verification-success';
 
       // Call Meon Tech DigiLocker API
-      const response = await apiService.verifyIdentity(userId, userType);
+      const response = await apiService.verifyIdentity(userId, userType, redirectUrl);
 
       if (response.success && response.url) {
         const result = await WebBrowser.openAuthSessionAsync(
           response.url,
-          'yannapp://verification-success',
+          redirectUrl,
           {
             presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
             controlsColor: COLORS.primary,
           }
         );
 
+        // Don't infer success from the browser session's result type - it's
+        // 'dismiss' just as often on a genuine success (user closes the tab
+        // instead of tapping "Return to App") as on an actual failure/cancel.
+        // The only thing that can be trusted is the provider/homeowner's
+        // freshly-fetched aadhaarVerified flag, set server-side once
+        // DigiLocker's callback actually reaches the backend.
         if (result.type === 'success' || result.type === 'dismiss') {
-          // Refresh user profile
           const profileResponse = await apiService.getProfile(userType);
-          if (profileResponse.user) {
-            updateUser(profileResponse.user);
+          const refreshedUser = profileResponse.user;
+          if (refreshedUser) {
+            updateUser(refreshedUser);
           }
-          
-          showSuccess(
-            'Verification Submitted',
-            userType === 'provider'
-              ? 'Your Aadhaar verification is complete. Your profile is now under admin review.'
-              : 'Your Aadhaar verification is complete. You can now book services!',
-            () => navigation.goBack()
-          );
+
+          if (refreshedUser?.aadhaarVerified) {
+            showSuccess(
+              'Verification Submitted',
+              userType === 'provider'
+                ? 'Your Aadhaar verification is complete. Your profile is now under admin review.'
+                : 'Your Aadhaar verification is complete. You can now book services!',
+              () => navigation.goBack()
+            );
+          } else {
+            showError(
+              'Verification Not Completed',
+              'We couldn\'t confirm your Aadhaar verification. If you completed the DigiLocker steps, please try again in a moment.'
+            );
+          }
         }
       } else {
         showError('Verification Failed', response.message || 'Failed to initiate verification. Please try again.');

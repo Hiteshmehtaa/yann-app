@@ -13,6 +13,7 @@ import {
     Image,
     AppState,
     AppStateStatus,
+    Alert,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -324,10 +325,21 @@ export const ProviderIncomingRequest: React.FC<ProviderIncomingRequestProps> = (
             } else {
                 throw new Error(response.message);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(`${type} failed:`, error);
-            // Still close modal on error to prevent being stuck
-            type === 'accept' ? onAccept() : onReject();
+            // Don't close the modal here - onAccept()/onReject() tell the parent
+            // this action succeeded (it marks the booking as handled and stops
+            // polling it), which isn't true if the request failed server-side
+            // (e.g. the 3-minute window expired, or another provider already
+            // responded). Silently closing on failure previously made it look
+            // like accept/reject worked while the booking was left untouched.
+            // Surface the real reason and let the provider retry or wait for
+            // the timer/dismiss flow to take over instead.
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(
+                type === 'accept' ? 'Could Not Accept' : 'Could Not Reject',
+                error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.'
+            );
         } finally {
             setIsAccepting(false);
             setIsRejecting(false);
