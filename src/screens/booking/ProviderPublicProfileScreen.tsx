@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StatusBar,
   Animated,
-  Image,
   Dimensions,
   Linking,
   Platform,
@@ -19,6 +18,7 @@ import {
   Keyboard,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

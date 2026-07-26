@@ -12,6 +12,13 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import ReanimatedAnimated, {
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SmartHero } from '../../components/home/SmartHero';
 import { FloatingDock } from '../../components/home/FloatingDock';
@@ -119,13 +126,15 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   useWalletBalance(); // usage to init if needed, though mostly for global state
 
-  // Header Animation
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [0, 1], // Fade IN the glass background
-    extrapolate: 'clamp',
+  // Header Animation — runs on the UI thread via Reanimated instead of the JS thread,
+  // so header fade-in doesn't add to JS-thread work on every scroll frame.
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
   });
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 50], [0, 1], Extrapolation.CLAMP), // Fade IN the glass background
+  }));
 
   const getServiceIcon = (categoryOrName: string): string => {
     return '✨';
@@ -397,7 +406,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       )}
 
       {/* Main Content */}
-      <Animated.ScrollView
+      <ReanimatedAnimated.ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -408,7 +417,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             progressViewOffset={insets.top + 100}
           />
         }
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
       >
 
         {/* Smart Hero Section */}
@@ -473,17 +483,17 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             {filteredServices.length === 0 && hasFetchedInitial && <SearchEmptyState />}
           </View>
         )}
-      </Animated.ScrollView>
+      </ReanimatedAnimated.ScrollView>
 
       {/* Ultra-Header (Floating Transparent Bar) */}
       <View style={[styles.fixedHeaderContainer, { paddingTop: insets.top }]}>
-        <Animated.View style={[styles.glassBackground, { opacity: headerOpacity }]}>
+        <ReanimatedAnimated.View style={[styles.glassBackground, headerAnimatedStyle]}>
           {Platform.OS === 'ios' ? (
             <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)', borderBottomWidth: 1, borderColor: COLORS.border }]} />
           )}
-        </Animated.View>
+        </ReanimatedAnimated.View>
 
         <View style={styles.topBar}>
           <TouchableOpacity

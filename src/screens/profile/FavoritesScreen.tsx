@@ -95,14 +95,14 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
     setIsRefreshing(false);
   }, []);
 
-  const handleRemoveFavorite = async (providerId: string) => {
+  const handleRemoveFavorite = useCallback(async (providerId: string) => {
     haptics.medium();
     await removeFromFavorites(providerId);
     setFavorites(prev => prev.filter(p => (p.id || p._id) !== providerId));
     showInfo('Removed from Favorites');
-  };
+  }, [showInfo]);
 
-  const renderProviderItem = ({ item, index }: { item: FavoriteProvider, index: number }) => {
+  const renderProviderItem = useCallback(({ item, index }: { item: FavoriteProvider, index: number }) => {
     const providerImage = item.profileImage || item.avatar;
     const firstService = item.services && item.services.length > 0 ? item.services[0] : 'General Service';
 
@@ -164,7 +164,7 @@ export const FavoritesScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
       </Animated.View>
     );
-  };
+  }, [slideAnim, fadeAnim, navigation, handleRemoveFavorite]);
 
   const renderEmpty = () => {
     if (isLoading) return <LoadingSpinner visible={true} size="small" />;

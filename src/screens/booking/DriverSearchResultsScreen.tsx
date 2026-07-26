@@ -5,7 +5,6 @@ import {
     StyleSheet,
     TouchableOpacity,
     FlatList,
-    Image,
     ActivityIndicator,
     Animated,
     Dimensions,
@@ -13,6 +12,7 @@ import {
     Platform,
     ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

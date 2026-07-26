@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Clipboard, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +40,50 @@ const AnimatedNotificationItem = ({ children, index }: { children: React.ReactNo
   );
 };
 
+// Pure helpers hoisted out of the component so they get a stable identity
+// (no closure over component state) instead of being recreated every render.
+const copyOTP = (otp: string) => {
+  Clipboard.setString(otp);
+  Alert.alert('Copied!', 'OTP copied to clipboard');
+};
+
+const getNotificationIcon = (type: string) => {
+  switch (type) {
+    case 'otp_start':
+    case 'otp_end': return 'lock-closed';
+    case 'booking_accepted': return 'checkmark-circle';
+    case 'booking_rejected': return 'close-circle';
+    case 'booking_completed': return 'checkmark-done-circle';
+    case 'referral_success': return 'gift';
+    default: return 'notifications';
+  }
+};
+
+const getNotificationColor = (type: string): [string, string] => {
+  switch (type) {
+    case 'otp_start':
+    case 'otp_end': return [COLORS.primary, COLORS.primaryGradientEnd];
+    case 'booking_accepted': return ['#10B981', '#059669'];
+    case 'booking_rejected': return ['#EF4444', '#DC2626'];
+    case 'booking_completed': return ['#8B5CF6', '#7C3AED'];
+    case 'referral_success': return ['#F59E0B', '#D97706'];
+    default: return ['#6B7280', '#4B5563'];
+  }
+};
+
+const formatTimestamp = (timestamp: string | Date) => {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return date.toLocaleDateString();
+};
+
 export const NotificationsListScreen = () => {
   const navigation = useNavigation<any>();
   const { notifications, markAsRead, refreshNotifications } = useNotifications();
@@ -52,12 +96,7 @@ export const NotificationsListScreen = () => {
     setIsRefreshing(false);
   };
 
-  const copyOTP = (otp: string) => {
-    Clipboard.setString(otp);
-    Alert.alert('Copied!', 'OTP copied to clipboard');
-  };
-
-  const handleNotificationPress = (notification: AppNotification) => {
+  const handleNotificationPress = useCallback((notification: AppNotification) => {
     if (!notification.read) {
       markAsRead(notification.id);
     }
@@ -79,46 +118,9 @@ export const NotificationsListScreen = () => {
     } else if (notification.type === 'referral_success') {
       navigation.navigate('Referral');
     }
-  };
+  }, [markAsRead, navigation, user?.role]);
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'otp_start':
-      case 'otp_end': return 'lock-closed';
-      case 'booking_accepted': return 'checkmark-circle';
-      case 'booking_rejected': return 'close-circle';
-      case 'booking_completed': return 'checkmark-done-circle';
-      case 'referral_success': return 'gift';
-      default: return 'notifications';
-    }
-  };
-
-  const getNotificationColor = (type: string): [string, string] => {
-    switch (type) {
-      case 'otp_start':
-      case 'otp_end': return [COLORS.primary, COLORS.primaryGradientEnd];
-      case 'booking_accepted': return ['#10B981', '#059669'];
-      case 'booking_rejected': return ['#EF4444', '#DC2626'];
-      case 'booking_completed': return ['#8B5CF6', '#7C3AED'];
-      case 'referral_success': return ['#F59E0B', '#D97706'];
-      default: return ['#6B7280', '#4B5563'];
-    }
-  };
-
-  const formatTimestamp = (timestamp: string | Date) => {
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return date.toLocaleDateString();
-  };
-
-  const renderNotification = (notification: AppNotification, index: number) => {
+  const renderNotification = useCallback(({ item: notification, index }: { item: AppNotification, index: number }) => {
     const colors = getNotificationColor(notification.type);
     const icon = getNotificationIcon(notification.type);
     const isRead = notification.read;
@@ -178,7 +180,7 @@ export const NotificationsListScreen = () => {
         </TouchableOpacity>
       </AnimatedNotificationItem>
     );
-  };
+  }, [handleNotificationPress]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -198,7 +200,7 @@ export const NotificationsListScreen = () => {
         contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
         data={notifications}
         keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => renderNotification(item, index)}
+        renderItem={renderNotification}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

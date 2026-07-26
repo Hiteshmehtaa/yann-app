@@ -69,10 +69,10 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedBookingForRating, setSelectedBookingForRating] = useState<Booking | null>(null);
 
-  const handleRateBooking = (booking: Booking) => {
+  const handleRateBooking = useCallback((booking: Booking) => {
     setSelectedBookingForRating(booking);
     setShowRatingModal(true);
-  };
+  }, []);
 
   const handleSubmitRating = async (rating: number, comment: string) => {
     if (!selectedBookingForRating) return;
@@ -201,7 +201,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
     fetchBookings(false);
   }, []);
 
-  const renderBookingCard = ({ item }: { item: Booking }) => {
+  const renderBookingCard = useCallback(({ item }: { item: Booking }) => {
     const formattedDate = item.bookingDate
       ? format(new Date(item.bookingDate), 'EEE, MMM dd')
       : 'N/A';
@@ -374,7 +374,7 @@ export const BookingsListScreen: React.FC<Props> = ({ navigation }) => {
         ) : null}
       </TouchableOpacity>
     );
-  };
+  }, [colors, navigation, activeTab, handleRateBooking]);
 
   const renderEmpty = () => {
     const emptyMessages = {

@@ -9,9 +9,9 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   ImageSourcePropType,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../../utils/theme';
 import { StarIcon, LocationIcon, VerifiedBadgeIcon, PhoneIcon } from '../icons';
 

@@ -86,6 +86,17 @@ const AnimatedButton: React.FC<{
   );
 };
 
+// Pure helper hoisted out of the component so it gets a stable identity
+// instead of being recreated on every render.
+const getTransactionIcon = (description: string, type: string) => {
+  const desc = description.toLowerCase();
+  if (desc.includes('wallet top') || desc.includes('added')) return 'wallet-plus';
+  if (desc.includes('booking') || desc.includes('service')) return 'calendar-check';
+  if (desc.includes('refund') || desc.includes('cancel')) return 'cash-refund';
+  if (desc.includes('payment')) return 'credit-card';
+  return type === 'CREDIT' ? 'arrow-down-left' : 'arrow-up-right';
+};
+
 export const WalletScreen = ({ navigation }: any) => {
   const { user } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
@@ -367,18 +378,9 @@ export const WalletScreen = ({ navigation }: any) => {
     });
   };
 
-  const getTransactionIcon = (description: string, type: string) => {
-    const desc = description.toLowerCase();
-    if (desc.includes('wallet top') || desc.includes('added')) return 'wallet-plus';
-    if (desc.includes('booking') || desc.includes('service')) return 'calendar-check';
-    if (desc.includes('refund') || desc.includes('cancel')) return 'cash-refund';
-    if (desc.includes('payment')) return 'credit-card';
-    return type === 'CREDIT' ? 'arrow-down-left' : 'arrow-up-right';
-  };
-
   const isProvider = user?.role === 'provider';
 
-  const renderTransaction = ({ item, index }: { item: Transaction, index: number }) => {
+  const renderTransaction = useCallback(({ item, index }: { item: Transaction, index: number }) => {
     const isDebit = item.amount < 0;
     const absAmount = Math.abs(item.amount);
     const iconName = getTransactionIcon(item.description, item.type);
@@ -432,7 +434,7 @@ export const WalletScreen = ({ navigation }: any) => {
         </View>
       </Animated.View>
     );
-  };
+  }, [listOpacity, listTranslateY, isProvider]);
 
   const activeTransactions = activeFilter === 'credit'
     ? transactions.filter(t => t.amount >= 0)
